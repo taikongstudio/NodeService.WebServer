@@ -114,7 +114,7 @@
     async Task<bool> LoadNextLogPageAsync()
     {
 
-        int pageSize = 1000;
+        int pageSize = 2000;
         var apiResponse = await ApiService.QueryJobExecutionInstanceLogAsync(LogQueryId,
          new QueryParameters(_logPageIndex, pageSize),
          _cancellationTokenSource.Token
@@ -132,7 +132,8 @@
 
             IEnumerable<string> allLogPages = [];
             int lastPageItemsCount = 0;
-            if (apiResponse.Result.Count() == apiResponse.PageSize)
+            int resultCount = apiResponse.Result.Count();
+            if (resultCount == apiResponse.PageSize)
             {
                 this._logPages.Add(log);
                 allLogPages = this._logPages;
@@ -140,10 +141,12 @@
             }
             else
             {
-                allLogPages = this._logPages.Union(new string[] { log });
-                lastPageItemsCount = apiResponse.Result.Count();
+                allLogPages = this._logPages.Union([log]);
+                lastPageItemsCount = resultCount;
             }
-            var allLogText = string.Join(string.Empty, allLogPages);
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.AppendJoin(string.Empty, allLogPages);
+            var allLogText = stringBuilder.ToString();
             await this._viewer.SetValue(allLogText);
             _loadedLogEntriesCount = pageSize * _logPages.Count + lastPageItemsCount;
             _totalLogEntriesCount = apiResponse.TotalCount;

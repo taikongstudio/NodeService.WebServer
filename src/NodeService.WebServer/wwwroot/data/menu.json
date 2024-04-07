@@ -26,7 +26,7 @@
     "path": "/nodes",
     "name": "节点",
     "key": "nodes",
-    "icon": "dashboard",
+    "icon": "node-index",
     "children": [
       {
         "path": "/nodes",
@@ -39,7 +39,7 @@
     "path": "/jobs",
     "name": "作业",
     "key": "jobs",
-    "icon": "dashboard",
+    "icon": "schedule",
     "children": [
       {
         "path": "/CommonConfig/JobScheduleConfigs",

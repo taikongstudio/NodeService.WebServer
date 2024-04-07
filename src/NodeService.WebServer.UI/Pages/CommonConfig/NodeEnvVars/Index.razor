@@ -1,0 +1,338 @@
+﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.NodeEnvVars
+@page "/CommonConfig/NodeEnvVars"
+@using NodeService.Infrastructure.DataModels
+
+@inject NotificationService _notice
+@inject ApiService ApiService
+@inject ConfirmService _confirmService
+
+<GridContent>
+    <Modal Title="@_modalTitle"
+           Width="800"
+           Visible="@_editFormVisible"
+           ConfirmLoading="@_editFormConfirmLoading"
+           OnOk="@HandleEditFormOk"
+           OnCancel="@HandleEditFormCancel">
+        <Form Model="@_editModel" 
+              LabelColSpan="4"
+              WrapperColSpan="20"
+              OnFinish="OnEditFormFinish"
+              OnFinishFailed="OnEditFormFinishFailed"
+              @ref="@_editForm">
+              @if (context == null)
+                {
+                    <Empty />
+                }
+                else
+                {
+                    <FormItem Label="名称">
+                         <Input @bind-Value="@context.Name" />
+                    </FormItem>
+                    <FormItem Label="环境变量">
+                    <Button OnClick="AddNewEntry" Type="primary" Style="margin-bottom:16px;margin-right:16px">
+                        添加
+                    </Button>
+                    <Button OnClick="RemoveEntries" Type="primary" Style="margin-bottom:16px;margin-right:16px">
+                        删除
+                    </Button>
+                    <StringEntryTable NameTitle="变量名"
+                                      ValueTitle="变量值"
+                        DataSource="@context.EnvironmentVariables" 
+                        @bind-SelectedItems="@_selectedEntries"
+                        RemoveItemAction="@DeleteSelectedEntry"
+                        />
+          
+                    </FormItem>
+                }
+        </Form>
+    </Modal>
+
+    <Space Style="margin-bottom:16px">
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新建配置</Button>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" OnClick="()=>this.QueryConfigurationListAsync()">刷新</Button>
+        </SpaceItem>
+
+    </Space>
+    <Table @ref="_table" Size="TableSize.Small" Loading="_loading" EnableVirtualization="true" TItem="NodeEnvVarsConfigModel"
+           DataSource="@_dataSource.Items"
+           Resizable
+           OnChange="OnTableChange"
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           Total="@_dataSource.TotalCount"
+           OnPageIndexChange="@_dataSource.OnPageSizeChanged"
+           OnPageSizeChange="@_dataSource.OnPageSizeChanged">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="4">
+                    <Title Level="3">节点环境配置</Title>
+                </GridCol>
+                <GridCol Span="4" Offset="20">
+                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                </GridCol>
+            </GridRow>
+        </TitleTemplate>
+       <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Sortable Property="c=>c.Name"></PropertyColumn>
+            <ActionColumn Fixed="right" Width="250" Title="操作">
+                 <CellRender Context="cellData">
+                     <Space>
+                         <SpaceItem>
+                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<NodeEnvVarsConfigModel>())"></Button>
+                         </SpaceItem>
+                         <SpaceItem>
+                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
+                         </SpaceItem>
+                         <SpaceItem>
+                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
+                         </SpaceItem>
+                         @if (cellData.RowData.Expanded)
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
+                            </SpaceItem>
+                        }
+                        else
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
+                            </SpaceItem>
+                        }
+
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+        </ColumnDefinitions>
+
+        <ExpandTemplate>
+            <Tabs Animated>
+                <TabPane Tab="本地目录映射" Key="1">
+                    <StringEntryTable DataSource="@context.Data.EnvironmentVariables"
+                                      NameTitle="备注"
+                                      ValueTitle="目录"
+                                      IsEditable="false" />
+                </TabPane>
+            </Tabs>
+        </ExpandTemplate>
+    </Table>
+</GridContent>
+
+@code {
+    ITable _table;
+    string _modalTitle;
+    string _searchText;
+    bool _editFormVisible = false;
+    bool _editFormSubmitting = false;
+    bool _editFormConfirmLoading = false;
+    Form<NodeEnvVarsConfigModel> _editForm;
+    private PaginationDataSource<NodeEnvVarsConfigModel> _dataSource;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new PaginationDataSource<NodeEnvVarsConfigModel>(ApiService);
+        _dataSource.Filter = FilterModel;
+        base.OnInitialized();
+    }
+
+    IEnumerable<StringEntry> _selectedEntries = [];
+
+    NodeEnvVarsConfigModel _editModel = new NodeEnvVarsConfigModel();
+
+    private bool _loading;
+
+    private void ShowEditForm(NodeEnvVarsConfigModel? model = null)
+    {
+        this._editFormVisible = true;
+        if (model == null)
+        {
+            this._editModel = new NodeEnvVarsConfigModel();
+            this._modalTitle = "新建配置";
+        }
+        else
+        {
+            this._editModel = model.ReferenceClone<NodeEnvVarsConfigModel>();
+            this._modalTitle = "编辑配置";
+        }
+    }
+
+    private async Task OnEditFormFinish(EditContext editContext)
+    {
+        try
+        {
+            foreach (var item in this._editModel.EnvironmentVariables)
+            {
+                item.EndEdit();
+            }
+            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await this._dataSource.UpdateSourceAsync();
+                this._editFormVisible = false;
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = "加载配置失败",
+                });
+        }
+        finally
+        {
+            this._editFormSubmitting = false;
+            this._editFormConfirmLoading = false;
+        }
+    }
+
+    private void OnEditFormFinishFailed(EditContext editContext)
+    {
+        this._editFormSubmitting = false;
+        this._editFormConfirmLoading = false;
+    }
+
+    private void DeleteSelectedEntry(StringEntry entry)
+    {
+        this._editModel.EnvironmentVariables.Remove(entry);
+    }
+
+    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    {
+        var options = new ConfirmButtonOptions()
+            {
+                Button1Props = new AntDesign.ButtonProps()
+                {
+                    ChildContent = "确定",
+                    Type = ButtonType.Primary,
+                },
+                Button2Props = new AntDesign.ButtonProps()
+                {
+                    ChildContent = "取消"
+                }
+            };
+        return _confirmService.Show(
+                content,
+                title,
+                ConfirmButtons.OKCancel,
+                ConfirmIcon.Info,
+                options);
+    }
+
+    private async Task DeleteConfig(NodeEnvVarsConfigModel model)
+    {
+        try
+        {
+            if (await ShowConfirmDialogAsync("删除确认", "确定要删除吗？") != ConfirmResult.OK)
+            {
+                return;
+            }
+            var apiResponse = await this.ApiService.RemoveAsync(model);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await this._dataSource.UpdateSourceAsync();
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = "加载配置失败",
+                });
+        }
+    }
+
+
+    private void HandleEditFormCancel(MouseEventArgs e)
+    {
+        this._editFormVisible = false;
+    }
+
+
+    private void HandleEditFormOk(MouseEventArgs e)
+    {
+        this._editFormSubmitting = true;
+        this._editForm.Submit();
+
+
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        this._loading = true;
+        await this.QueryConfigurationListAsync().ConfigureAwait(false);
+        this._loading = false;
+    }
+
+    private async Task QueryConfigurationListAsync()
+    {
+        try
+        {
+            await this._dataSource.UpdateSourceAsync();
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+
+    }
+
+    private void AddNewEntry()
+    {
+        var entry = new StringEntry();
+        this._editModel.EnvironmentVariables.Add(entry);
+        entry.BeginEdit();
+    }
+
+    private void RemoveEntries()
+    {
+        if (this._selectedEntries == null)
+        {
+            return;
+        }
+        foreach (var item in this._selectedEntries)
+        {
+            this._editModel.EnvironmentVariables.Remove(item);
+        }
+    }
+
+    private bool FilterModel(NodeEnvVarsConfigModel model)
+    {
+        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
+        {
+            return true;
+        }
+        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    void OnTableChange(QueryModel<NodeEnvVarsConfigModel> query)
+    {
+        this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
+        this._dataSource.Refresh();
+    }
+}

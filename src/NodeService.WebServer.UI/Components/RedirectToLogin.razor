@@ -1,0 +1,15 @@
+﻿@inject NavigationManager NavigationManager
+@code {
+
+    [CascadingParameter] protected Task<AuthenticationState> AuthState { get; set; }
+
+    protected async override Task OnInitializedAsync()
+    {
+        base.OnInitialized();
+        var user = (await AuthState).User;
+        if (!user.Identity.IsAuthenticated)
+        {
+            NavigationManager.NavigateTo($"/Identity/Account/Login?ReturnUrl={Uri.EscapeDataString(NavigationManager.Uri)}", true);
+        }
+    }
+}

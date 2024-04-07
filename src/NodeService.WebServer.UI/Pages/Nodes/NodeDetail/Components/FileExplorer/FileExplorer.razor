@@ -1,0 +1,428 @@
+﻿@using NodeService.Infrastructure.Services
+@inject NotificationService _notice
+@inject FileSystem.FileSystemClient FileSystemClient
+@implements IDisposable
+
+@inject NavigationManager NavigationManager
+
+<GridContent>
+    <GridRow Gutter="(8, 0)">
+        <GridCol Flex=@("100px")>
+            <Space>
+                <SpaceItem>
+                    <Button OnClick="GoHome">
+                        <Icon Type="home" Theme="outline" />
+                    </Button>
+                </SpaceItem>
+            </Space>
+        </GridCol>
+    </GridRow>
+    <GridRow>
+        <GridCol Span="24">
+            <Table Title="驱动器" DataSource="@_fileSystemDrives"
+                   Size="TableSize.Small"
+                   EnableVirtualization="true"
+                   Loading="_driveLoading">
+                    <PropertyColumn Title="卷" Property="c=>c.VolumeLabel" />
+                    <PropertyColumn Title="名称" Property="c=>c.Name">
+                    <Button OnClick="()=>this.NavigateAsync(context.RootDirectory)" Type="@ButtonType.Link">@context.Name</Button>
+                    </PropertyColumn>
+                    <PropertyColumn Title="容量" Property="c=>c.TotalSize" />
+                    <PropertyColumn Title="全部可用" Property="c=>c.TotalFreeSpace" />
+                    <PropertyColumn Title="剩余可用" Property="c=>c.AvailableFreeSpace" />
+                    <PropertyColumn Title="类型" Property="c=>c.DriveType" />
+                    <PropertyColumn Title="格式" Property="c=>c.DriveFormat" />
+                    <PropertyColumn Title="联机" Property="c=>c.IsReady" />
+                    <ActionColumn Fixed="right" Title="操作">
+                        <Space Size=@("middle")>
+                            <SpaceItem>
+                                @*        <Button OnClick="()=>this.DeleteFileAsync(context.FullName)" Type="@ButtonType.Link">删除</Button>
+                            *@
+                            </SpaceItem>
+                            <SpaceItem>
+                                @*         <Button OnClick="()=>this.MoveFileAsync(context.FullName)" Type="@ButtonType.Link">移动</Button>
+                            *@
+                            </SpaceItem>
+                        </Space>
+                    </ActionColumn>
+            </Table>
+        </GridCol>
+    </GridRow>
+    <GridRow Gutter="(8, 0)">
+        <GridContent>
+            <GridRow>
+                <GridCol>
+
+                </GridCol>
+            </GridRow>
+            <GridRow>
+                <GridCol Span="24">
+                        <Table Size="TableSize.Small" Title="操作队列" TItem="FileSystemOperationProgress" DataSource="@_progressList">
+                            <PropertyColumn Title="文件名称"  Property="c=>c.FullName"></PropertyColumn>
+                            <PropertyColumn Title="状态" Property="c=>c.State"></PropertyColumn>
+                            <PropertyColumn Title="进度" Property="c=>c.Progress" Format="P2"></PropertyColumn>
+                            <PropertyColumn Title="消息" Property="c=>c.Message"></PropertyColumn>
+                            <ActionColumn Fixed="right" Title="操作">
+                                    <Space Size=@("middle")>
+                                        <SpaceItem>
+                                            @if (context.Properties.TryGetValue("DownloadUrl", out var downloaUrl))
+                                            {
+                                                <a target="_blank" href="@downloaUrl">下载</a>
+                                            }
+                                        </SpaceItem>
+                                    </Space>
+                            </ActionColumn>
+                    </Table>
+                </GridCol>
+            </GridRow>
+        </GridContent>
+    </GridRow>
+    <GridRow Gutter="(8, 0)">
+        <GridCol Flex=@("100px")>
+            <Space>
+                <SpaceItem>
+                    <Button OnClick="GoHome">
+                        <Icon Type="home" Theme="outline" />
+                    </Button>
+                </SpaceItem>
+                <SpaceItem>
+                    <Button OnClick="GoBack">
+                        <Icon Type="arrow-left" Theme="outline" />
+                    </Button>
+                </SpaceItem>
+                <SpaceItem>
+                    <Button OnClick="GoForward">
+                        <Icon Type="arrow-right" Theme="outline" />
+                    </Button>
+                </SpaceItem>
+            </Space>
+        </GridCol>
+        <GridCol Flex=@("auto")>
+            <Input @bind-Value="_currentDirectory" OnPressEnter="() => this.NavigateAsync(this._currentDirectory)" />
+        </GridCol>
+        <GridCol Flex=@("35px")>
+            <Space>
+                <SpaceItem>
+                    <Button OnClick="() => this.NavigateAsync(this._currentDirectory)">前往</Button>
+                </SpaceItem>
+            </Space>
+        </GridCol>
+    </GridRow>
+    <GridRow>
+        <GridCol Span="24">
+            <Table Title="文件浏览器" DataSource="@_fileSystemObjects"
+                        Size="TableSize.Small" 
+                        PageSize="20"
+                        EnableVirtualization="true"
+                        Loading="_directoryLoading">
+                        <PropertyColumn Title="名称" Property="c=>c.Name">
+                            <Button OnClick="()=>this.NavigateAsync(context.FullName)" Type="@ButtonType.Link">@context.Name</Button>
+                        </PropertyColumn>
+                        <PropertyColumn Title="修改时间" Property="c=>c.LastWriteTime">
+                            @context.LastWriteTime.ToDateTime().ToString("yyyy/MM/dd HH:mm:ss")
+                        </PropertyColumn>
+                        <PropertyColumn Title="创建时间" Property="c=>c.CreationTime" Format="YYYY/MM/dd hh:mm:ss">
+                            @context.CreationTime.ToDateTime().ToString("yyyy/MM/dd HH:mm:ss")
+                        </PropertyColumn>
+                        <PropertyColumn Title="类型" Property="c=>c.Type" />
+                        <PropertyColumn Title="大小" Property="c=>c.Length" />
+                        <ActionColumn Fixed="right" Title="操作">
+                            <Space Size=@("middle")>
+    @*                             @if (!context.Type.Contains("Directory"))
+                                {
+                                    <SpaceItem>
+                                        <Button OnClick="()=>this.DownloadAsync(context.FullName)" Type="@ButtonType.Link">下载</Button>
+                                    </SpaceItem>
+                                } *@
+                     @*            <SpaceItem>
+                                    <Button OnClick="()=>this.DeleteAsync(context.FullName)" Type="@ButtonType.Link">删除</Button>
+                                </SpaceItem>
+                                <SpaceItem>
+                                    <Button OnClick="()=>this.MoveAsync(context.FullName)" Type="@ButtonType.Link">移动</Button>
+                                </SpaceItem> *@
+                            </Space>
+                        </ActionColumn>
+            </Table>
+    </GridCol>
+</GridRow>
+</GridContent>
+
+@code {
+
+    Timer _refreshReportsTimer = new Timer(TimeSpan.FromSeconds(1));
+
+    List<string> bulkOperationRequestIdList = new List<string>();
+
+    List<FileSystemOperationProgress> _progressList = new List<FileSystemOperationProgress>();
+
+    IEnumerable<FileSystemObject> _fileSystemObjects;
+    IEnumerable<FileSystemDriveInfo> _fileSystemDrives;
+
+    string _currentDirectory = null;
+
+    bool _driveLoading;
+
+    bool _directoryLoading;
+
+    Stack<string> _backStack = new Stack<string>();
+    Stack<string> _forwardStack = new Stack<string>();
+
+    [Parameter]
+    public string? NodeId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        this._refreshReportsTimer.Elapsed += TimerCallback;
+        this._refreshReportsTimer.Start();
+        await this.ListDriveAsync();
+        var firstDrive = this._fileSystemDrives.FirstOrDefault();
+        if (firstDrive != null)
+        {
+            this._currentDirectory = firstDrive.RootDirectory;
+            await this.NavigateAsync(this._currentDirectory);
+        }
+    }
+
+    private void TimerCallback(object? sender, EventArgs e)
+    {
+        _ = this.InvokeAsync(QueryBulkOperationReportAsync);
+    }
+
+
+    private async void GoHome()
+    {
+        this._currentDirectory = "/";
+        await this.ListDirectoryAsync(this._currentDirectory);
+    }
+
+    private async void GoBack()
+    {
+        if (this._backStack.Count > 0)
+        {
+            this._forwardStack.Push(this._currentDirectory);
+            this._currentDirectory = this._backStack.Pop();
+            await this.ListDirectoryAsync(this._currentDirectory);
+        }
+
+    }
+
+    private async void GoForward()
+    {
+        if (this._forwardStack.Count > 0)
+        {
+            this._backStack.Push(this._currentDirectory);
+            this._currentDirectory = this._forwardStack.Pop();
+            await this.ListDirectoryAsync(this._currentDirectory);
+        }
+        await this.ListDirectoryAsync(this._currentDirectory);
+    }
+
+
+    private async Task QueryBulkOperationReportAsync()
+    {
+        if (this.bulkOperationRequestIdList.Count == 0)
+        {
+            this._refreshReportsTimer.Stop();
+        }
+        else
+        {
+            this._refreshReportsTimer.Start();
+        }
+        foreach (var requestId in this.bulkOperationRequestIdList.ToArray())
+        {
+            try
+            {
+                var rsp = await this.FileSystemClient.QueryBulkOperationReportAsync(new FileSystemQueryBulkOperationReportRequest()
+                    {
+                        RequestId = Guid.NewGuid().ToString(),
+                        OriginalRequestId = requestId,
+                        Timeout = TimeSpan.FromSeconds(60)
+                    });
+                if (rsp.ErrorCode == 0)
+                {
+                    if (rsp.Reports.Count == 0)
+                    {
+                        continue;
+                    }
+                    var lastReport = rsp.Reports.LastOrDefault();
+                    foreach (var item in lastReport.Progresses)
+                    {
+                        item.Properties.TryAdd("OriginalRequestId", rsp.OriginalRequestId);
+                        var progress = this._progressList.FirstOrDefault(x =>
+        x.Properties.TryGetValue("OriginalRequestId", out var originalRequestId) && originalRequestId == requestId);
+                        if (progress == null)
+                        {
+                            this._progressList.Add(item);
+                        }
+                        else
+                        {
+                            var index = this._progressList.IndexOf(progress);
+                            this._progressList[index] = item;
+                        }
+                    }
+                    if (lastReport.State == FileSystemOperationState.Finished || lastReport.State == FileSystemOperationState.Failed)
+                    {
+                        this.bulkOperationRequestIdList.Remove(requestId);
+                    }
+                }
+
+
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+
+        }
+        this.StateHasChanged();
+
+    }
+
+    private async Task NavigateAsync(string url)
+    {
+        if (this._currentDirectory != null)
+        {
+            this._backStack.Push(this._currentDirectory);
+            this._forwardStack.Clear();
+        }
+        this._currentDirectory = url;
+        await this.ListDirectoryAsync(this._currentDirectory);
+    }
+
+    private async void DeleteAsync(string fileName)
+    {
+
+    }
+
+    private async void DownloadAsync(string fileName)
+    {
+        try
+        {
+            var requestId = Guid.NewGuid().ToString();
+            var req = new FileSystemBulkOperationRequest()
+                {
+                    Operation = FileSystemOperation.Open,
+                    RequestId = requestId
+                };
+            req.PathList.Add(fileName);
+            var rsp = await this.FileSystemClient.BulkOperaionAsync(req);
+            if (rsp.ErrorCode == 0)
+            {
+                this.bulkOperationRequestIdList.Add(requestId);
+                this._refreshReportsTimer.Start();
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig()
+                    {
+                        Message = "加载失败",
+                        Description = $"错误代码:{rsp.ErrorCode}{System.Environment.NewLine}错误消息:{rsp.Message}"
+                    });
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig()
+                {
+                    Message = "加载失败",
+                    Description = $"错误代码:{ex.HResult}{System.Environment.NewLine}错误消息:{ex.Message}"
+                });
+        }
+
+    }
+
+    private async void MoveAsync(string fileName)
+    {
+
+    }
+
+    private async Task ListDirectoryAsync(string directory)
+    {
+        try
+        {
+            this._directoryLoading = true;
+            var rsp = await this.FileSystemClient.ListDirectoryAsync(new FileSystemListDirectoryRequest()
+                {
+                    RequestId = Guid.NewGuid().ToString(),
+                    IncludeSubDirectories = false,
+                    Directory = directory,
+                    Timeout = TimeSpan.FromSeconds(60)
+                });
+            this._directoryLoading = false;
+            if (rsp.ErrorCode == 0)
+            {
+                this._fileSystemObjects = rsp.FileSystemObjects;
+                this.StateHasChanged();
+            }
+            else
+            {
+                this._fileSystemObjects = Array.Empty<FileSystemObject>();
+                await _notice.Open(new NotificationConfig()
+                    {
+                        Message = "加载失败",
+                        Description = $"错误代码:{rsp.ErrorCode}{System.Environment.NewLine}错误消息:{rsp.Message}"
+                    });
+            }
+
+
+        }
+        catch (Exception ex)
+        {
+            this._fileSystemObjects = Array.Empty<FileSystemObject>();
+            await _notice.Open(new NotificationConfig()
+                {
+                    Message = "加载失败",
+                    Description = $"错误代码:{ex.HResult}{System.Environment.NewLine}错误消息:{ex.Message}"
+                });
+        }
+    }
+
+    private async Task ListDriveAsync()
+    {
+        try
+        {
+            this._driveLoading = true;
+            var rsp = await this.FileSystemClient.ListDriveAsync(new FileSystemListDriveRequest()
+                {
+                    RequestId = Guid.NewGuid().ToString(),
+                    Timeout = TimeSpan.FromSeconds(60)
+                });
+            this._driveLoading = false;
+            if (rsp.ErrorCode == 0)
+            {
+                this._fileSystemDrives = rsp.Drives.ToArray();
+                this.StateHasChanged();
+            }
+            else
+            {
+                this._fileSystemDrives = Array.Empty<FileSystemDriveInfo>();
+                await _notice.Open(new NotificationConfig()
+                    {
+                        Message = "加载失败",
+                        Description = $"错误代码:{rsp.ErrorCode}{System.Environment.NewLine}错误消息:{rsp.Message}"
+                    });
+            }
+
+
+        }
+        catch (Exception ex)
+        {
+            this._fileSystemDrives = Array.Empty<FileSystemDriveInfo>();
+            await _notice.Open(new NotificationConfig()
+                {
+                    Message = "加载失败",
+                    Description = $"错误代码:{ex.HResult}{System.Environment.NewLine}错误消息:{ex.Message}"
+                });
+        }
+    }
+
+
+
+    public void Dispose()
+    {
+        _refreshReportsTimer.Dispose();
+    }
+
+}

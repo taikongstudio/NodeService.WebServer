@@ -1,0 +1,431 @@
+﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.FtpUploadConfigs
+@page "/CommonConfig/FtpUploadConfigs"
+@using NodeService.Infrastructure.DataModels
+@inject NotificationService _notice
+@inject ApiService ApiService
+@inject ConfirmService _confirmService
+
+<GridContent>
+    <Modal Width="800"
+           Title="@_modalTitle"
+           Visible="@_editFormVisible"
+           ConfirmLoading="@_editFormConfirmLoading"
+           OnOk="@HandleEditFormOk"
+           OnCancel="@HandleEditFormCancel">
+        <Form Model="@_editModel" Size="@AntSizeLDSType.Default"
+              LabelColSpan="4"
+              WrapperColSpan="20"
+              OnFinish="OnEditFormFinish"
+              OnFinishFailed="OnEditFormFinishFailed"
+              @ref="@_editForm">
+                 @if (context == null)
+                {
+                    <Empty />
+                }
+                else
+                {
+                    <FormItem Label="配置名称">
+                        <Input @bind-Value="@context.Name"  />
+                     </FormItem>
+                    <FormItem Label="Ftp配置">
+                        <Select DataSource="@_ftpConfigs"
+                                @bind-Value="@_editModel.FtpConfigId"
+                                LabelName="@nameof(FtpConfigModel.Name)"
+                                ValueName="@nameof(FtpConfigModel.Id)" />
+                    </FormItem>
+                    <FormItem Label="远程目录">
+                        <Input @bind-Value="@context.RemoteDirectory" />
+                    </FormItem>
+                    <FormItem Label="清空远程目录">
+                        <Switch @bind-Checked="@context.CleanupRemoteDirectory" />
+                    </FormItem>
+                    <FormItem Label="使用目录映射">
+                        <Switch @bind-Checked="@context.IsLocalDirectoryUseMapping"></Switch>
+                    </FormItem>
+                <FormItem Label="本地目录">
+                    <Input @bind-Value="@context.LocalDirectory" />
+                </FormItem>
+                    <FormItem Label="包含子目录">
+                        <Switch @bind-Checked="@context.IncludeSubDirectories" />
+                    </FormItem>
+                    <FormItem Label="模式匹配">
+                        <Input @bind-Value="@context.SearchPattern" />
+                     </FormItem>
+                    <FormItem Label="大小写匹配">
+                        <RadioGroup @bind-Value="@context.MatchCasing" Size="large">
+                            <Radio RadioButton Value="@(System.IO.MatchCasing.PlatformDefault)">默认</Radio>
+                            <Radio RadioButton Value="@(System.IO.MatchCasing.CaseInsensitive)">大小写无关</Radio>
+                            <Radio RadioButton Value="@(System.IO.MatchCasing.CaseSensitive)">大小写有关</Radio>
+                        </RadioGroup>
+                    </FormItem>
+
+                    @if (!context.CleanupRemoteDirectory)
+                    {
+                        <FormItem Label="文件处理方式">
+                            <RadioGroup @bind-Value="@context.FtpFileExists">
+                                <Radio RadioButton Value="@FtpFileExists.Skip">跳过</Radio>
+                                <Radio RadioButton Value="@FtpFileExists.Overwrite">覆盖</Radio>
+                                <Radio RadioButton Value="@FtpFileExists.Resume">恢复</Radio>
+                                <Radio RadioButton Value="@FtpFileExists.AddToEnd">追加</Radio>
+                            </RadioGroup>
+                            <br />
+                            <Text>本地文件时间和服务器文件时间差异</Text>
+                            <RadioGroup @bind-Value="@context.FileExistsTimeRange">
+                                <Radio RadioButton Value="@FileExistsTimeRange.WithinRange">小于</Radio>
+                                <Radio RadioButton Value="@FileExistsTimeRange.OutOfRange">大于</Radio>
+                            </RadioGroup>
+                            <br />
+                            <AntDesign.InputNumber @bind-Value="@context.FileExistsTime" />
+                            <RadioGroup @bind-Value="@context.FileExistsTimeUnit">
+                                <Radio RadioButton Value="@FileExistsTimeUnit.Seconds">秒</Radio>
+                                <Radio RadioButton Value="@FileExistsTimeUnit.Minutes">分钟</Radio>
+                                <Radio RadioButton Value="@FileExistsTimeUnit.Hours">小时</Radio>
+                                <Radio RadioButton Value="@FileExistsTimeUnit.Days">天</Radio>
+                            </RadioGroup>
+                            <Text>的文件</Text>
+                        </FormItem>
+                    }
+                    <FormItem Label="重试次数">
+                        <AntDesign.InputNumber @bind-Value="@context.RetryTimes" />
+                    </FormItem>
+                    <FormItem Label="过滤器">
+                        <Button OnClick="AddNewFilter" Type="primary" Style="margin-bottom:16px;margin-right:16px">
+                            添加
+                        </Button>
+                    <Button OnClick="RemoveSelectedFilters" Type="primary" Style="margin-bottom:16px;margin-right:16px">
+                            删除
+                        </Button>
+                    <StringEntryTable DataSource="@context.Filters" 
+                                      NameTitle="备注"
+                                      ValueTitle="过滤器"
+                                      @bind-SelectedItems="@_selectedFilters"
+                                      RemoveItemAction="@RemoveSelectedFilter" />
+                    </FormItem>
+
+
+
+                }
+        </Form>
+     </Modal>
+
+    <Space Style="margin-bottom:16px">
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新建配置</Button>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" OnClick="()=>this.QueryConfigurationListAsync()">刷新</Button>
+        </SpaceItem>
+
+    </Space>
+    <Table @ref="_table" Size="TableSize.Small" Loading="_loading" EnableVirtualization="true" TItem="FtpUploadConfigModel"
+           OnChange="OnTableChange"
+           Resizable
+           DataSource="@_dataSource.Items"
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           OnPageIndexChange="@_dataSource.OnPageSizeChanged"
+           OnPageSizeChange="@_dataSource.OnPageSizeChanged">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="4">
+                    <Title Level="3">Ftp上传配置</Title>
+                </GridCol>
+                <GridCol Span="4" Offset="20">
+                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                </GridCol>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
+        <PropertyColumn Title="名称" Ellipsis Sortable Property="c=>c.Name"></PropertyColumn>
+        <PropertyColumn Title="Ftp配置" Sortable="true" Property="c=>c.FtpConfig">
+            <Text>@context.FtpConfig?.Name</Text>
+        </PropertyColumn>
+        <PropertyColumn Title="远程目录" Ellipsis Sortable="true" Property="c=>c.RemoteDirectory"></PropertyColumn>
+        <PropertyColumn Title="本地目录" Ellipsis Sortable="true" Property="c=>c.LocalDirectory"></PropertyColumn>
+        <PropertyColumn Title="包含子目录" Sortable="true" Property="c=>c.IncludeSubDirectories"></PropertyColumn>
+        <PropertyColumn Title="模式匹配" Sortable="true" Property="c=>c.SearchPattern"></PropertyColumn>
+        <PropertyColumn Title="重试次数" Sortable="true" Property="c=>c.RetryTimes"></PropertyColumn>
+             <ActionColumn Fixed="right" Width="250" Title="操作">
+                 <CellRender Context="cellData">
+                     <Space>
+                         <SpaceItem>
+                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<FtpUploadConfigModel>())"></Button>
+                         </SpaceItem>
+                         <SpaceItem>
+                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
+                         </SpaceItem>
+                         <SpaceItem>
+                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
+                         </SpaceItem>
+                         @if (cellData.RowData.Expanded)
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
+                            </SpaceItem>
+                        }
+                        else
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
+                            </SpaceItem>
+                        }
+
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+        </ColumnDefinitions>
+         <ExpandTemplate>
+             <Tabs Animated>
+                <TabPane Tab="过滤器" Key="1">
+                    <StringEntryTable DataSource="@context.Data.Filters"
+                                      NameTitle="备注"
+                                      ValueTitle="过滤器"
+                                      IsEditable="false" />
+                </TabPane>
+
+
+            </Tabs>
+        </ExpandTemplate>
+    </Table>
+</GridContent>
+
+@code {
+    ITable _table;
+    string _searchText;
+    string _modalTitle;
+    bool _editFormVisible = false;
+    bool _editFormSubmitting = false;
+    bool _editFormConfirmLoading = false;
+    Form<FtpUploadConfigModel> _editForm;
+    FtpUploadConfigModel _editModel = new FtpUploadConfigModel();
+
+    IEnumerable<FtpConfigModel> _ftpConfigs;
+
+    IEnumerable<StringEntry> _selectedFilters;
+
+    private bool _loading;
+
+    private PaginationDataSource<FtpUploadConfigModel> _dataSource;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new PaginationDataSource<FtpUploadConfigModel>(ApiService);
+        _dataSource.Filter = FilterModel;
+        base.OnInitialized();
+    }
+
+    private async Task ShowEditForm(FtpUploadConfigModel? model = null)
+    {
+        this._loading = true;
+        this._editFormVisible = true;
+        if (model == null)
+        {
+            this._editModel = new FtpUploadConfigModel()
+                {
+                    Id = Guid.NewGuid().ToString()
+                };
+            this._modalTitle = "新建配置";
+        }
+        else
+        {
+            this._editModel = model.ReferenceClone<FtpUploadConfigModel>();
+            this._modalTitle = "编辑配置";
+        }
+        this._loading = false;
+    }
+
+
+    private async Task OnEditFormFinish(EditContext editContext)
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await this._dataSource.UpdateSourceAsync();
+                FindConfigs();
+                this._editFormVisible = false;
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+            this._editFormSubmitting = false;
+            this._editFormConfirmLoading = false;
+        }
+    }
+
+    private void OnEditFormFinishFailed(EditContext editContext)
+    {
+        this._editFormSubmitting = false;
+        this._editFormConfirmLoading = false;
+    }
+
+    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    {
+        var options = new ConfirmButtonOptions()
+            {
+                Button1Props = new AntDesign.ButtonProps()
+                {
+                    ChildContent = "确定",
+                    Type = ButtonType.Primary,
+                },
+                Button2Props = new AntDesign.ButtonProps()
+                {
+                    ChildContent = "取消"
+                }
+            };
+        return _confirmService.Show(
+                content,
+                title,
+                ConfirmButtons.OKCancel,
+                ConfirmIcon.Info,
+                options);
+    }
+
+    private async Task DeleteConfig(FtpUploadConfigModel model)
+    {
+        try
+        {
+            if (await ShowConfirmDialogAsync("删除确认", "确定要删除吗？") != ConfirmResult.OK)
+            {
+                return;
+            }
+            var apiResponse = await this.ApiService.RemoveAsync(model);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await this._dataSource.UpdateSourceAsync();
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = "加载配置失败",
+                });
+        }
+    }
+
+
+    private void HandleEditFormCancel(MouseEventArgs e)
+    {
+        this._editFormVisible = false;
+    }
+
+
+    private async Task HandleEditFormOk(MouseEventArgs e)
+    {
+        this._editFormSubmitting = true;
+        this._editForm.Submit();
+
+
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        this._loading = true;
+        await this.QueryConfigurationListAsync().ConfigureAwait(false);
+        this._loading = false;
+    }
+
+    private async Task QueryFtpConfigListAsync()
+    {
+        var rsp = await this.ApiService.QueryFtpConfigurationListAsync(QueryParameters.All);
+        if (rsp.ErrorCode == 0)
+        {
+            this._ftpConfigs = rsp.Result;
+        }
+
+    }
+
+    private void FindConfigs()
+    {
+        foreach (var item in this._dataSource.Items)
+        {
+            item.FtpConfig = this._ftpConfigs.FirstOrDefault(x => x.Id == item.FtpConfigId);
+        }
+    }
+
+    private async Task QueryConfigurationListAsync()
+    {
+        try
+        {
+            await this.QueryFtpConfigListAsync();
+            await this._dataSource.UpdateSourceAsync();
+            FindConfigs();
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = "加载配置失败",
+                });
+        }
+
+    }
+
+    private void AddNewFilter()
+    {
+        var entry = new StringEntry()
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+        this._editModel.Filters.Add(entry);
+        entry.BeginEdit();
+    }
+
+    private void RemoveSelectedFilter(StringEntry filter)
+    {
+        this._editModel.Filters.Remove(filter);
+    }
+
+    private void RemoveSelectedFilters()
+    {
+        foreach (var filter in this._selectedFilters)
+        {
+            this._editModel.Filters.Remove(filter);
+        }
+    }
+
+    private bool FilterModel(FtpUploadConfigModel model)
+    {
+        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
+        {
+            return true;
+        }
+        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    void OnTableChange(QueryModel<FtpUploadConfigModel> query)
+    {
+        this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
+        this._dataSource.Refresh();
+    }
+}

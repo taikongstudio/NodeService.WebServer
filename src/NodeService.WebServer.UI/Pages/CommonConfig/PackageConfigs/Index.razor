@@ -1,0 +1,432 @@
+@namespace NodeService.WebServer.UI.Pages.CommonConfig.PackageConfigs
+@page "/CommonConfig/PackageConfigs"
+@inject NotificationService _notice
+@inject ApiService ApiService
+@inject ConfirmService _confirmService
+
+
+<GridContent>
+    <Drawer Closable="true" Width="320" Visible="@_packageConfigDrawerVisible" Title='("查看内容")' OnClose="ClosePackageConfigJsonStringDrawer">
+        <Template style="height:90%">
+            <TextArea Style="height:500px" ReadOnly Value="@pluginString" />
+        </Template>
+    </Drawer>
+     <Modal
+           Width="800"
+           Title="@_modalTitle"
+           Visible="@_editFormVisible"
+           ConfirmLoading="@_editFormConfirmLoading"
+           OnOk="@HandleEditOk" 
+           OnCancel="@HandleCancel">
+        <Form Model="@_editModel" 
+              LabelColSpan="4" 
+              Loading="_loading"
+              WrapperColSpan="20"
+              OnFinish="OnEditFormFinish"
+              OnFinishFailed="OnEditFormFinishFailed"
+              @ref="@_editForm">
+            <FormItem Label="名称">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+            <FormItem Label="平台">
+                <RadioGroup @bind-Value="@context.Platform">
+                    @foreach (var platform in platforms)
+                    {
+                        <Radio RadioButton Value="@platform">@platform</Radio>
+                    }
+                 </RadioGroup>
+             </FormItem>
+            <FormItem Label="版本">
+                <Input @bind-Value="@context.Version" />
+            </FormItem>
+            <FormItem Label="文件">
+                <InputFile id="fileInput" OnChange="@OnInputFileChanged" hidden multiple />
+                <Upload Name="files" FileList="_uploadFileItems">
+                    <label class="ant-btn" for="fileInput">
+                        <Icon Type="upload" />
+                       上传文件
+                    </label>
+                </Upload>
+            </FormItem>
+            <FormItem Label="哈希">
+                <Input Disabled @bind-Value="@context.Hash" />
+            </FormItem>
+            <FormItem Label="入口点">
+                <AutoComplete @bind-Value="@context.EntryPoint"
+                Options="@_entryPoints" 
+                OnSelectionChange="OnSelectionChange" 
+                OnActiveChange="OnActiveChange" 
+                Placeholder="input here"/>
+      
+            </FormItem>
+            <FormItem Label="参数">
+                <TextArea @bind-Value="@context.Arguments" />
+            </FormItem>
+            <FormItem Label="启动">
+                <Switch @bind-Checked="@context.Launch" />
+            </FormItem>
+        </Form>
+    </Modal>
+
+    <Space Style="margin-bottom:16px">
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新增配置</Button>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" OnClick="OnRefreshClick">刷新</Button>
+        </SpaceItem>
+
+    </Space>
+    <Table @ref="_table" Size="TableSize.Small" Loading="_loading" EnableVirtualization="true" TItem="PackageConfigModel"
+           DataSource="@_dataSource.Items"
+           Resizable
+           OnChange="OnTableChange"
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           Total="@_dataSource.TotalCount"
+           OnPageIndexChange="@_dataSource.OnPageSizeChanged"
+           OnPageSizeChange="@_dataSource.OnPageSizeChanged">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="4">
+                    <Title Level="3">包配置</Title>
+                </GridCol>
+                <GridCol Span="4" Offset="20">
+                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                </GridCol>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
+         <PropertyColumn Title="名称" Sortable Property="c=>c.Name"></PropertyColumn>
+        <PropertyColumn Title="平台" Property="c=>c.Platform"></PropertyColumn>
+        <PropertyColumn Title="版本" Sortable="true" Property="c=>c.Version"></PropertyColumn>
+             <ActionColumn Fixed="right" Width="250" Title="操作">
+                 <CellRender Context="cellData">
+                     <Space>
+                         <SpaceItem>
+                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<PackageConfigModel>())"></Button>
+                         </SpaceItem>
+                         <SpaceItem>
+                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
+                         </SpaceItem>
+                         <SpaceItem>
+                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
+                         </SpaceItem>
+                         @if (cellData.RowData.Expanded)
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
+                            </SpaceItem>
+                        }
+                        else
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
+                            </SpaceItem>
+                        }
+
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+        </ColumnDefinitions>
+    <ExpandTemplate>
+         <Tabs Animated>
+                <TabPane Tab="插件属性" Key="1">
+                    <Space Size=@("small")>
+                        <SpaceItem>
+                            <a target="_blank" href="@("/api/commonconfig/package/download/"+context.Data.Id)">下载插件</a>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Type="@ButtonType.Link" OnClick="()=>OpenPackageConfigJsonStringDrawer(context.Data)">查看</Button>
+                        </SpaceItem>
+                    </Space>
+
+                    @if (true)
+                    {
+                        var data = new List<StringEntry>([
+                            new StringEntry("入口点", context.Data.EntryPoint),
+                            new StringEntry("参数", context.Data.Arguments),
+                            new StringEntry("哈希", context.Data.Hash),
+                            new StringEntry("启动", context.Data.Launch.ToString()),
+                        ]);
+                        <StringEntryTable DataSource="@data"
+                                          NameTitle="备注"
+                                          ValueTitle="值"
+                                          IsEditable="false" />
+                    }
+                </TabPane>
+            </Tabs>
+    </ExpandTemplate>
+    </Table>
+
+
+</GridContent>
+
+
+@code{
+    ITable _table;
+    string[] platforms = new string[]
+            {
+            "X64",
+            "X86",
+            "Unknown"
+            };
+    string _modalTitle;
+    string _searchText;
+    string? pluginString;
+    bool _packageConfigDrawerVisible = false;
+    bool _editFormVisible = false;
+    bool _editFormSubmitting = false;
+    bool _editFormConfirmLoading = false;
+    bool _loading;
+    Form<PackageConfigModel> _editForm;
+    PackageConfigModel _editModel = new PackageConfigModel();
+    List<UploadFileItem> _uploadFileItems = new List<UploadFileItem>();
+
+    List<string> _entryPoints = new List<string>();
+
+    private AutoCompleteOption selectItem;
+    private AutoCompleteOption activeItem;
+
+    void OnSelectionChange(AutoCompleteOption item)
+    {
+        selectItem = item;
+    }
+
+
+    void OnActiveChange(AutoCompleteOption item)
+    {
+        activeItem = item;
+    }
+
+
+    private PaginationDataSource<PackageConfigModel> _dataSource;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new PaginationDataSource<PackageConfigModel>(ApiService);
+        _dataSource.Filter = FilterModel;
+        base.OnInitialized();
+    }
+
+    private IBrowserFile _file;
+
+    private void ShowEditForm(PackageConfigModel? model = null)
+    {
+        this._editFormVisible = true;
+        if (model == null)
+        {
+            this._editModel = new PackageConfigModel()
+                {
+                    Id = Guid.NewGuid().ToString()
+                };
+            this._modalTitle = "新建配置";
+        }
+        else
+        {
+            this._editModel = model.ReferenceClone<PackageConfigModel>();
+            this._modalTitle = "编辑配置";
+        }
+    }
+
+    private void OpenPackageConfigJsonStringDrawer(PackageConfigModel model)
+    {
+        this.pluginString = JsonSerializer.Serialize(model);
+        this._packageConfigDrawerVisible = true;
+    }
+
+    private void ClosePackageConfigJsonStringDrawer()
+    {
+        this.pluginString = null;
+        this._packageConfigDrawerVisible = false;
+    }
+
+
+    private void HandleEditOk(MouseEventArgs e)
+    {
+        this._editFormSubmitting = true;
+        this._editForm.Submit();
+
+    }
+
+    private void HandleCancel(MouseEventArgs e)
+    {
+        this._editFormVisible = false;
+    }
+
+    private async Task OnEditFormFinish(EditContext editContext)
+    {
+
+        try
+        {
+            this._editFormConfirmLoading = true;
+            this._loading = true;
+            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel, this._file.OpenReadStream(1024 * 1024 * 200)).ConfigureAwait(false);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await this._dataSource.UpdateSourceAsync();
+                this._editFormVisible = false;
+                this._loading = false;
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "上传失败",
+                        Description = $"上传失败,错误代码:{apiResponse.ErrorCode},错误消息:{apiResponse.Message}",
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "上传失败",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+            this._editFormSubmitting = false;
+            this._editFormConfirmLoading = false;
+        }
+    }
+
+    private void OnEditFormFinishFailed(EditContext editContext)
+    {
+        this._editFormSubmitting = false;
+        this._editFormConfirmLoading = false;
+    }
+
+    private async void OnRefreshClick()
+    {
+        await this.QueryPackageConfigurationListAsync();
+    }
+
+    async Task QueryPackageConfigurationListAsync()
+    {
+        try
+        {
+            this._loading = true;
+            await this._dataSource.UpdateSourceAsync();
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "加载失败",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+            this._loading = false;
+        }
+    }
+
+    protected override async Task OnInitializedAsync(){
+
+        this._loading = true;
+        await this.QueryPackageConfigurationListAsync().ConfigureAwait(false);
+        this._loading = false;
+    }
+
+    private async Task OnInputFileChanged(InputFileChangeEventArgs e)
+    {
+        this._file = e.File;
+        this._loading = true;
+        var readStream = e.File.OpenReadStream(1024 * 1024 * 200);
+        using var memoryStream = new MemoryStream();
+        await readStream.CopyToAsync(memoryStream).ConfigureAwait(false);
+        memoryStream.Position = 0;
+        var bytes = await System.Security.Cryptography.SHA256.HashDataAsync(memoryStream).ConfigureAwait(false);
+        this._editModel.Hash = BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
+        memoryStream.Position = 0;
+
+        System.IO.Compression.ZipArchive zipArchive = new System.IO.Compression.ZipArchive(memoryStream);
+
+        this._entryPoints = zipArchive.Entries.Where(IsEntryPoint).Select(x => x.FullName).ToList();
+
+
+        this._loading = false;
+    }
+
+    private bool IsEntryPoint(ZipArchiveEntry zipArchiveEntry)
+    {
+        return zipArchiveEntry.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    {
+        var options = new ConfirmButtonOptions()
+            {
+                Button1Props = new AntDesign.ButtonProps()
+                {
+                    ChildContent = "确定",
+                    Type = ButtonType.Primary,
+                },
+                Button2Props = new AntDesign.ButtonProps()
+                {
+                    ChildContent = "取消"
+                }
+            };
+        return _confirmService.Show(
+                content,
+                title,
+                ConfirmButtons.OKCancel,
+                ConfirmIcon.Info,
+                options);
+    }
+
+    private async Task DeleteConfig(PackageConfigModel model){
+        try
+        {
+            if (await ShowConfirmDialogAsync("删除确认", "确定要删除吗？") != ConfirmResult.OK)
+            {
+                return;
+            }
+            var apiResponse = await this.ApiService.RemoveAsync(model);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await this._dataSource.UpdateSourceAsync();
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "操作",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "加载失败",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+
+        }
+
+    }
+
+    private bool FilterModel(PackageConfigModel model)
+    {
+        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
+        {
+            return true;
+        }
+        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    void OnTableChange(QueryModel<PackageConfigModel> query)
+    {
+        this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
+        this._dataSource.Refresh();
+    }
+}

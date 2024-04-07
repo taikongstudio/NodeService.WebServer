@@ -1,0 +1,1613 @@
+﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.JobScheduleConfigs
+@page "/CommonConfig/JobScheduleConfigs"
+@using NodeService.WebServer.UI.Pages.CommonConfig
+@inject NotificationService _notice
+@inject ApiService ApiService
+@inject ConfirmService _confirmService
+
+<GridContent>
+    <Modal Width="800"
+           Title="@_modalTitle"
+           Visible="@_editFormVisible"
+           Maximizable="true"
+           DefaultMaximized="true"
+           ConfirmLoading="@_editFormConfirmLoading"
+           OnOk="@HandleEditFormOk" 
+           OnCancel="@HandleEditFormCancel">
+        <Form Model="@_editModel" 
+              LabelColSpan="6"
+              Layout="@FormLayout.Horizontal"
+              Loading="@_loading"
+              WrapperColSpan="18"
+              OnFinish="OnEditFormFinish"
+              OnFinishFailed="OnEditFormFinishFailed"
+              @ref="@_editForm">
+            <FormItem Label="名称">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+            <FormItem Label="描述">
+                <Input @bind-Value="@context.Description" />
+            </FormItem>
+            <FormItem Label="启用">
+                <Switch @bind-Checked="@context.IsEnabled" />
+            </FormItem>
+            <FormItem Label="环境变量">
+                <Button Style="margin-top:0px;margin-left:0px;margin-bottom:16px;" OnClick="AddNewEnvVar" Disabled="false" Type="primary">
+                    添加
+                </Button>
+                <Button Style="margin-top:0px;margin-left:16px;margin-bottom:16px;" OnClick="RemoveSelectedEnvVar" Disabled="false" Type="primary">
+                    删除
+                </Button>
+                <StringEntryTable DataSource="@context.EnvironmentVariables"
+                                  NameTitle="键"
+                                  ValueTitle="值"
+                                  @bind-SelectedItems="@_selectedEnvVars"
+                                  RemoveItemAction="@RemoveSelectedEnvironmentVariable" />
+            </FormItem>
+
+            <FormItem Label="任务类型">
+
+                <Select DataSource="@_JobTypeDescConfigs"
+                        Value="@_editModel.JobTypeDescId"
+                        TItem="JobTypeDescConfigModel"
+                        TItemValue="string"
+                        ValueChanged="OnSelectedJobTypeDescChanged"
+                        LabelName="@nameof(JobTypeDescConfigModel.Name)"
+                        ValueName="@nameof(JobTypeDescConfigModel.Id)" />
+            </FormItem>
+            @if (this._editModel.JobTypeDesc != null)
+            {
+                <OptionValueEditor @ref="@_optionValueEditor" OptionValueEditors="@this._editModel.OptionValueEditors"
+                                   FtpConfigurations="@_ftpConfigs"
+                                   FtpDownloadConfigurations="@_ftpDownloadConfigs"
+                                   FtpUploadConfigurations="@_ftpUploadConfigs"
+                                   KafkaConfigurations="@_kafkaConfigs"
+                                   NodeEnvVarsConfigurations="@_nodeEnvVarsConfigs"
+                                   LogUploadConfigurations="@_logUploadConfigs"
+                                   MysqlConfigurations="@_mysqlConfigs"
+                                   PackageConfigurations="@_packageConfigs"
+                                   RestApiConfigurations="@_restApiConfigs" />
+            }
+            <FormItem Label="子作业">
+                <Select DataSource="@_dataSource.Items.Where(x=>x.Id!=this._editModel.Id)"
+                        @bind-Value="@_selectedJobScheduleConfigId"
+                        LabelName="@nameof(ModelBase.Name)"
+                        ValueName="@nameof(ModelBase.Id)" />
+                <Button Style="margin-top:16px;margin-left:0px;margin-bottom:16px;" OnClick="AddJobScheduleConfigTemplateBinding" Disabled="@(this._selectedJobScheduleConfigId==null)" Type="primary">
+                    添加
+                </Button>
+                <Button Style="margin-top:16px;margin-left:16px;margin-bottom:16px;" OnClick="RemoveSelectedJobScheduleConfigTemplateBinding" Disabled="@(!_dataSource.Items.Where(x=>x.Id!=this._editModel.Id).Any())" Type="primary">
+                    删除
+                </Button>
+                <Table @ref="@_jobTable"
+                       Context="job"
+                       TItem="StringEntry"
+                       @bind-SelectedRows="@_selectedJobScheduleBindings"
+                       DataSource="@context.ChildJobs"
+                       Size="TableSize.Small">
+                    <Selection Key="@job.Id" Type="checkbox" />
+                    <PropertyColumn Title="标志" Property="c=>c.Value" Sortable></PropertyColumn>
+                    <PropertyColumn Title="名称" Property="c=>c.Name" Sortable></PropertyColumn>
+                </Table>
+
+            </FormItem>
+            <FormItem Label="执行时长" Help="控制作业的执行时长，单位为秒，默认值0表示不限制执行时长。">
+                <AntDesign.InputNumber TValue="int" @bind-Checked="@context.ExecutionLimitTimeSeconds" /><Text> 秒</Text>
+            </FormItem>
+            <FormItem Label="触发方式" >
+                <RadioGroup @bind-Value="@context.TriggerType">
+                    <Radio RadioButton Value="@JobScheduleTriggerType.Schedule">定时触发</Radio>
+                    <Radio RadioButton Value="@JobScheduleTriggerType.Manual">手动执行</Radio>
+                </RadioGroup>
+            </FormItem>
+            <FormItem Label="执行策略">
+                <RadioGroup @bind-Value="@context.ExecutionStrategy">
+                    <Radio RadioButton Value="@JobExecutionStrategy.Concurrent">并行执行作业</Radio>
+                    <Radio RadioButton Value="@JobExecutionStrategy.WaitAny">等待任意作业结束</Radio>
+                    <Radio RadioButton Value="@JobExecutionStrategy.WaitAll">等待全部作业结束</Radio>
+                    <Radio RadioButton Value="@JobExecutionStrategy.KillAll">杀死全部作业</Radio>
+                </RadioGroup>
+            </FormItem>
+            @if (context.ExecutionStrategy == JobExecutionStrategy.WaitAny || context.ExecutionStrategy == JobExecutionStrategy.WaitAll || context.ExecutionStrategy == JobExecutionStrategy.KillAll)
+            {
+                <FormItem Label="等待时长">
+                    <AntDesign.InputNumber Max="3600" Min="30" @bind-Value="@context.PenddingLimitTimeSeconds" /><Text> 秒</Text>
+                </FormItem>
+            }
+
+            @if (context.TriggerType ==  JobScheduleTriggerType.Schedule)
+            {
+                <FormItem Label="Cron表达式">
+                    <Button OnClick="AddCronExpression" Type="primary" Style="margin-bottom:16px;margin-left:16px;margin-top:0px;">
+                        添加
+                    </Button>
+                    <Button OnClick="RemoveSelectedCronExpressions" Disabled="@(this._selectedCronExpressions.IsNullOrEmpty())" Type="primary" Style="margin-bottom:16px;margin-left:16px;margin-top:16px;">
+                        删除
+                    </Button>
+                    <CronExpressionTable DataSource="@context.CronExpressions"
+                                      NameTitle="备注"
+                                      ValueTitle="Cron表达式"
+                                      @bind-SelectedItems="@_selectedCronExpressions"
+                                      RemoveItemAction="@RemoveSelectedCronExpression" />
+                </FormItem>
+            }
+            <FormItem Label="指定节点">
+                <GridRow>
+                    <Button OnClick="SelectAllNodeInfo" Type="primary" Style="margin-bottom:16px;margin-left:0px;">
+                        全部选择
+                    </Button>
+                    <Button OnClick="UnselectAllNodeInfo" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
+                        全部取消
+                    </Button>
+                    <Button OnClick="QueryNodeInfoListAsync" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
+                        刷新
+                    </Button>
+                </GridRow>
+
+                <GridRow>
+                    <RadioGroup @bind-Value="_dbContextFactoryType" Size="middle">
+                        <Radio RadioButton Value="@(FactoryType.All)">全部区域</Radio>
+                        <Radio RadioButton Value="@(FactoryType.GM)">光明</Radio>
+                        <Radio RadioButton Value="@(FactoryType.BL)">博罗</Radio>
+                        <Radio RadioButton Value="@(FactoryType.Unknkown)">未知</Radio>
+                    </RadioGroup>
+                    <RadioGroup Style="margin-left:20px" @bind-Value="_nodeState" Size="middle">
+                        <Radio RadioButton Value="@(NodeState.All)">全部状态</Radio>
+                        <Radio RadioButton Value="@(NodeState.Online)">在线</Radio>
+                        <Radio RadioButton Value="@(NodeState.Offline)">离线</Radio>
+                    </RadioGroup>
+                </GridRow>
+                <GridRow >
+                    <div style="margin:20px 20px;border-color:dodgerblue;border-radius:8;border-width:1px">
+                        @foreach (var item in _selectedNodeInfos)
+                        {
+                            <Tag @key="item" Closable OnClose="()=>RemoveSelectedNode(item)">@item.Name</Tag>
+                        }
+                    </div>
+
+                </GridRow>
+
+                <Table OnChange="OnNodeTableChange"
+                       @ref="_nodeTable"
+                       Context="nodeInfo"
+                       TItem="NodeInfoModel"
+                       @bind-SelectedRows="@_selectedNodeInfos"
+                       DataSource="@_nodeInfoList"
+                       Size="TableSize.Small">
+                    <TitleTemplate>
+                        <GridRow>
+                            <GridCol Span="4">
+                                <Title Level="3">节点</Title>
+                            </GridCol>
+                            <GridCol Span="8" Offset="12">
+                                <Search Placeholder="搜索节点名称" @bind-Value="@_nodeSearchText" OnSearch="()=>_nodeTable?.ReloadData()" />
+
+                            </GridCol>
+                        </GridRow>
+                    </TitleTemplate>
+                    <ColumnDefinitions>
+                        <Selection Key="@nodeInfo.Id" Type="checkbox" />
+                        <PropertyColumn Title="标志" Ellipsis Property="c=>c.Id" Sortable></PropertyColumn>
+                        <PropertyColumn Title="节点名称" Property="c=>c.Name" Sortable></PropertyColumn>
+                        <PropertyColumn Title="状态" Property="c=>c.Status" Sortable>
+                            @switch (nodeInfo.Status)
+                            {
+                                case NodeStatus.Online:
+                                    <Badge Status="@BadgeStatus.Processing" Text="在线"></Badge>
+                                    break;
+                                case NodeStatus.Offline:
+                                    <Badge Status="@BadgeStatus.Warning" Text="离线"></Badge>
+                                    break;
+                                case NodeStatus.NotConfigured:
+                                    <Badge Status="@BadgeStatus.Warning" Text="未配置"></Badge>
+                                    break;
+                            }
+                        </PropertyColumn>
+                        <PropertyColumn Title="Ip地址" Property="c=>c.Profile.IpAddress" Sortable></PropertyColumn>
+                        <PropertyColumn Title="用途" Ellipsis Property="c=>c.Profile.Usages" Sortable></PropertyColumn>
+                    </ColumnDefinitions>
+                </Table>
+            </FormItem>
+            <FormItem Label="Dns过滤类型">
+                <RadioGroup @bind-Value="@context.DnsFilterType">
+                    <Radio RadioButton Value="@("include")">包含</Radio>
+                    <Radio RadioButton Value="@("exclude")">排除</Radio>
+                </RadioGroup>
+            </FormItem>
+            <FormItem Label="Dns过滤">
+                <Button OnClick="AddDnsFilter" Type="primary" Style="margin-bottom:16px;margin-left:0px;">
+                    添加
+                </Button>
+                <Button OnClick="RemoveSelectedDnsFilters" Disabled="@(this._selectedDnsFilters.IsNullOrEmpty())" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
+                    删除
+                </Button>
+                <StringEntryTable DataSource="@context.DnsFilters"
+                                  NameTitle="备注"
+                                  ValueTitle="Dns"
+                                  @bind-SelectedItems="@_selectedDnsFilters"
+                                  RemoveItemAction="@RemoveSelectedDnsFilter" />
+            </FormItem>
+
+            <FormItem Label="Ip地址过滤类型">
+                <RadioGroup @bind-Value="@context.IpAddressFilterType">
+                    <Radio RadioButton Value="@("include")">包含</Radio>
+                    <Radio RadioButton Value="@("exclude")">排除</Radio>
+                </RadioGroup>
+            </FormItem>
+
+            <FormItem Label="Ip地址过滤">
+                <Button OnClick="AddIpAddressFilter" Type="primary" Style="margin-bottom:16px;margin-left:0px;">
+                    添加
+                </Button>
+                <Button OnClick="RemoveSelectedIpAddressFilters" Disabled="@(this._selectedIpAddressFilters.IsNullOrEmpty())" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
+                    删除
+                </Button>
+                <StringEntryTable DataSource="@context.IpAddressFilters" 
+                                  NameTitle="备注"
+                                  ValueTitle="Ip地址"
+                                  @bind-SelectedItems="@_selectedIpAddressFilters"
+                                  RemoveItemAction="@RemoveSelectedIpAddressFilter" />
+            </FormItem>
+
+        </Form>
+    </Modal>
+    <Space Style="margin-bottom:16px">
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新建配置</Button>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" OnClick="()=>this.QueryConfigurationListAsync()">刷新</Button>
+        </SpaceItem>
+
+    </Space>
+    <Table @ref="_table" Size="TableSize.Small" Loading="_loading" RowExpandable="c=>true" EnableVirtualization="true" TItem="JobScheduleConfigModel" 
+           DataSource="@_dataSource.Items"
+           Resizable
+           OnChange="OnTableChange"
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           OnPageIndexChange="@_dataSource.OnPageSizeChanged"
+           OnPageSizeChange="@_dataSource.OnPageSizeChanged">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="4">
+                    <Title Level="3">作业调度配置</Title>
+                </GridCol>
+                <GridCol Span="4" Offset="20">
+                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                </GridCol>
+            </GridRow>
+        </TitleTemplate>
+           <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Sortable Property="c=>c.Name"></PropertyColumn>
+            <PropertyColumn Title="描述" Ellipsis Sortable Property="c=>c.Description"></PropertyColumn>
+            <PropertyColumn Title="启用" Ellipsis Sortable Property="c=>c.IsEnabled"></PropertyColumn>
+            <PropertyColumn Title="任务类型" Ellipsis Property="c=>c.JobTypeDesc">
+                <Text>@context.JobTypeDesc?.Name</Text>
+            </PropertyColumn>
+
+                <ActionColumn Fixed="right" Width="250" Title="操作">
+                    <CellRender Context="cellData">
+                        <Space>
+                            <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle" OnClick="()=>TriggerJobScheduleConfigAsync(context)"></Button>
+                            </SpaceItem>
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<JobScheduleConfigModel>())"></Button>
+                            </SpaceItem>
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
+                            </SpaceItem>
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
+                         </SpaceItem>
+                         @if (cellData.RowData.Expanded)
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
+                            </SpaceItem>
+                        }
+                        else
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
+                            </SpaceItem>
+                        }
+
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+    </ColumnDefinitions>
+     <ExpandTemplate>
+            <Tabs Animated>
+                <TabPane Tab="任务选项" Key="1">
+                    @if (context.Data.OptionValueEditors != null && !this._loading)
+                    {
+                        <Form Model="@context.Data" 
+                            Context="taskContext"
+                            LabelColSpan="4"
+                            WrapperColSpan="20">
+                            <OptionValueEditor IsEditable="false"
+                                           OptionValueEditors="@context.Data.OptionValueEditors"
+                                           FtpConfigurations="@_ftpConfigs"
+                                           FtpUploadConfigurations="@_ftpUploadConfigs"
+                                           KafkaConfigurations="@_kafkaConfigs"
+                                           NodeEnvVarsConfigurations="@_nodeEnvVarsConfigs"
+                                           LogUploadConfigurations="@_logUploadConfigs"
+                                           MysqlConfigurations="@_mysqlConfigs"
+                                           PackageConfigurations="@_packageConfigs"
+                                           RestApiConfigurations="@_restApiConfigs" />
+
+                    </Form>
+                    }
+                 </TabPane>
+                <TabPane Tab="Cron表达式" Key="2">
+                    <StringEntryTable DataSource="@context.Data.CronExpressions"
+                                      NameTitle="备注"
+                                      ValueTitle="Cron表达式"
+                                      IsEditable="false" />
+                </TabPane>
+                <TabPane Tab="@($"Dns{ConvertFilterType(context.Data.DnsFilterType)}列表")" Key="3">
+                    <StringEntryTable DataSource="@context.Data.DnsFilters"
+                                           NameTitle="备注"
+                                           ValueTitle="Dns"
+                                           IsEditable="false" />
+                </TabPane>
+                <TabPane Tab="@($"Ip地址{ConvertFilterType(context.Data.IpAddressFilterType)}列表")" Key="4">
+
+                    <StringEntryTable DataSource="@context.Data.IpAddressFilters"
+                                      NameTitle="备注"
+                                      ValueTitle="IP地址"
+                                      IsEditable="false" />
+           
+                </TabPane>
+            </Tabs>
+     </ExpandTemplate>
+</Table>
+</GridContent>
+
+@code {
+    OptionValueEditor _optionValueEditor;
+    ITable _jobTable;
+    ITable _nodeTable;
+    string _nodeSearchText;
+    string _searchText;
+    ITable _table;
+
+    string _modalTitle;
+    bool _nodeTableLoading = false;
+    bool _editFormVisible = false;
+    bool _editFormSubmitting = false;
+    bool _editFormConfirmLoading = false;
+    Form<JobScheduleConfigModel> _editForm;
+    JobScheduleConfigModel _editModel = new JobScheduleConfigModel();
+
+
+    string _selectedJobScheduleConfigId;
+
+    IEnumerable<StringEntry> _selectedEnvVars;
+    IEnumerable<StringEntry> _selectedCronExpressions;
+    IEnumerable<StringEntry> _selectedDnsFilters;
+    IEnumerable<StringEntry> _selectedIpAddressFilters;
+
+    IEnumerable<JobTypeDescConfigModel> _JobTypeDescConfigs;
+    IEnumerable<FtpUploadConfigModel> _ftpUploadConfigs;
+    IEnumerable<FtpConfigModel> _ftpConfigs;
+    IEnumerable<MysqlConfigModel> _mysqlConfigs;
+    IEnumerable<LogUploadConfigModel> _logUploadConfigs;
+    IEnumerable<PackageConfigModel> _packageConfigs;
+    IEnumerable<NodeEnvVarsConfigModel> _nodeEnvVarsConfigs;
+    IEnumerable<RestApiConfigModel> _restApiConfigs;
+    IEnumerable<KafkaConfigModel> _kafkaConfigs;
+    IEnumerable<FtpDownloadConfigModel> _ftpDownloadConfigs;
+    IEnumerable<StringEntry> _selectedJobScheduleBindings;
+
+    JobScheduleConfigModel _jobForTrigger;
+    Form<JobScheduleConfigModel> _triggerJobForm;
+    bool _triggerJobFormVisible = false;
+    bool _triggerJobFormSubmitting = false;
+    bool _triggerJobFormConfirmLoading = false;
+
+    IEnumerable<StringEntry> _selectedNodeConfigTemplates = [];
+
+    enum NodeState
+    {
+        All,
+        Online,
+        Offline,
+    }
+
+    enum FactoryType
+    {
+        All,
+        GM,
+        BL,
+        Unknkown
+    }
+
+    NodeState _nodeState;
+    FactoryType _dbContextFactoryType;
+    private bool _loading;
+
+    private PaginationDataSource<JobScheduleConfigModel> _dataSource;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new PaginationDataSource<JobScheduleConfigModel>(ApiService);
+        _dataSource.Filter = FilterModel;
+        base.OnInitialized();
+    }
+
+    IEnumerable<NodeInfoModel> _nodeInfoList = [];
+    IEnumerable<NodeInfoModel> _selectedNodeInfos = [];
+    private string? _selectedNodeInfoId;
+
+    private string ConvertFilterType(string filerType)
+    {
+        switch (filerType)
+        {
+            case "exclude":
+                return "排除";
+                break;
+            case "include":
+                return "包含";
+                break;
+            default:
+                return string.Empty;
+        }
+    }
+
+
+    private async Task ShowEditForm(JobScheduleConfigModel? model = null)
+    {
+        this._loading = true;
+        await this.QueryAllConfigurationListAsync().ConfigureAwait(false);
+        this._editFormVisible = true;
+        if (model == null)
+        {
+            this._editModel = new JobScheduleConfigModel()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    IsEnabled = true
+                };
+            this._modalTitle = "新建配置";
+        }
+        else
+        {
+
+            this._modalTitle = "编辑配置";
+            this._editModel = model.ReferenceClone<JobScheduleConfigModel>();
+            this._selectedNodeInfos = InitSelectedNodeInfoList().ToArray();
+            this.FindConfigs(this._editModel);
+        }
+        this._loading = false;
+    }
+
+    private IEnumerable<NodeInfoModel> InitSelectedNodeInfoList()
+    {
+        if (this._editModel.Value.NodeList.IsNullOrEmpty())
+        {
+            yield break;
+        }
+        foreach (var stringEntry in this._editModel.Value.NodeList)
+        {
+            foreach (var nodeInfo in this._nodeInfoList)
+            {
+                if (stringEntry.Value == nodeInfo.Id)
+                {
+                    yield return nodeInfo;
+                }
+            }
+        }
+        yield break;
+    }
+
+    private async Task ShowTriggerJobForm(JobScheduleConfigModel model)
+    {
+        this._loading = true;
+        await this.QueryAllConfigurationListAsync().ConfigureAwait(false);
+        this._jobForTrigger = model.CopyClone<JobScheduleConfigModel>();
+        FindConfigs(this._jobForTrigger);
+        this._triggerJobFormVisible = true;
+        this._loading = false;
+    }
+
+    private async Task QueryAllConfigurationListAsync()
+    {
+        await this.QueryFtpUploadConfigurationListAsync();
+        await this.QueryFtpDownloadConfigurationListAsync();
+        await this.QueryFtpConfigurationListAsync();
+        await this.QueryMysqlConfigurationListAsync();
+        await this.QueryNodeEnvVarsListAsync();
+        await this.QueryLogUploadConfigurationListAsync();
+        await this.QueryPackageConfigurationListAsync();
+        await this.QueryRestApiConfigurationListAsync();
+        await this.QueryJobTypeDescConfigAsync();
+        await this.QueryKafkaConfigurationListAsync();
+        await this.QueryNodeInfoListAsync();
+    }
+
+    private void FindConfigs(JobScheduleConfigModel model)
+    {
+        model.JobTypeDesc = this._JobTypeDescConfigs.FirstOrDefault(x => x.Id == model.JobTypeDescId);
+    }
+
+    private async Task OnEditFormFinish(EditContext editContext)
+    {
+        try
+        {
+            this._editModel.NodeList.Clear();
+            this._editModel.NodeList.AddRange(
+                this._selectedNodeInfos
+                .DistinctBy(x => x.Id)
+                .Select(x => new StringEntry()
+                    {
+                        Name = this._editModel.Id,
+                        Value = x.Id,
+                    }));
+            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel).ConfigureAwait(false);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await this._dataSource.UpdateSourceAsync();
+                await RefreshDataSource(this._dataSource.Items);
+                this._editFormVisible = false;
+                this._selectedNodeInfos = [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+            this._editFormSubmitting = false;
+            this._editFormConfirmLoading = false;
+        }
+    }
+
+    private async Task OnTriggerJobFormFinish()
+    {
+
+    }
+
+    private async Task TriggerJobScheduleConfigAsync(JobScheduleConfigModel model)
+    {
+        try
+        {
+            if (await ShowConfirmDialogAsync("提示", $"确定要触发任务\"{model.Name}\"?") != ConfirmResult.OK)
+            {
+                return;
+            }
+
+            InvokeJobScheduleParameters invokeJobScheduleParameters = new InvokeJobScheduleParameters()
+                {
+                    JobScheduleConfigId = model.Id
+                };
+            var apiResponse = await this.ApiService.InvokeJobScheduleAsync(invokeJobScheduleParameters).ConfigureAwait(false);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._triggerJobFormVisible = false;
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+
+        }
+    }
+
+    private void OnEditFormFinishFailed(EditContext editContext)
+    {
+        this._editFormSubmitting = false;
+        this._editFormConfirmLoading = false;
+    }
+
+    private void OnTriggerJobFormFinishFailed(EditContext editContext)
+    {
+        this._triggerJobFormConfirmLoading = false;
+        this._triggerJobFormSubmitting = false;
+    }
+
+    private async Task RefreshDataSource(IEnumerable<JobScheduleConfigModel> models)
+    {
+        this._loading = true;
+        await this.QueryAllConfigurationListAsync().ConfigureAwait(false);
+        foreach (var item in models)
+        {
+            FindConfigs(item);
+            BuildOptionValueEditors(item, item.OptionValueEditors);
+        }
+        this._loading = false;
+    }
+
+    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    {
+        var options = new ConfirmButtonOptions()
+            {
+                Button1Props = new AntDesign.ButtonProps()
+                {
+                    ChildContent = "确定",
+                    Type = ButtonType.Primary,
+                },
+                Button2Props = new AntDesign.ButtonProps()
+                {
+                    ChildContent = "取消"
+                }
+            };
+        return _confirmService.Show(
+                content,
+                title,
+                ConfirmButtons.OKCancel,
+                ConfirmIcon.Info,
+                options);
+    }
+
+    private async Task DeleteConfig(JobScheduleConfigModel model)
+    {
+        try
+        {
+            if (await ShowConfirmDialogAsync("删除确认", "确定要删除吗？") != ConfirmResult.OK)
+            {
+                return;
+            }
+            var apiResponse = await this.ApiService.RemoveAsync(model).ConfigureAwait(false);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await this._dataSource.UpdateSourceAsync();
+                await RefreshDataSource(this._dataSource.Items);
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private void HandleTriggerJobFormCancel(MouseEventArgs e)
+    {
+        this._triggerJobFormVisible = false;
+        this._jobForTrigger = new JobScheduleConfigModel();
+    }
+
+
+    private void HandleTriggerJobFormOk(MouseEventArgs e)
+    {
+        this._triggerJobFormSubmitting = true;
+        this._triggerJobForm.Submit();
+    }
+
+
+    private void HandleEditFormCancel(MouseEventArgs e)
+    {
+        this._editFormVisible = false;
+    }
+
+
+    private async Task HandleEditFormOk(MouseEventArgs e)
+    {
+        this._editFormSubmitting = true;
+        this._editModel.Options.Clear();
+        await this._optionValueEditor.EndEditAsync();
+        foreach (var kv in this._editModel.OptionValueEditors)
+        {
+            var key = kv.Key;
+            var editorBase = kv.Value;
+            switch (editorBase.EditorType)
+            {
+                case OptionValueType.TextValue:
+                    var textValueEditor = editorBase as TextValueEditor;
+                    this._editModel.Options.TryAdd(key, textValueEditor.Value);
+                    break;
+                case OptionValueType.NumberValue:
+                    var numberValueEditor = editorBase as NumberValueEditor;
+                    this._editModel.Options.TryAdd(key, numberValueEditor.Value);
+                    break;
+                case OptionValueType.BooleanValue:
+                    var booleanValueEditor = editorBase as BooleanValueEditor;
+                    this._editModel.Options.TryAdd(key, booleanValueEditor.Value);
+                    break;
+                case OptionValueType.TextArrayValue:
+                    var textArrayValueEditor = editorBase as TextArrayValueEditor;
+                    this._editModel.Options.TryAdd(key, textArrayValueEditor.Value.Select(x => x.Value).ToArray());
+                    break;
+                case OptionValueType.PythonCodeValue:
+                    var scriptCodeEditor = editorBase as PythonCodeEditor;
+                    this._editModel.Options.TryAdd(key, scriptCodeEditor.Value);
+                    break;
+                case OptionValueType.BatchScriptValue:
+                    var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
+                    this._editModel.Options.TryAdd(key, batchScriptCodeEditor.Value);
+                    break;
+                case OptionValueType.FtpConfigurationListValue:
+                    var ftpConfigurationListEditor = editorBase as FtpConfigurationListEditor;
+                    this._editModel.Options.TryAdd(key, ftpConfigurationListEditor.Value.Select(x => x.Id).ToArray());
+                    break;
+                case OptionValueType.MysqlConfigurationListValue:
+                    var mysqlConfigurationListEditor = editorBase as MysqlConfigurationListEditor;
+                    this._editModel.Options.TryAdd(key, mysqlConfigurationListEditor.Value.Select(x => x.Id).ToArray());
+                    break;
+                case OptionValueType.KafkaConfigurationListValue:
+                    var kafkaConfigurationListEditor = editorBase as KafkaConfigurationListEditor;
+                    this._editModel.Options.TryAdd(key, kafkaConfigurationListEditor.Value.Select(x => x.Id).ToArray());
+                    break;
+                case OptionValueType.FtpConfigurationValue:
+                    var ftpConfigurationEditor = editorBase as FtpConfigurationEditor;
+                    this._editModel.Options.TryAdd(key, ftpConfigurationEditor.Value?.Id);
+                    break;
+                case OptionValueType.MysqlConfigurationValue:
+                    var mysqlEditor = editorBase as MysqlConfigurationEditor;
+                    this._editModel.Options.TryAdd(key, mysqlEditor.Value?.Id);
+                    break;
+                case OptionValueType.KafkaConfigurationValue:
+                    var kafkaEditor = editorBase as KafkaConfigurationEditor;
+                    this._editModel.Options.TryAdd(key, kafkaEditor.Value?.Id);
+                    break;
+                case OptionValueType.PackageConfigurationValue:
+                    var packageConfigurationEditor = editorBase as PackageConfigurationEditor;
+                    this._editModel.Options.TryAdd(key, packageConfigurationEditor.Value?.Id);
+                    break;
+                case OptionValueType.PackageConfigurationListValue:
+                    var packageConfigurationListEditor = editorBase as PackageConfigurationListEditor;
+                    this._editModel.Options.TryAdd(key, packageConfigurationListEditor.Value.Select(x => x.Id).ToArray());
+                    break;
+                case OptionValueType.NodeEnvVarsConfigurationValue:
+                    var nodeEnvVarsConfigurationEditor = editorBase as NodeEnvVarsConfigurationEditor;
+                    this._editModel.Options.TryAdd(key, nodeEnvVarsConfigurationEditor.Value?.Id);
+                    break;
+                case OptionValueType.NodeEnvVarsConfigurationListValue:
+                    var nodeEnvVarsConfigurationListEditor = editorBase as NodeEnvVarsConfigurationListEditor;
+                    this._editModel.Options.TryAdd(key, nodeEnvVarsConfigurationListEditor.Value?.Select(x => x.Id).ToArray());
+                    break;
+                case OptionValueType.LogUploadConfigurationValue:
+                    var logUploadConfigurationEditor = editorBase as LogUploadConfigurationEditor;
+                    this._editModel.Options.TryAdd(key, logUploadConfigurationEditor.Value?.Id);
+                    break;
+                case OptionValueType.LogUploadConfigurationListValue:
+                    var logUploadConfigurationListEditor = editorBase as LogUploadConfigurationListEditor;
+                    this._editModel.Options.TryAdd(key, logUploadConfigurationListEditor.Value.Select(x => x.Id).ToArray());
+                    break;
+                case OptionValueType.FtpUploadConfigurationValue:
+                    var ftpUploadConfigurationEditor = editorBase as FtpUploadConfigurationEditor;
+                    this._editModel.Options.TryAdd(key, ftpUploadConfigurationEditor.Value?.Id);
+                    break;
+                case OptionValueType.FtpUploadConfigurationListValue:
+                    var ftpUploadConfigurationListEditor = editorBase as FtpUploadConfigurationListEditor;
+                    this._editModel.Options.TryAdd(key, ftpUploadConfigurationListEditor.Value.Select(x => x.Id).ToArray());
+                    break;
+                case OptionValueType.RestApiConfigurationValue:
+                    var restApiConfigurationEditor = editorBase as RestApiConfigurationEditor;
+                    this._editModel.Options.TryAdd(key, restApiConfigurationEditor.Value?.Id);
+                    break;
+                case OptionValueType.RestApiConfigurationListValue:
+                    var restApiConfigurationListEditor = editorBase as RestApiConfigurationListEditor;
+                    this._editModel.Options.TryAdd(key, restApiConfigurationListEditor.Value.Select(x => x.Id).ToArray());
+                    break;
+                case OptionValueType.FtpDownloadConfigurationValue:
+                    var ftpDownloadConfigurationEditor = editorBase as FtpDownloadConfigurationEditor;
+                    this._editModel.Options.TryAdd(key, ftpDownloadConfigurationEditor.Value?.Id);
+                    break;
+                case OptionValueType.FtpDownloadConfigurationListValue:
+                    var ftpDownloadConfigurationListEditor = editorBase as FtpDownloadConfigurationListEditor;
+                    this._editModel.Options.TryAdd(key, ftpDownloadConfigurationListEditor.Value.Select(x => x.Id).ToArray());
+                    break;
+                default:
+                    break;
+            }
+        }
+        this._editForm.Submit();
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await this.QueryConfigurationListAsync().ConfigureAwait(false);
+    }
+
+    private async Task QueryConfigurationListAsync()
+    {
+        try
+        {
+            this._loading = true;
+            var apiResponse = await this.ApiService.QueryJobScheduleConfigurationListAsync(QueryParameters.All).ConfigureAwait(false);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await this._dataSource.UpdateSourceAsync();
+                await RefreshDataSource(_dataSource.Items).ConfigureAwait(false);
+                this._loading = false;
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+            this._loading = false;
+        }
+
+    }
+
+    private void AddCronExpression()
+    {
+        var entry = new StringEntry()
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+        this._editModel.CronExpressions.Add(entry);
+        entry.BeginEdit();
+    }
+
+    private void RemoveSelectedCronExpressions()
+    {
+        foreach (var item in this._selectedCronExpressions)
+        {
+            this._editModel.CronExpressions.Remove(item);
+        }
+    }
+
+    private void RemoveSelectedCronExpression(StringEntry stringEntry)
+    {
+        this._editModel.CronExpressions.Remove(stringEntry);
+    }
+
+    private void RemoveSelectedEnvironmentVariable(StringEntry stringEntry)
+    {
+        this._editModel.EnvironmentVariables.Remove(stringEntry);
+    }
+
+    private void AddDnsFilter()
+    {
+        var entry = new StringEntry()
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+        this._editModel.DnsFilters.Add(entry);
+        entry.BeginEdit();
+    }
+
+    private void RemoveSelectedDnsFilters()
+    {
+        foreach (var item in this._selectedDnsFilters)
+        {
+            this._editModel.DnsFilters.Remove(item);
+        }
+    }
+
+    private void RemoveSelectedDnsFilter(StringEntry stringEntry)
+    {
+        this._editModel.DnsFilters.Remove(stringEntry);
+    }
+
+    private void AddIpAddressFilter()
+    {
+        var entry = new StringEntry()
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+        this._editModel.IpAddressFilters.Add(entry);
+        entry.BeginEdit();
+    }
+
+    private void RemoveSelectedIpAddressFilters()
+    {
+        foreach (var item in this._selectedIpAddressFilters)
+        {
+            this._editModel.IpAddressFilters.Remove(item);
+        }
+    }
+
+    private void RemoveSelectedIpAddressFilter(StringEntry stringEntry)
+    {
+        this._editModel.IpAddressFilters.Remove(stringEntry);
+    }
+
+    private async Task OnSelectedJobTypeDescChanged(string id)
+    {
+        try
+        {
+            var model = this._JobTypeDescConfigs.FirstOrDefault(x => x.Id == id);
+            if (model == null)
+            {
+                this._editModel.OptionValueEditors.Clear();
+                return;
+            }
+            this._editModel.JobTypeDescId = model.Id;
+            this._editModel.JobTypeDesc = model;
+            this._loading = true;
+            //await this.QueryAllConfigurationListAsync().ConfigureAwait(false);
+            //await this._optionValueEditor.EndEditAsync().ConfigureAwait(false);
+            this.BuildOptionValueEditors(this._editModel, this._editModel.OptionValueEditors);
+            await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+            await this._optionValueEditor.BeginEditAsync();
+        }
+        catch (Exception ex)
+        {
+
+        }
+        finally
+        {
+            this._loading = false;
+        }
+
+    }
+
+    private void BuildOptionValueEditors(JobScheduleConfigModel model, Dictionary<string, EditorBase> optionEditors)
+    {
+        if (model.JobTypeDesc == null)
+        {
+            return;
+        }
+        optionEditors.Clear();
+        foreach (var optionEditor in model.JobTypeDesc.OptionValueEditors)
+        {
+            if (!Enum.TryParse<OptionValueType>(optionEditor.Tag.ToString(), out var optionEditorType))
+            {
+                continue;
+            }
+            switch (optionEditorType)
+            {
+                case OptionValueType.TextValue:
+
+                    optionEditors.TryAdd(optionEditor.Name,
+                        new TextValueEditor(model.Options.ReadOptionValue<string>(optionEditor.Name)));
+                    break;
+                case OptionValueType.NumberValue:
+                    optionEditors.TryAdd(optionEditor.Name,
+                        new NumberValueEditor(model.Options.ReadOptionValue<double>(optionEditor.Name)));
+                    break;
+                case OptionValueType.BooleanValue:
+                    optionEditors.TryAdd(optionEditor.Name,
+                        new BooleanValueEditor(model.Options.ReadOptionValue<bool>(optionEditor.Name)));
+                    break;
+                case OptionValueType.TextArrayValue:
+                    optionEditors.TryAdd(optionEditor.Name,
+                        new TextArrayValueEditor(model.Options.ReadOptionListValues(optionEditor.Name, static (x) => x.ToStringEntry())));
+                    break;
+                case OptionValueType.PythonCodeValue:
+                    optionEditors.TryAdd(optionEditor.Name,
+                        new PythonCodeEditor(model.Options.ReadOptionValue<string>(optionEditor.Name)));
+                    break;
+                case OptionValueType.BatchScriptValue:
+                    optionEditors.TryAdd(optionEditor.Name,
+                        new BatchScriptCodeEditor(model.Options.ReadOptionValue<string>(optionEditor.Name)));
+                    break;
+                case OptionValueType.FtpConfigurationListValue:
+                    var ftpConfigurationListEditor = new FtpConfigurationListEditor(
+                        model.Options.ReadOptionListValues(optionEditor.Name, (id) => this._ftpConfigs.FindConfig(id)));
+
+                    ftpConfigurationListEditor.DataSource = this._ftpConfigs;
+                    optionEditors.TryAdd(optionEditor.Name, ftpConfigurationListEditor);
+                    break;
+                case OptionValueType.MysqlConfigurationListValue:
+                    var mysqlConfigurationListEditor = new MysqlConfigurationListEditor(
+                    model.Options.ReadOptionListValues(optionEditor.Name, (id) => this._mysqlConfigs.FindConfig(id)));
+                    mysqlConfigurationListEditor.DataSource = this._mysqlConfigs;
+                    optionEditors.TryAdd(optionEditor.Name, mysqlConfigurationListEditor);
+                    break;
+                case OptionValueType.KafkaConfigurationListValue:
+                    var kafkaConfigurationListEditor = new KafkaConfigurationListEditor(
+                        model.Options.ReadOptionListValues(optionEditor.Name, (id) => this._kafkaConfigs.FindConfig(id)));
+                    kafkaConfigurationListEditor.DataSource = this._kafkaConfigs;
+                    optionEditors.TryAdd(optionEditor.Name, kafkaConfigurationListEditor);
+                    break;
+                case OptionValueType.FtpConfigurationValue:
+                    var ftpConfigurationEditor = new FtpConfigurationEditor(model.Options.ReadOptionValue<FtpConfigModel>(optionEditor.Name, (id) => this._ftpConfigs.FindConfig(id)));
+                    optionEditors.TryAdd(optionEditor.Name, ftpConfigurationEditor);
+                    break;
+                case OptionValueType.MysqlConfigurationValue:
+                    var mysqlConfigurationEditor = new MysqlConfigurationEditor(model.Options.ReadOptionValue<MysqlConfigModel>(optionEditor.Name, (id) => this._mysqlConfigs.FindConfig(id)));
+                    optionEditors.TryAdd(optionEditor.Name, mysqlConfigurationEditor);
+                    break;
+                case OptionValueType.KafkaConfigurationValue:
+                    var kafkaConfigurationEditor = new KafkaConfigurationEditor(model.Options.ReadOptionValue<KafkaConfigModel>(optionEditor.Name, (id) => this._kafkaConfigs.FindConfig(id)));
+                    optionEditors.TryAdd(optionEditor.Name, kafkaConfigurationEditor);
+                    break;
+                case OptionValueType.FtpUploadConfigurationValue:
+                    var ftpUploadConfigurationEditor = new FtpUploadConfigurationEditor(model.Options.ReadOptionValue<FtpUploadConfigModel>(optionEditor.Name, (id) => this._ftpUploadConfigs.FindConfig(id)));
+                    optionEditors.TryAdd(optionEditor.Name, ftpUploadConfigurationEditor);
+                    break;
+                case OptionValueType.FtpUploadConfigurationListValue:
+                    var ftpUploadConfigurationListEditor = new FtpUploadConfigurationListEditor(model.Options.ReadOptionListValues(optionEditor.Name, (id) => this._ftpUploadConfigs.FindConfig(id)));
+                    ftpUploadConfigurationListEditor.DataSource = this._ftpUploadConfigs;
+                    optionEditors.TryAdd(optionEditor.Name, ftpUploadConfigurationListEditor);
+                    break;
+                case OptionValueType.LogUploadConfigurationValue:
+                    var logUploadConfigurationEditor = new LogUploadConfigurationEditor(model.Options.ReadOptionValue<LogUploadConfigModel>(optionEditor.Name, (id) => this._logUploadConfigs.FindConfig(id)));
+                    optionEditors.TryAdd(optionEditor.Name, logUploadConfigurationEditor);
+                    break;
+                case OptionValueType.LogUploadConfigurationListValue:
+                    var logUploadConfigurationListEditor = new LogUploadConfigurationListEditor(model.Options.ReadOptionListValues(optionEditor.Name, (id) => this._logUploadConfigs.FindConfig(id)));
+                    logUploadConfigurationListEditor.DataSource = this._logUploadConfigs;
+                    optionEditors.TryAdd(optionEditor.Name, logUploadConfigurationListEditor);
+                    break;
+                case OptionValueType.NodeEnvVarsConfigurationValue:
+                    var localDirectoryMappingConfigurationEditor = new NodeEnvVarsConfigurationEditor(model.Options.ReadOptionValue<NodeEnvVarsConfigModel>(optionEditor.Name, (id) => this._nodeEnvVarsConfigs.FindConfig(id)));
+                    optionEditors.TryAdd(optionEditor.Name, localDirectoryMappingConfigurationEditor);
+                    break;
+                case OptionValueType.NodeEnvVarsConfigurationListValue:
+                    var localDirectoryMappingConfigurationListEditor = new NodeEnvVarsConfigurationListEditor(model.Options.ReadOptionListValues(optionEditor.Name, (id) => this._nodeEnvVarsConfigs.FindConfig(id)));
+                    localDirectoryMappingConfigurationListEditor.DataSource = this._nodeEnvVarsConfigs;
+                    optionEditors.TryAdd(optionEditor.Name, localDirectoryMappingConfigurationListEditor);
+                    break;
+                case OptionValueType.PackageConfigurationValue:
+                    var packageConfigurationEditor = new PackageConfigurationEditor(model.Options.ReadOptionValue<PackageConfigModel>(optionEditor.Name, (id) => this._packageConfigs.FindConfig(id)));
+                    optionEditors.TryAdd(optionEditor.Name, packageConfigurationEditor);
+                    break;
+                case OptionValueType.PackageConfigurationListValue:
+                    var packageConfigurationListEditor = new PackageConfigurationListEditor(model.Options.ReadOptionListValues(optionEditor.Name, (id) => this._packageConfigs.FindConfig(id)));
+                    packageConfigurationListEditor.DataSource = this._packageConfigs;
+                    optionEditors.TryAdd(optionEditor.Name, packageConfigurationListEditor);
+                    break;
+                case OptionValueType.RestApiConfigurationValue:
+                    var restApiConfigurationEditor = new RestApiConfigurationEditor(model.Options.ReadOptionValue<RestApiConfigModel>(optionEditor.Name, (id) => this._restApiConfigs.FindConfig(id)));
+                    optionEditors.TryAdd(optionEditor.Name, restApiConfigurationEditor);
+                    break;
+                case OptionValueType.RestApiConfigurationListValue:
+                    var restApiConfigurationListEditor = new RestApiConfigurationListEditor(model.Options.ReadOptionListValues(optionEditor.Name, (id) => this._restApiConfigs.FindConfig(id)));
+                    restApiConfigurationListEditor.DataSource = this._restApiConfigs;
+                    optionEditors.TryAdd(optionEditor.Name, restApiConfigurationListEditor);
+                    break;
+                case OptionValueType.FtpDownloadConfigurationValue:
+                    var ftpDownloadConfigurationEditor = new FtpDownloadConfigurationEditor(model.Options.ReadOptionValue<FtpDownloadConfigModel>(optionEditor.Name, (id) => this._ftpDownloadConfigs.FindConfig(id)));
+                    optionEditors.TryAdd(optionEditor.Name, ftpDownloadConfigurationEditor);
+                    break;
+                case OptionValueType.FtpDownloadConfigurationListValue:
+                    var ftpDownloadConfigurationListEditor = new FtpDownloadConfigurationListEditor(model.Options.ReadOptionListValues(optionEditor.Name, (id) => this._ftpDownloadConfigs.FindConfig(id)));
+                    ftpDownloadConfigurationListEditor.DataSource = this._ftpDownloadConfigs;
+                    optionEditors.TryAdd(optionEditor.Name, ftpDownloadConfigurationListEditor);
+                    break;
+                default:
+                    break;
+            }
+
+        }
+    }
+
+
+
+
+    private async Task QueryJobTypeDescConfigAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryJobTypeDescConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._JobTypeDescConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+
+
+    }
+
+    private async Task QueryFtpUploadConfigurationListAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryFtpUploadConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._ftpUploadConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private async Task QueryFtpConfigurationListAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryFtpConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._ftpConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private async Task QueryKafkaConfigurationListAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryKafkaConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._kafkaConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private async Task QueryNodeEnvVarsListAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryNodeEnvVarsConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._nodeEnvVarsConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private async Task QueryMysqlConfigurationListAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryMysqlConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._mysqlConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private async Task QueryLogUploadConfigurationListAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryLogUploadConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._logUploadConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private async Task QueryPackageConfigurationListAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryPackageConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._packageConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private async Task QueryRestApiConfigurationListAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryRestApiConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._restApiConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private async Task QueryFtpDownloadConfigurationListAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryFtpDownloadConfigurationListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._ftpDownloadConfigs = apiResponse.Result ?? [];
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
+    private void SelectAllNodeInfo()
+    {
+        this._selectedNodeInfos = this._nodeInfoList;
+    }
+
+    private void UnselectAllNodeInfo()
+    {
+        this._selectedNodeInfos = [];
+    }
+
+    void OnNodeTableChange(QueryModel<NodeInfoModel> query)
+    {
+        this._nodeInfoList = query.ExecuteQuery(this._nodeInfoList.AsQueryable())
+            .Where(x =>
+            (string.IsNullOrWhiteSpace(this._nodeSearchText)
+            ||
+            x.Name.Contains(this._nodeSearchText, StringComparison.OrdinalIgnoreCase)
+            )
+            &&
+            IsNodeStatusMatched(x)
+            &&
+            IsNodeInfoFactoryTypeMatched(x)
+            );
+    }
+
+    private void AddJobScheduleConfigTemplateBinding()
+    {
+        var target = this._dataSource.Items.FirstOrDefault(x => x.Id == _selectedJobScheduleConfigId);
+        if (target == null)
+        {
+            return;
+        }
+        if (this._editModel.ChildJobs.Any(x => x.Id == _selectedJobScheduleConfigId))
+        {
+            return;
+        }
+        var jobScheduleConfig = this._dataSource.Items.FirstOrDefault(x => x.Id == _selectedJobScheduleConfigId);
+        this._editModel.ChildJobs.Add(new StringEntry()
+            {
+                Id = jobScheduleConfig.Id,
+                Name = jobScheduleConfig.Name,
+                Value = jobScheduleConfig.Id
+            });
+    }
+
+    private void AddNewEnvVar()
+    {
+        this._editModel.EnvironmentVariables.Add(new StringEntry()
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = string.Empty,
+                Value = string.Empty,
+                IsEditing = true
+            });
+    }
+
+    private void RemoveSelectedEnvVar()
+    {
+        if (this._selectedEnvVars == null || !this._selectedEnvVars.Any())
+        {
+            return;
+        }
+
+        foreach (var item in this._selectedEnvVars)
+        {
+            this._editModel.EnvironmentVariables.Remove(item);
+        }
+        this._jobTable.UnselectAll();
+        this._jobTable.ReloadData();
+    }
+
+
+
+    private void RemoveSelectedJobScheduleConfigTemplateBinding()
+    {
+        if (this._selectedJobScheduleBindings == null || !this._selectedJobScheduleBindings.Any())
+        {
+            return;
+        }
+
+        foreach (var item in this._selectedJobScheduleBindings)
+        {
+            this._editModel.ChildJobs.Remove(item);
+        }
+        this._jobTable.UnselectAll();
+        this._jobTable.ReloadData();
+    }
+
+    private async Task QueryNodeInfoListAsync()
+    {
+        try
+        {
+            _loading = true;
+            var apiResponse = await this.ApiService.QueryNodeListAsync(QueryParameters.All);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._nodeInfoList = apiResponse.Result ?? Array.Empty<NodeInfoModel>();
+                if (!this._selectedNodeInfos.Any())
+                {
+                    this._selectedNodeInfos = this._editModel.NodeList.Select(binding => this._nodeInfoList.FirstOrDefault(x => x.Id == binding.Value)).ToList();
+                }
+                else
+                {
+                    var selectedNodeIdHashSet = this._selectedNodeInfos.Select(x => x.Id).ToHashSet();
+                    this._selectedNodeInfos = this._nodeInfoList.Where(node => selectedNodeIdHashSet.Contains(node.Id));
+                }
+                _loading = false;
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool IsNodeStatusMatched(NodeInfoModel nodeInfo)
+    {
+        switch (this._nodeState)
+        {
+            case NodeState.All:
+                return true;
+                break;
+            case NodeState.Online:
+                if (nodeInfo.Status == NodeStatus.Online)
+                {
+                    return true;
+                }
+                break;
+            case NodeState.Offline:
+                if (nodeInfo.Status == NodeStatus.Offline)
+                {
+                    return true;
+                }
+                break;
+            default:
+                break;
+        }
+        return false;
+    }
+
+    private bool IsNodeInfoFactoryTypeMatched(NodeInfoModel nodeInfo)
+    {
+        switch (this._dbContextFactoryType)
+        {
+            case FactoryType.All:
+                return true;
+                break;
+            case FactoryType.GM:
+                if (nodeInfo.Profile.FactoryName == "GM")
+                {
+                    return true;
+                }
+                break;
+            case FactoryType.BL:
+                if (nodeInfo.Profile.FactoryName == "BL")
+                {
+                    return true;
+                }
+                break;
+            default:
+                if (nodeInfo.Profile.FactoryName == "Unknown")
+                {
+                    return true;
+                }
+                break;
+        }
+        return false;
+    }
+
+    private void RemoveSelectedNode(NodeInfoModel nodeInfo)
+    {
+        var list = this._selectedNodeInfos.ToList();
+        list.Remove(nodeInfo);
+        this._selectedNodeInfos = list;
+    }
+
+    private bool FilterModel(JobScheduleConfigModel model)
+    {
+        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
+        {
+            return true;
+        }
+        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    void OnTableChange(QueryModel<JobScheduleConfigModel> query)
+    {
+        this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
+        this._dataSource.Refresh();
+    }
+}

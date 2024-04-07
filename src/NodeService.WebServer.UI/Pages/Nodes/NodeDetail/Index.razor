@@ -1,0 +1,158 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Nodes.NodeDetail
+@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.FileExplorer
+@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.BasicInformation
+@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.EnvironmentVariables
+@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.NetworkInterfaces
+@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.ProcessList
+@inject ApiService ApiService
+@page "/nodes/{nodeId}"
+@inject NotificationService _notice
+@inject NavigationManager NavigationManager
+
+<PageTitle>@NodeInfo</PageTitle>
+
+<GridContent>
+        <GridCol Span="24">
+            <PageHeader 
+                Class="site-page-header"
+                        Title="@NodeInfo.Name"
+                        OnBack="@(()=> { NavigationManager.NavigateTo("/nodes");})" />
+            <Tabs DefaultActiveKey="1">
+                <TabPane Key="1">
+                    <TabTemplate>
+                        <span><Icon Type="file" />基本信息</span>
+                    </TabTemplate>
+                    <ChildContent>
+                        <BasicInformation NodeProperties="@_nodeProperies" />
+                    </ChildContent>
+                </TabPane>
+                <TabPane Key="2">
+                    <TabTemplate>
+                        <span><Icon Type="file" />环境变量</span>
+                    </TabTemplate>
+                    <ChildContent>
+                        <EnvironmentVariableList EnvironmentVariables="@_nodeProperies.EnvironmentVariables" />
+                    </ChildContent>
+                </TabPane>
+                <TabPane Key="3">
+                    <TabTemplate>
+                        <span><Icon Type="file" />网络接口</span>
+                    </TabTemplate>
+                    <ChildContent>
+                        <NetworkInterfaceList NetworkInterfaces="@_nodeProperies.NetworkInterfaces" />
+                    </ChildContent>
+                    </TabPane>
+                <TabPane  Key="4">
+                    <TabTemplate>
+                        <span><Icon Type="file" />进程列表</span>
+                    </TabTemplate>
+                    <ChildContent>
+                        <ProcessList Processes="@_nodeProperies.Processes" />
+                    </ChildContent>
+        
+                </TabPane>
+                <TabPane Key="5">
+                    <TabTemplate>
+                        <span><Icon Type="file" />文件浏览器</span>
+                    </TabTemplate>
+                    <ChildContent>
+                        <FileExplorer NodeId="@NodeId" />
+                    </ChildContent>
+                </TabPane>
+                <TabPane Key="6">
+                    <TabTemplate>
+                        <span><Icon Type="code" />配置</span>
+                    </TabTemplate>
+                    <ChildContent>Tab 1</ChildContent>
+                </TabPane>
+                <TabPane Key="7">
+                    <TabTemplate>
+                        <span><Icon Type="code" />终端</span>
+                    </TabTemplate>
+                    <ChildContent>Tab 1</ChildContent>
+                </TabPane>
+            </Tabs>
+        </GridCol>
+</GridContent>
+
+    @code{
+    [Parameter]
+    public string? NodeId { get; set; }
+
+    private NodePropertyModel _nodeProperies = new NodePropertyModel();
+    private NodeInfoModel NodeInfo = new NodeInfoModel();
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await this.QueryNodeInfoAsync();
+        await this.QueryNodePropsAsync();
+        await base.OnParametersSetAsync();
+        await base.OnInitializedAsync();
+    }
+
+    protected async Task QueryNodeInfoAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryNodeInfoAsync(this.NodeId);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this.NodeInfo = apiResponse.Result;
+            }
+            else
+            {
+                this._nodeProperies = NodePropertyModel.FromNodePropertyItems(null);
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "加载失败",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "加载失败",
+                    Description = $"{ex}",
+                });
+        }
+    }
+
+    private async Task QueryNodePropsAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryNodePropsAsync(this.NodeId);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._nodeProperies = NodePropertyModel.FromNodePropertyItems(apiResponse.Result);
+            }
+            else
+            {
+                this._nodeProperies = NodePropertyModel.FromNodePropertyItems(null);
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "加载失败",
+                        Description = $"错误代码:{apiResponse.ErrorCode},消息:{apiResponse.Message}",
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "加载失败",
+                    Description = $"{ex}",
+                });
+        }
+    }
+
+    private void OnProcessClick(string icon)
+    {
+
+    }
+
+
+}

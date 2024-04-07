@@ -1,0 +1,14 @@
+@namespace NodeService.WebServer.UI.Pages.List
+@inherits AntDomComponentBase
+
+<div class="@this.ClassMapper.Class">
+    @if (!string.IsNullOrEmpty(this.Title))
+    {
+        <div class="label">
+            <span>@this.Title</span>
+        </div>
+    }
+    <div class="content">
+        @this.ChildContent
+    </div>
+</div>

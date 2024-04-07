@@ -1,0 +1,20 @@
+﻿
+
+<Table Size="TableSize.Small" EnableVirtualization="true" TItem="EnvironmentVariableInfo" DataSource="@EnvironmentVariables">
+    <PropertyColumn Title="Key" Sortable="true" Filterable="true" Property="c=>c.Name"></PropertyColumn>
+    <PropertyColumn Title="Value" Sortable="true" Property="c=>c.Value">
+        <Text>@context.Value</Text>
+        </PropertyColumn>
+        <ActionColumn Fixed="right" Title="操作">
+            <Space Size=@("middle")>
+                <SpaceItem>
+
+                </SpaceItem>
+            </Space>
+        </ActionColumn>
+    </Table>
+
+@code {
+    [Parameter]
+    public IEnumerable<EnvironmentVariableInfo>? EnvironmentVariables { get; set; }
+}

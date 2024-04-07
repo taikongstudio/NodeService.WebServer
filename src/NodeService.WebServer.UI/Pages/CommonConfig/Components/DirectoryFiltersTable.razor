@@ -1,0 +1,165 @@
+﻿
+
+<Table Context="mappingEntry"
+       TItem="StringEntry"
+       DataSource="@DataSource"
+       Size="TableSize.Small"
+       SelectedRows="@SelectedItems"
+       SelectedRowsChanged="@SelectedItemsChanged"
+       RowKey="x=>x.Id">
+    <Selection Disabled="@(IsEditable==false)" Key="@mappingEntry.Id" Type="checkbox" />
+    <PropertyColumn Hidden="@this.IsNameHidden" Title="@this.NameTitle" Property="c=>c.Name" Sortable>
+        @if (mappingEntry.IsEditing && this.IsNameEditable)
+        {
+            <Select DataSource="@FilterTypes"
+                    @bind-value="@mappingEntry.Name"
+                    TItem="StringEntry"
+                    AutoFocus
+                    TItemValue="string"
+                    LabelName="@nameof(StringEntry.Name)"
+                    ValueName="@nameof(StringEntry.Value)" />
+        }
+        else if (this.IsNameEditable)
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="()=>mappingEntry.BeginEdit()">
+                @mappingEntry.Name
+            </div>
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Name</div>
+        }
+
+    </PropertyColumn>
+    <PropertyColumn Hidden="@this.IsValueHidden" Title="@this.ValueTitle" Property="c=>c.Value" Sortable>
+        @if (mappingEntry.IsEditing && this.IsValueEditable)
+        {
+            <Input Type="text" @bind-Value="@mappingEntry.Value" AutoFocus="@(!IsNameEditable && IsValueEditable)" />
+        }
+        else if (this.IsValueEditable)
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="()=>mappingEntry.BeginEdit()">
+                @mappingEntry.Value
+            </div>
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Value</div>
+        }
+    </PropertyColumn>
+    @if (this.IsEditable)
+    {
+        <ActionColumn Fixed="right" Width="100" Title="操作">
+            <Space>
+                @if (this.IsNameEditable || this.IsValueEditable)
+                {
+                    @if (mappingEntry.IsEditing)
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="()=>mappingEntry.EndEdit()"></Button>
+                        </SpaceItem>
+                    }
+                    else
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>mappingEntry.EndEdit()"></Button>
+                        </SpaceItem>
+                    }
+                }
+
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="()=>RemoveSelectedItem(mappingEntry)"></Button>
+                </SpaceItem>
+
+            </Space>
+        </ActionColumn>
+    }
+
+</Table>
+
+
+
+
+@code {
+
+    [Parameter]
+    public IEnumerable<StringEntry> DataSource { get; set; } = [];
+
+    [Parameter]
+    public IEnumerable<StringEntry> SelectedItems { get; set; } = [];
+
+    [Parameter]
+    public IEnumerable<StringEntry> FilterTypes { get; set; } = [];
+
+
+    [Parameter]
+    public EventCallback<IEnumerable<StringEntry>> SelectedItemsChanged { get; set; }
+
+    [Parameter]
+    public Action<StringEntry>? RemoveItemAction { get; set; }
+
+    [Parameter]
+    public string NameTitle { get; set; } = "过滤类型";
+
+    [Parameter]
+    public string ValueTitle { get; set; } = "路径";
+
+    [Parameter]
+    public bool IsNameEditable { get; set; } = true;
+
+    [Parameter]
+    public bool IsValueEditable { get; set; } = true;
+
+    [Parameter]
+    public bool IsNameHidden { get; set; } = false;
+
+    [Parameter]
+    public bool IsValueHidden { get; set; } = false;
+
+
+    [Parameter]
+    public bool IsEditable { get; set; } = true;
+
+    private void RemoveSelectedItem(StringEntry value)
+    {
+        if (this.DataSource is IList<StringEntry> list)
+        {
+            list.Remove(value);
+        }
+        else
+        {
+            this.RemoveItemAction?.Invoke(value);
+        }
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (!this.IsEditable)
+        {
+            this.IsNameEditable = false;
+            this.IsValueEditable = false;
+        }
+        return base.OnParametersSetAsync();
+    }
+
+    protected override void OnInitialized()
+    {
+        this.FilterTypes = new StringEntry[]
+        {
+                new StringEntry()
+                {
+                     Name="包含",
+                     Value="include"
+                },
+                new StringEntry()
+
+                {
+                     Name="排除",
+                     Value="exclude"
+                }
+        };
+        base.OnInitialized();
+    }
+
+
+}

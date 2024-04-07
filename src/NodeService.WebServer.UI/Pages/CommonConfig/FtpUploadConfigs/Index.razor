@@ -95,9 +95,7 @@
                     <Button OnClick="RemoveSelectedFilters" Type="primary" Style="margin-bottom:16px;margin-right:16px">
                             删除
                         </Button>
-                    <StringEntryTable DataSource="@context.Filters" 
-                                      NameTitle="备注"
-                                      ValueTitle="过滤器"
+                    <DirectoryFiltersTable DataSource="@context.Filters"
                                       @bind-SelectedItems="@_selectedFilters"
                                       RemoveItemAction="@RemoveSelectedFilter" />
                     </FormItem>

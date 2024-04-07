@@ -1,6 +1,7 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Jobs.JobInstances
 @page "/Jobs/Instances"
 @using NodeService.Infrastructure.Logging
+@using NodeService.WebServer.UI.Pages.Jobs.Components
 @using static NodeService.Infrastructure.Models.JobExecutionReport.Types
 @inject ApiService ApiService
 @inject NotificationService _notice
@@ -12,36 +13,7 @@
 </style>
 
 <GridContent>
-    <Modal  Width="800"
-        Maximizable
-        Title="@($"查看日志({_loadedLogEntriesCount}/{_totalLogEntriesCount})")"
-        @bind-Visible="@_logModalVisible"
-        Closable="true"
-        DefaultMaximized
-        DestroyOnClose
-        AfterClose="CloseLogMessageModalAsync"
-    >
-
-    <Space>
-        <SpaceItem>
-            <Button Shape="@ButtonShape.Circle"
-            Type="@ButtonType.Primary"
-            Disabled="@_loadMoreButtonDisabled"
-            Icon="@IconType.Outline.Reload" 
-            OnClick="()=>LoadMoreLogsAsync()"></Button>
-        </SpaceItem>
-        <SpaceItem>
-            <a href="@($"/api/jobs/instances/{_logQueryId}/logs")" target="_blank">
-                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Download">
-                </Button>
-            </a>
-        </SpaceItem>
-
-    </Space>
-       <StandaloneCodeEditor @ref="@_logViewer" Id="jobLogViwer" ConstructionOptions="EditorConstructionOptions" />
-
- 
-   </Modal>
+    <JobExecutionInstanceLogViewer @ref="@_logViewer"/>
      <Table Size="TableSize.Small"
      @ref="_table"
      Loading="_loading" 
@@ -57,7 +29,7 @@
                 <GridCol Span="4">
                     <Title Level="3">作业执行实例</Title>
                 </GridCol>
-                <GridCol Span="4" Offset="20">
+                <GridCol Span="6" Offset="18">
                     <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
                 </GridCol>
             </GridRow>
@@ -250,18 +222,11 @@
     public string JobId { get; set; }
 
 
-    private StandaloneCodeEditor _logViewer = null!;
-
     ITable _table;
     string _searchText;
-    bool _logModalVisible;
-    string? _logQueryId;
 
-    private int _logPageIndex = 0;
-    private List<string> _logPages = [];
-    int _loadedLogEntriesCount;
-    int _totalLogEntriesCount;
-    bool _loadMoreButtonDisabled;
+    JobExecutionInstanceLogViewer _logViewer;
+
     private DateTime BeginDateTime;
     private DateTime EndDateTime;
 
@@ -503,135 +468,10 @@
             .Where(FilterModel);
     }
 
-    async Task LoadMoreLogsAsync()
-    {
-
-        try
-        {
-            _loadMoreButtonDisabled = true;
-            await this._logViewer.UpdateOptions(new EditorUpdateOptions()
-                {
-                    ReadOnly = true,
-                    LineNumbersMinChars = 100000000.ToString().Length
-                }).ConfigureAwait(false);
-            while (true)
-            {
-                if (!await LoadLogAsync().ConfigureAwait(false))
-                {
-                    break;
-                }
-            }
-
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
-        }
-        finally
-        {
-            _loadMoreButtonDisabled = false;
-        }
-
-    }
-
-    async Task<bool> LoadLogAsync()
-    {
-
-        int pageSize = 1000;
-        var apiResponse = await ApiService.QueryJobExecutionInstanceLogAsync(_logQueryId,
-         new QueryParameters(_logPageIndex, pageSize)
-        );
-        if (apiResponse.ErrorCode == 0)
-        {
-            StringBuilder sb = new StringBuilder();
-
-            foreach (var item in apiResponse.Result)
-            {
-                sb.AppendLine($"{item.DateTime.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
-            }
-
-            var log = sb.ToString();
-
-            IEnumerable<string> allLogPages = [];
-            int lastPageItemsCount = 0;
-            if (apiResponse.Result.Count() == apiResponse.PageSize)
-            {
-                this._logPages.Add(log);
-                allLogPages = this._logPages;
-                _logPageIndex++;
-            }
-            else
-            {
-                allLogPages = this._logPages.Union(new string[] { log });
-                lastPageItemsCount = apiResponse.Result.Count();
-            }
-            var allLogText = string.Join(string.Empty, allLogPages);
-            await this._logViewer.SetValue(allLogText);
-            _loadedLogEntriesCount = pageSize * _logPages.Count + lastPageItemsCount;
-            _totalLogEntriesCount = apiResponse.TotalCount;
-            return lastPageItemsCount == 0 && _totalLogEntriesCount > 0;
-        }
-        else
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = apiResponse.Message,
-                });
-
-        }
-        return false;
-    }
-
     async Task ShowLogMessageModalAsync(string id)
     {
-        _logModalVisible = true;
-        _logQueryId = id;
-        StateHasChanged();
-        int count = 0;
-        while (this._logViewer == null)
-        {
-            await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
-            if (count > 10)
-            {
-                return;
-            }
-            count++;
-        }
-        await LoadMoreLogsAsync();
-    }
-
-    async Task CloseLogMessageModalAsync()
-    {
-        _logModalVisible = false;
-        _logQueryId = null;
-        _totalLogEntriesCount = 0;
-        _loadedLogEntriesCount = 0;
-        _logPageIndex = 0;
-        _logPages.Clear();
-        if (this._logViewer != null)
-        {
-            await this._logViewer.SetValue(string.Empty);
-        }
-    }
-
-    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
-    {
-        return new StandaloneEditorConstructionOptions
-            {
-                AutomaticLayout = true,
-                Language = "plaintext",
-                Value = string.Empty
-            };
-    }
-
-    private void OnModalVisibleChanged(bool visible)
-    {
-        
+        _logViewer.LogQueryId = id;
+        await _logViewer.ShowAsync();
     }
 }
 

@@ -1,0 +1,228 @@
+﻿@inject NotificationService _notice
+@inject ApiService ApiService
+<Modal Width="800"
+       Maximizable
+       Title="@($"查看日志({_loadedLogEntriesCount}/{_totalLogEntriesCount})")"
+       @bind-Visible="@_logModalVisible"
+       Closable="true"
+       DefaultMaximized
+       DestroyOnClose
+       AfterClose="CloseAsync">
+    <Space>
+        @if (_showStopButton)
+        {
+            <SpaceItem>
+                <Button Shape="@ButtonShape.Circle"
+                        Type="@ButtonType.Primary"
+                        Icon="@IconType.Outline.CloseCircle"
+                        OnClick="Stop"></Button>
+            </SpaceItem>
+        }
+        else
+        {
+            <SpaceItem>
+                <Button Shape="@ButtonShape.Circle"
+                        Type="@ButtonType.Primary"
+                        Disabled="@_loadMoreButtonDisabled"
+                        Icon="@IconType.Outline.Reload"
+                        OnClick="()=>InitAsync()"></Button>
+            </SpaceItem>
+        }
+
+        <SpaceItem>
+            <a href="@($"/api/jobs/instances/{LogQueryId}/logs")" target="_blank">
+                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Download">
+                </Button>
+            </a>
+        </SpaceItem>
+
+    </Space>
+    <StandaloneCodeEditor @ref="@_viewer" Id="jobLogViwer" OnDidInit="InitAsync" ConstructionOptions="EditorConstructionOptions" />
+
+
+</Modal>
+
+
+
+
+@code {
+    [Parameter]
+    public string? LogQueryId { get; set; }
+
+
+    StandaloneCodeEditor _viewer = null!;
+    CancellationTokenSource _cancellationTokenSource;
+    bool _showStopButton;
+    int _logPageIndex = 0;
+    List<string> _logPages = [];
+    int _loadedLogEntriesCount;
+    int _totalLogEntriesCount;
+    bool _loadMoreButtonDisabled;
+    bool _logModalVisible;
+
+    async Task InitAsync()
+    {
+
+        try
+        {
+            _loadMoreButtonDisabled = true;
+            _showStopButton = true;
+            InitCancellationTokenSource();
+            await this._viewer.UpdateOptions(new EditorUpdateOptions()
+                {
+                    ReadOnly = true,
+                    LineNumbersMinChars = 10,
+                });
+
+            while (!this._cancellationTokenSource.IsCancellationRequested)
+            {
+                if (!await LoadNextLogPageAsync())
+                {
+                    break;
+                }
+            }
+
+        }
+        catch (TaskCanceledException ex)
+        {
+            if (ex.CancellationToken != this._cancellationTokenSource.Token)
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = ex.ToString(),
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+            _loadMoreButtonDisabled = false;
+            _showStopButton = false;
+            StateHasChanged();
+        }
+
+    }
+
+    async Task<bool> LoadNextLogPageAsync()
+    {
+
+        int pageSize = 1000;
+        var apiResponse = await ApiService.QueryJobExecutionInstanceLogAsync(LogQueryId,
+         new QueryParameters(_logPageIndex, pageSize),
+         _cancellationTokenSource.Token
+        );
+        if (apiResponse.ErrorCode == 0)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            foreach (var item in apiResponse.Result)
+            {
+                sb.AppendLine($"{item.DateTime.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
+            }
+
+            var log = sb.ToString();
+
+            IEnumerable<string> allLogPages = [];
+            int lastPageItemsCount = 0;
+            if (apiResponse.Result.Count() == apiResponse.PageSize)
+            {
+                this._logPages.Add(log);
+                allLogPages = this._logPages;
+                _logPageIndex++;
+            }
+            else
+            {
+                allLogPages = this._logPages.Union(new string[] { log });
+                lastPageItemsCount = apiResponse.Result.Count();
+            }
+            var allLogText = string.Join(string.Empty, allLogPages);
+            await this._viewer.SetValue(allLogText);
+            _loadedLogEntriesCount = pageSize * _logPages.Count + lastPageItemsCount;
+            _totalLogEntriesCount = apiResponse.TotalCount;
+            await InvokeAsync(StateHasChanged);
+            return lastPageItemsCount == 0 && _totalLogEntriesCount > 0;
+        }
+        else
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message,
+                });
+
+        }
+        return false;
+    }
+
+    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+            {
+                AutomaticLayout = true,
+                Language = "plaintext",
+                Value = string.Empty
+            };
+    }
+
+    private void OnModalVisibleChanged(bool visible)
+    {
+
+    }
+
+    private void InitCancellationTokenSource()
+    {
+        if (_cancellationTokenSource == null)
+        {
+            _cancellationTokenSource = new CancellationTokenSource();
+        }
+        else if (_cancellationTokenSource != null && !_cancellationTokenSource.TryReset())
+        {
+            _cancellationTokenSource.Dispose();
+            _cancellationTokenSource = new CancellationTokenSource();
+        }
+    }
+
+    public Task ShowAsync()
+    {
+        _logModalVisible = true;
+        InitCancellationTokenSource();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public async Task CloseAsync()
+    {
+        if (!this._cancellationTokenSource.IsCancellationRequested)
+        {
+            _cancellationTokenSource.Cancel();
+        }
+        _logModalVisible = false;
+        LogQueryId = null;
+        _totalLogEntriesCount = 0;
+        _loadedLogEntriesCount = 0;
+        _logPageIndex = 0;
+        _logPages.Clear();
+        if (this._viewer != null)
+        {
+            await this._viewer.SetValue(string.Empty);
+        }
+    }
+
+    public void Stop()
+    {
+        if (!this._cancellationTokenSource.IsCancellationRequested)
+        {
+            this._cancellationTokenSource.Cancel();
+        }
+        this.InitCancellationTokenSource();
+        _showStopButton = false;
+    }
+}

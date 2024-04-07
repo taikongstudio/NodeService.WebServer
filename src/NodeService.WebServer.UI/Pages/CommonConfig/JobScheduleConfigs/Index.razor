@@ -1,9 +1,11 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.JobScheduleConfigs
 @page "/CommonConfig/JobScheduleConfigs"
+@using Microsoft.Extensions.Logging
 @using NodeService.WebServer.UI.Pages.CommonConfig
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
+@inject ILogger<Index> _logger;
 
 <GridContent>
     <Modal Width="800"
@@ -728,7 +730,7 @@
     {
         this._editFormSubmitting = true;
         this._editModel.Options.Clear();
-        await this._optionValueEditor.EndEditAsync();
+        await this._optionValueEditor.CommitAsync();
         foreach (var kv in this._editModel.OptionValueEditors)
         {
             var key = kv.Key;
@@ -956,7 +958,7 @@
         this._editModel.IpAddressFilters.Remove(stringEntry);
     }
 
-    private async Task OnSelectedJobTypeDescChanged(string id)
+    private void OnSelectedJobTypeDescChanged(string id)
     {
         try
         {
@@ -969,15 +971,14 @@
             this._editModel.JobTypeDescId = model.Id;
             this._editModel.JobTypeDesc = model;
             this._loading = true;
-            //await this.QueryAllConfigurationListAsync().ConfigureAwait(false);
-            //await this._optionValueEditor.EndEditAsync().ConfigureAwait(false);
-            this.BuildOptionValueEditors(this._editModel, this._editModel.OptionValueEditors);
-            await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
-            await this._optionValueEditor.BeginEditAsync();
+            var optionValueEditors = new Dictionary<string, EditorBase>();
+            this.BuildOptionValueEditors(this._editModel, optionValueEditors);
+            this._editModel.OptionValueEditors = optionValueEditors;
+
         }
         catch (Exception ex)
         {
-
+            _logger.LogError(ex.ToString());
         }
         finally
         {

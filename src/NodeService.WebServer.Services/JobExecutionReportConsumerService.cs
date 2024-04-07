@@ -19,40 +19,28 @@ namespace NodeService.WebServer.Services
 {
     public class JobExecutionReportConsumerService : BackgroundService
     {
-
-
-        private readonly IMemoryCache _memoryCache;
-        private readonly ISchedulerFactory _schedulerFactory;
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         private readonly BatchQueue<JobExecutionReportMessage> _jobExecutionReportBatchQueue;
         private readonly IAsyncQueue<JobScheduleMessage> _jobScheduleAsyncQueue;
         private readonly ILogger<JobExecutionReportConsumerService> _logger;
-        private readonly INodeSessionService _nodeSessionService;
-        private readonly RocksDatabase _jobExecutionInstanceLogDatabase;
         private readonly JobSchedulerDictionary _jobSchedulerDictionary;
         private readonly JobScheduler _jobScheduler;
         private readonly BatchQueue<LogPersistenceGroup> _logPersistenceBatchQueue;
 
         public JobExecutionReportConsumerService(
-            ISchedulerFactory schedulerFactory,
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             BatchQueue<JobExecutionReportMessage> jobExecutionReportBatchQueue,
             BatchQueue<LogPersistenceGroup> logPersistenceBatchQueue,
             IAsyncQueue<JobScheduleMessage> jobScheduleAsyncQueue,
-            IMemoryCache memoryCache,
             ILogger<JobExecutionReportConsumerService> logger,
-            INodeSessionService nodeSessionService,
             JobSchedulerDictionary jobSchedulerDictionary,
             JobScheduler jobScheduler
             )
         {
-            _memoryCache = memoryCache;
-            _schedulerFactory = schedulerFactory;
             _dbContextFactory = dbContextFactory;
             _jobExecutionReportBatchQueue = jobExecutionReportBatchQueue;
             _jobScheduleAsyncQueue = jobScheduleAsyncQueue;
             _logger = logger;
-            _nodeSessionService = nodeSessionService;
             _jobSchedulerDictionary = jobSchedulerDictionary;
             _jobScheduler = jobScheduler;
             _logPersistenceBatchQueue = logPersistenceBatchQueue;
@@ -129,7 +117,7 @@ namespace NodeService.WebServer.Services
                         {
                             var logMessageEntries = report.LogEntries.Select(x => new LogMessageEntry()
                             {
-                                Id = jobExecutionInstanceId,
+                                //Id = jobExecutionInstanceId,
                                 DateTime = x.DateTime.ToDateTime(),
                                 Type = (int)x.Type,
                                 Value = x.Value,
@@ -208,7 +196,7 @@ namespace NodeService.WebServer.Services
                  JobTriggerSource.Schedule);
             var asyncDisposable = await _jobScheduler.ScheduleAsync<ExecutionTimeLimitJob>(key,
                  TriggerBuilderHelper.BuildStartAtTrigger(TimeSpan.FromSeconds(jobScheduleConfig.ExecutionLimitTimeSeconds)),
-                new Dictionary<string, object>(){
+                new Dictionary<string, object?>(){
                     { "JobExecutionInstance",
                     jobExecutionInstance.JsonClone<JobExecutionInstanceModel>() }
                 });

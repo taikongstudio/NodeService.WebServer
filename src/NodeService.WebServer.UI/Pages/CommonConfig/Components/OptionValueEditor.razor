@@ -6,7 +6,6 @@
     border-width:1px;
     }
 </style>
-
 @foreach (var kv in this.OptionValueEditors)
 {
     var editorBase = kv.Value;
@@ -40,15 +39,17 @@
                                       IsNameHidden
                                       ValueTitle="文本值"
                                       IsEditable="@IsEditable"
-                                      @bind-SelectedItems="@textArrayValueEditor.SelectedItems" />
+                    @bind-SelectedItems="@textArrayValueEditor.SelectedItems" />
                     break;
                 case OptionValueType.PythonCodeValue:
                     var scriptCodeEditor = editorBase as PythonCodeEditor;
-                    <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_pythonCodeEditor" CssClass="CodeEditor" ConstructionOptions="BuildPythonCodeEditorConstructionOptions" />
+                    <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_pythonCodeEditor" OnDidInit="InitAsync" CssClass="CodeEditor" ConstructionOptions="BuildPythonCodeEditorConstructionOptions" />
+
                     break;
                 case OptionValueType.BatchScriptValue:
                     var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
-                    <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_batchScriptCodeEditor" CssClass="CodeEditor" ConstructionOptions="BuildBatchScriptEditorConstructionOptions" />
+                    <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_batchScriptCodeEditor" OnDidInit="InitAsync" CssClass="CodeEditor" ConstructionOptions="BuildBatchScriptEditorConstructionOptions" />
+
                     break;
                 case OptionValueType.FtpConfigurationListValue:
                     var ftpConfigurationListEditor = editorBase as FtpConfigurationListEditor;
@@ -326,6 +327,7 @@
 
     StandaloneCodeEditor _batchScriptCodeEditor;
     StandaloneCodeEditor _pythonCodeEditor;
+    int _changes;
 
     [Parameter]
     public Dictionary<string, EditorBase> OptionValueEditors { get; set; } = [];
@@ -395,9 +397,8 @@
             };
     }
 
-    public async Task BeginEditAsync()
+    public async Task InitAsync()
     {
-        await this.InvokeAsync(this.StateHasChanged).ConfigureAwait(false);
         foreach (var kv in this.OptionValueEditors)
         {
             var editorBase = kv.Value;
@@ -405,18 +406,18 @@
             {
                 case OptionValueType.PythonCodeValue:
                     var scriptCodeEditor = editorBase as PythonCodeEditor;
-                    await this._pythonCodeEditor.SetValue(scriptCodeEditor.Value ?? string.Empty).ConfigureAwait(false);
+                    await this._pythonCodeEditor.SetValue(scriptCodeEditor.Value ?? string.Empty);
                     break;
                 case OptionValueType.BatchScriptValue:
                     var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
-                    await this._batchScriptCodeEditor.SetValue(batchScriptCodeEditor.Value ?? string.Empty).ConfigureAwait(false);
+                    await this._batchScriptCodeEditor.SetValue(batchScriptCodeEditor.Value ?? string.Empty);
                     break;
             }
         }
     }
 
 
-    public async Task EndEditAsync()
+    public async Task CommitAsync()
     {
         foreach (var kv in this.OptionValueEditors)
         {

@@ -25,7 +25,8 @@
     <Space>
         <SpaceItem>
             <Button Shape="@ButtonShape.Circle"
-            Type="@ButtonType.Primary" 
+            Type="@ButtonType.Primary"
+            Disabled="@_loadMoreButtonDisabled"
             Icon="@IconType.Outline.Reload" 
             OnClick="()=>LoadMoreLogsAsync()"></Button>
         </SpaceItem>
@@ -75,6 +76,7 @@
                             Placeholder="选择节点"
                             DefaultActiveFirstOption="false"
                             EnableSearch
+                            AllowClear
                             Style="width:200px"
                             OnSelectedItemChanged="OnSelectedNodeChanged"
                             OnSearch="OnSearchNode">
@@ -91,7 +93,8 @@
                             Placeholder="选择配置"
                             DefaultActiveFirstOption="false"
                             EnableSearch
-                           Style="width:200px"
+                            AllowClear
+                            Style="width:200px"
                             OnSelectedItemChanged="OnSelectedJobScheduleConfigChanged"
                             OnSearch="OnSearchJobScheduleConfig">
                     </Select>
@@ -258,7 +261,7 @@
     private List<string> _logPages = [];
     int _loadedLogEntriesCount;
     int _totalLogEntriesCount;
-
+    bool _loadMoreButtonDisabled;
     private DateTime BeginDateTime;
     private DateTime EndDateTime;
 
@@ -505,13 +508,15 @@
 
         try
         {
+            _loadMoreButtonDisabled = true;
             await this._logViewer.UpdateOptions(new EditorUpdateOptions()
                 {
-                    ReadOnly = true
-                });
+                    ReadOnly = true,
+                    LineNumbersMinChars = 100000000.ToString().Length
+                }).ConfigureAwait(false);
             while (true)
             {
-                if (!await LoadLogAsync())
+                if (!await LoadLogAsync().ConfigureAwait(false))
                 {
                     break;
                 }
@@ -526,13 +531,17 @@
                     Description = ex.ToString(),
                 });
         }
+        finally
+        {
+            _loadMoreButtonDisabled = false;
+        }
 
     }
 
     async Task<bool> LoadLogAsync()
     {
 
-        int pageSize = 500;
+        int pageSize = 1000;
         var apiResponse = await ApiService.QueryJobExecutionInstanceLogAsync(_logQueryId,
          new QueryParameters(_logPageIndex, pageSize)
         );
@@ -586,7 +595,7 @@
         int count = 0;
         while (this._logViewer == null)
         {
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await Task.Delay(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
             if (count > 10)
             {
                 return;
@@ -601,6 +610,7 @@
         _logModalVisible = false;
         _logQueryId = null;
         _totalLogEntriesCount = 0;
+        _loadedLogEntriesCount = 0;
         _logPageIndex = 0;
         _logPages.Clear();
         if (this._logViewer != null)

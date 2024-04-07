@@ -564,7 +564,7 @@
             await this._logViewer.SetValue(allLogText);
             _loadedLogEntriesCount = pageSize * _logPages.Count + lastPageItemsCount;
             _totalLogEntriesCount = apiResponse.TotalCount;
-            return lastPageItemsCount == 0;
+            return lastPageItemsCount == 0 && _totalLogEntriesCount > 0;
         }
         else
         {

@@ -99,7 +99,12 @@
                                       @bind-SelectedItems="@_selectedFilters"
                                       RemoveItemAction="@RemoveSelectedFilter" />
                     </FormItem>
-
+                    <FormItem Label="打印本地文件">
+                        <Switch @bind-Checked="@context.PrintLocalFiles"></Switch>
+                    </FormItem>
+                    <FormItem Label="打印远程文件">
+                        <Switch @bind-Checked="@context.PrintRemoteFiles"></Switch>
+                    </FormItem>
 
 
                 }

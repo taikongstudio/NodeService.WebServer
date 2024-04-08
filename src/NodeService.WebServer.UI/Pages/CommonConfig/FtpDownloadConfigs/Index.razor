@@ -82,10 +82,15 @@
                                 <Text>的文件</Text>
                             </FormItem>
                         }
-                    <FormItem Label="重试次数" Help="单个文件下载失败时重试次数，0表示无限次数。">
-                        <AntDesign.InputNumber @bind-Value="@context.RetryTimes" />
-                    </FormItem>
-
+                        <FormItem Label="重试次数" Help="单个文件下载失败时重试次数，0表示无限次数。">
+                            <AntDesign.InputNumber @bind-Value="@context.RetryTimes" />
+                        </FormItem>
+                        <FormItem Label="打印本地文件">
+                            <Switch @bind-Checked="@context.PrintLocalFiles"></Switch>
+                        </FormItem>
+                        <FormItem Label="打印远程文件">
+                            <Switch @bind-Checked="@context.PrintRemoteFiles"></Switch>
+                        </FormItem>
 
                     }
         </Form>

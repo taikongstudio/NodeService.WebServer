@@ -42,9 +42,9 @@
                     <FormItem Label="使用目录映射">
                         <Switch @bind-Checked="@context.IsLocalDirectoryUseMapping"></Switch>
                     </FormItem>
-                <FormItem Label="本地目录">
-                    <Input @bind-Value="@context.LocalDirectory" />
-                </FormItem>
+                    <FormItem Label="本地目录">
+                        <Input @bind-Value="@context.LocalDirectory" />
+                    </FormItem>
                     <FormItem Label="包含子目录">
                         <Switch @bind-Checked="@context.IncludeSubDirectories" />
                     </FormItem>
@@ -75,7 +75,7 @@
                                 <Radio RadioButton Value="@FileExistsTimeRange.OutOfRange">大于</Radio>
                             </RadioGroup>
                             <br />
-                            <AntDesign.InputNumber @bind-Value="@context.FileExistsTime" />
+                            <AntDesign.InputNumber Min="1" @bind-Value="@context.FileExistsTime" />
                             <RadioGroup @bind-Value="@context.FileExistsTimeUnit">
                                 <Radio RadioButton Value="@FileExistsTimeUnit.Seconds">秒</Radio>
                                 <Radio RadioButton Value="@FileExistsTimeUnit.Minutes">分钟</Radio>

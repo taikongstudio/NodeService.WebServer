@@ -837,6 +837,17 @@
                     break;
             }
         }
+        if (_editModel.Value.TriggerType == JobScheduleTriggerType.Schedule
+            &&
+            _editModel.Value.CronExpressions.Count == 0)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = "调度触发模式需要设置至少一个Cron表达式",
+                });
+            return;
+        }
         this._editForm.Submit();
     }
 

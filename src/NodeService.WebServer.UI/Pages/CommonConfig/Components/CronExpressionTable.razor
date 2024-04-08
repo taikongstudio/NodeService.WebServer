@@ -9,7 +9,7 @@
        SelectedRowsChanged="@SelectedItemsChanged"
        RowKey="x=>x.Id">
     <Selection Disabled="@(IsEditable==false)" Key="@mappingEntry.Id" Type="checkbox" />
-    <PropertyColumn Hidden="@this.IsNameHidden" Title="@this.NameTitle" Property="c=>c.Name" Sortable>
+    <PropertyColumn Hidden="@this.IsNameHidden" Title="@this.NameTitle" Property="c=>c.Name" Width="200" Sortable>
         @if (mappingEntry.IsEditing && this.IsNameEditable)
         {
             <Input Type="text" @bind-Value="@mappingEntry.Name" AutoFocus="@IsNameEditable" />
@@ -25,10 +25,10 @@
             <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Name</div>
         }
     </PropertyColumn>
-    <PropertyColumn Hidden="@this.IsValueHidden" Title="@this.ValueTitle" Property="c=>c.Value" Sortable>
+    <PropertyColumn Hidden="@this.IsValueHidden" Title="@this.ValueTitle" Property="c=>c.Value" Width="200" Sortable>
         @if (mappingEntry.IsEditing && this.IsValueEditable)
         {
-            <Input OnBlur="OnBlur" @oninput="(ChangeEventArgs e)=>OnChanged(mappingEntry)" Type="text" Value="@mappingEntry.Value" AutoFocus="@(!IsNameEditable && IsValueEditable)" />
+            <Input OnBlur="OnBlur" @oninput="(ChangeEventArgs e)=>OnChanged(mappingEntry,e.Value as string)" Type="text" Value="@mappingEntry.Value" AutoFocus="@(!IsNameEditable && IsValueEditable)" />
         }
         else if (this.IsValueEditable)
         {
@@ -42,7 +42,7 @@
         }
     </PropertyColumn>
 
-    <PropertyColumn Title="描述" Property="c=>c.Tag"></PropertyColumn>
+    <PropertyColumn Title="描述" Property="c=>c.Tag" ></PropertyColumn>
         @if (this.IsEditable)
         {
             <ActionColumn Fixed="right" Width="100" Title="操作">
@@ -58,7 +58,7 @@
                         else
                         {
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>mappingEntry.EndEdit()"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>mappingEntry.BeginEdit()"></Button>
                             </SpaceItem>
                         }
                     }
@@ -140,10 +140,11 @@
 
     }
 
-    private void OnChanged(StringEntry stringEntry)
+    private void OnChanged(StringEntry stringEntry, string? value)
     {
         try
         {
+            stringEntry.Value = value;
             if (Quartz.CronExpression.IsValidExpression(stringEntry.Value))
             {
                 var desc = ExpressionDescriptor.GetDescription(stringEntry.Value, new Options()

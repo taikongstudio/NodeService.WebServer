@@ -61,7 +61,6 @@ namespace NodeService.WebServer.Services
                                  continue;
                              }
                              await messageHandler.HandleAsync(nodeSessionId, httpContext, message);
-                             _logger.LogInformation($"handle message");
                          }
                      }
                      catch (Exception ex)

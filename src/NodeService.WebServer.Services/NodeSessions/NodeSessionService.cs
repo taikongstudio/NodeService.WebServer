@@ -72,8 +72,6 @@ namespace NodeService.WebServer.Services.NodeSessions
                 Status = NodeStatus.Offline;
                 LastHeartBeatInputDateTime = DateTime.MinValue;
                 LastHeartBeatOutputDateTime = DateTime.MinValue;
-                InputQueue = new AsyncQueue<IMessage>();
-                OutputQueue = new AsyncQueue<IMessage>();
             }
         }
 

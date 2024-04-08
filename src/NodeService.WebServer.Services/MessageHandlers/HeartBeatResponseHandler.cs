@@ -55,7 +55,6 @@ namespace NodeService.WebServer.Services.MessageHandlers
                 Message = heartBeatResponse,
                 NodeSessionId = nodeSessionId
             });
-            _logger.LogInformation($"{nodeSessionId.NodeId.Value}");
         }
 
         public ValueTask HandleAsync(NodeSessionId nodeSessionId, HttpContext httpContext, IMessage message)

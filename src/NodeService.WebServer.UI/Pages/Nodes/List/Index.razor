@@ -83,28 +83,28 @@
                          <GridCol Span="4">
                              <Title Level="3">节点列表</Title>
                          </GridCol>
-                         <GridCol Span="16" Offset="4">
+                         <GridCol Span="20" Offset="0" >
                             <Space>
                                 <SpaceItem>
-                                    <Button  OnClick="QueryNodeListAsync">刷新节点</Button>
+                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryNodeListAsync"></Button>
                                 </SpaceItem>
                                 <SpaceItem>
                                     <RadioGroup @bind-Value="_dbContextFactoryType" Size="middle">
                                         <Radio RadioButton Value="@(FactoryType.All)">全部</Radio>
-                                         <Radio RadioButton Value="@(FactoryType.GM)">光明</Radio>
-                                         <Radio RadioButton Value="@(FactoryType.BL)">博罗</Radio>
-                                         <Radio RadioButton Value="@(FactoryType.Unknkown)">未知</Radio>
-                                     </RadioGroup>
-                                 </SpaceItem>
+                                        <Radio RadioButton Value="@(FactoryType.GM)">光明</Radio>
+                                        <Radio RadioButton Value="@(FactoryType.BL)">博罗</Radio>
+                                        <Radio RadioButton Value="@(FactoryType.Unknkown)">未知</Radio>
+                                    </RadioGroup>
+                                </SpaceItem>
                                 <SpaceItem>
                                     <RadioGroup @bind-Value="_nodeState" Size="middle">
                                         <Radio RadioButton Value="@(NodeState.All)">全部</Radio>
-                                         <Radio RadioButton Value="@(NodeState.Online)">在线</Radio>
-                                         <Radio RadioButton Value="@(NodeState.Offline)">离线</Radio>
-                                     </RadioGroup>
+                                        <Radio RadioButton Value="@(NodeState.Online)">在线</Radio>
+                                        <Radio RadioButton Value="@(NodeState.Offline)">离线</Radio>
+                                    </RadioGroup>
                                 </SpaceItem>
                                 <SpaceItem>
-                                     <Search Placeholder="搜索节点" @bind-Value="@_keywords" OnSearch="()=>_table?.ReloadData()" />
+                                    <Search Style="width:200px" Placeholder="搜索节点" @bind-Value="@_keywords" OnSearch="()=>_table?.ReloadData()" />
                                 </SpaceItem>
                             </Space>
                          </GridCol>
@@ -115,31 +115,30 @@
                          @switch (context.Profile.FactoryName)
                         {
                             case "BL":
-                                <p>博罗</p>
+                                <Text>博罗</Text>
                             break;
                             case "GM":
-                                <p>光明</p>
+                                <Text>光明</Text>
                                 break;
                             default:
-                                <p>未知</p>
+                                <Text>未知</Text>
                                 break;
                         }
                      </PropertyColumn>
                      <PropertyColumn Title="节点名称" Sortable="true" Property="c=>c.Name">
-                         <NavLink href="@("/nodes/"+context.Id)">@context.Name</NavLink>
-                         <br />
-                            @switch (context.Status)
+                        @switch (context.Status)
                         {
                             case NodeStatus.Online:
-                                <Badge Status="@BadgeStatus.Processing" Text="在线"></Badge>
+                                <Badge Style="margin-right:10px" Status="@BadgeStatus.Processing"></Badge>
                                 break;
                             case NodeStatus.Offline:
-                                <Badge Status="@BadgeStatus.Warning" Text="离线"></Badge>
+                                <Badge Style="margin-right:10px" Status="@BadgeStatus.Warning"></Badge>
                                 break;
                             case NodeStatus.NotConfigured:
-                                <Badge Status="@BadgeStatus.Error" Text="未配置"></Badge>
+                                <Badge Style="margin-right:10px" Status="@BadgeStatus.Error"></Badge>
                                 break;
                         }
+                         <NavLink href="@("/nodes/"+context.Id)">@context.Name</NavLink>
                         </PropertyColumn>
                     <PropertyColumn Title="最后在线时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.Profile.UpdateTime"></PropertyColumn><PropertyColumn Title="测试分类" Sortable="true" Property="c=>c.Profile.TestInfo"></PropertyColumn>
                     <PropertyColumn Title="实验室区域" Sortable="true" Property="c=>c.Profile.LabArea"></PropertyColumn>

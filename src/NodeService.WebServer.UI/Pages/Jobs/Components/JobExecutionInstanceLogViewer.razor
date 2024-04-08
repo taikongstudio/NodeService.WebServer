@@ -15,7 +15,7 @@
                 <Button Shape="@ButtonShape.Circle"
                         Type="@ButtonType.Primary"
                         Icon="@IconType.Outline.CloseCircle"
-                        OnClick="Stop"></Button>
+                        OnClick="StopAsync"></Button>
             </SpaceItem>
         }
         else
@@ -76,7 +76,7 @@
 
             while (!this._cancellationTokenSource.IsCancellationRequested)
             {
-                if (!await LoadNextLogPageAsync())
+                if (!await LoadNextLogPageAsync(this._cancellationTokenSource.Token))
                 {
                     break;
                 }
@@ -111,13 +111,13 @@
 
     }
 
-    async Task<bool> LoadNextLogPageAsync()
+    async Task<bool> LoadNextLogPageAsync(CancellationToken cancellationToken = default)
     {
 
         int pageSize = 2000;
         var apiResponse = await ApiService.QueryJobExecutionInstanceLogAsync(LogQueryId,
          new QueryParameters(_logPageIndex, pageSize),
-         _cancellationTokenSource.Token
+         cancellationToken
         );
         if (apiResponse.ErrorCode == 0)
         {
@@ -219,13 +219,15 @@
         }
     }
 
-    public void Stop()
+    public async Task StopAsync()
     {
         if (!this._cancellationTokenSource.IsCancellationRequested)
         {
             this._cancellationTokenSource.Cancel();
         }
+        await Task.Delay(TimeSpan.FromSeconds(5));
         this.InitCancellationTokenSource();
         _showStopButton = false;
+        StateHasChanged();
     }
 }

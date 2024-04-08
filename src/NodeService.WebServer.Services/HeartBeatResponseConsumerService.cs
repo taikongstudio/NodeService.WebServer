@@ -69,8 +69,7 @@ namespace NodeService.WebServer.Services
                 await InvalidateAllNodeStatusAsync(stoppingToken);
             }
 
-            await foreach (var arrayPoolCollection in _hearBeatMessageBatchQueue.ReceiveAllAsync(stoppingToken)
-                                                                                     .ConfigureAwait(false))
+            await foreach (var arrayPoolCollection in _hearBeatMessageBatchQueue.ReceiveAllAsync(stoppingToken))
             {
                 Stopwatch stopwatch = new Stopwatch();
                 int count = 0;
@@ -83,7 +82,7 @@ namespace NodeService.WebServer.Services
                     }
 
                     stopwatch.Start();
-                    await ProcessHeartBeatMessagesAsync(arrayPoolCollection).ConfigureAwait(false);
+                    await ProcessHeartBeatMessagesAsync(arrayPoolCollection);
                     _logger.LogInformation($"process {arrayPoolCollection.CountNotNull()} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
                     stopwatch.Reset();
                 }
@@ -136,14 +135,14 @@ namespace NodeService.WebServer.Services
                         continue;
                     }
                     stopwatch.Start();
-                    await ProcessHeartBeatMessageAsync(dbContext, hearBeatSessionMessage).ConfigureAwait(false);
+                    await ProcessHeartBeatMessageAsync(dbContext, hearBeatSessionMessage);
                     stopwatch.Stop();
                     this._logger.LogInformation($"process heartbeat {hearBeatSessionMessage.NodeSessionId} spent:{stopwatch.Elapsed}");
                     stopwatch.Reset();
                 }
 
                 stopwatch.Start();
-                await dbContext.SaveChangesAsync().ConfigureAwait(false);
+                await dbContext.SaveChangesAsync();
                 stopwatch.Stop();
             }
             catch (Exception ex)
@@ -173,7 +172,7 @@ namespace NodeService.WebServer.Services
                     _logger.LogInformation($"invalid node id: {hearBeatResponse.Properties["RemoteIpAddress"]}");
                     return;
                 }
-                nodeInfo = await dbContext.FindAsync<NodeInfoModel>(hearBeatMessage.NodeSessionId.NodeId.Value).ConfigureAwait(false);
+                nodeInfo = await dbContext.FindAsync<NodeInfoModel>(hearBeatMessage.NodeSessionId.NodeId.Value);
 
                 if (nodeInfo == null)
                 {
@@ -197,7 +196,7 @@ namespace NodeService.WebServer.Services
                     nodeInfo.Profile.LoginName = hearBeatResponse.Properties[NodePropertyModel.Environment_UserName_Key];
                     nodeInfo.Profile.FactoryName = hearBeatResponse.Properties[NodePropertyModel.FactoryName_key];
 
-                    var propsDict = await _memoryCache.GetOrCreateAsync<ConcurrentDictionary<string, string>>("NodeProps:"+nodeInfo.Id, TimeSpan.FromHours(1)).ConfigureAwait(false);
+                    var propsDict = await _memoryCache.GetOrCreateAsync<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id, TimeSpan.FromHours(1));
 
                     foreach (var item in hearBeatResponse.Properties)
                     {
@@ -215,39 +214,41 @@ namespace NodeService.WebServer.Services
                         }
                     }
 
-                    if (propsDict.Count > 0)
+                    if (propsDict.Count <= 0)
                     {
-                        var nodePropertySnapshotModel =
-                            new NodePropertySnapshotModel()
-                            {
-                                Id = Guid.NewGuid().ToString(),
-                                Name = "Default",
-                                CreationDateTime = nodeInfo.Profile.UpdateTime,
-                                NodeProperties = [],
-                                NodeInfoId = nodeInfo.Id
-                            };
-                        dbContext.Add(nodePropertySnapshotModel);
-                        nodeInfo.LastNodePropertySnapshotId = nodePropertySnapshotModel.Id;
-                        if (propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key, out var processString))
+                        return;
+                    }
+                    var nodePropertySnapshotModel =
+                        new NodePropertySnapshotModel()
                         {
-                            if (!string.IsNullOrEmpty(processString) && processString.IndexOf('[') >= 0)
+                            Id = Guid.NewGuid().ToString(),
+                            Name = "Default",
+                            CreationDateTime = nodeInfo.Profile.UpdateTime,
+                            NodeProperties = [],
+                            NodeInfoId = nodeInfo.Id
+                        };
+                    dbContext.Add(nodePropertySnapshotModel);
+                    nodeInfo.LastNodePropertySnapshotId = nodePropertySnapshotModel.Id;
+                    if (propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key, out var processString))
+                    {
+                        if (string.IsNullOrEmpty(processString) || processString.IndexOf('[') < 0)
+                        {
+                            return;
+                        }
+                        var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
+                        if (this._processUsageAnalysis == null || processInfoList == null)
+                        {
+                            return;
+                        }
+                        HashSet<string> usages = new HashSet<string>();
+                        foreach (var mapping in _processUsageAnalysis.Mappings)
+                        {
+                            if (processInfoList.Any(x => x.FileName.Contains(mapping.FileName, StringComparison.OrdinalIgnoreCase)))
                             {
-                                var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
-                                if (this._processUsageAnalysis != null && processInfoList != null)
-                                {
-                                    HashSet<string> usages = new HashSet<string>();
-                                    foreach (var mapping in _processUsageAnalysis.Mappings)
-                                    {
-                                        if (processInfoList.Any(x => x.FileName.Contains(mapping.FileName)))
-                                        {
-                                            usages.Add(mapping.Name);
-                                        }
-                                    }
-                                    nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(x => x));
-                                }
-
+                                usages.Add(mapping.Name);
                             }
                         }
+                        nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(x => x));
                     }
                 }
 

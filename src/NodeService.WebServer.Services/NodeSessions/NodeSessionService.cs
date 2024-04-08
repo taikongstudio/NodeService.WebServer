@@ -143,14 +143,14 @@ namespace NodeService.WebServer.Services.NodeSessions
             {
                 queryable = queryable.Where(x => x.NodeInfoId == id);
             }
-            if (!string.IsNullOrEmpty(parameters.JobScheduleConfigId))
+            if (!string.IsNullOrEmpty(parameters.Id))
             {
-                string jobScheduleConfigId = parameters.JobScheduleConfigId;
+                string jobScheduleConfigId = parameters.Id;
                 queryable = queryable.Where(x => x.JobScheduleConfigId == jobScheduleConfigId);
             }
-            if (parameters.JobExecutionStatus != null)
+            if (parameters.Status != null)
             {
-                var status = parameters.JobExecutionStatus.Value;
+                var status = parameters.Status.Value;
                 queryable = queryable.Where(x => x.Status == status);
             }
             if (parameters.BeginTime != null && parameters.EndTime == null)
@@ -355,14 +355,14 @@ namespace NodeService.WebServer.Services.NodeSessions
 
             foreach (var parameters in parametersList)
             {
-                var jobExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(parameters.JobExecutionInstanceId);
+                var jobExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(parameters.Id);
                 if (jobExecutionInstance == null)
                 {
                     continue;
                 }
-                if (parameters.JobExecutionStatus != null)
+                if (parameters.Status != null)
                 {
-                    jobExecutionInstance.Status = parameters.JobExecutionStatus.Value;
+                    jobExecutionInstance.Status = parameters.Status.Value;
                 }
                 if (parameters.Message != null)
                 {

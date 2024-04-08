@@ -64,10 +64,10 @@ namespace NodeService.WebServer.Services.JobSchedule
                     var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
                         context.NodeSessionId,
                         context.JobExecutionInstance.ToTriggerEvent(),
-                        default);
+                        context.CancellationToken);
                     await _nodeSessionService.BatchUpdateJobExecutionInstanceAsync(new UpdateJobExecutionInstanceParameters()
                     {
-                        JobExecutionInstanceId = context.JobExecutionInstance.Id,
+                        Id = context.JobExecutionInstance.Id,
                         Message = rsp.Message
                     });
                     return;
@@ -90,8 +90,8 @@ namespace NodeService.WebServer.Services.JobSchedule
             {
                 await _nodeSessionService.BatchUpdateJobExecutionInstanceAsync(new UpdateJobExecutionInstanceParameters()
                 {
-                    JobExecutionInstanceId = context.JobExecutionInstance.Id,
-                    JobExecutionStatus = JobExecutionStatus.PenddingTimeout,
+                    Id = context.JobExecutionInstance.Id,
+                    Status = JobExecutionStatus.PenddingTimeout,
                 });
             }
 

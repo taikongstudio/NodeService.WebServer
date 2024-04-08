@@ -42,8 +42,8 @@ namespace NodeService.WebServer.Services.JobSchedule
                 var jobExecutionInstances = await NodeServerService.QueryJobExecutionInstances(NodeSessionId.NodeId
                     , new QueryJobExecutionInstancesParameters()
                     {
-                        JobScheduleConfigId = FireParameters.JobScheduleConfig.Id,
-                        JobExecutionStatus = JobExecutionStatus.Running
+                        Id = FireParameters.JobScheduleConfig.Id,
+                        Status = JobExecutionStatus.Running
                     }, CancellationToken);
 
                 if (!jobExecutionInstances.Any())
@@ -67,8 +67,8 @@ namespace NodeService.WebServer.Services.JobSchedule
                 var jobExecutionInstances = await NodeServerService.QueryJobExecutionInstances(NodeSessionId.NodeId
                     , new QueryJobExecutionInstancesParameters()
                     {
-                        JobScheduleConfigId = FireParameters.JobScheduleConfig.Id,
-                        JobExecutionStatus = JobExecutionStatus.Running
+                        Id = FireParameters.JobScheduleConfig.Id,
+                        Status = JobExecutionStatus.Running
                     }, CancellationToken);
                 if (!jobExecutionInstances.Any())
                 {
@@ -100,8 +100,8 @@ namespace NodeService.WebServer.Services.JobSchedule
                 var jobExecutionInstances = await NodeServerService.QueryJobExecutionInstances(NodeSessionId.NodeId,
                      new QueryJobExecutionInstancesParameters()
                      {
-                         JobScheduleConfigId = FireParameters.JobScheduleConfig.Id,
-                         JobExecutionStatus = JobExecutionStatus.Running
+                         Id = FireParameters.JobScheduleConfig.Id,
+                         Status = JobExecutionStatus.Running
                      },
                      CancellationToken
                     );

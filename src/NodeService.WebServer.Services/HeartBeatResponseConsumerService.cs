@@ -243,12 +243,15 @@ namespace NodeService.WebServer.Services
                         HashSet<string> usages = new HashSet<string>();
                         foreach (var mapping in _processUsageAnalysis.Mappings)
                         {
-                            if (processInfoList.Any(x => x.FileName.Contains(mapping.FileName, StringComparison.OrdinalIgnoreCase)))
+                            foreach (var processInfo in processInfoList)
                             {
-                                usages.Add(mapping.Name);
+                                if (processInfo.FileName.Contains(mapping.FileName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    usages.Add(mapping.Name);
+                                }
                             }
                         }
-                        nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(x => x));
+                        nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(static x => x));
                     }
                 }
 

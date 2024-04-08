@@ -383,7 +383,7 @@
             {
                 AutomaticLayout = true,
                 Language = "python",
-                Value = ""
+                Value = "#loading"
             };
     }
 
@@ -393,7 +393,7 @@
             {
                 AutomaticLayout = true,
                 Language = "bat",
-                Value = "rem *******Begin Comment**************"
+                Value = "rem loading"
             };
     }
 
@@ -405,12 +405,26 @@
             switch (editorBase.EditorType)
             {
                 case OptionValueType.PythonCodeValue:
-                    var scriptCodeEditor = editorBase as PythonCodeEditor;
-                    await this._pythonCodeEditor.SetValue(scriptCodeEditor.Value ?? string.Empty);
+                    var pythonCodeEditor = editorBase as PythonCodeEditor;
+                    await this._pythonCodeEditor.SetValue(pythonCodeEditor.Value ?? string.Empty);
+                    if (!this.IsEditable)
+                    {
+                        await this._pythonCodeEditor.UpdateOptions(new EditorUpdateOptions()
+                            {
+                                ReadOnly = true,
+                            });
+                    }
                     break;
                 case OptionValueType.BatchScriptValue:
                     var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
                     await this._batchScriptCodeEditor.SetValue(batchScriptCodeEditor.Value ?? string.Empty);
+                    if (!this.IsEditable)
+                    {
+                        await this._batchScriptCodeEditor.UpdateOptions(new EditorUpdateOptions()
+                            {
+                                ReadOnly = true,
+                            });
+                    }
                     break;
             }
         }

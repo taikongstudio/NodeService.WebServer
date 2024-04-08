@@ -69,7 +69,8 @@ namespace NodeService.WebServer.Controllers
                 var model = await dbContext.GetDbSet<PackageConfigModel>().FindAsync(package.Id);
                 if (model == null)
                 {
-                    await dbContext.GetDbSet<PackageConfigModel>().AddAsync(package);
+                    model = package;
+                    await dbContext.GetDbSet<PackageConfigModel>().AddAsync(model);
 
                 }
                 else
@@ -79,10 +80,10 @@ namespace NodeService.WebServer.Controllers
                         await this._virtualFileSystem.DeleteFileAsync(model.DownloadUrl);
                     }
                     model.With(package);
-                    model.DownloadUrl = remotePath;
-                    model.FileName = package.File.FileName;
-                    model.FileSize = package.File.Length;
                 }
+                model.FileName = package.File.FileName;
+                model.FileSize = package.File.Length;
+                model.DownloadUrl = remotePath;
                 await dbContext.SaveChangesAsync();
             }
             catch (Exception ex)

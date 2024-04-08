@@ -49,8 +49,7 @@ namespace NodeService.WebServer.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
 
-            await foreach (var arrayPoolCollection in _jobExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken)
-                                                                                   .ConfigureAwait(false))
+            await foreach (var arrayPoolCollection in _jobExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
             {
                 Stopwatch stopwatch = new Stopwatch();
                 int count = 0;
@@ -63,7 +62,7 @@ namespace NodeService.WebServer.Services
                     }
 
                     stopwatch.Start();
-                    await ProcessJobExecutionReportsAsync(arrayPoolCollection, stoppingToken).ConfigureAwait(false);
+                    await ProcessJobExecutionReportsAsync(arrayPoolCollection, stoppingToken);
                     stopwatch.Stop();
                     _logger.LogInformation($"process {count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_jobExecutionReportBatchQueue.AvailableCount}");
                     stopwatch.Reset();
@@ -99,7 +98,7 @@ namespace NodeService.WebServer.Services
                     }
                     Stopwatch stopwatchQuery = Stopwatch.StartNew();
                     var jobExecutionInstanceId = messageGroup.Key;
-                    var jobExecutionInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(jobExecutionInstanceId).ConfigureAwait(false);
+                    var jobExecutionInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(jobExecutionInstanceId);
                     stopwatchQuery.Stop();
                     _logger.LogInformation($"Query {jobExecutionInstance.Id}:{stopwatchQuery.Elapsed}");
 
@@ -141,14 +140,14 @@ namespace NodeService.WebServer.Services
 
                         foreach (var reportMessage in messageStatusGroup)
                         {
-                            await ProcessJobExecutionReportAsync(jobExecutionInstance, reportMessage, stoppingToken).ConfigureAwait(false);
+                            await ProcessJobExecutionReportAsync(jobExecutionInstance, reportMessage, stoppingToken);
                         }
 
                         stopwatchProcessMessage.Stop();
                         _logger.LogInformation($"process:{messageStatusGroup.Count()},spent:{stopwatchProcessMessage.Elapsed}");
                         stopwatchProcessMessage.Reset();
                         stopwatchSave.Start();
-                        await dbContext.SaveChangesAsync(stoppingToken).ConfigureAwait(false);
+                        await dbContext.SaveChangesAsync(stoppingToken);
                         stopwatchSave.Stop();
                         timeSpan += stopwatchSave.Elapsed;
                         stopwatchSave.Reset();

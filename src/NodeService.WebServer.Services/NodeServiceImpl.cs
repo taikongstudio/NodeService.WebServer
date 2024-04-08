@@ -54,7 +54,7 @@ namespace NodeService.WebServer.Services
                  {
                      try
                      {
-                         await foreach (var message in inputQueue.ReadAllAsync(context.CancellationToken).ConfigureAwait(false))
+                         await foreach (var message in inputQueue.ReadAllAsync(context.CancellationToken))
                          {
                              if (!messageHandlerDictionary.TryGetValue(message.Descriptor, out var messageHandler))
                              {

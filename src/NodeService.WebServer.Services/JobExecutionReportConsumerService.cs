@@ -13,6 +13,7 @@ using Quartz;
 using Quartz.Util;
 using System.Composition;
 using System.Globalization;
+using System.Linq;
 using static NodeService.Infrastructure.Models.JobExecutionReport.Types;
 
 namespace NodeService.WebServer.Services
@@ -80,7 +81,7 @@ namespace NodeService.WebServer.Services
             }
         }
 
-        private string GetId(JobExecutionReport report)
+        private static string GetId(JobExecutionReport report)
         {
             if (report.Properties.TryGetValue("Id", out var id))
             {
@@ -101,7 +102,7 @@ namespace NodeService.WebServer.Services
 
                 foreach (var instanceMessageGroup in arrayPoolCollection
                     .Where(static x => x != null)
-                    .GroupBy(x => x.GetMessage().Id))
+                    .GroupBy(static x => GetId(x.GetMessage())))
                 {
                     if (instanceMessageGroup == null)
                     {

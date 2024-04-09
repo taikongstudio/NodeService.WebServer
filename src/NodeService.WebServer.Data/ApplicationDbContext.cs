@@ -66,6 +66,7 @@ namespace NodeService.WebServer.Data
             this._dbSetMapping.Add(typeof(PackageConfigModel), PackageConfigurationDbSet);
             this._dbSetMapping.Add(typeof(RestApiConfigModel), RestApiConfigurationDbSet);
             this._dbSetMapping.Add(typeof(LogUploadConfigModel), LogUploadConfigurationDbSet);
+            this._dbSetMapping.Add(typeof(NotificationConfigModel), NotificationConfigurationsDbSet);
         }
 
 
@@ -113,6 +114,8 @@ namespace NodeService.WebServer.Data
         public DbSet<FileRecordModel> FileRecordsDbSet { get; set; }
 
         public DbSet<Dictionary<string, object>> PropertyBagDbSet => Set<Dictionary<string, object>>("PropertyBag");
+
+        public DbSet<NotificationConfigModel> NotificationConfigurationsDbSet { get; set; }
 
 
         private static string Serialize<T>(T? value)

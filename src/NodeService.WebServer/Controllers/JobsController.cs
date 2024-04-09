@@ -8,7 +8,7 @@ using NodeService.WebServer.Extensions;
 using NodeService.Infrastructure.Interfaces;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.Models;
-using NodeService.WebServer.Services.JobSchedule;
+using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Controllers
 {

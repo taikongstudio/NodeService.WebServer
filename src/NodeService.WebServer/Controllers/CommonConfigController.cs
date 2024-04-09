@@ -12,6 +12,7 @@ namespace NodeService.WebServer.Controllers
         private readonly WebServerOptions _webServerOptions;
         private readonly ILogger<CommonConfigController> _logger;
         private readonly INodeSessionService _nodeSessionService;
+        private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
         private readonly IServiceProvider _serviceProvider;
 
         public CommonConfigController(
@@ -21,7 +22,8 @@ namespace NodeService.WebServer.Controllers
             IVirtualFileSystem virtualFileSystem,
             IOptionsSnapshot<WebServerOptions> optionSnapshot,
             IServiceProvider serviceProvider,
-            INodeSessionService nodeSessionService)
+            INodeSessionService nodeSessionService,
+            IAsyncQueue<NotificationMessage> notificationMessageQueue)
         {
             _serviceProvider = serviceProvider;
             _dbContextFactory = dbContextFactory;
@@ -30,6 +32,7 @@ namespace NodeService.WebServer.Controllers
             _webServerOptions = optionSnapshot.Value;
             _logger = logger;
             _nodeSessionService = nodeSessionService;
+            _notificationMessageQueue = notificationMessageQueue;
         }
 
         private async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(QueryParametersModel queryParameters)

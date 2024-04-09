@@ -1,0 +1,100 @@
+﻿
+<FormItem Label="主机名称">
+    <Input @bind-Value="@Configuration.Host" />
+</FormItem>
+<FormItem Label="端口">
+    <AntDesign.InputNumber @bind-Value="@Configuration.Port" />
+</FormItem>
+<FormItem Label="发送者">
+    <Input @bind-Value="@Configuration.Sender" />
+</FormItem>
+<FormItem Label="电子邮件">
+    <Input @bind-Value="@Configuration.UserName" />
+</FormItem>
+<FormItem Label="密码">
+    <InputPassword @bind-Value="@Configuration.Password" />
+</FormItem>
+<FormItem Label="发送给">
+    <Input @bind-Value="_to" />
+    <Button Style="margin-top:16px;margin-left:0px;margin-bottom:16px;" OnClick="AddTo"  Type="primary">
+        添加
+    </Button>
+    <Button Style="margin-top:16px;margin-left:16px;margin-bottom:16px;" OnClick="RemoveTo" Type="primary">
+        删除
+    </Button>
+    <StringEntryTable DataSource="@Configuration.To" @bind-SelectedItems="SelectedTo" />
+</FormItem>
+<FormItem Label="抄送给">
+    <Input @bind-Value="_cc" />
+    <Button Style="margin-top:16px;margin-left:0px;margin-bottom:16px;" OnClick="AddCC" Type="primary">
+        添加
+    </Button>
+    <Button Style="margin-top:16px;margin-left:16px;margin-bottom:16px;" OnClick="RemoveCC" Type="primary">
+        删除
+    </Button>
+    <StringEntryTable ValueTitle="电子邮箱" NameTitle="备注" DataSource="@Configuration.CC" @bind-SelectedItems="SelectedCC" />
+</FormItem>
+
+
+
+@code {
+    private string _to;
+    private string _cc;
+    private IEnumerable<StringEntry> SelectedTo = [];
+    private IEnumerable<StringEntry> SelectedCC = [];
+
+    [Parameter]
+    public EmailNotificationConfiguration Configuration { get; set; }
+
+    private void AddTo()
+    {
+        if (string.IsNullOrEmpty(this._to))
+        {
+            return;
+        }
+        this.Configuration.To.Add(new StringEntry()
+            {
+                Value = this._to
+            });
+        this._to = null;
+    }
+
+    private void RemoveTo()
+    {
+        if (this.SelectedTo == null)
+        {
+            return;
+        }
+        foreach (var item in this.SelectedTo)
+        {
+            this.Configuration.To.Remove(item);
+        }
+    }
+
+    private void AddCC()
+    {
+        if (string.IsNullOrEmpty(this._cc))
+        {
+            return;
+        }
+        this.Configuration.CC.Add(new StringEntry()
+            {
+                Value = this._cc
+            });
+        this._cc = null;
+    }
+
+    private void RemoveCC()
+    {
+        if (this.SelectedCC == null)
+        {
+            return;
+        }
+        foreach (var item in this.SelectedCC)
+        {
+            this.Configuration.CC.Remove(item);
+        }
+    }
+
+
+}

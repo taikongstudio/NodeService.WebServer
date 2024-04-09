@@ -3,7 +3,7 @@ using NodeService.WebServer.Data;
 using NodeService.Infrastructure.DataModels;
 using System.ComponentModel;
 using NodeService.Infrastructure.Data;
-using NodeService.WebServer.Services.JobSchedule;
+using NodeService.WebServer.Services.Tasks;
 using NodeService.Infrastructure.Models;
 
 namespace NodeService.WebServer.Controllers

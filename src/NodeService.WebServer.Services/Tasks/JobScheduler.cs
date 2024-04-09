@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Quartz;
 using System.Collections.ObjectModel;
 
-namespace NodeService.WebServer.Services.JobSchedule
+namespace NodeService.WebServer.Services.Tasks
 {
     public class JobScheduler
     {
@@ -27,9 +27,9 @@ namespace NodeService.WebServer.Services.JobSchedule
 
             public async ValueTask DisposeAsync()
             {
-                if (this._jobKey != null)
+                if (_jobKey != null)
                 {
-                    await _scheduler.DeleteJob(this._jobKey);
+                    await _scheduler.DeleteJob(_jobKey);
                 }
             }
         }
@@ -41,7 +41,7 @@ namespace NodeService.WebServer.Services.JobSchedule
         private readonly IServiceProvider _serviceProvider;
 
         public JobScheduler(
-            ISchedulerFactory  schedulerFactory,
+            ISchedulerFactory schedulerFactory,
             ILogger<JobScheduler> logger,
             JobSchedulerDictionary jobSchedulerDictionary,
              IServiceProvider serviceProvider

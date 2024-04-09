@@ -6,7 +6,7 @@ using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data;
 using System;
 
-namespace NodeService.WebServer.Services.JobSchedule
+namespace NodeService.WebServer.Services.Tasks
 {
     public class JobScheduleService : BackgroundService
     {

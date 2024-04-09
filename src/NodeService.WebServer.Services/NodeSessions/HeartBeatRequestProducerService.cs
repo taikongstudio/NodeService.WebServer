@@ -9,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services
+namespace NodeService.WebServer.Services.NodeSessions
 {
     public class HeartBeatRequestProducerService : BackgroundService
     {
@@ -24,6 +24,7 @@ namespace NodeService.WebServer.Services
         private readonly IOptionsMonitor<WebServerOptions> _optionsMonitor;
         private readonly IDisposable? _token;
         private WebServerOptions _options;
+        private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
 
         public HeartBeatRequestProducerService(
             INodeSessionService nodeSessionService,

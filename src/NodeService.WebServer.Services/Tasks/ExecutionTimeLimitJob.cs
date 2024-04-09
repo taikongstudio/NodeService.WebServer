@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.JobSchedule
+namespace NodeService.WebServer.Services.Tasks
 {
     public class ExecutionTimeLimitJob : JobBase
     {
@@ -17,15 +17,15 @@ namespace NodeService.WebServer.Services.JobSchedule
             var dbContextFactory = ServiceProvider.GetService<IDbContextFactory<ApplicationDbContext>>();
             using var dbContext = await dbContextFactory.CreateDbContextAsync();
             var nodeSessionService = ServiceProvider.GetService<INodeSessionService>();
-            var jobExecutionInstance = this.Properties["JobExecutionInstance"] as JobExecutionInstanceModel;
+            var jobExecutionInstance = Properties["JobExecutionInstance"] as JobExecutionInstanceModel;
             var nodeId = new NodeId(jobExecutionInstance.NodeInfoId);
             foreach (var nodeSessionId in nodeSessionService.EnumNodeSessions(nodeId))
             {
                 await nodeSessionService.SendJobExecutionEventAsync(nodeSessionId, jobExecutionInstance.ToCancelEvent());
             }
-            if (this.AsyncDispoable != null)
+            if (AsyncDispoable != null)
             {
-                await this.AsyncDispoable.DisposeAsync();
+                await AsyncDispoable.DisposeAsync();
             }
         }
     }

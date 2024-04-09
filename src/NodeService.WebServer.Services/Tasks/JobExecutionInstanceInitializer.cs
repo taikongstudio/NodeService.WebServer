@@ -2,7 +2,7 @@
 using NodeService.WebServer.Services.NodeSessions;
 using System.Collections.Immutable;
 
-namespace NodeService.WebServer.Services.JobSchedule
+namespace NodeService.WebServer.Services.Tasks
 {
 
 
@@ -95,7 +95,7 @@ namespace NodeService.WebServer.Services.JobSchedule
             {
                 _logger.LogError(ex.ToString());
             }
-            this._penddingContextDictionary.TryRemove(context.Id, out _);
+            _penddingContextDictionary.TryRemove(context.Id, out _);
             if (context.CancellationToken.IsCancellationRequested)
             {
                 await _jobExecutionReportBatchQueue.SendAsync(new JobExecutionReportMessage()
@@ -116,7 +116,7 @@ namespace NodeService.WebServer.Services.JobSchedule
 
         public async ValueTask<bool> TryCancelAsync(string id)
         {
-            if (this._penddingContextDictionary.TryGetValue(id, out var context))
+            if (_penddingContextDictionary.TryGetValue(id, out var context))
             {
                 await context.CancelAsync();
                 return true;
@@ -169,7 +169,7 @@ namespace NodeService.WebServer.Services.JobSchedule
                                                 nodeSessionId,
                                                 null,
                                                 parameters);
-                        var context = this._penddingContextDictionary.GetOrAdd(jobExecutionInstance.Id, new PenddingContext(jobExecutionInstance.Id)
+                        var context = _penddingContextDictionary.GetOrAdd(jobExecutionInstance.Id, new PenddingContext(jobExecutionInstance.Id)
                         {
                             NodeServerService = _nodeSessionService,
                             NodeSessionId = nodeSessionId,

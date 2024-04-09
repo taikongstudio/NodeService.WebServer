@@ -20,6 +20,11 @@ namespace NodeService.WebServer.Data
             MySql_BuildJobFireConfigurationModel(modelBuilder);
         }
 
+        private void MySql_BuildNotificationConfigurationModel(ModelBuilder modelBuilder)
+        {
+            throw new NotImplementedException();
+        }
+
         private void MySql_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<JobFireConfigurationModel>(entityBuilder =>
@@ -226,6 +231,14 @@ namespace NodeService.WebServer.Data
                 .HasColumnType("json").HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<PackageConfiguration>(v, (JsonSerializerOptions)null));
+            });
+
+            modelBuilder.Entity<NotificationConfigModel>(builder =>
+            {
+                builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<NotificationConfiguration>(v, (JsonSerializerOptions)null));
             });
         }
     }

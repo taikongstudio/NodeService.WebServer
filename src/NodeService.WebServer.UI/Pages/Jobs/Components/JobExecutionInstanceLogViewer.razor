@@ -1,5 +1,11 @@
 ﻿@inject NotificationService _notice
 @inject ApiService ApiService
+<style type="text/css">
+    .jobLogViwer { /* for a specific editor instance */
+        height: calc(100% - 60px);
+        margin-top: 10px;
+    }
+</style>
 <Modal Width="800"
        Maximizable
        Title="@($"查看日志({_loadedLogEntriesCount}/{_totalLogEntriesCount})")"
@@ -37,7 +43,7 @@
         </SpaceItem>
 
     </Space>
-    <StandaloneCodeEditor @ref="@_viewer" Id="jobLogViwer" OnDidInit="StartLoadLogsAsync" ConstructionOptions="EditorConstructionOptions" />
+    <StandaloneCodeEditor @ref="@_viewer" CssClass="jobLogViwer" OnDidInit="StartLoadLogsAsync" ConstructionOptions="EditorConstructionOptions" />
 
 
 </Modal>

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.JobSchedule
+namespace NodeService.WebServer.Services.Tasks
 {
     public class PenddingContext : IAsyncDisposable
     {
@@ -132,9 +132,9 @@ namespace NodeService.WebServer.Services.JobSchedule
 
         public ValueTask CancelAsync()
         {
-            if (!this._penddingCancelTokenSource.IsCancellationRequested)
+            if (!_penddingCancelTokenSource.IsCancellationRequested)
             {
-                return new ValueTask(this._penddingCancelTokenSource.CancelAsync());
+                return new ValueTask(_penddingCancelTokenSource.CancelAsync());
             }
             return ValueTask.CompletedTask;
         }

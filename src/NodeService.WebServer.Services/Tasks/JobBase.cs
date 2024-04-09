@@ -1,4 +1,4 @@
-﻿namespace NodeService.WebServer.Services.JobSchedule
+﻿namespace NodeService.WebServer.Services.Tasks
 {
     public abstract class JobBase : IJob, IAsyncDisposable
     {
@@ -17,9 +17,9 @@
 
         public async ValueTask DisposeAsync()
         {
-            if (this.AsyncDispoable != null)
+            if (AsyncDispoable != null)
             {
-                await this.AsyncDispoable.DisposeAsync();
+                await AsyncDispoable.DisposeAsync();
             }
         }
 

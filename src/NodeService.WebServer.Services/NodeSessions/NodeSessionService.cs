@@ -71,8 +71,6 @@ namespace NodeService.WebServer.Services.NodeSessions
             public void Reset()
             {
                 Status = NodeStatus.Offline;
-                LastHeartBeatInputDateTime = DateTime.MinValue;
-                LastHeartBeatOutputDateTime = DateTime.MinValue;
             }
         }
 

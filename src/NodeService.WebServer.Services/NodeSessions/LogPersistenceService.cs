@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services
+namespace NodeService.WebServer.Services.NodeSessions
 {
     public class LogPersistenceService : BackgroundService
     {
@@ -45,8 +45,8 @@ namespace NodeService.WebServer.Services
                     {
                         var id = logMessageGroups.Key;
                         stopwatch.Start();
-                        int entriesCount = this._rocksDatabase.GetEntriesCount(id);
-                        int writenCount = this._rocksDatabase.WriteEntries(
+                        int entriesCount = _rocksDatabase.GetEntriesCount(id);
+                        int writenCount = _rocksDatabase.WriteEntries(
                             id,
                             logMessageGroups.SelectMany(static x => x.LogMessageEntries),
                             FilterLogMessageEntry);

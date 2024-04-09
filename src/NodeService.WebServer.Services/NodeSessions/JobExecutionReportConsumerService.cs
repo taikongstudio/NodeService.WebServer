@@ -6,8 +6,7 @@ using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.Messages;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Models;
-using NodeService.WebServer.Services.JobSchedule;
-using NodeService.WebServer.Services.NodeSessions;
+using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.Services.VirtualSystem;
 using Quartz;
 using Quartz.Util;
@@ -16,7 +15,7 @@ using System.Globalization;
 using System.Linq;
 using static NodeService.Infrastructure.Models.JobExecutionReport.Types;
 
-namespace NodeService.WebServer.Services
+namespace NodeService.WebServer.Services.NodeSessions
 {
     public class JobExecutionReportConsumerService : BackgroundService
     {
@@ -59,7 +58,7 @@ namespace NodeService.WebServer.Services
                 }
 
                 Stopwatch stopwatch = new Stopwatch();
-  
+
                 try
                 {
 
@@ -146,7 +145,7 @@ namespace NodeService.WebServer.Services
 
                     if (logPersistenceGroup.LogMessageEntries.Count > 0)
                     {
-                        this._logPersistenceBatchQueue.Post(logPersistenceGroup);
+                        _logPersistenceBatchQueue.Post(logPersistenceGroup);
 
                         _logger.LogInformation($"Post group:{id}");
                     }
@@ -180,14 +179,14 @@ namespace NodeService.WebServer.Services
             }
             finally
             {
-                this._logger.LogInformation($"Process {arrayPoolCollection.CountNotNull()} messages, SaveElapsed:{stopwatchSave.Elapsed}");
+                _logger.LogInformation($"Process {arrayPoolCollection.CountNotNull()} messages, SaveElapsed:{stopwatchSave.Elapsed}");
 
             }
         }
 
         private async ValueTask CancelExecutionTimeLimitJob(JobSchedulerKey jobSchedulerKey)
         {
-            if (!this._jobSchedulerDictionary.TryRemove(jobSchedulerKey, out IAsyncDisposable? asyncDisposable))
+            if (!_jobSchedulerDictionary.TryRemove(jobSchedulerKey, out IAsyncDisposable? asyncDisposable))
             {
                 return;
             }
@@ -222,7 +221,7 @@ namespace NodeService.WebServer.Services
                     { "JobExecutionInstance",
                     jobExecutionInstance.JsonClone<JobExecutionInstanceModel>() }
                 });
-            this._jobSchedulerDictionary.TryAdd(key, asyncDisposable);
+            _jobSchedulerDictionary.TryAdd(key, asyncDisposable);
         }
 
         private async Task ProcessJobExecutionReportAsync(

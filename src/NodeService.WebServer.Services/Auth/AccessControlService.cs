@@ -12,7 +12,7 @@ using NodeService.Infrastructure.Entities;
 using NodeService.Infrastructure.Interfaces;
 using NodeService.Infrastructure.Permissions;
 
-namespace NodeService.WebServer.Services;
+namespace NodeService.WebServer.Services.Auth;
 
 public class AccessControlService : IAccessControlService
 {

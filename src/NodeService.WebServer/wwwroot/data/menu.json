@@ -127,6 +127,19 @@
     ]
   },
   {
+    "path": "/Notifications",
+    "name": "订阅与通知",
+    "key": "Notifications",
+    "icon": "notification",
+    "children": [
+      {
+        "path": "/Notifications/Configure",
+        "name": "通知配置",
+        "key": "Notifications.Configure"
+      }
+    ]
+  },
+  {
     "path": "/form",
     "name": "Form page",
     "key": "form",

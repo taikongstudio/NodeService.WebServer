@@ -13,9 +13,10 @@ using NodeService.Infrastructure.Services;
 using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Auth;
-using NodeService.WebServer.Services.JobSchedule;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NodeSessions;
+using NodeService.WebServer.Services.Notifications;
+using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.UI;
 using NodeService.WebServer.UI.Services;
 using System.Configuration;
@@ -217,6 +218,7 @@ public class Program
         builder.Services.AddHostedService<HeartBeatResponseConsumerService>();
         builder.Services.AddHostedService<HeartBeatRequestProducerService>();
         builder.Services.AddHostedService<LogPersistenceService>();
+        builder.Services.AddHostedService<NotificationService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -355,6 +357,7 @@ public class Program
         builder.Services.AddSingleton<IAsyncQueue<RocksDatabase>>(new AsyncQueue<RocksDatabase>());
         builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>>(new AsyncQueue<JobExecutionEventRequest>());
         builder.Services.AddSingleton<IAsyncQueue<JobScheduleMessage>>(new AsyncQueue<JobScheduleMessage>());
+        builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>>(new AsyncQueue<NotificationMessage>());
         builder.Services.AddSingleton<BatchQueue<JobExecutionReportMessage>>(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton<BatchQueue<NodeHeartBeatSessionMessage>>(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton<BatchQueue<LogPersistenceGroup>>(new BatchQueue<LogPersistenceGroup>(1024 * 2, TimeSpan.FromSeconds(3)));

@@ -9,7 +9,6 @@ using NodeService.Infrastructure.Messages;
 using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Models;
-using NodeService.WebServer.Services.NodeSessions;
 using RocksDbSharp;
 using System;
 using System.Collections.Generic;
@@ -19,7 +18,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services
+namespace NodeService.WebServer.Services.NodeSessions
 {
     public class HeartBeatResponseConsumerService : BackgroundService
     {
@@ -31,7 +30,7 @@ namespace NodeService.WebServer.Services
         private readonly RocksDatabase _rocksDatabase;
         private readonly IDisposable? _processUsageAnalysisMonitorToken;
         private ProcessUsageAnalysis _processUsageAnalysis;
-        private readonly Infrastructure.Models.RocksDatabase _rocksDb;
+        private readonly RocksDatabase _rocksDb;
         private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
 
         public HeartBeatResponseConsumerService(
@@ -137,7 +136,7 @@ namespace NodeService.WebServer.Services
                     stopwatch.Start();
                     await ProcessHeartBeatMessageAsync(dbContext, hearBeatSessionMessage);
                     stopwatch.Stop();
-                    this._logger.LogInformation($"process heartbeat {hearBeatSessionMessage.NodeSessionId} spent:{stopwatch.Elapsed}");
+                    _logger.LogInformation($"process heartbeat {hearBeatSessionMessage.NodeSessionId} spent:{stopwatch.Elapsed}");
                     stopwatch.Reset();
                 }
 
@@ -151,18 +150,18 @@ namespace NodeService.WebServer.Services
             }
             finally
             {
-                this._logger.LogInformation($"Process {arrayPoolCollection.CountNotNull()} messages, SaveElapsed:{stopwatch.Elapsed}");
+                _logger.LogInformation($"Process {arrayPoolCollection.CountNotNull()} messages, SaveElapsed:{stopwatch.Elapsed}");
                 stopwatch.Reset();
             }
         }
 
         private async Task ProcessHeartBeatMessageAsync(
-            ApplicationDbContext dbContext, 
+            ApplicationDbContext dbContext,
             NodeHeartBeatSessionMessage hearBeatMessage
             )
         {
 
-            
+
             NodeInfoModel? nodeInfo = null;
             try
             {
@@ -236,7 +235,7 @@ namespace NodeService.WebServer.Services
                             return;
                         }
                         var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
-                        if (this._processUsageAnalysis == null || processInfoList == null)
+                        if (_processUsageAnalysis == null || processInfoList == null)
                         {
                             return;
                         }

@@ -5,12 +5,6 @@
 @using static NodeService.Infrastructure.Models.JobExecutionReport.Types
 @inject ApiService ApiService
 @inject NotificationService _notice
-<style type="text/css">
-    #jobLogViwer { /* for a specific editor instance */
-	height: calc(100% - 60px);
-    margin-top:10px;
-}
-</style>
 
 <GridContent>
     <JobExecutionInstanceLogViewer @ref="@_logViewer"/>

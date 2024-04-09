@@ -20,15 +20,8 @@ namespace NodeService.WebServer.Controllers
 
         private async Task AddOrUpdateJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)
         {
-            var messageQueue = this._serviceProvider.GetService<IAsyncQueue<JobScheduleMessage>>();
-            if (jobScheduleConfig.TriggerType == JobScheduleTriggerType.Schedule)
-            {
-                await messageQueue.EnqueueAsync(new JobScheduleMessage()
-                {
-                    JobScheduleConfigId = jobScheduleConfig.Id,
-                    TriggerSource = JobTriggerSource.Schedule
-                });
-            }
+            await _serviceProvider.GetService<IAsyncQueue<JobScheduleMessage>>().EnqueueAsync(
+                    new(JobTriggerSource.Schedule, jobScheduleConfig.Id, jobScheduleConfig.TriggerType == JobScheduleTriggerType.Manual));
         }
 
 
@@ -40,11 +33,8 @@ namespace NodeService.WebServer.Controllers
             ApiResponse apiResponse = new ApiResponse();
             try
             {
-                await _serviceProvider.GetService<IAsyncQueue<JobScheduleMessage>>().EnqueueAsync(new JobScheduleMessage()
-                {
-                    JobScheduleConfigId = jobScheduleId,
-                    TriggerSource = JobTriggerSource.Manual,
-                });
+                await _serviceProvider.GetService<IAsyncQueue<JobScheduleMessage>>().EnqueueAsync(
+                    new (JobTriggerSource.Manual, jobScheduleId));
             }
             catch (Exception ex)
             {
@@ -78,11 +68,7 @@ namespace NodeService.WebServer.Controllers
         private async Task RemoveJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)
         {
             var messageQueue = this._serviceProvider.GetService<IAsyncQueue<JobScheduleMessage>>();
-            await messageQueue.EnqueueAsync(new JobScheduleMessage()
-            {
-                JobScheduleConfigId = jobScheduleConfig.Id,
-                TriggerSource = JobTriggerSource.Schedule
-            });
+            await messageQueue.EnqueueAsync(new(JobTriggerSource.Schedule, jobScheduleConfig.Id, true));
         }
 
 

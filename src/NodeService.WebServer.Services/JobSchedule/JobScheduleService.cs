@@ -76,21 +76,21 @@ namespace NodeService.WebServer.Services.JobSchedule
                 return;
             }
             var jobSchedulerKey = new JobSchedulerKey(jobScheduleMessage.JobScheduleConfigId, jobScheduleMessage.TriggerSource);
-            if (!_jobSchedulerDictionary.TryGetValue(jobSchedulerKey, out var asyncDisposable))
-            {
-                asyncDisposable = await ScheduleJobAsync(jobSchedulerKey, jobScheduleConfig);
-                _jobSchedulerDictionary.TryAdd(jobSchedulerKey, asyncDisposable);
-            }
-            else
+            if (_jobSchedulerDictionary.TryGetValue(jobSchedulerKey, out var asyncDisposable))
             {
                 await asyncDisposable.DisposeAsync();
-                if (!jobScheduleConfig.IsEnabled)
+                if (!jobScheduleConfig.IsEnabled || jobScheduleMessage.IsCancellationRequested)
                 {
                     _jobSchedulerDictionary.TryRemove(jobSchedulerKey, out _);
                     return;
                 }
                 var newAsyncDisposable = await ScheduleJobAsync(jobSchedulerKey, jobScheduleConfig);
                 _jobSchedulerDictionary.TryUpdate(jobSchedulerKey, newAsyncDisposable, asyncDisposable);
+            }
+            else if (!jobScheduleMessage.IsCancellationRequested)
+            {
+                asyncDisposable = await ScheduleJobAsync(jobSchedulerKey, jobScheduleConfig);
+                _jobSchedulerDictionary.TryAdd(jobSchedulerKey, asyncDisposable);
             }
 
         }
@@ -118,11 +118,7 @@ namespace NodeService.WebServer.Services.JobSchedule
                     .ToListAsync();
                 foreach (var jobScheduleConfig in jobScheduleConfigs)
                 {
-                    await _jobSchedulerMessageQueue.EnqueueAsync(new JobScheduleMessage()
-                    {
-                        JobScheduleConfigId = jobScheduleConfig.Id,
-                        TriggerSource = JobTriggerSource.Schedule
-                    });
+                    await _jobSchedulerMessageQueue.EnqueueAsync(new(JobTriggerSource.Schedule, jobScheduleConfig.Id));
                 }
             }
             catch (Exception ex)

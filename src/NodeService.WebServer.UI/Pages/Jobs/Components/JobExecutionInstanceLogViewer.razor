@@ -25,19 +25,19 @@
                         Type="@ButtonType.Primary"
                         Disabled="@_loadMoreButtonDisabled"
                         Icon="@IconType.Outline.Reload"
-                        OnClick="()=>InitAsync()"></Button>
+                        OnClick="StartLoadLogsAsync"></Button>
             </SpaceItem>
         }
 
         <SpaceItem>
-            <a href="@($"/api/jobs/instances/{LogQueryId}/logs")" target="_blank">
+            <a href="@($"/api/jobs/instances/{LogQueryId}/log")" target="_blank">
                 <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Download">
                 </Button>
             </a>
         </SpaceItem>
 
     </Space>
-    <StandaloneCodeEditor @ref="@_viewer" Id="jobLogViwer" OnDidInit="InitAsync" ConstructionOptions="EditorConstructionOptions" />
+    <StandaloneCodeEditor @ref="@_viewer" Id="jobLogViwer" OnDidInit="StartLoadLogsAsync" ConstructionOptions="EditorConstructionOptions" />
 
 
 </Modal>
@@ -60,7 +60,7 @@
     bool _loadMoreButtonDisabled;
     bool _logModalVisible;
 
-    async Task InitAsync()
+    async Task StartLoadLogsAsync()
     {
 
         try
@@ -114,7 +114,7 @@
     async Task<bool> LoadNextLogPageAsync(CancellationToken cancellationToken = default)
     {
 
-        int pageSize = 2000;
+        int pageSize = 500;
         var apiResponse = await ApiService.QueryJobExecutionInstanceLogAsync(LogQueryId,
          new QueryParameters(_logPageIndex, pageSize),
          cancellationToken
@@ -219,15 +219,14 @@
         }
     }
 
-    public async Task StopAsync()
+    public Task StopAsync()
     {
         if (!this._cancellationTokenSource.IsCancellationRequested)
         {
             this._cancellationTokenSource.Cancel();
         }
-        await Task.Delay(TimeSpan.FromSeconds(5));
-        this.InitCancellationTokenSource();
         _showStopButton = false;
         StateHasChanged();
+        return Task.CompletedTask;
     }
 }

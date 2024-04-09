@@ -52,11 +52,11 @@ namespace NodeService.WebServer.Controllers
             {
                 if (parameters.BeginDateTime == null)
                 {
-                    parameters.BeginDateTime = DateTime.Today.Date;
+                    parameters.BeginDateTime = DateTime.Today.ToUniversalTime().Date;
                 }
                 if (parameters.EndDateTime == null)
                 {
-                    parameters.EndDateTime = DateTime.Today.Date.AddDays(1).AddSeconds(-1);
+                    parameters.EndDateTime = DateTime.Today.ToUniversalTime().Date.AddDays(1).AddSeconds(-1);
                 }
                 using var dbContext = _dbContextFactory.CreateDbContext();
                 var beginTime = parameters.BeginDateTime.Value;
@@ -76,59 +76,12 @@ namespace NodeService.WebServer.Controllers
                     queryable = queryable.Where(x => x.JobScheduleConfigId == parameters.JobScheduleConfigId);
                 }
                 var result = await queryable
-                    .OrderByDescending(x => x.FireTime)
-                    .Where(x => x.FireTime >= beginTime && x.FireTime < endTime)
-                    .Select(x => new
-                    {
-                        x.Id,
-                        x.CancelTimes,
-                        x.Status,
-                        x.JobScheduleConfigId,
-                        x.ReinvokeTimes,
-                        x.ParentId,
-                        x.NodeInfoId,
-                        x.NextFireTimeUtc,
-                        x.PreviousFireTimeUtc,
-                        x.ScheduledFireTimeUtc,
-                        x.EntityVersion,
-                        x.TriggerSource,
-                        x.Name,
-                        x.Message,
-                        x.LogPath,
-                        x.FireTime,
-                        x.FireType,
-                        x.FireInstanceId,
-                        x.ExecutionBeginTime,
-                        x.ExecutionEndTime,
-                        x.Description,
-                    })
+                    .OrderByDescending(x => x.FireTimeUtc)
+                    .Where(x => x.FireTimeUtc >= beginTime && x.FireTimeUtc < endTime)
                     .IgnoreAutoIncludes()
                     .AsSplitQuery()
                     .ToListAsync();
-                apiResponse.Result = result.Select(x => new JobExecutionInstanceModel()
-                {
-                    Description = x.Description,
-                    CancelTimes = x.CancelTimes,
-                    ExecutionBeginTime = x.ExecutionBeginTime,
-                    ExecutionEndTime = x.ExecutionEndTime,
-                    FireInstanceId = x.FireInstanceId,
-                    FireTime = x.FireTime,
-                    FireType = x.FireType,
-                    Id = x.Id,
-                    JobScheduleConfigId = x.JobScheduleConfigId,
-                    LogPath = x.LogPath,
-                    Message = x.Message,
-                    Name = x.Name,
-                    NextFireTimeUtc = x.NextFireTimeUtc,
-                    NodeInfoId = x.NodeInfoId,
-                    ParentId = x.ParentId,
-                    PreviousFireTimeUtc = x.PreviousFireTimeUtc,
-                    ReinvokeTimes = x.ReinvokeTimes,
-                    ScheduledFireTimeUtc = x.ScheduledFireTimeUtc,
-                    Status = x.Status,
-                    TriggerSource = x.TriggerSource,
-                    EntityVersion = x.EntityVersion,
-                });
+                apiResponse.Result = result;
             }
             catch (Exception ex)
             {
@@ -139,8 +92,8 @@ namespace NodeService.WebServer.Controllers
             return apiResponse;
         }
 
-        [HttpPost("/api/jobs/instances/{id}/reinvoke")]
-        public async Task<ApiResponse<JobExecutionInstanceModel>> ReinvokeAsync(string id, [FromBody] object obj)
+        [HttpGet("/api/jobs/instances/{id}/reinvoke")]
+        public async Task<ApiResponse<JobExecutionInstanceModel>> ReinvokeAsync(string id)
         {
             ApiResponse<JobExecutionInstanceModel> apiResponse = new ApiResponse<JobExecutionInstanceModel>();
             try
@@ -189,7 +142,7 @@ namespace NodeService.WebServer.Controllers
                 {
                     jobExecutionInstance.CancelTimes++;
                     await dbContext.SaveChangesAsync();
-                    await _jobExecutionInstanceInitializer.CancelAsync(jobExecutionInstance);
+                    await _jobExecutionInstanceInitializer.TryCancelAsync(jobExecutionInstance.Id);
                     var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
                         new NodeSessionId(jobExecutionInstance.NodeInfoId),
                         jobExecutionInstance.ToCancelEvent());
@@ -207,8 +160,8 @@ namespace NodeService.WebServer.Controllers
 
 
 
-        [HttpGet("/api/jobs/instances/{id}/logs")]
-        public async Task<PaginationResponse<LogMessageEntry>> QueryLogsAsync(string id, QueryParametersModel queryParameters)
+        [HttpGet("/api/jobs/instances/{id}/log")]
+        public async Task<PaginationResponse<LogMessageEntry>> QueryJobLogAsync(string id, QueryParametersModel queryParameters)
         {
             PaginationResponse<LogMessageEntry> apiResponse = new PaginationResponse<LogMessageEntry>();
             try

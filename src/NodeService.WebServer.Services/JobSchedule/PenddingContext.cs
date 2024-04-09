@@ -10,23 +10,20 @@ namespace NodeService.WebServer.Services.JobSchedule
     {
         private CancellationTokenSource _penddingCancelTokenSource;
 
-        public PenddingContext(string id, INodeSessionService nodeSessionService)
+        public PenddingContext(string id)
         {
             Id = id;
-            NodeServerService = nodeSessionService;
         }
 
         public string Id { get; }
 
-        public INodeSessionService NodeServerService { get; private set; }
+        public INodeSessionService NodeServerService { get; init; }
 
         public required NodeSessionId NodeSessionId { get; init; }
 
-        public required JobExecutionEventRequest Event { get; init; }
+        public required JobExecutionEventRequest FireEvent { get; init; }
 
         public CancellationToken CancellationToken { get; private set; }
-
-        public JobExecutionInstanceModel JobExecutionInstance { get; init; }
 
         public required JobFireParameters FireParameters { get; init; }
 
@@ -100,7 +97,7 @@ namespace NodeService.WebServer.Services.JobSchedule
                 var jobExecutionInstances = await NodeServerService.QueryJobExecutionInstances(NodeSessionId.NodeId,
                      new QueryJobExecutionInstancesParameters()
                      {
-                         Id = FireParameters.JobScheduleConfig.Id,
+                         Id = Id,
                          Status = JobExecutionStatus.Running
                      },
                      CancellationToken

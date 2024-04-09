@@ -51,15 +51,16 @@ namespace NodeService.WebServer.Services
 
             await foreach (var arrayPoolCollection in _jobExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
             {
+                int count = arrayPoolCollection.CountNotNull();
+                if (count == 0)
+                {
+                    continue;
+                }
+
                 Stopwatch stopwatch = new Stopwatch();
-                int count = 0;
+  
                 try
                 {
-                    count = arrayPoolCollection.CountNotNull();
-                    if (count == 0)
-                    {
-                        continue;
-                    }
 
                     stopwatch.Start();
                     await ProcessJobExecutionReportsAsync(arrayPoolCollection, stoppingToken);
@@ -79,8 +80,9 @@ namespace NodeService.WebServer.Services
             }
         }
 
-        private async Task ProcessJobExecutionReportsAsync(ArrayPoolCollection<JobExecutionReportMessage> arrayPoolCollection,
-                                                           CancellationToken stoppingToken = default)
+        private async Task ProcessJobExecutionReportsAsync(
+            ArrayPoolCollection<JobExecutionReportMessage> arrayPoolCollection,
+            CancellationToken stoppingToken = default)
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
             var stopwatchSave = new Stopwatch();
@@ -88,27 +90,32 @@ namespace NodeService.WebServer.Services
             try
             {
 
-                foreach (var messageGroup in arrayPoolCollection
+                foreach (var instanceMessageGroup in arrayPoolCollection
                     .Where(static x => x != null)
-                    .GroupBy(x => x.GetMessage().Properties[nameof(JobExecutionInstanceModel.Id)]))
+                    .GroupBy(x => x.GetMessage().Id))
                 {
-                    if (messageGroup == null)
+                    if (instanceMessageGroup == null)
                     {
                         continue;
                     }
                     Stopwatch stopwatchQuery = Stopwatch.StartNew();
-                    var jobExecutionInstanceId = messageGroup.Key;
-                    var jobExecutionInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(jobExecutionInstanceId);
+                    var id = instanceMessageGroup.Key;
+                    var jobExecutionInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(id);
                     stopwatchQuery.Stop();
-                    _logger.LogInformation($"Query {jobExecutionInstance.Id}:{stopwatchQuery.Elapsed}");
+                    _logger.LogInformation($"Query {id}:{stopwatchQuery.Elapsed}");
+
+                    if (jobExecutionInstance == null)
+                    {
+                        continue;
+                    }
 
                     var logPersistenceGroup = new LogPersistenceGroup()
                     {
-                        Id = jobExecutionInstanceId,
+                        Id = id,
                     };
 
 
-                    foreach (var reportMessage in messageGroup)
+                    foreach (var reportMessage in instanceMessageGroup)
                     {
 
                         var report = reportMessage.GetMessage();
@@ -127,13 +134,15 @@ namespace NodeService.WebServer.Services
 
                     }
 
-                    this._logPersistenceBatchQueue.Post(logPersistenceGroup);
+                    if (logPersistenceGroup.LogMessageEntries.Count > 0)
+                    {
+                        this._logPersistenceBatchQueue.Post(logPersistenceGroup);
 
-                    _logger.LogInformation($"Post group:{jobExecutionInstanceId}");
-
+                        _logger.LogInformation($"Post group:{id}");
+                    }
 
                     Stopwatch stopwatchProcessMessage = new Stopwatch();
-                    foreach (var messageStatusGroup in messageGroup.GroupBy(static x => x.GetMessage().Status))
+                    foreach (var messageStatusGroup in instanceMessageGroup.GroupBy(static x => x.GetMessage().Status))
                     {
 
                         stopwatchProcessMessage.Start();
@@ -168,7 +177,11 @@ namespace NodeService.WebServer.Services
 
         private async ValueTask CancelExecutionTimeLimitJob(JobSchedulerKey jobSchedulerKey)
         {
-            if (this._jobSchedulerDictionary.TryRemove(jobSchedulerKey, out IAsyncDisposable  asyncDisposable))
+            if (!this._jobSchedulerDictionary.TryRemove(jobSchedulerKey, out IAsyncDisposable? asyncDisposable))
+            {
+                return;
+            }
+            if (asyncDisposable != null)
             {
                 await asyncDisposable.DisposeAsync();
             }
@@ -205,7 +218,7 @@ namespace NodeService.WebServer.Services
         private async Task ProcessJobExecutionReportAsync(
             JobExecutionInstanceModel jobExecutionInstance,
             NodeSessionMessage<JobExecutionReport> message,
-            CancellationToken stoppingToken=default)
+            CancellationToken stoppingToken = default)
         {
             try
             {
@@ -230,7 +243,7 @@ namespace NodeService.WebServer.Services
                         await CancelExecutionTimeLimitJob(jobSchedulerKey);
                         break;
                     case JobExecutionStatus.Finished:
-                        await ScheduleChildJobs(jobExecutionInstance, stoppingToken);
+                        await ScheduleChildJobs(jobExecutionInstance.Id, stoppingToken);
                         await CancelExecutionTimeLimitJob(jobSchedulerKey);
                         break;
                     case JobExecutionStatus.Cancelled:
@@ -251,15 +264,17 @@ namespace NodeService.WebServer.Services
                     case JobExecutionStatus.Pendding:
                         break;
                     case JobExecutionStatus.Started:
-                        if (report.Properties.TryGetValue(nameof(JobExecutionReport.CreatedDateTime), out var beginDateTimeString)
+                        if (report.Properties.TryGetValue(
+                            nameof(JobExecutionReport.CreatedDateTime),
+                            out var beginDateTimeString)
                             && DateTime.TryParse(beginDateTimeString, out var beginDateTime)
                             )
                         {
-                            jobExecutionInstance.ExecutionBeginTime = beginDateTime;
+                            jobExecutionInstance.ExecutionBeginTimeUtc = beginDateTime;
                         }
                         else
                         {
-                            jobExecutionInstance.ExecutionBeginTime = DateTime.UtcNow;
+                            jobExecutionInstance.ExecutionBeginTimeUtc = DateTime.UtcNow;
                         }
 
                         break;
@@ -268,15 +283,17 @@ namespace NodeService.WebServer.Services
                     case JobExecutionStatus.Failed:
                     case JobExecutionStatus.Finished:
                     case JobExecutionStatus.Cancelled:
-                        if (report.Properties.TryGetValue(nameof(JobExecutionReport.CreatedDateTime), out var endDateTimeString)
+                        if (report.Properties.TryGetValue(
+                            nameof(JobExecutionReport.CreatedDateTime),
+                            out var endDateTimeString)
                             && DateTime.TryParse(endDateTimeString, out var endDateTime)
                             )
                         {
-                            jobExecutionInstance.ExecutionEndTime = endDateTime;
+                            jobExecutionInstance.ExecutionEndTimeUtc = endDateTime;
                         }
                         else
                         {
-                            jobExecutionInstance.ExecutionEndTime = DateTime.UtcNow;
+                            jobExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
                         }
                         break;
                     default:
@@ -284,6 +301,10 @@ namespace NodeService.WebServer.Services
                 }
 
                 jobExecutionInstance.Status = report.Status;
+                if (report.Message != null)
+                {
+                    jobExecutionInstance.Message = report.Message;
+                }
             }
             catch (Exception ex)
             {
@@ -294,28 +315,26 @@ namespace NodeService.WebServer.Services
         }
 
 
-        private async Task ScheduleChildJobs(JobExecutionInstanceModel jobExecutionInstance, CancellationToken stoppingToken = default)
+        private async Task ScheduleChildJobs(
+            string id,
+            CancellationToken stoppingToken = default)
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
-            var jobScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FindAsync(jobExecutionInstance.JobScheduleConfigId);
-            await dbContext.Entry(jobExecutionInstance).ReloadAsync(stoppingToken);
-
+            var jobScheduleConfig = await dbContext
+                .JobScheduleConfigurationDbSet
+                .FindAsync(id);
             if (jobScheduleConfig == null)
             {
                 return;
             }
-            foreach (var binding in jobScheduleConfig.ChildJobs)
+            foreach (var childJob in jobScheduleConfig.ChildJobs)
             {
-                var config = await dbContext.JobScheduleConfigurationDbSet.FindAsync(binding.Value);
-                if (config == null)
+                var childJobScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FindAsync(childJob.Value);
+                if (childJobScheduleConfig == null)
                 {
                     continue;
                 }
-                await _jobScheduleAsyncQueue.EnqueueAsync(new JobScheduleMessage()
-                {
-                    JobScheduleConfigId = config.Id,
-                    TriggerSource = JobTriggerSource.Parent,
-                });
+                await _jobScheduleAsyncQueue.EnqueueAsync(new(JobTriggerSource.Parent, childJobScheduleConfig.Id));
             }
         }
     }

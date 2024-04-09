@@ -1,4 +1,6 @@
 ﻿using NodeService.WebServer.Data;
+using NodeService.WebServer.Services.NodeSessions;
+using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.JobSchedule
 {
@@ -9,6 +11,7 @@ namespace NodeService.WebServer.Services.JobSchedule
         readonly INodeSessionService _nodeSessionService;
         readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         readonly ILogger<JobExecutionInstanceInitializer> _logger;
+        private readonly BatchQueue<JobExecutionReportMessage> _jobExecutionReportBatchQueue;
         readonly ConcurrentDictionary<string, PenddingContext> _penddingContextDictionary;
 
 
@@ -17,41 +20,43 @@ namespace NodeService.WebServer.Services.JobSchedule
         public JobExecutionInstanceInitializer(
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             ILogger<JobExecutionInstanceInitializer> logger,
+            BatchQueue<JobExecutionReportMessage> jobExecutionReportBatchQueue,
             INodeSessionService nodeSessionService)
         {
             _penddingContextDictionary = new ConcurrentDictionary<string, PenddingContext>();
             _nodeSessionService = nodeSessionService;
             _dbContextFactory = dbContextFactory;
             _logger = logger;
+            _jobExecutionReportBatchQueue = jobExecutionReportBatchQueue;
             PenddingActionBlock = new ActionBlock<PenddingContext>(ProcessPenddingContextAsync);
         }
 
 
         private async Task ProcessPenddingContextAsync(PenddingContext context)
         {
-            bool canSendEventToNode = false;
+            bool canSendFireEventToNode = false;
             try
             {
                 await context.InitAsync();
                 switch (context.FireParameters.JobScheduleConfig.ExecutionStrategy)
                 {
                     case JobExecutionStrategy.Concurrent:
-                        canSendEventToNode = true;
+                        canSendFireEventToNode = true;
                         break;
                     case JobExecutionStrategy.WaitAny:
-                        canSendEventToNode = await context.WaitAnyJobTerminatedAsync();
+                        canSendFireEventToNode = await context.WaitAnyJobTerminatedAsync();
                         break;
                     case JobExecutionStrategy.WaitAll:
-                        canSendEventToNode = await context.WaitAllJobTerminatedAsync();
+                        canSendFireEventToNode = await context.WaitAllJobTerminatedAsync();
                         break;
                     case JobExecutionStrategy.KillAll:
-                        canSendEventToNode = await context.KillAllJobAsync();
+                        canSendFireEventToNode = await context.KillAllJobAsync();
                         break;
                     default:
                         break;
                 }
 
-                if (canSendEventToNode)
+                if (canSendFireEventToNode)
                 {
                     while (!context.CancellationToken.IsCancellationRequested)
                     {
@@ -63,12 +68,17 @@ namespace NodeService.WebServer.Services.JobSchedule
                     }
                     var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
                         context.NodeSessionId,
-                        context.JobExecutionInstance.ToTriggerEvent(),
+                        context.FireEvent,
                         context.CancellationToken);
-                    await _nodeSessionService.BatchUpdateJobExecutionInstanceAsync(new UpdateJobExecutionInstanceParameters()
+
+                    await _jobExecutionReportBatchQueue.SendAsync(new JobExecutionReportMessage()
                     {
-                        Id = context.JobExecutionInstance.Id,
-                        Message = rsp.Message
+                        Message = new JobExecutionReport()
+                        {
+                            Id = context.Id,
+                            Status = JobExecutionStatus.Triggered,
+                            Message = rsp.Message
+                        }
                     });
                     return;
                 }
@@ -88,10 +98,13 @@ namespace NodeService.WebServer.Services.JobSchedule
             this._penddingContextDictionary.TryRemove(context.Id, out _);
             if (context.CancellationToken.IsCancellationRequested)
             {
-                await _nodeSessionService.BatchUpdateJobExecutionInstanceAsync(new UpdateJobExecutionInstanceParameters()
+                await _jobExecutionReportBatchQueue.SendAsync(new JobExecutionReportMessage()
                 {
-                    Id = context.JobExecutionInstance.Id,
-                    Status = JobExecutionStatus.PenddingTimeout,
+                    Message = new JobExecutionReport()
+                    {
+                        Id = context.Id,
+                        Status = JobExecutionStatus.PenddingTimeout,
+                    }
                 });
             }
 
@@ -101,31 +114,48 @@ namespace NodeService.WebServer.Services.JobSchedule
         }
 
 
-        public async ValueTask CancelAsync(JobExecutionInstanceModel jobExecutionInstance)
+        public async ValueTask<bool> TryCancelAsync(string id)
         {
-            if (this._penddingContextDictionary.TryGetValue(jobExecutionInstance.Id,out var context))
+            if (this._penddingContextDictionary.TryGetValue(id, out var context))
             {
-               await context.CancelAsync();
+                await context.CancelAsync();
+                return true;
             }
+            return false;
         }
 
 
-        public async Task InitAsync(JobFireParameters jobFireParameters)
+        public async Task InitAsync(JobFireParameters parameters)
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
-            var jobScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FindAsync(jobFireParameters.JobScheduleConfig.Id);
+            var jobScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FirstOrDefaultAsync(
+                x => x.Id == parameters.JobScheduleConfig.Id);
             if (jobScheduleConfig == null)
             {
                 return;
             }
-            jobFireParameters.JobScheduleConfig = jobScheduleConfig;
-            jobScheduleConfig.JobTypeDesc = await dbContext.JobTypeDescConfigurationDbSet.FirstOrDefaultAsync(x => x.Id == jobScheduleConfig.JobTypeDescId);
+            if (jobScheduleConfig.NodeList.Count == 0)
+            {
+                return;
+            }
+            await dbContext.JobFireConfigurationsDbSet.AddAsync(new JobFireConfigurationModel()
+            {
+                Id = parameters.FireInstanceId,
+                JobScheduleConfigJsonString = jobScheduleConfig.ToJson(),
+            });
+            await dbContext.SaveChangesAsync();
+            parameters.JobScheduleConfig = jobScheduleConfig;
+            jobScheduleConfig.JobTypeDesc = await dbContext.JobTypeDescConfigurationDbSet.FirstOrDefaultAsync(
+                x => x.Id == jobScheduleConfig.JobTypeDescId);
             foreach (var node in jobScheduleConfig.NodeList)
             {
                 try
                 {
-                    var nodeInfo = await dbContext.NodeInfoDbSet.FindAsync(node.Value);
-
+                    var nodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Id == node.Value);
+                    if (nodeInfo == null)
+                    {
+                        continue;
+                    }
                     bool isFilteredIn = FilterNode(jobScheduleConfig, nodeInfo);
 
                     if (!isFilteredIn)
@@ -138,13 +168,13 @@ namespace NodeService.WebServer.Services.JobSchedule
                         var jobExecutionInstance = await _nodeSessionService.AddJobExecutionInstanceAsync(
                                                 nodeSessionId,
                                                 null,
-                                                jobFireParameters);
-                        var context = this._penddingContextDictionary.GetOrAdd(jobExecutionInstance.Id, new PenddingContext(jobExecutionInstance.Id, _nodeSessionService)
+                                                parameters);
+                        var context = this._penddingContextDictionary.GetOrAdd(jobExecutionInstance.Id, new PenddingContext(jobExecutionInstance.Id)
                         {
+                            NodeServerService = _nodeSessionService,
                             NodeSessionId = nodeSessionId,
-                            Event = jobExecutionInstance.ToTriggerEvent(),
-                            FireParameters = jobFireParameters,
-                            JobExecutionInstance = jobExecutionInstance,
+                            FireEvent = jobExecutionInstance.ToFireEvent(parameters),
+                            FireParameters = parameters,
                         });
                         PenddingActionBlock.Post(context);
                     }
@@ -156,16 +186,8 @@ namespace NodeService.WebServer.Services.JobSchedule
                 }
 
             }
-            if (jobScheduleConfig.NodeList.Count > 0)
-            {
-                await dbContext.JobFireConfigurationsDbSet.AddAsync(new JobFireConfigurationModel()
-                {
-                    Id = jobFireParameters.FireInstanceId,
-                    JobScheduleConfigJsonString = jobScheduleConfig.ToJson(),
-                });
-            }
-            await dbContext.SaveChangesAsync();
-            _logger.LogInformation($"Job initialized {jobFireParameters.FireInstanceId}");
+
+            _logger.LogInformation($"Job initialized {parameters.FireInstanceId}");
         }
 
 

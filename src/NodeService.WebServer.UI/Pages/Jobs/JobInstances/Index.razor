@@ -87,7 +87,7 @@
                     </Select>
                     </SpaceItem>
                     <SpaceItem>
-                        <Button Type="@ButtonType.Primary" OnClick="()=>this.QueryDataListAsync()">查询</Button>
+                        <Button Type="@ButtonType.Primary" OnClick="QueryDataListAsync">查询</Button>
                     </SpaceItem>
 
                 </Space>
@@ -142,9 +142,9 @@
                         break;
                 }
             </PropertyColumn>
-             <PropertyColumn Title="触发时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.FireTime"></PropertyColumn>
-             <PropertyColumn Title="开始时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.ExecutionBeginTime"></PropertyColumn>
-             <PropertyColumn Title="结束时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.ExecutionEndTime"></PropertyColumn>
+             <PropertyColumn Title="触发时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.FireTimeUtc"></PropertyColumn>
+             <PropertyColumn Title="开始时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.ExecutionBeginTimeUtc"></PropertyColumn>
+             <PropertyColumn Title="结束时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.ExecutionEndTimeUtc"></PropertyColumn>
              <PropertyColumn Title="消息" Sortable="true"  Property="c=>c.Message"></PropertyColumn>
              <ActionColumn Fixed="right"  Width="150"  Title="操作">
                  <CellRender Context="cellData">
@@ -196,9 +196,6 @@
                 </TabPane>
                 <TabPane Tab="作业日志" Key="2">
 
-                </TabPane>
-                <TabPane Tab="任务调度信息" Key="3">
-                    @context.Data.JobScheduleConfigJsonString
                 </TabPane>
     
 

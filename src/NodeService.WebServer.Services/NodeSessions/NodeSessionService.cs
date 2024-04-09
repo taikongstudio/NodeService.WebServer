@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using NodeService.Infrastructure.Messages;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Services.MessageHandlers;
+using System.Collections.Immutable;
 using System.Net;
 using System.Security.Cryptography.Xml;
 using static NodeService.Infrastructure.Models.JobExecutionReport.Types;
@@ -156,18 +157,18 @@ namespace NodeService.WebServer.Services.NodeSessions
             if (parameters.BeginTime != null && parameters.EndTime == null)
             {
                 var beginTime = parameters.BeginTime.Value;
-                queryable = queryable.Where(x => x.FireTime >= beginTime);
+                queryable = queryable.Where(x => x.FireTimeUtc >= beginTime);
             }
             if (parameters.BeginTime == null && parameters.EndTime != null)
             {
                 var endTime = parameters.EndTime.Value;
-                queryable = queryable.Where(x => x.FireTime <= endTime);
+                queryable = queryable.Where(x => x.FireTimeUtc <= endTime);
             }
             else if (parameters.BeginTime != null && parameters.EndTime != null)
             {
                 var beginTime = parameters.BeginTime.Value;
                 var endTime = parameters.EndTime.Value;
-                queryable = queryable.Where(x => x.FireTime >= beginTime && x.FireTime <= endTime);
+                queryable = queryable.Where(x => x.FireTimeUtc >= beginTime && x.FireTimeUtc <= endTime);
             }
             result = await queryable.ToArrayAsync();
             return result;
@@ -273,7 +274,7 @@ namespace NodeService.WebServer.Services.NodeSessions
 
         public async Task<JobExecutionInstanceModel> AddJobExecutionInstanceAsync(
             NodeSessionId nodeSessionId,
-            JobExecutionInstanceModel? parent,
+            string? parentId,
             JobFireParameters parameters)
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
@@ -284,12 +285,12 @@ namespace NodeService.WebServer.Services.NodeSessions
                 Name = $"{nodeName} {parameters.JobScheduleConfig.Name} {parameters.FireInstanceId}",
                 NodeInfoId = nodeSessionId.NodeId.Value,
                 Status = JobExecutionStatus.Triggered,
-                FireTime = parameters.FireTimeUtc.ToLocalTime().DateTime,
+                FireTimeUtc = parameters.FireTimeUtc.DateTime,
                 Message = string.Empty,
                 FireType = "Server",
                 TriggerSource = parameters.TriggerSource,
                 JobScheduleConfigId = parameters.JobScheduleConfig.Id,
-                ParentId = parent?.Id,
+                ParentId = parentId,
                 FireInstanceId = parameters.FireInstanceId
             };
 
@@ -327,7 +328,6 @@ namespace NodeService.WebServer.Services.NodeSessions
 
             var jobScheduleConfigJsonString = parameters.JobScheduleConfig.ToJsonString<JobScheduleConfigModel>();
 
-            jobExecutionInstance.JobScheduleConfigJsonString = jobScheduleConfigJsonString;
             if (parameters.NextFireTimeUtc != null)
             {
                 jobExecutionInstance.NextFireTimeUtc = parameters.NextFireTimeUtc.Value.UtcDateTime;
@@ -347,42 +347,6 @@ namespace NodeService.WebServer.Services.NodeSessions
             await dbContext.SaveChangesAsync();
 
             return jobExecutionInstance;
-        }
-
-        public async Task BatchUpdateJobExecutionInstanceAsync(params UpdateJobExecutionInstanceParameters[] parametersList)
-        {
-            using var dbContext = _dbContextFactory.CreateDbContext();
-
-            foreach (var parameters in parametersList)
-            {
-                var jobExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(parameters.Id);
-                if (jobExecutionInstance == null)
-                {
-                    continue;
-                }
-                if (parameters.Status != null)
-                {
-                    jobExecutionInstance.Status = parameters.Status.Value;
-                }
-                if (parameters.Message != null)
-                {
-                    jobExecutionInstance.Message = parameters.Message;
-                }
-                if (parameters.CancelTimes != null)
-                {
-                    jobExecutionInstance.CancelTimes = parameters.CancelTimes.Value;
-                }
-                if (parameters.BeginTime != null)
-                {
-                    jobExecutionInstance.ExecutionBeginTime = parameters.BeginTime;
-                }
-                if (parameters.EndTime != null)
-                {
-                    jobExecutionInstance.ExecutionEndTime = parameters.EndTime;
-                }
-                await dbContext.SaveChangesAsync();
-            }
-
         }
 
         public int GetNodeSessionsCount()

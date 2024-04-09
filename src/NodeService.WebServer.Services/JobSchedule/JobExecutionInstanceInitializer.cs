@@ -173,7 +173,7 @@ namespace NodeService.WebServer.Services.JobSchedule
                         {
                             NodeServerService = _nodeSessionService,
                             NodeSessionId = nodeSessionId,
-                            FireEvent = jobExecutionInstance.ToFireEvent(parameters, jobExecutionInstance.Id, jobExecutionInstance.FireInstanceId),
+                            FireEvent = jobExecutionInstance.ToFireEvent(parameters),
                             FireParameters = parameters,
                         });
                         PenddingActionBlock.Post(context);

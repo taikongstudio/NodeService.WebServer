@@ -28,7 +28,12 @@ namespace NodeService.WebServer.Services.Tasks
             _dbContextFactory = dbContextFactory;
             _logger = logger;
             _jobExecutionReportBatchQueue = jobExecutionReportBatchQueue;
-            PenddingActionBlock = new ActionBlock<PenddingContext>(ProcessPenddingContextAsync);
+            PenddingActionBlock = new ActionBlock<PenddingContext>(ProcessPenddingContextAsync, new ExecutionDataflowBlockOptions()
+            {
+                EnsureOrdered = false,
+                MaxDegreeOfParallelism = Environment.ProcessorCount,
+
+            });
         }
 
 
@@ -37,6 +42,7 @@ namespace NodeService.WebServer.Services.Tasks
             bool canSendFireEventToNode = false;
             try
             {
+                _logger.LogInformation($"{context.Id}:Start init");
                 await context.InitAsync();
                 switch (context.FireParameters.JobScheduleConfig.ExecutionStrategy)
                 {
@@ -66,11 +72,12 @@ namespace NodeService.WebServer.Services.Tasks
                         }
                         await Task.Delay(TimeSpan.FromSeconds(1), context.CancellationToken);
                     }
+
                     var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
                         context.NodeSessionId,
                         context.FireEvent,
                         context.CancellationToken);
-
+                    _logger.LogInformation($"{context.Id}:SendJobExecutionEventAsync");
                     await _jobExecutionReportBatchQueue.SendAsync(new JobExecutionReportMessage()
                     {
                         Message = new JobExecutionReport()
@@ -80,6 +87,7 @@ namespace NodeService.WebServer.Services.Tasks
                             Message = rsp.Message
                         }
                     });
+                    _logger.LogInformation($"{context.Id}:SendAsync Triggered");
                     return;
                 }
 
@@ -90,6 +98,7 @@ namespace NodeService.WebServer.Services.Tasks
                 {
 
                 }
+                _logger.LogError($"{context.Id}:{ex}");
             }
             catch (Exception ex)
             {
@@ -106,6 +115,7 @@ namespace NodeService.WebServer.Services.Tasks
                         Status = JobExecutionStatus.PenddingTimeout,
                     }
                 });
+                _logger.LogInformation($"{context.Id}:SendAsync PenddingTimeout");
             }
 
 

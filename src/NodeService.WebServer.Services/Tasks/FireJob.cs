@@ -47,6 +47,7 @@ namespace NodeService.WebServer.Services.Tasks
             };
             var initializer = ServiceProvider.GetService<JobExecutionInstanceInitializer>();
             await initializer.InitAsync(jobFireParameters);
+            Logger.LogInformation($"Job fire instance id:{context.FireInstanceId} end init");
         }
 
 

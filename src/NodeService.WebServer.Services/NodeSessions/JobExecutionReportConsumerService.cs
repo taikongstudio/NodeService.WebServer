@@ -167,8 +167,6 @@ namespace NodeService.WebServer.Services.NodeSessions
                         stopwatchSave.Start();
                         await dbContext.SaveChangesAsync(stoppingToken);
                         stopwatchSave.Stop();
-                        timeSpan += stopwatchSave.Elapsed;
-                        stopwatchSave.Reset();
                     }
 
                 }
@@ -273,37 +271,14 @@ namespace NodeService.WebServer.Services.NodeSessions
                     case JobExecutionStatus.Pendding:
                         break;
                     case JobExecutionStatus.Started:
-                        if (report.Properties.TryGetValue(
-                            nameof(JobExecutionReport.CreatedDateTime),
-                            out var beginDateTimeString)
-                            && DateTime.TryParse(beginDateTimeString, out var beginDateTime)
-                            )
-                        {
-                            jobExecutionInstance.ExecutionBeginTimeUtc = beginDateTime;
-                        }
-                        else
-                        {
-                            jobExecutionInstance.ExecutionBeginTimeUtc = DateTime.UtcNow;
-                        }
-
+                        jobExecutionInstance.ExecutionBeginTimeUtc = DateTime.UtcNow;
                         break;
                     case JobExecutionStatus.Running:
                         break;
                     case JobExecutionStatus.Failed:
                     case JobExecutionStatus.Finished:
                     case JobExecutionStatus.Cancelled:
-                        if (report.Properties.TryGetValue(
-                            nameof(JobExecutionReport.CreatedDateTime),
-                            out var endDateTimeString)
-                            && DateTime.TryParse(endDateTimeString, out var endDateTime)
-                            )
-                        {
-                            jobExecutionInstance.ExecutionEndTimeUtc = endDateTime;
-                        }
-                        else
-                        {
-                            jobExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
-                        }
+                        jobExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
                         break;
                     default:
                         break;

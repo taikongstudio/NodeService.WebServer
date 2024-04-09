@@ -80,6 +80,15 @@ namespace NodeService.WebServer.Services
             }
         }
 
+        private string GetId(JobExecutionReport report)
+        {
+            if (report.Properties.TryGetValue("Id", out var id))
+            {
+                return id;
+            }
+            return report.Id;
+        }
+
         private async Task ProcessJobExecutionReportsAsync(
             ArrayPoolCollection<JobExecutionReportMessage> arrayPoolCollection,
             CancellationToken stoppingToken = default)

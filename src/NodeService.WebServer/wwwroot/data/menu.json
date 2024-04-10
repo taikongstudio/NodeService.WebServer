@@ -136,6 +136,11 @@
         "path": "/Notifications/Configure",
         "name": "通知配置",
         "key": "Notifications.Configure"
+      },
+      {
+        "path": "/Notifications/Sources",
+        "name": "通知源",
+        "key": "Notifications.Sources"
       }
     ]
   },

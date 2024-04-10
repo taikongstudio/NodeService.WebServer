@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Controllers
+﻿using NodeService.Infrastructure.Models;
+
+namespace NodeService.WebServer.Controllers
 {
     public partial class CommonConfigController
     {
@@ -44,6 +46,59 @@
                 rsp.Message = ex.ToString();
             }
 
+            return rsp;
+        }
+
+        [HttpGet("/api/commonconfig/notificationsource/nodehealthycheck")]
+        public async Task<ApiResponse<NodeHealthyCheckConfiguration>> QueryNodeHealthyCheckConfigurationAsync()
+        {
+            ApiResponse<NodeHealthyCheckConfiguration> rsp = new ApiResponse<NodeHealthyCheckConfiguration>();
+            try
+            {
+                NodeHealthyCheckConfiguration? result = null;
+                using var dbContext = _dbContextFactory.CreateDbContext();
+                var notificationSourceDictionary = await dbContext.PropertyBagDbSet.FindAsync(nameof(NotificationSources.NodeHealthyCheck));
+                if (notificationSourceDictionary == null)
+                {
+                    notificationSourceDictionary = new Dictionary<string, object>();
+                    result = new NodeHealthyCheckConfiguration();
+                    notificationSourceDictionary.Add("Id", NotificationSources.NodeHealthyCheck);
+                    notificationSourceDictionary.Add("Value", JsonSerializer.Serialize(result));
+                    notificationSourceDictionary["CreatedDate"] = DateTime.UtcNow;
+                    dbContext.PropertyBagDbSet.Add(notificationSourceDictionary);
+                    await dbContext.SaveChangesAsync();
+                }
+                else
+                {
+                    result = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(notificationSourceDictionary["Value"] as string);
+                }
+                rsp.Result = result;
+            }
+            catch (Exception ex)
+            {
+                rsp.ErrorCode = ex.HResult;
+                rsp.Message = ex.ToString();
+            }
+            return rsp;
+        }
+
+        [HttpPost("/api/commonconfig/notificationsource/nodehealthycheck/update")]
+        public async Task<ApiResponse> UpdateNodeHealthyCheckConfigurationAsync(NodeHealthyCheckConfiguration model)
+        {
+            ApiResponse rsp = new ApiResponse();
+            try
+            {
+                using var dbContext = _dbContextFactory.CreateDbContext();
+                var notificationSourceDictionary = await dbContext.PropertyBagDbSet.FindAsync(nameof(NotificationSources.NodeHealthyCheck));
+
+                notificationSourceDictionary["Value"] = JsonSerializer.Serialize(model);
+                await dbContext.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                rsp.ErrorCode = ex.HResult;
+                rsp.Message = ex.ToString();
+            }
             return rsp;
         }
 

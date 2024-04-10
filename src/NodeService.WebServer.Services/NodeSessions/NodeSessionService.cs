@@ -3,6 +3,7 @@ using Grpc.Core;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using NodeService.Infrastructure.Messages;
+using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Services.MessageHandlers;
 using System.Collections.Immutable;
@@ -12,14 +13,14 @@ using static NodeService.Infrastructure.Models.JobExecutionReport.Types;
 
 namespace NodeService.WebServer.Services.NodeSessions
 {
-    public abstract class NodeSessionMessage
+    public abstract record class NodeSessionMessage
     {
         public NodeSessionId NodeSessionId { get; init; }
 
         public INodeMessage Message { get; init; }
     }
 
-    public abstract class NodeSessionMessage<T> : NodeSessionMessage where T : INodeMessage
+    public abstract record class NodeSessionMessage<T> : NodeSessionMessage where T : INodeMessage
     {
         public T GetMessage()
         {
@@ -27,13 +28,13 @@ namespace NodeService.WebServer.Services.NodeSessions
         }
     }
 
-    public class NodeHeartBeatSessionMessage : NodeSessionMessage<HeartBeatResponse>
+    public record class NodeHeartBeatSessionMessage : NodeSessionMessage<HeartBeatResponse>
     {
 
 
     }
 
-    public class JobExecutionReportMessage : NodeSessionMessage<JobExecutionReport>
+    public record class JobExecutionReportMessage : NodeSessionMessage<JobExecutionReport>
     {
 
 
@@ -79,18 +80,20 @@ namespace NodeService.WebServer.Services.NodeSessions
         private readonly ConcurrentDictionary<NodeSessionId, NodeSession> _nodeSessionDict;
         private readonly ILogger<NodeSessionService> _logger;
         private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatBatchQueue;
-
+        private readonly NodeHealthyCounterDictionary _nodeHealthyCounterDictionary;
 
         public NodeSessionService(
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             ILogger<NodeSessionService> logger,
-            BatchQueue<NodeHeartBeatSessionMessage> hearBeatBatchQueue
+            BatchQueue<NodeHeartBeatSessionMessage> hearBeatBatchQueue,
+            NodeHealthyCounterDictionary nodeHealthyCounterDictionary
             )
         {
             _dbContextFactory = dbContextFactory;
             _nodeSessionDict = new ConcurrentDictionary<NodeSessionId, NodeSession>();
             _logger = logger;
             _hearBeatBatchQueue = hearBeatBatchQueue;
+            _nodeHealthyCounterDictionary = nodeHealthyCounterDictionary;
         }
 
         public IAsyncQueue<IMessage> GetInputQueue(NodeSessionId nodeSessionId)
@@ -174,6 +177,10 @@ namespace NodeService.WebServer.Services.NodeSessions
 
         public void UpdateNodeStatus(NodeSessionId nodeSessionId, NodeStatus nodeStatus)
         {
+            if (nodeStatus == NodeStatus.Offline)
+            {
+                _nodeHealthyCounterDictionary.Ensure(nodeSessionId).OfflineCount++;
+            }
             EnsureNodeSession(nodeSessionId).Status = nodeStatus;
         }
 
@@ -352,7 +359,7 @@ namespace NodeService.WebServer.Services.NodeSessions
             return _nodeSessionDict.Count;
         }
 
-        public Task InvalidateAllNodeStatusAsync()
+        public async ValueTask InvalidateAllNodeStatusAsync()
         {
             try
             {
@@ -361,7 +368,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                     if (GetNodeStatus(nodeSessionId) == NodeStatus.Offline)
                     {
                         ResetSession(nodeSessionId);
-                        _hearBeatBatchQueue.Post(new NodeHeartBeatSessionMessage()
+                        await _hearBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage()
                         {
                             NodeSessionId = nodeSessionId
                         });
@@ -372,7 +379,6 @@ namespace NodeService.WebServer.Services.NodeSessions
             {
                 _logger.LogError(ex.ToString());
             }
-            return Task.CompletedTask;
         }
 
         public void SetHttpContext(NodeSessionId nodeSessionId, HttpContext? httpContext)

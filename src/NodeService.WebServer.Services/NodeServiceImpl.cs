@@ -80,7 +80,7 @@ namespace NodeService.WebServer.Services
             }
             finally
             {
-                _nodeSessionService.UpdateNodeStatus(nodeSessionId, NodeStatus.Offline);
+
             }
 
         }

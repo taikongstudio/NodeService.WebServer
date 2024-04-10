@@ -100,7 +100,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                 var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);
                 _logger.LogInformation($"Send heart beat to {nodeSessionId}:{nodeName}");
                 await _nodeSessionService.PostHeartBeatRequestAsync(nodeSessionId);
-                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(50, (double)_options.HeartBeatPeriod / nodeCount)), stoppingToken);
+                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(50, ((double)_options.HeartBeatPeriod) / nodeCount)), stoppingToken);
             }
             _logger.LogInformation("End");
             ArrayPool<NodeSessionId>.Shared.Return(nodeSessionArray, true);

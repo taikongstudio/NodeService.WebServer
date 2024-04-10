@@ -161,9 +161,9 @@ namespace NodeService.WebServer.Controllers
 
 
         [HttpGet("/api/jobs/instances/{id}/log")]
-        public async Task<PaginationResponse<LogMessageEntry>> QueryJobLogAsync(string id, QueryParametersModel queryParameters)
+        public async Task<PaginationResponse<LogEntry>> QueryJobLogAsync(string id, QueryParametersModel queryParameters)
         {
-            PaginationResponse<LogMessageEntry> apiResponse = new PaginationResponse<LogMessageEntry>();
+            PaginationResponse<LogEntry> apiResponse = new PaginationResponse<LogEntry>();
             try
             {
                 using var dbContext = _dbContextFactory.CreateDbContext();
@@ -176,7 +176,7 @@ namespace NodeService.WebServer.Controllers
                 else
                 {
                     apiResponse.TotalCount = _database.GetEntriesCount(id);
-                    apiResponse.Result = _database.ReadEntries<LogMessageEntry>(
+                    apiResponse.Result = _database.ReadEntries<LogEntry>(
                         id,
                         queryParameters.PageIndex,
                         queryParameters.PageSize)

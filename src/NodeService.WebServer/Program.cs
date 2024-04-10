@@ -219,6 +219,7 @@ public class Program
         builder.Services.AddHostedService<HeartBeatRequestProducerService>();
         builder.Services.AddHostedService<LogPersistenceService>();
         builder.Services.AddHostedService<NotificationService>();
+        builder.Services.AddHostedService<NodeHealthyCheckService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -360,11 +361,12 @@ public class Program
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>>(new AsyncQueue<NotificationMessage>());
         builder.Services.AddSingleton<BatchQueue<JobExecutionReportMessage>>(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton<BatchQueue<NodeHeartBeatSessionMessage>>(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
-        builder.Services.AddSingleton<BatchQueue<LogPersistenceGroup>>(new BatchQueue<LogPersistenceGroup>(1024 * 2, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton<BatchQueue<IEnumerable<LogPersistenceGroup>>>(new BatchQueue<IEnumerable<LogPersistenceGroup>>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
         builder.Services.AddSingleton<JobExecutionInstanceInitializer>();
         builder.Services.AddSingleton<RocksDatabase>();
         builder.Services.AddSingleton<JobScheduler>();
+        builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

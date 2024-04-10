@@ -146,6 +146,16 @@ namespace NodeService.WebServer.Data
             return comparer;
         }
 
+        private static ValueComparer<T> GetTypedComparer<T>() where T : IEquatable<T>
+        {
+            var comparer = new ValueComparer<T>(
+                 (r, l) => r.Equals(l),
+                 x => x.GetHashCode(),
+                 x => x
+                 );
+            return comparer;
+        }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (Debugger.IsAttached)
@@ -167,13 +177,12 @@ namespace NodeService.WebServer.Data
             base.OnModelCreating(modelBuilder);
 
 
-            modelBuilder.SharedTypeEntity<Dictionary<string, object>>("PropertyBag", c =>
+            modelBuilder.SharedTypeEntity<Dictionary<string, object>>("PropertyBag", builder =>
             {
-                c.IndexerProperty(typeof(string), "Id");
-                c.IndexerProperty(typeof(string), "Key").IsRequired();
-                c.IndexerProperty(typeof(DateTime), "CreatedDate");
-                c.IndexerProperty(typeof(string), "Value");
-
+                builder.IndexerProperty<string>("Id").IsRequired();
+                builder.IndexerProperty<DateTime>("CreatedDate");
+                builder.IndexerProperty<DateTime>("ModifiedDate");
+                builder.IndexerProperty<string>("Value");
             });
             switch (this.ProviderType)
             {

@@ -7,7 +7,7 @@
        SelectedRows="@SelectedItems" 
        SelectedRowsChanged="@SelectedItemsChanged"
        RowKey="x=>x.Id">
-    <Selection Disabled="@(IsEditable==false)" Key="@mappingEntry.Id" Type="checkbox" />
+    <Selection  Key="@mappingEntry.Id" Type="checkbox" />
     <PropertyColumn Hidden="@this.IsNameHidden" Title="@this.NameTitle" Property="c=>c.Name" Sortable>
         @if (mappingEntry.IsEditing && this.IsNameEditable)
         {

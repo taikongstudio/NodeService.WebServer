@@ -7,9 +7,16 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Models
 {
-    public class LogPersistenceGroup
+    public struct LogPersistenceGroup
     {
-        public string Id { get; set; }
-        public List<LogMessageEntry> LogMessageEntries { get; set; } = [];
+        public LogPersistenceGroup(string id)
+        {
+            this.Id = id;
+        }
+
+        public string Id { get; private set; }
+        public List<IEnumerable<LogEntry>> EntriesList { get; private set; } = [];
+
+        public int TotalEntiresCount { get; set; }
     }
 }

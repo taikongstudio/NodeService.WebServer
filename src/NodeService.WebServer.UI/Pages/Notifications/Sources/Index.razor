@@ -1,0 +1,38 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Notifications.Sources
+@page "/Notifications/Sources"
+@using NodeService.WebServer.UI.Pages.Notifications.Components
+
+
+
+<Tabs @bind-ActiveKey="@activeKey" OnChange="OnTabChange" Animated>
+    <TabPane Tab="节点健康检查" Key="1">
+        <NodeHealthyCheck/>
+    </TabPane>
+    <TabPane Tab="Tab 2" Key="2">
+        Content of Tab Pane 2
+    </TabPane>
+    <TabPane Tab="Tab 3" Key="3">
+        Content of Tab Pane 3
+    </TabPane>
+</Tabs>
+@code {
+
+
+
+    string activeKey { get; set; }
+    async void OnTabChange(string key)
+    {
+        Console.WriteLine($"tab change:{key}");
+        switch (key)
+        {
+            case "1":
+
+                break;
+            default:
+                break;
+        }
+    }
+
+
+
+}

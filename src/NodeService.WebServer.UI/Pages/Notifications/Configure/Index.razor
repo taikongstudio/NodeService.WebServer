@@ -21,6 +21,9 @@
             <FormItem Label="配置名称">
                 <Input @bind-Value="@context.Name"  />
              </FormItem>
+            <FormItem Label="启动">
+                <Switch @bind-Value="@context.IsEnabled" />
+            </FormItem>
             <FormItem Label="配置类型">
                 <Select DataSource="@_types"
                         Value="@_editModel.ConfigurationType"

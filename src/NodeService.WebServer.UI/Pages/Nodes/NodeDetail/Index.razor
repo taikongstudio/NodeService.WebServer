@@ -15,7 +15,7 @@
         <GridCol Span="24">
             <PageHeader 
                 Class="site-page-header"
-                        Title="@NodeInfo.Name"
+                    Title="@($"{NodeInfo.Name} {_nodePropertySnapshot.CreationDateTime}")"
                         OnBack="@(()=> { NavigationManager.NavigateTo("/nodes");})" />
             <Tabs DefaultActiveKey="1">
                 <TabPane Key="1">
@@ -23,7 +23,7 @@
                         <span><Icon Type="file" />基本信息</span>
                     </TabTemplate>
                     <ChildContent>
-                        <BasicInformation NodeProperties="@_nodeProperies" />
+                    <BasicInformation NodeProperties="@_nodeProperties" />
                     </ChildContent>
                 </TabPane>
                 <TabPane Key="2">
@@ -31,7 +31,7 @@
                         <span><Icon Type="file" />环境变量</span>
                     </TabTemplate>
                     <ChildContent>
-                        <EnvironmentVariableList EnvironmentVariables="@_nodeProperies.EnvironmentVariables" />
+                    <EnvironmentVariableList EnvironmentVariables="@_nodeProperties.EnvironmentVariables" />
                     </ChildContent>
                 </TabPane>
                 <TabPane Key="3">
@@ -39,7 +39,7 @@
                         <span><Icon Type="file" />网络接口</span>
                     </TabTemplate>
                     <ChildContent>
-                        <NetworkInterfaceList NetworkInterfaces="@_nodeProperies.NetworkInterfaces" />
+                    <NetworkInterfaceList NetworkInterfaces="@_nodeProperties.NetworkInterfaces" />
                     </ChildContent>
                     </TabPane>
                 <TabPane  Key="4">
@@ -47,7 +47,7 @@
                         <span><Icon Type="file" />进程列表</span>
                     </TabTemplate>
                     <ChildContent>
-                        <ProcessList Processes="@_nodeProperies.Processes" />
+                    <ProcessList Processes="@_nodeProperties.Processes" />
                     </ChildContent>
         
                 </TabPane>
@@ -75,19 +75,20 @@
         </GridCol>
 </GridContent>
 
-    @code{
+@code{
     [Parameter]
     public string? NodeId { get; set; }
 
-    private NodePropertyModel _nodeProperies = new NodePropertyModel();
+    private NodePropertyModel _nodeProperties;
+    private NodePropertySnapshotModel _nodePropertySnapshot = new NodePropertySnapshotModel();
     private NodeInfoModel NodeInfo = new NodeInfoModel();
 
 
     protected override async Task OnInitializedAsync()
     {
-        await this.QueryNodeInfoAsync();
-        await this.QueryNodePropsAsync();
-        await base.OnParametersSetAsync();
+        _nodeProperties = NodePropertyModel.FromNodePropertyItems(null);
+        await this.QueryNodeInfoAsync().ConfigureAwait(false);
+        await this.QueryNodePropsAsync().ConfigureAwait(false);
         await base.OnInitializedAsync();
     }
 
@@ -102,7 +103,8 @@
             }
             else
             {
-                this._nodeProperies = NodePropertyModel.FromNodePropertyItems(null);
+                this._nodePropertySnapshot = new NodePropertySnapshotModel();
+                this._nodeProperties = NodePropertyModel.FromNodePropertyItems(null);
                 await this._notice.Open(new NotificationConfig()
                     {
                         Message = "加载失败",
@@ -127,11 +129,13 @@
             var apiResponse = await this.ApiService.QueryNodePropsAsync(this.NodeId);
             if (apiResponse.ErrorCode == 0)
             {
-                this._nodeProperies = NodePropertyModel.FromNodePropertyItems(apiResponse.Result);
+                this._nodePropertySnapshot = apiResponse.Result;
+                this._nodeProperties = NodePropertyModel.FromNodePropertyItems(this._nodePropertySnapshot.NodeProperties);
             }
             else
             {
-                this._nodeProperies = NodePropertyModel.FromNodePropertyItems(null);
+                this._nodePropertySnapshot = new NodePropertySnapshotModel();
+                this._nodeProperties = NodePropertyModel.FromNodePropertyItems(null);
                 await this._notice.Open(new NotificationConfig()
                     {
                         Message = "加载失败",

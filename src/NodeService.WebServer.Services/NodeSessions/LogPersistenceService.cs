@@ -12,48 +12,45 @@ namespace NodeService.WebServer.Services.NodeSessions
 {
     public class LogPersistenceService : BackgroundService
     {
-        private readonly BatchQueue<LogPersistenceGroup> _logPersistenceBatchQueue;
+        private readonly BatchQueue<IEnumerable<LogPersistenceGroup>> _logPersistenceGroupsBatchQueue;
         private readonly RocksDatabase _rocksDatabase;
         private readonly ILogger<LogPersistenceService> _logger;
 
         public LogPersistenceService(
             ILogger<LogPersistenceService> logger,
-            BatchQueue<LogPersistenceGroup> logPersistenceBatchQueue,
+            BatchQueue<IEnumerable<LogPersistenceGroup>> logPersistenceGroupsBatchQueue,
             RocksDatabase rocksDatabase
             )
         {
-            _logPersistenceBatchQueue = logPersistenceBatchQueue;
+            _logPersistenceGroupsBatchQueue = logPersistenceGroupsBatchQueue;
             _rocksDatabase = rocksDatabase;
             _logger = logger;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await foreach (var arrayPoolCollection in _logPersistenceBatchQueue.ReceiveAllAsync(stoppingToken))
+            await foreach (var arrayPoolCollection in _logPersistenceGroupsBatchQueue.ReceiveAllAsync(stoppingToken))
             {
-                int count = 0;
+                int count = arrayPoolCollection.CountNotNull();
+                if (count == 0)
+                {
+                    continue;
+                }
                 Stopwatch stopwatch = new Stopwatch();
+                int groupsCount = 0;
+                int logEntiresCount = 0;
                 try
                 {
-                    count = arrayPoolCollection.CountNotNull();
-                    if (count == 0)
+                    stopwatch.Start();
+                    foreach (var logMessageGroups in arrayPoolCollection.Where(static x => x != null))
                     {
-                        continue;
+                        foreach (var logPersistenceGroup in logMessageGroups.GroupBy(static x => x.Id))
+                        {
+                            logEntiresCount += WriteLogEntries(logPersistenceGroup.Key, logPersistenceGroup.SelectMany(static x => x.EntriesList.SelectMany(static x => x)));
+                            groupsCount++;
+                        }
                     }
-
-                    foreach (var logMessageGroups in arrayPoolCollection.Where(static x => x != null).GroupBy(static x => x.Id))
-                    {
-                        var id = logMessageGroups.Key;
-                        stopwatch.Start();
-                        int entriesCount = _rocksDatabase.GetEntriesCount(id);
-                        int writenCount = _rocksDatabase.WriteEntries(
-                            id,
-                            logMessageGroups.SelectMany(static x => x.LogMessageEntries),
-                            FilterLogMessageEntry);
-                        stopwatch.Stop();
-                        _logger.LogInformation($"{id}:Write {writenCount - entriesCount} log message entries,spent:{stopwatch.Elapsed}");
-                        stopwatch.Reset();
-                    }
+                    stopwatch.Stop();
                 }
                 catch (Exception ex)
                 {
@@ -62,12 +59,30 @@ namespace NodeService.WebServer.Services.NodeSessions
                 finally
                 {
                     arrayPoolCollection.Dispose();
+                    _logger.LogInformation($"Write {groupsCount} groups,{logEntiresCount} logEntires,spent:{stopwatch.Elapsed},avg:{stopwatch.Elapsed.TotalMilliseconds / logEntiresCount}ms");
                 }
 
             }
         }
 
-        static private bool FilterLogMessageEntry(int index, LogMessageEntry entry)
+        private int WriteLogEntries(string id, IEnumerable<LogEntry> logEntries)
+        {
+            Stopwatch stopwatch = new Stopwatch();
+            int count = 0;
+            stopwatch.Start();
+            int totalCountOld = _rocksDatabase.GetEntriesCount(id);
+            int totalCountNew = _rocksDatabase.WriteEntries(
+                id,
+                logEntries,
+                FilterLogMessageEntry);
+            stopwatch.Stop();
+            count = totalCountNew - totalCountOld;
+            _logger.LogInformation($"{id}:Write {count} log message entries,spent:{stopwatch.Elapsed}");
+            stopwatch.Reset();
+            return count;
+        }
+
+        static private bool FilterLogMessageEntry(int index, LogEntry entry)
         {
             entry.Index = index;
             return true;

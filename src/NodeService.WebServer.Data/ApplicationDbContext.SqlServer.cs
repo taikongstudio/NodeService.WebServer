@@ -300,6 +300,28 @@ namespace NodeService.WebServer.Data
                         ownedNavigationBuilder.ToJson();
                     });
             });
+
+            modelBuilder.Entity<NotificationConfigModel>(builder =>
+            {
+                builder.OwnsOne(
+                    model => model.Value, ownedNavigationBuilder =>
+                    {
+                        ownedNavigationBuilder.OwnsOne(x => x.Email, builder =>
+                        {
+                            builder.Property(x => x.CC)
+                                .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
+                                .Metadata
+                                .SetValueComparer(GetEnumerableComparer<StringEntry>());
+                            builder.Property(x => x.To)
+                                .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
+                                .Metadata
+                                .SetValueComparer(GetEnumerableComparer<StringEntry>());
+                        });
+                        ownedNavigationBuilder.OwnsOne(x => x.Lark);
+                        ownedNavigationBuilder.ToJson();
+
+                    });
+            });
         }
     }
 }

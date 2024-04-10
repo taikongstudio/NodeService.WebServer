@@ -131,7 +131,7 @@
 
             foreach (var item in apiResponse.Result)
             {
-                sb.AppendLine($"{item.DateTime.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
+                sb.AppendLine($"{item.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
             }
 
             var log = sb.ToString();

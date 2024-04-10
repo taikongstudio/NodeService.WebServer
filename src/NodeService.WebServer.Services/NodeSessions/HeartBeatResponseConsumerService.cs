@@ -181,12 +181,14 @@ namespace NodeService.WebServer.Services.NodeSessions
                 var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
                 var nodeStatus = _nodeSessionService.GetNodeStatus(hearBeatMessage.NodeSessionId);
                 nodeInfo.Status = nodeStatus;
+                var propsDict = await _memoryCache.GetOrCreateAsync<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id, TimeSpan.FromHours(1));
 
                 if (hearBeatResponse != null)
                 {
                     nodeInfo.Profile.UpdateTime =
               DateTime.ParseExact(hearBeatResponse.Properties[NodePropertyModel.LastUpdateDateTime_Key],
               NodePropertyModel.DateTimeFormatString, DateTimeFormatInfo.InvariantInfo);
+                    nodeInfo.Profile.ServerUpdateTimeUtc = DateTime.UtcNow;
                     nodeInfo.Profile.Name = nodeInfo.Name;
                     nodeInfo.Profile.NodeInfoId = nodeInfo.Id;
                     nodeInfo.Profile.ClientVersion = hearBeatResponse.Properties[NodePropertyModel.ClientVersion_Key];
@@ -195,7 +197,6 @@ namespace NodeService.WebServer.Services.NodeSessions
                     nodeInfo.Profile.LoginName = hearBeatResponse.Properties[NodePropertyModel.Environment_UserName_Key];
                     nodeInfo.Profile.FactoryName = hearBeatResponse.Properties[NodePropertyModel.FactoryName_key];
 
-                    var propsDict = await _memoryCache.GetOrCreateAsync<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id, TimeSpan.FromHours(1));
 
                     foreach (var item in hearBeatResponse.Properties)
                     {
@@ -217,17 +218,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                     {
                         return;
                     }
-                    var nodePropertySnapshotModel =
-                        new NodePropertySnapshotModel()
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            Name = "Default",
-                            CreationDateTime = nodeInfo.Profile.UpdateTime,
-                            NodeProperties = [],
-                            NodeInfoId = nodeInfo.Id
-                        };
-                    dbContext.Add(nodePropertySnapshotModel);
-                    nodeInfo.LastNodePropertySnapshotId = nodePropertySnapshotModel.Id;
+
                     if (propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key, out var processString))
                     {
                         if (string.IsNullOrEmpty(processString) || processString.IndexOf('[') < 0)
@@ -255,6 +246,27 @@ namespace NodeService.WebServer.Services.NodeSessions
                 }
 
 
+                if (nodeInfo.Status == NodeStatus.Offline)
+                {
+                    var nodePropertySnapshotModel =
+                    new NodePropertySnapshotModel()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = $"{nodeInfo.Name} Snapshot",
+                        CreationDateTime = nodeInfo.Profile.UpdateTime,
+                        NodeProperties = propsDict.Select(NodePropertyEntry.From).ToList(),
+                        NodeInfoId = nodeInfo.Id
+                    };
+                    await dbContext.NodePropertySnapshotsDbSet.AddAsync(nodePropertySnapshotModel);
+                    var oldId = nodeInfo.LastNodePropertySnapshotId;
+                    nodeInfo.LastNodePropertySnapshotId = nodePropertySnapshotModel.Id;
+                    var oldPropertySnapshot = await dbContext.NodePropertySnapshotsDbSet.FindAsync(oldId);
+                    if (oldPropertySnapshot != null)
+                    {
+                        dbContext.NodePropertySnapshotsDbSet.Remove(oldPropertySnapshot);
+                    }
+                }
+
             }
             catch (Exception ex)
             {
@@ -267,6 +279,8 @@ namespace NodeService.WebServer.Services.NodeSessions
 
 
         }
+
+       
 
     }
 }

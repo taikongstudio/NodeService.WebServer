@@ -7,14 +7,14 @@ namespace NodeService.WebServer.Controllers
     public partial class NodesController
     {
 
-        [HttpGet("/api/nodes/{id}/props/list")]
-        public async Task<ApiResponse<IEnumerable<NodePropertyEntry>>> QueryNodePropsAsync(string id)
+        [HttpGet("/api/nodes/{id}/props")]
+        public async Task<ApiResponse<NodePropertySnapshotModel>> QueryNodePropsAsync(string id)
         {
-            ApiResponse<IEnumerable<NodePropertyEntry>> apiResponse = new ApiResponse<IEnumerable<NodePropertyEntry>>();
+            ApiResponse<NodePropertySnapshotModel> apiResponse = new ApiResponse<NodePropertySnapshotModel>();
             try
             {
                 using var dbContext = _dbContextFactory.CreateDbContext();
-                var nodeInfo = await dbContext.NodeInfoDbSet.FindAsync(id);
+                var nodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Id == id);
                 if (nodeInfo == null)
                 {
                     apiResponse.ErrorCode = -1;
@@ -22,19 +22,22 @@ namespace NodeService.WebServer.Controllers
                 }
                 else
                 {
-                    var currentNodePropSnapshot = await dbContext.NodePropertySnapshotsDbSet.FindAsync(nodeInfo.LastNodePropertySnapshotId);
-                    if (currentNodePropSnapshot != null)
+                    NodePropertySnapshotModel model = new NodePropertySnapshotModel();
+                    var nodePropsCacheId = "NodeProps:" + nodeInfo.Id;
+                    if (_memoryCache.TryGetValue<ConcurrentDictionary<string, string>>(nodePropsCacheId, out var propsDict))
                     {
-                        var nodePropsCacheId = "NodeProps:" + nodeInfo.Id;
-                        if (_memoryCache.TryGetValue<ConcurrentDictionary<string, string>>(nodePropsCacheId, out var propsDict))
+                        if (propsDict != null)
                         {
-                            if (propsDict != null)
-                            {
-                                currentNodePropSnapshot.NodeProperties = propsDict.Select(x => new NodePropertyEntry(x.Key, x.Value)).ToList();
-                            }
+                            model.CreationDateTime = DateTime.UtcNow;
+                            model.NodeProperties = propsDict.Select(NodePropertyEntry.From).ToList();
                         }
                     }
-                    apiResponse.Result = currentNodePropSnapshot?.NodeProperties;
+                    if (model.NodeProperties == null)
+                    {
+                        model = await dbContext.NodePropertySnapshotsDbSet.FindAsync(nodeInfo.LastNodePropertySnapshotId);
+                    }
+
+                    apiResponse.Result = model;
                 }
             }
             catch (Exception ex)

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace NodeService.WebServer.Extensions
+﻿namespace NodeService.WebServer.Extensions
 {
     public static class DateTimeExtension
     {

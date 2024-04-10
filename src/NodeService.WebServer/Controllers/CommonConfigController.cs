@@ -1,6 +1,4 @@
-﻿using NodeService.Infrastructure.Models;
-
-namespace NodeService.WebServer.Controllers
+﻿namespace NodeService.WebServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]/[action]")]
@@ -53,13 +51,13 @@ namespace NodeService.WebServer.Controllers
                 if (queryParameters.PageSize == -1 && queryParameters.PageIndex == -1)
                 {
                     apiResponse.Result = await
-                        queryable.OrderByDescending(x => x.ModifyDateTime)
+                        queryable.OrderByDescending(x => x.ModifiedDateTime)
                         .ToListAsync();
                 }
                 else
                 {
                     apiResponse.Result = await
-                        queryable.OrderByDescending(x => x.ModifyDateTime)
+                        queryable.OrderByDescending(x => x.ModifiedDateTime)
                         .Skip(queryParameters.PageSize * queryParameters.PageIndex)
                         .Take(queryParameters.PageSize)
                         .ToListAsync();

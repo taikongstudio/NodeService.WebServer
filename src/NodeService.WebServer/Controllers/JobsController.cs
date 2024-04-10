@@ -1,15 +1,5 @@
-﻿
-
-
-using Microsoft.AspNetCore.Mvc;
-using NodeService.WebServer.Controllers;
-using NodeService.WebServer.Data;
-using NodeService.WebServer.Extensions;
-using NodeService.Infrastructure.Interfaces;
-using NodeService.Infrastructure.Logging;
-using NodeService.Infrastructure.Models;
+﻿using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Services.Tasks;
-using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace NodeService.WebServer.Controllers
 {
@@ -27,7 +17,7 @@ namespace NodeService.WebServer.Controllers
 
         public JobsController(
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
-            INodeSessionService  nodeSessionService,
+            INodeSessionService nodeSessionService,
             ILogger<NodesController> logger,
             IVirtualFileSystem virtualFileSystem,
             IMemoryCache memoryCache,

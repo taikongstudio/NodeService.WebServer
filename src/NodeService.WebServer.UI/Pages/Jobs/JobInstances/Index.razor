@@ -245,14 +245,14 @@
     {
         await base.OnInitializedAsync();
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Unknown, Name = "全部" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel() { Value = JobExecutionStatus.Triggered, Name = "已触发" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel() { Value = JobExecutionStatus.Pendding, Name = "等待中" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel() { Value = JobExecutionStatus.Started, Name = "已启动" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel() { Value = JobExecutionStatus.Running, Name = "运行中" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel() { Value = JobExecutionStatus.Failed, Name = "失败" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel() { Value = JobExecutionStatus.Finished, Name = "完成" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel() { Value = JobExecutionStatus.Cancelled, Name = "已取消" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel() { Value = JobExecutionStatus.PenddingTimeout, Name = "等待超时" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Triggered, Name = "已触发" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Pendding, Name = "等待中" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Started, Name = "已启动" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Running, Name = "运行中" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Failed, Name = "失败" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Finished, Name = "完成" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Cancelled, Name = "已取消" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.PenddingTimeout, Name = "等待超时" });
         this.BeginDateTime = DateTime.Today.Date;
         this.EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
         this.DateTimes[0] = this.BeginDateTime;

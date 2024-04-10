@@ -1,15 +1,5 @@
-﻿using Google.Protobuf;
-using Grpc.Core;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using NodeService.Infrastructure.Messages;
-using NodeService.Infrastructure.Models;
+﻿using Microsoft.AspNetCore.Http;
 using NodeService.WebServer.Data;
-using NodeService.WebServer.Services.MessageHandlers;
-using System.Collections.Immutable;
-using System.Net;
-using System.Security.Cryptography.Xml;
-using static NodeService.Infrastructure.Models.JobExecutionReport.Types;
 
 namespace NodeService.WebServer.Services.NodeSessions
 {
@@ -71,7 +61,7 @@ namespace NodeService.WebServer.Services.NodeSessions
 
             public void Reset()
             {
- 
+
             }
         }
 

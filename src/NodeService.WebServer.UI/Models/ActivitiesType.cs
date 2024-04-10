@@ -1,5 +1,3 @@
-using System;
-
 namespace NodeService.WebServer.UI.Models
 {
     public class ActivitiesType

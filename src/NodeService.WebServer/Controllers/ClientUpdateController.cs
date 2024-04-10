@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace NodeService.WebServer.Controllers
+﻿namespace NodeService.WebServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]/[action]")]

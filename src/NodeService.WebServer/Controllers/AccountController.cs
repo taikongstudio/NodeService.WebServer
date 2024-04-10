@@ -1,11 +1,7 @@
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.Entities;
-using NodeService.Infrastructure.Interfaces;
 using NodeService.Infrastructure.Permissions;
 
 namespace NodeService.WebServer.Controllers;
@@ -21,9 +17,9 @@ public class AccountController : ControllerBase
     private readonly IMemoryCache _memoryCache;
     private readonly int _refreshTokenExpiration;
 
-    public AccountController(IAccessControlService accessControl, 
-        IOptions<JwtSettings> jwtSettings, 
-        IMemoryCache memoryChache, 
+    public AccountController(IAccessControlService accessControl,
+        IOptions<JwtSettings> jwtSettings,
+        IMemoryCache memoryChache,
         ILogger<AccountController> logger,
         //IOptions<LdapSetting> ldapSettings,
         UserManager<ApplicationUser> userManager)

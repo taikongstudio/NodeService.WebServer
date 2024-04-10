@@ -4,7 +4,7 @@
     {
         [HttpPost("/api/clientupdate/counters/addorupdate")]
         public async Task<ApiResponse<bool>>
-            AddOrUpdateCountersAsync([FromBody]AddOrUpdateCounterParameters model)
+            AddOrUpdateCountersAsync([FromBody] AddOrUpdateCounterParameters model)
         {
             ApiResponse<bool> apiResponse = new ApiResponse<bool>();
             try

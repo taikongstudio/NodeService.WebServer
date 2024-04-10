@@ -1,6 +1,4 @@
-﻿using FluentFTP;
-
-namespace NodeService.WebServer.Services.VirtualSystem
+﻿namespace NodeService.WebServer.Services.VirtualSystem
 {
     public class VirtualFileSystemInfo
     {

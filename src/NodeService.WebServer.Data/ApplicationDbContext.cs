@@ -1,15 +1,7 @@
 ﻿// add a reference to System.ComponentModel.DataAnnotations DLL
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
-using NativeImport;
-using NodeService.Infrastructure.Entities;
 
 
 namespace NodeService.WebServer.Data
@@ -109,7 +101,6 @@ namespace NodeService.WebServer.Data
 
         public DbSet<JobFireConfigurationModel> JobFireConfigurationsDbSet { get; set; }
 
-        //public DbSet<NodeInfoConfigurationBindingModel> NodeInfoJobScheduleBindingsDbSet { get; set; }
 
         public DbSet<FileRecordModel> FileRecordsDbSet { get; set; }
 
@@ -182,8 +173,8 @@ namespace NodeService.WebServer.Data
             modelBuilder.SharedTypeEntity<Dictionary<string, object>>("PropertyBag", builder =>
             {
                 builder.IndexerProperty<string>("Id").IsRequired();
-                builder.IndexerProperty<DateTime>("CreatedDate");
-                builder.IndexerProperty<DateTime>("ModifiedDate");
+                builder.IndexerProperty<DateTime>("CreatedDateTime");
+                builder.IndexerProperty<DateTime>("ModifiedDateTime");
                 builder.IndexerProperty<string>("Value");
             });
             switch (this.ProviderType)

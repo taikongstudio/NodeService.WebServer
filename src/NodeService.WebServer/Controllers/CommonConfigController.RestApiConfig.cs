@@ -7,7 +7,7 @@ namespace NodeService.WebServer.Controllers
 
 
         [HttpPost("/api/commonconfig/restapi/addorupdate")]
-        public  Task<ApiResponse> AddOrUpdateAsync([FromBody] RestApiConfigModel model)
+        public Task<ApiResponse> AddOrUpdateAsync([FromBody] RestApiConfigModel model)
         {
             return AddOrUpdateConfigurationAsync(model);
         }
@@ -19,7 +19,7 @@ namespace NodeService.WebServer.Controllers
         }
 
         [HttpGet("/api/commonconfig/restapi/{id}")]
-        public  Task<ApiResponse<RestApiConfigModel>> QueryRestApiConfigAsync(string id)
+        public Task<ApiResponse<RestApiConfigModel>> QueryRestApiConfigAsync(string id)
         {
             return QueryConfigurationAsync<RestApiConfigModel>(id);
         }

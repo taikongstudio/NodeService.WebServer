@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore.Design;
-using Microsoft.EntityFrameworkCore;
 
 namespace NodeService.WebServer.Data
 {

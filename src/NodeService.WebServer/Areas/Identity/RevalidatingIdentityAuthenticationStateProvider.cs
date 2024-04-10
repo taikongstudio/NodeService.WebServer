@@ -1,8 +1,6 @@
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
 namespace NodeService.WebServer.Areas.Identity

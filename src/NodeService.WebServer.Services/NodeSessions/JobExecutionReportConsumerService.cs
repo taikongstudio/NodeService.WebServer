@@ -1,19 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Logging;
-using NodeService.Infrastructure.Messages;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Tasks;
-using NodeService.WebServer.Services.VirtualSystem;
-using Quartz;
-using Quartz.Util;
-using System.Composition;
-using System.Globalization;
-using System.Linq;
-using static NodeService.Infrastructure.Models.JobExecutionReport.Types;
 
 namespace NodeService.WebServer.Services.NodeSessions
 {

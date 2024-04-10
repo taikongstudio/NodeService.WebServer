@@ -1,11 +1,6 @@
-﻿using NodeService.Infrastructure.Models;
-
-using Microsoft.AspNetCore.Mvc;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
-namespace NodeService.WebServer.Controllers
+﻿namespace NodeService.WebServer.Controllers
 {
-    public partial class NodesController 
+    public partial class NodesController
     {
 
         [HttpPost("/api/nodes/{id}/profile/update")]

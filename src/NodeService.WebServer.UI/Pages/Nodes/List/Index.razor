@@ -289,7 +289,6 @@
             if (apiResponse.ErrorCode == 0)
             {
                 this._nodesDataSource = apiResponse.Result ?? [];
-                await this.InvokeAsync(this._table.ReloadData);
             }
             else
             {
@@ -312,6 +311,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         this._loading = true;
         await this.QueryNodeListAsync();
         this._loading = false;

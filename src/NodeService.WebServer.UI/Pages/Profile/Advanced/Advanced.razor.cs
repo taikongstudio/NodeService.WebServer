@@ -2,8 +2,6 @@
 using Microsoft.AspNetCore.Components;
 using NodeService.WebServer.UI.Models;
 using NodeService.WebServer.UI.Services;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.UI.Pages.Profile
 {

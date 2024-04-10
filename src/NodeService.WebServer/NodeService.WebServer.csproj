@@ -12,8 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-	<PackageReference Include="BlazorMonaco" Version="3.2.0" />
-	<PackageReference Include="CronExpressionDescriptor" Version="2.33.0" />
 	<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
 	<PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.3" />
 	<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.3" />
@@ -26,31 +24,20 @@
 	<PackageReference Include="AntDesign.ProLayout" Version="0.18.2" />
 
 	<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
-	<PackageReference Include="Quartz" Version="3.8.1" />
 	<PackageReference Include="CommandLineParser" Version="2.9.1" />
 
     <PackageReference Include="Grpc.Net.Client.Web" Version="2.61.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="8.0.3" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.3">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
 
-	<PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.2" />
-	<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.3" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.3" />
-    <PackageReference Include="RocksDB" Version="8.11.3.46984" />
+
     <PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
 	<PackageReference Include="Grpc.AspNetCore.Server" Version="2.61.0" />
 	<PackageReference Include="Grpc.AspNetCore" Version="2.61.0" />
 	<PackageReference Include="Grpc.AspNetCore.Web" Version="2.61.0" />
 	  
-	<PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.3" />
 	<PackageReference Include="NSwag.AspNetCore" Version="14.0.3" />
 	<PackageReference Include="NLog" Version="5.2.8" />
 	<PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
 	<PackageReference Include="NLog.Web.AspNetCore" Version="5.3.8" />
-	<PackageReference Include="FluentFTP" Version="49.0.2" />
   </ItemGroup>
 
   <ItemGroup>

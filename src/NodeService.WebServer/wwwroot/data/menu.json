@@ -24,7 +24,7 @@
         "key": "CommonConfig.JobScheduleConfigs"
       },
       {
-        "path": "/jobs/instances",
+        "path": "/Jobs/Instances",
         "name": "作业执行实例",
         "key": "Jobs.Instances"
       }

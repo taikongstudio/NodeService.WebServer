@@ -2,12 +2,7 @@
 using NodeService.Infrastructure;
 using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServerTools.Services
 {
@@ -36,7 +31,7 @@ namespace NodeService.WebServerTools.Services
                     var obj = JsonSerializer.Deserialize(File.ReadAllText(jsonFile), type);
                     if (type == typeof(FtpConfigModel))
                     {
-                       // await dbContext.FtpConfigurationDbSet.AddAsync(obj as FtpConfigModel);
+                        // await dbContext.FtpConfigurationDbSet.AddAsync(obj as FtpConfigModel);
                     }
                     else if (type == typeof(FtpUploadConfigModel))
                     {

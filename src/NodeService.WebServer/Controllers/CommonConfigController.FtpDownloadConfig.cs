@@ -22,7 +22,7 @@ namespace NodeService.WebServer.Controllers
         {
             return QueryConfigurationAsync<FtpDownloadConfigModel>(id, FindFtpConfigAsync);
 
-            async Task FindFtpConfigAsync(FtpDownloadConfigModel?  ftpDownloadConfig)
+            async Task FindFtpConfigAsync(FtpDownloadConfigModel? ftpDownloadConfig)
             {
                 if (ftpDownloadConfig != null)
                 {

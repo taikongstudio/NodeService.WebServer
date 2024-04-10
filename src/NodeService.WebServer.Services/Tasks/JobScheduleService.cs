@@ -1,10 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using NLog.Config;
-using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data;
-using System;
 
 namespace NodeService.WebServer.Services.Tasks
 {

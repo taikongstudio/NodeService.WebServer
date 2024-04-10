@@ -1,11 +1,10 @@
-using System.Security.Claims;
-using System.Security.Cryptography;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using NodeService.Infrastructure.Entities;
 using NodeService.Infrastructure.Interfaces;
+using System.Security.Claims;
+using System.Security.Cryptography;
 
 namespace NodeService.WebServer.Services.Auth;
 

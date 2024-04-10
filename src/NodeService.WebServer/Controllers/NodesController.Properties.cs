@@ -1,8 +1,4 @@
-﻿using NodeService.Infrastructure.Models;
-using NodeService.WebServer.Extensions;
-using Microsoft.AspNetCore.Mvc;
-
-namespace NodeService.WebServer.Controllers
+﻿namespace NodeService.WebServer.Controllers
 {
     public partial class NodesController
     {

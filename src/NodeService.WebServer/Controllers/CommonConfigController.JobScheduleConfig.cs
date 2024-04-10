@@ -1,12 +1,4 @@
-﻿using AntDesign;
-using NodeService.WebServer.Data;
-using NodeService.Infrastructure.DataModels;
-using System.ComponentModel;
-using NodeService.Infrastructure.Data;
-using NodeService.WebServer.Services.Tasks;
-using NodeService.Infrastructure.Models;
-
-namespace NodeService.WebServer.Controllers
+﻿namespace NodeService.WebServer.Controllers
 {
     public partial class CommonConfigController
     {
@@ -34,7 +26,7 @@ namespace NodeService.WebServer.Controllers
             try
             {
                 await _serviceProvider.GetService<IAsyncQueue<JobScheduleMessage>>().EnqueueAsync(
-                    new (JobTriggerSource.Manual, jobScheduleId));
+                    new(JobTriggerSource.Manual, jobScheduleId));
             }
             catch (Exception ex)
             {

@@ -3,23 +3,17 @@ using AntDesign.ProLayout;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.Entities;
-using NodeService.Infrastructure.Interfaces;
 using NodeService.Infrastructure.Services;
 using NodeService.WebServer.Areas.Identity;
-using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
 using NodeService.WebServer.Services.Tasks;
-using NodeService.WebServer.UI;
 using NodeService.WebServer.UI.Services;
-using System.Configuration;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 
@@ -196,7 +190,7 @@ public class Program
 
         builder.Services.AddGrpc(grpcServiceOptions =>
         {
-            
+
         });
         builder.Services.AddCors(o => o.AddPolicy("AllowAll", builder =>
         {

@@ -1,8 +1,4 @@
-﻿
-
-using FluentFTP;
-
-namespace NodeService.WebServer.Controllers
+﻿namespace NodeService.WebServer.Controllers
 {
     public partial class CommonConfigController
     {

@@ -1,6 +1,4 @@
-﻿using CommandLine;
-
-namespace NodeService.WebServer.Controllers
+﻿namespace NodeService.WebServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]/[action]")]

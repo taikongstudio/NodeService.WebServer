@@ -1,7 +1,7 @@
 ﻿
 namespace NodeService.WebServer.Data
 {
-    public class ApplicationDbRepository : IApplicationDbRepository,IDisposable
+    public class ApplicationDbRepository : IApplicationDbRepository, IDisposable
     {
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         private readonly ApplicationDbContext _dbContext;

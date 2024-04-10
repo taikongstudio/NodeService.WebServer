@@ -1,14 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Storage.Json;
-using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Models;
-using NodeService.Infrastructure.Sessions;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.NetworkInformation;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.NodeSessions
 {
@@ -73,7 +64,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                         &&
                         DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc > TimeSpan.FromMinutes(configuration.OfflineMinutes))
                     {
-                        
+
                         var healthCounter = _healthyCounterDictionary.Ensure(new(nodeInfo.Id));
                         if (healthCounter.SentNotificationCount == 0 || CanSendNotification(configuration, healthCounter))
                         {
@@ -98,7 +89,7 @@ namespace NodeService.WebServer.Services.NodeSessions
         }
 
         private static bool TryReadConfiguration(
-            Dictionary<string, object>? notificationSourceDictionary, 
+            Dictionary<string, object>? notificationSourceDictionary,
             out NodeHealthyCheckConfiguration? configuration)
         {
             configuration = null;

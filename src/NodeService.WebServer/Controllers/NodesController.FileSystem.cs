@@ -1,8 +1,4 @@
-﻿
-
-using NodeService.Infrastructure.Interfaces;
-
-namespace NodeService.WebServer.Controllers
+﻿namespace NodeService.WebServer.Controllers
 {
     public partial class NodesController
     {

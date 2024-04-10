@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using NodeService.WebServer.Services.Auth;
-using System.Net.Http.Headers;
 using System.Security.Claims;
 
 namespace NodeService.WebServer.Areas.Identity

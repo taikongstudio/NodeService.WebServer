@@ -1,7 +1,6 @@
 using AntDesign.Charts;
 using Microsoft.AspNetCore.Components;
 using NodeService.WebServer.UI.Services;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.UI.Pages.Dashboard.Analysis
 {

@@ -13,7 +13,7 @@ namespace NodeService.WebServer.Controllers
         }
 
         [HttpGet("/api/commonconfig/logupload/list")]
-        public  Task<PaginationResponse<LogUploadConfigModel>> QueryLogUploadConfigurationListAsync([FromQuery] QueryParametersModel queryParameters)
+        public Task<PaginationResponse<LogUploadConfigModel>> QueryLogUploadConfigurationListAsync([FromQuery] QueryParametersModel queryParameters)
         {
             return QueryConfigurationListAsync<LogUploadConfigModel>(queryParameters);
         }
@@ -22,8 +22,8 @@ namespace NodeService.WebServer.Controllers
         public Task<ApiResponse<LogUploadConfigModel>> QueryLogUploadConfigAsync(string id)
         {
             return QueryConfigurationAsync<LogUploadConfigModel>(id, FindFtpConfigAsync);
- 
-            async Task FindFtpConfigAsync(LogUploadConfigModel?  logUploadConfig)
+
+            async Task FindFtpConfigAsync(LogUploadConfigModel? logUploadConfig)
             {
                 if (logUploadConfig != null)
                 {

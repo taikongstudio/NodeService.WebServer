@@ -140,7 +140,7 @@
                         }
                          <NavLink href="@("/nodes/"+context.Id)">@context.Name</NavLink>
                         </PropertyColumn>
-                    <PropertyColumn Title="最后在线时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.Profile.UpdateTime"></PropertyColumn><PropertyColumn Title="测试分类" Sortable="true" Property="c=>c.Profile.TestInfo"></PropertyColumn>
+                    <PropertyColumn Title="最后在线时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.Profile.ServerUpdateTimeUtc"></PropertyColumn><PropertyColumn Title="测试分类" Sortable="true" Property="c=>c.Profile.TestInfo"></PropertyColumn>
                     <PropertyColumn Title="实验室区域" Sortable="true" Property="c=>c.Profile.LabArea"></PropertyColumn>
                     <PropertyColumn Title="实验室名称" Sortable="true" Property="c=>c.Profile.LabName"></PropertyColumn>
 

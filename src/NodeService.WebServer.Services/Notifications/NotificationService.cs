@@ -37,7 +37,7 @@ namespace NodeService.WebServer.Services.Notifications
                     {
                         case NotificationConfigurationType.Email:
                             EmailNotificationHandler emailNotificationMessageHandler = new EmailNotificationHandler();
-                            //await emailNotificationMessageHandler.HandleAsync(notificationMessage);
+                            await emailNotificationMessageHandler.HandleAsync(notificationMessage);
                             break;
                         default:
                             break;

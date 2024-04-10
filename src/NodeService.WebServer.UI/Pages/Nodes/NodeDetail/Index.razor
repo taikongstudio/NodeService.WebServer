@@ -130,6 +130,10 @@
             if (apiResponse.ErrorCode == 0)
             {
                 this._nodePropertySnapshot = apiResponse.Result;
+                if (this._nodePropertySnapshot == null)
+                {
+                    this._nodePropertySnapshot = new NodePropertySnapshotModel();
+                }
                 this._nodeProperties = NodePropertyModel.FromNodePropertyItems(this._nodePropertySnapshot.NodeProperties);
             }
             else

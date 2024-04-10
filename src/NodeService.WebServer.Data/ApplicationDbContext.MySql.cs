@@ -17,12 +17,16 @@ namespace NodeService.WebServer.Data
             MySql_BuildNodePropertySnapshotModel(modelBuilder);
             MySql_BuildJobExecutionInstanceModel(modelBuilder);
             MySql_BuildFileUploadRecordModel(modelBuilder);
+            MySql_BuildNotificationRecordModel(modelBuilder);
             MySql_BuildJobFireConfigurationModel(modelBuilder);
         }
 
-        private void MySql_BuildNotificationConfigurationModel(ModelBuilder modelBuilder)
+        private void MySql_BuildNotificationRecordModel(ModelBuilder modelBuilder)
         {
-            throw new NotImplementedException();
+            modelBuilder.Entity<NotificationRecordModel>(entityBuilder =>
+            {
+                entityBuilder.HasKey(nameof(NotificationRecordModel.Id));
+            });
         }
 
         private void MySql_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)
@@ -80,6 +84,7 @@ namespace NodeService.WebServer.Data
 
             modelBuilder.Entity<NodePropertySnapshotModel>()
                 .Property(x => x.NodeProperties)
+                .HasColumnType("json")
                 .HasConversion(x => Serialize(x), x => Deserialize<List<NodePropertyEntry>>(x))
                 .Metadata
                 .SetValueComparer(GetEnumerableComparer<NodePropertyEntry>());
@@ -100,12 +105,6 @@ namespace NodeService.WebServer.Data
             modelBuilder.Entity<NodeInfoModel>()
                 .HasKey(nameof(NodeInfoModel.Id));
 
-            //modelBuilder.Entity<NodeInfoModel>()
-            //    .HasMany(x => x.ConfigurationBindings)
-            //    .WithOne(x => x.Owner)
-            //    .HasForeignKey(x => x.OwnerId)
-            //    .IsRequired();
-
             modelBuilder.Entity<NodeInfoModel>()
                 .HasMany(x => x.JobExecutionInstances)
                 .WithOne(x => x.NodeInfo)
@@ -122,18 +121,6 @@ namespace NodeService.WebServer.Data
             modelBuilder.Entity<NodeInfoModel>()
                 .Navigation(x => x.Profile)
                 .AutoInclude(true);
-
-            //modelBuilder.Entity<NodeInfoModel>()
-            // .HasMany(e => e.Configurations)
-            // .WithMany(e => e.NodeList)
-            // .UsingEntity<NodeInfoConfigurationBindingModel>(
-            //     l => l.HasOne<ConfigurationModel>(e => e.Target).WithMany(e => e.NodeBindings).HasForeignKey(e => e.TargetId),
-            //     r => r.HasOne<NodeInfoModel>(e => e.Owner).WithMany(e => e.ConfigurationBindings).HasForeignKey(e => e.OwnerId));
-
-            //modelBuilder.Entity<NodeInfoModel>()
-            //    .HasMany(e => e.Configurations)
-            //    .WithMany(e => e.NodeList)
-            //    .UsingEntity<NodeInfoConfigurationBindingModel>(x => x.Property(e => e.PublicationDate).HasDefaultValue(DateTime.UtcNow));
 
         }
 

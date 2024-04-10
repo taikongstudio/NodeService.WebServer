@@ -1,0 +1,129 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Notifications.Records
+@page "/Notifications/Records"
+@using NodeService.WebServer.UI.Pages.Notifications.Components
+@inject ApiService ApiService
+@inject NotificationService _notice
+@inject ConfirmService _confirmService
+<GridContent>
+
+    <Space Style="margin-bottom:16px">
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" OnClick="QueryConfigurationListAsync">刷新</Button>
+        </SpaceItem>
+
+    </Space>
+<Table @ref="@_table" Size="TableSize.Small" 
+           Loading="_loading"
+           EnableVirtualization="true"
+           TItem="NotificationRecordModel"
+           Resizable
+           OnChange="OnTableChange"
+           DataSource="@_dataSource" >
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="4">
+                    <Title Level="3">通知记录</Title>
+                </GridCol>
+                <GridCol Span="4" Offset="20">
+                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                </GridCol>
+            </GridRow>
+        </TitleTemplate>
+    <ColumnDefinitions>
+    <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
+    <PropertyColumn Title="名称" Sortable Property="c=>c.Name"></PropertyColumn>
+    <PropertyColumn Title="创建时间" Sortable="true" Property="c=>c.CreationDateTime"></PropertyColumn>
+    <PropertyColumn Title="内容" Sortable="true" Property="c=>c.Value"></PropertyColumn>
+                <ActionColumn Fixed="right" Width="250" Title="操作">
+                    <CellRender Context="cellData">
+                        <Space>
+
+
+
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+    </ColumnDefinitions>
+    <ExpandTemplate>
+         <Tabs Animated>
+                <TabPane Tab="参数" Key="1">
+
+
+                </TabPane>
+            </Tabs>
+    </ExpandTemplate>
+</Table>
+</GridContent>
+
+@code {
+    ITable _table;
+    string _searchText;
+    string _modalTitle;
+    bool _editFormVisible = false;
+    bool _editFormSubmitting = false;
+    bool _editFormConfirmLoading = false;
+
+    class NotificationConfigurationTypeModel
+    {
+        public NotificationConfigurationType Type { get; set; }
+        public string Name { get; set; }
+    }
+
+    List<NotificationConfigurationTypeModel> _types = [];
+
+    private bool _loading;
+    private IEnumerable<NotificationRecordModel> _dataSource = [];
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        this._loading = true;
+        await this.QueryConfigurationListAsync().ConfigureAwait(false);
+        this._loading = false;
+    }
+
+    private async Task QueryConfigurationListAsync()
+    {
+        try
+        {
+            var rsp = await ApiService.QueryNotificationRecordListAsync(QueryParameters.All).ConfigureAwait(false);
+            if (rsp.ErrorCode == 0)
+            {
+                this._dataSource = rsp.Result;
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = rsp.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+
+    }
+
+    private bool FilterModel(NotificationRecordModel model)
+    {
+        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
+        {
+            return true;
+        }
+        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    void OnTableChange(QueryModel<NotificationRecordModel> query)
+    {
+        this._dataSource = query.ExecuteQuery(this._dataSource.AsQueryable()).Where(FilterModel);
+    }
+
+
+}

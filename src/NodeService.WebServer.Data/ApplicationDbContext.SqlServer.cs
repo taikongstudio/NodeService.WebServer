@@ -17,7 +17,16 @@ namespace NodeService.WebServer.Data
             SqlServer_BuildNodeProfileModel(modelBuilder);
             SqlServer_BuildNodePropertySnapshotModel(modelBuilder);
             SqlServer_BuildFileUploadRecordModel(modelBuilder);
+            SqlServer_BuildNotificationRecordModel(modelBuilder);
             SqlServer_BuildJobFireConfigurationModel(modelBuilder);
+        }
+
+        private void SqlServer_BuildNotificationRecordModel(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<NotificationRecordModel>(entityBuilder =>
+            {
+                entityBuilder.HasKey(nameof(NotificationRecordModel.Id));
+            });
         }
 
         private void SqlServer_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)

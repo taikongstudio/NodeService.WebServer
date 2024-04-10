@@ -32,9 +32,9 @@ namespace NodeService.WebServer.Controllers
                             model.NodeProperties = propsDict.Select(NodePropertyEntry.From).ToList();
                         }
                     }
-                    if (model.NodeProperties == null)
+                    if (model.NodeProperties == null || !model.NodeProperties.Any())
                     {
-                        model = await dbContext.NodePropertySnapshotsDbSet.FindAsync(nodeInfo.LastNodePropertySnapshotId);
+                        model = await dbContext.NodePropertiesSnapshotsDbSet.FindAsync(nodeInfo.LastNodePropertySnapshotId);
                     }
 
                     apiResponse.Result = model;

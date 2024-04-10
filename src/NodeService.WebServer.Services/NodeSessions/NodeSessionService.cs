@@ -71,7 +71,7 @@ namespace NodeService.WebServer.Services.NodeSessions
 
             public void Reset()
             {
-                Status = NodeStatus.Offline;
+ 
             }
         }
 
@@ -359,7 +359,7 @@ namespace NodeService.WebServer.Services.NodeSessions
             return _nodeSessionDict.Count;
         }
 
-        public async ValueTask InvalidateAllNodeStatusAsync()
+        public ValueTask InvalidateAllNodeStatusAsync()
         {
             try
             {
@@ -368,10 +368,6 @@ namespace NodeService.WebServer.Services.NodeSessions
                     if (GetNodeStatus(nodeSessionId) == NodeStatus.Offline)
                     {
                         ResetSession(nodeSessionId);
-                        await _hearBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage()
-                        {
-                            NodeSessionId = nodeSessionId
-                        });
                     }
                 }
             }
@@ -379,6 +375,7 @@ namespace NodeService.WebServer.Services.NodeSessions
             {
                 _logger.LogError(ex.ToString());
             }
+            return ValueTask.CompletedTask;
         }
 
         public void SetHttpContext(NodeSessionId nodeSessionId, HttpContext? httpContext)

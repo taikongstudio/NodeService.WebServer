@@ -176,8 +176,14 @@
                             </SpaceItem>
                         }
                         <SpaceItem>
-                         <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FileText" OnClick="()=>ShowLogMessageModalAsync(context.Id)">
+                         <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="()=>ShowLogMessageModalAsync(context.Id)">
                                 </Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                  <a href="@($"/api/jobs/instances/{context.Id}/log")" target="_blank">
+                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Download">
+                </Button>
+            </a>
                         </SpaceItem>
                     </Space>
                 </CellRender>

@@ -1,7 +1,7 @@
 ﻿<Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
 
-<Table @ref="@_table" OnChange="OnTableChange" Size="TableSize.Small" EnableVirtualization="true" TItem="ProcessInfo" DataSource="@Processes">
-    <PropertyColumn Title="名称" Sortable="true" Filterable="true" Property="c=>c.ProcessName"></PropertyColumn>
+<Table @ref="@_table" Resizable OnChange="OnTableChange" Size="TableSize.Small" EnableVirtualization="true" TItem="ProcessInfo" DataSource="@_dataSource">
+    <PropertyColumn Title="名称" Ellipsis Sortable="true" Filterable="true" Property="c=>c.ProcessName"></PropertyColumn>
     <PropertyColumn Title="文件名称" Sortable="true" Property="c=>c.FileName"></PropertyColumn>
     <PropertyColumn Title="Id" Sortable="true" Property="c=>c.Id"></PropertyColumn>
     <PropertyColumn Title="启动时间" Sortable="true" Property="c=>c.StartTime"></PropertyColumn>
@@ -19,6 +19,8 @@
 </Table>
 
 @code {
+    private IEnumerable<ProcessInfo> _dataSource = [];
+
     [Parameter]
     public IEnumerable<ProcessInfo> Processes { get; set; } = [];
 
@@ -27,11 +29,12 @@
 
     void OnTableChange(QueryModel<ProcessInfo> query)
     {
-        if (this.Processes == null)
+        if (this.Processes == null || string.IsNullOrEmpty(this._searchText))
         {
+            _dataSource = this.Processes;
             return;
         }
-        this.Processes = query.ExecuteQuery(this.Processes.AsQueryable()).Where(
+        _dataSource = query.ExecuteQuery(this.Processes.AsQueryable()).Where(
         x => x.FileName != null && x.FileName.Contains(this._searchText, StringComparison.OrdinalIgnoreCase)
         ||
         x.ProcessName != null && x.ProcessName.Contains(this._searchText, StringComparison.OrdinalIgnoreCase)

@@ -9,6 +9,7 @@ using NodeService.Infrastructure.Interfaces;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Services.Tasks;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 
 namespace NodeService.WebServer.Controllers
 {
@@ -161,29 +162,35 @@ namespace NodeService.WebServer.Controllers
 
 
         [HttpGet("/api/jobs/instances/{id}/log")]
-        public async Task<PaginationResponse<LogEntry>> QueryJobLogAsync(string id, QueryParametersModel queryParameters)
+        public async Task<IActionResult> QueryJobLogAsync(string id, QueryParametersModel queryParameters)
         {
             PaginationResponse<LogEntry> apiResponse = new PaginationResponse<LogEntry>();
             try
             {
-                using var dbContext = _dbContextFactory.CreateDbContext();
-                var jobExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(id);
-                if (jobExecutionInstance == null)
+                apiResponse.TotalCount = _database.GetEntriesCount(id);
+                if (queryParameters.PageSize == 0)
                 {
-                    apiResponse.ErrorCode = -1;
-                    apiResponse.Message = "invalid job execution instance id";
+                    apiResponse.Result = _database.ReadEntries<LogEntry>(
+                            id,
+                            0,
+                            apiResponse.TotalCount)
+                            .OrderBy(static x => x.Index);
+                    var memoryStream = new MemoryStream();
+                    await JsonSerializer.SerializeAsync(memoryStream, apiResponse.Result);
+                    memoryStream.Position = 0;
+                    return File(memoryStream, "application/json", id);
                 }
                 else
                 {
-                    apiResponse.TotalCount = _database.GetEntriesCount(id);
                     apiResponse.Result = _database.ReadEntries<LogEntry>(
                         id,
                         queryParameters.PageIndex,
                         queryParameters.PageSize)
                         .OrderBy(static x => x.Index);
-                    apiResponse.PageIndex = queryParameters.PageIndex;
-                    apiResponse.PageSize = queryParameters.PageSize;
                 }
+
+                apiResponse.PageIndex = queryParameters.PageIndex;
+                apiResponse.PageSize = queryParameters.PageSize;
             }
             catch (Exception ex)
             {
@@ -191,7 +198,7 @@ namespace NodeService.WebServer.Controllers
                 apiResponse.ErrorCode = ex.HResult;
                 apiResponse.Message = ex.Message;
             }
-            return apiResponse;
+            return Json(apiResponse);
         }
 
 

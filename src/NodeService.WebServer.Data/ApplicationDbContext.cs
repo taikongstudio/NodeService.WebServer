@@ -85,7 +85,7 @@ namespace NodeService.WebServer.Data
         public DbSet<JobExecutionInstanceModel> JobExecutionInstancesDbSet { get; set; }
         public DbSet<JobScheduleConfigModel> JobScheduleConfigurationDbSet { get; set; }
 
-        public DbSet<NodePropertySnapshotModel> NodePropertySnapshotsDbSet { get; set; }
+        public DbSet<NodePropertySnapshotModel> NodePropertiesSnapshotsDbSet { get; set; }
 
         public DbSet<JobTypeDescConfigModel> JobTypeDescConfigurationDbSet { get; set; }
 
@@ -116,6 +116,8 @@ namespace NodeService.WebServer.Data
         public DbSet<Dictionary<string, object>> PropertyBagDbSet => Set<Dictionary<string, object>>("PropertyBag");
 
         public DbSet<NotificationConfigModel> NotificationConfigurationsDbSet { get; set; }
+
+        public DbSet<NotificationRecordModel> NotificationRecordsDbSet { get; set; }
 
 
         private static string Serialize<T>(T? value)

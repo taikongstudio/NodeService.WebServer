@@ -40,7 +40,7 @@ namespace NodeService.WebServer.Controllers
             {
                 string nodeId = nodeInfo.Id;
                 var nodePropsSnapshotList =
-                    await dbContext.NodePropertySnapshotsDbSet.FromSqlRaw($"select *\r\n" +
+                    await dbContext.NodePropertiesSnapshotsDbSet.FromSqlRaw($"select *\r\n" +
                     $"from NodePropertySnapshotsDbSet\r\nwhere NodeInfoId ='{nodeId}'\r\n limit {count}")
                     .ToArrayAsync();
                 HashSet<string> usages = new HashSet<string>();

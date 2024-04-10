@@ -91,7 +91,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                 }
                 finally
                 {
-                    _logger.LogInformation($"process {count} messages, spent:{stopwatch.Elapsed}, available ount:{_hearBeatMessageBatchQueue.AvailableCount}");
+                    _logger.LogInformation($"process {count} messages, spent:{stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
                     stopwatch.Reset();
                     arrayPoolCollection.Dispose();
                 }
@@ -257,13 +257,13 @@ namespace NodeService.WebServer.Services.NodeSessions
                         NodeProperties = propsDict.Select(NodePropertyEntry.From).ToList(),
                         NodeInfoId = nodeInfo.Id
                     };
-                    await dbContext.NodePropertySnapshotsDbSet.AddAsync(nodePropertySnapshotModel);
+                    await dbContext.NodePropertiesSnapshotsDbSet.AddAsync(nodePropertySnapshotModel);
                     var oldId = nodeInfo.LastNodePropertySnapshotId;
                     nodeInfo.LastNodePropertySnapshotId = nodePropertySnapshotModel.Id;
-                    var oldPropertySnapshot = await dbContext.NodePropertySnapshotsDbSet.FindAsync(oldId);
+                    var oldPropertySnapshot = await dbContext.NodePropertiesSnapshotsDbSet.FindAsync(oldId);
                     if (oldPropertySnapshot != null)
                     {
-                        dbContext.NodePropertySnapshotsDbSet.Remove(oldPropertySnapshot);
+                        dbContext.NodePropertiesSnapshotsDbSet.Remove(oldPropertySnapshot);
                     }
                 }
 

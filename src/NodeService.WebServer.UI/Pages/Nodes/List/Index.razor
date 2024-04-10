@@ -77,7 +77,14 @@
     </Drawer>
     <GridRow Gutter="(8, 0)">
         <GridCol Span="24">
-             <Table Loading="@_loading" @ref="_table" Size="TableSize.Small" EnableVirtualization="true" OnChange="OnTableChange" TItem="NodeInfoModel" DataSource="@_nodesDataSource" OnRowClick="OnRowClick">
+             <Table Loading="@_loading" 
+                 @ref="_table" 
+                 Size="TableSize.Small" 
+                 EnableVirtualization="true" 
+                 OnChange="OnTableChange" 
+                 TItem="NodeInfoModel" 
+                 DataSource="@_dataSource" 
+                 OnRowClick="OnRowClick">
                  <TitleTemplate>
                      <GridRow>
                          <GridCol Span="4">
@@ -162,7 +169,7 @@
 </GridContent>
 
 
-    @code{
+@code{
     ITable _table;
     string? _keywords;
 
@@ -184,7 +191,8 @@
     NodeState _nodeState;
     FactoryType _dbContextFactoryType;
 
-    IEnumerable<NodeInfoModel>? _nodesDataSource = Array.Empty<NodeInfoModel>();
+    IEnumerable<NodeInfoModel>? _dataSource = [];
+    IEnumerable<NodeInfoModel>? _nodesDataSource = [];
 
     bool _loading;
 
@@ -220,7 +228,7 @@
     {
         try
         {
-            var apiResponse = await this.ApiService.UpdateNodeProfileAsync(this._editingNodeInfoModel);
+            var apiResponse = await this.ApiService.UpdateNodeProfileAsync(this._editingNodeInfoModel).ConfigureAwait(false);
             if (apiResponse.ErrorCode == 0)
             {
                 this._editingNodeInfoModel = null;
@@ -237,7 +245,6 @@
         {
             this._modifyErrorMsg = ex.Message;
         }
-        this.StateHasChanged();
     }
 
 
@@ -278,11 +285,11 @@
     {
         try
         {
-
-            var apiResponse = await this.ApiService.QueryNodeListAsync(QueryParameters.All);
+            var apiResponse = await this.ApiService.QueryNodeListAsync(QueryParameters.All).ConfigureAwait(false);
             if (apiResponse.ErrorCode == 0)
             {
-                this._nodesDataSource = apiResponse.Result ?? Array.Empty<NodeInfoModel>();
+                this._nodesDataSource = apiResponse.Result ?? [];
+                await this.InvokeAsync(this._table.ReloadData);
             }
             else
             {
@@ -305,20 +312,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-            this._loading = true;
-            await this.QueryNodeListAsync().ConfigureAwait(false);
-            this._loading = false;
+        this._loading = true;
+        await this.QueryNodeListAsync();
+        this._loading = false;
     }
 
     private void OnNodeStatusChanged(NodeState nodeState)
     {
-
         this._table?.ReloadData();
     }
 
     private void OnTableChange(QueryModel<NodeInfoModel> query)
     {
-        this._nodesDataSource = query.ExecuteQuery(this._nodesDataSource.AsQueryable())
+        this._dataSource = query.ExecuteQuery(this._nodesDataSource.AsQueryable())
          .Where(FilterNodeInfo);
     }
 

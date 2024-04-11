@@ -1,5 +1,6 @@
 ﻿using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Services.Tasks;
+using System.Text;
 
 namespace NodeService.WebServer.Controllers
 {
@@ -160,15 +161,31 @@ namespace NodeService.WebServer.Controllers
                 apiResponse.TotalCount = _database.GetEntriesCount(id);
                 if (queryParameters.PageSize == 0)
                 {
-                    apiResponse.Result = _database.ReadEntries<LogEntry>(
+                    using var dbContext = _dbContextFactory.CreateDbContext();
+                    var instance = await dbContext.JobScheduleConfigurationDbSet.FirstOrDefaultAsync(x => x.Id == id);
+                    string fileName = "x.log";
+                    if (instance == null)
+                    {
+                        fileName = $"{id}.log";
+                    }
+                    else
+                    {
+                        fileName = $"{instance.Name}.log";
+                    }
+                    var result = _database.ReadEntries<LogEntry>(
                             id,
                             0,
                             apiResponse.TotalCount)
                             .OrderBy(static x => x.Index);
                     var memoryStream = new MemoryStream();
-                    await JsonSerializer.SerializeAsync(memoryStream, apiResponse.Result);
+                    using var streamWriter = new StreamWriter(memoryStream, Encoding.UTF8, leaveOpen: true);
+
+                    foreach (var logEntry in result)
+                    {
+                        streamWriter.WriteLine($"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
+                    }
                     memoryStream.Position = 0;
-                    return File(memoryStream, "application/json", id);
+                    return File(memoryStream, "application/plaintext", id);
                 }
                 else
                 {

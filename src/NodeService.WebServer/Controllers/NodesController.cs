@@ -46,7 +46,7 @@
                     .Include(x => x.Profile)
                     .AsSplitQuery()
                     .OrderByDescending(x => x.Status)
-                    .ThenByDescending(x => x.Profile.UpdateTime)
+                    .ThenByDescending(x => x.Profile.ServerUpdateTimeUtc)
                     .ThenBy(x => x.Name)
                     .ToListAsync();
             }

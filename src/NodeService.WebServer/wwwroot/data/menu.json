@@ -1,108 +1,132 @@
 ﻿[
   {
-    "path": "/nodes",
-    "name": "节点",
-    "key": "nodes",
-    "icon": "node-index",
-    "children": [
-      {
-        "path": "/nodes",
-        "name": "节点列表",
-        "key": "Nodes.List"
-      }
-    ]
-  },
-  {
-    "path": "/jobs",
-    "name": "作业",
-    "key": "jobs",
-    "icon": "schedule",
-    "children": [
-      {
-        "path": "/CommonConfig/JobScheduleConfigs",
-        "name": "作业调度配置",
-        "key": "CommonConfig.JobScheduleConfigs"
-      },
-      {
-        "path": "/Jobs/Instances",
-        "name": "作业执行实例",
-        "key": "Jobs.Instances"
-      }
-    ]
-  },
-  {
-    "path": "/CommonConfig",
-    "name": "通用配置",
-    "key": "CommonConfig",
-    "icon": "setting",
-    "children": [
-
-      {
-        "path": "/CommonConfig/MysqlConfigs",
-        "name": "MySql配置",
-        "key": "CommonConfig.MysqlConfigs"
-      },
-      {
-        "path": "/CommonConfig/FtpConfigs",
-        "name": "Ftp配置",
-        "key": "CommonConfig.FtpConfigs"
-      },
-      {
-        "path": "/CommonConfig/KafkaConfigs",
-        "name": "Kafka配置",
-        "key": "CommonConfig.KafkaConfigs"
-      },
-      {
-        "path": "/CommonConfig/NodeEnvVars",
-        "name": "节点环境变量配置",
-        "key": "CommonConfig.NodeEnvVars"
-      },
-      {
-        "path": "/CommonConfig/PackageConfigs",
-        "name": "包配置",
-        "key": "CommonConfig.PackageConfigs"
-      },
-      {
-        "path": "/CommonConfig/LogUploadConfigs",
-        "name": "日志上传配置",
-        "key": "CommonConfig.LogUploadConfigs"
-      },
-      {
-        "path": "/CommonConfig/FtpUploadConfigs",
-        "name": "Ftp上传配置",
-        "key": "CommonConfig.FtpUploadConfigs"
-      },
-      {
-        "path": "/CommonConfig/FtpDownloadConfigs",
-        "name": "Ftp下载配置",
-        "key": "CommonConfig.FtpDownloadConfigs"
-      },
-      {
-        "path": "/CommonConfig/RestApiConfigs",
-        "name": "RestApi配置",
-        "key": "CommonConfig.RestApiConfigs"
-      },
-      {
-        "path": "/CommonConfig/JobTypeDescConfigs",
-        "name": "作业类型描述配置",
-        "key": "CommonConfig.JobTypeDescConfigs"
-      }
-    ]
-  },
-
-  {
-    "path": "/ClientConfig",
-    "name": "客户端配置",
-    "key": "clientconfig",
+    "path": "/",
+    "name": "主页",
+    "key": "dashboard",
     "icon": "dashboard",
     "children": [
       {
-        "path": "/ClientConfig/ClientUpdates",
-        "name": "客户端更新",
-        "key": "ClientConfig.ClientUpdates"
+        "path": "/",
+        "name": "数据分析",
+        "key": "Dashboard.Analysis"
+        
+      },
+      {
+        "path": "/dashboard/monitor",
+        "name": "数据监控",
+        "key": "Dashboard.Monitor"
+      },
+      {
+        "path": "/dashboard/Workplace",
+        "name": "工作区",
+        "key": "Dashboard.Workplace"
       }
     ]
   },
+    {
+      "path": "/nodes",
+      "name": "节点",
+      "key": "nodes",
+      "icon": "node-index",
+      "children": [
+        {
+          "path": "/nodes",
+          "name": "节点列表",
+          "key": "Nodes.List"
+        }
+      ]
+    },
+    {
+      "path": "/jobs",
+      "name": "作业",
+      "key": "jobs",
+      "icon": "schedule",
+      "children": [
+        {
+          "path": "/CommonConfig/JobScheduleConfigs",
+          "name": "作业调度配置",
+          "key": "CommonConfig.JobScheduleConfigs"
+        },
+        {
+          "path": "/Jobs/Instances",
+          "name": "作业执行实例",
+          "key": "Jobs.Instances"
+        }
+      ]
+    },
+    {
+      "path": "/CommonConfig",
+      "name": "通用配置",
+      "key": "CommonConfig",
+      "icon": "setting",
+      "children": [
+
+        {
+          "path": "/CommonConfig/MysqlConfigs",
+          "name": "MySql配置",
+          "key": "CommonConfig.MysqlConfigs"
+        },
+        {
+          "path": "/CommonConfig/FtpConfigs",
+          "name": "Ftp配置",
+          "key": "CommonConfig.FtpConfigs"
+        },
+        {
+          "path": "/CommonConfig/KafkaConfigs",
+          "name": "Kafka配置",
+          "key": "CommonConfig.KafkaConfigs"
+        },
+        {
+          "path": "/CommonConfig/NodeEnvVars",
+          "name": "节点环境变量配置",
+          "key": "CommonConfig.NodeEnvVars"
+        },
+        {
+          "path": "/CommonConfig/PackageConfigs",
+          "name": "包配置",
+          "key": "CommonConfig.PackageConfigs"
+        },
+        {
+          "path": "/CommonConfig/LogUploadConfigs",
+          "name": "日志上传配置",
+          "key": "CommonConfig.LogUploadConfigs"
+        },
+        {
+          "path": "/CommonConfig/FtpUploadConfigs",
+          "name": "Ftp上传配置",
+          "key": "CommonConfig.FtpUploadConfigs"
+        },
+        {
+          "path": "/CommonConfig/FtpDownloadConfigs",
+          "name": "Ftp下载配置",
+          "key": "CommonConfig.FtpDownloadConfigs"
+        },
+        {
+          "path": "/CommonConfig/RestApiConfigs",
+          "name": "RestApi配置",
+          "key": "CommonConfig.RestApiConfigs"
+        },
+        {
+          "path": "/CommonConfig/JobTypeDescConfigs",
+          "name": "作业类型描述配置",
+          "key": "CommonConfig.JobTypeDescConfigs"
+        }
+      ]
+    },
+
+    {
+      "path": "/ClientConfig",
+      "name": "客户端配置",
+      "key": "clientconfig",
+      "icon": "dashboard",
+      "children": [
+        {
+          "path": "/ClientConfig/ClientUpdates",
+          "name": "客户端更新",
+          "key": "ClientConfig.ClientUpdates"
+        }
+      ]
+    },
   {
     "path": "/Notifications",
     "name": "订阅与通知",

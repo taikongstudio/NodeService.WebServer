@@ -289,6 +289,11 @@
             if (apiResponse.ErrorCode == 0)
             {
                 this._nodesDataSource = apiResponse.Result ?? [];
+                if (_table!=null)
+                {
+                    await InvokeAsync(_table.ReloadData);
+                }
+       
             }
             else
             {

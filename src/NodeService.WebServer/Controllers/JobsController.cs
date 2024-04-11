@@ -11,7 +11,6 @@ namespace NodeService.WebServer.Controllers
         private readonly ILogger<NodesController> _logger;
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         private readonly INodeSessionService _nodeSessionService;
-        private readonly IVirtualFileSystem _virtualFileSystem;
         private readonly IMemoryCache _memoryCache;
         private readonly RocksDatabase _database;
         private readonly JobExecutionInstanceInitializer _jobExecutionInstanceInitializer;
@@ -20,7 +19,6 @@ namespace NodeService.WebServer.Controllers
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             INodeSessionService nodeSessionService,
             ILogger<NodesController> logger,
-            IVirtualFileSystem virtualFileSystem,
             IMemoryCache memoryCache,
             JobExecutionInstanceInitializer jobExecutionInstanceInitializer,
             RocksDatabase database)
@@ -28,7 +26,6 @@ namespace NodeService.WebServer.Controllers
             this._logger = logger;
             this._dbContextFactory = dbContextFactory;
             this._nodeSessionService = nodeSessionService;
-            this._virtualFileSystem = virtualFileSystem;
             this._memoryCache = memoryCache;
             _database = database;
             _jobExecutionInstanceInitializer = jobExecutionInstanceInitializer;
@@ -162,7 +159,7 @@ namespace NodeService.WebServer.Controllers
                 if (queryParameters.PageSize == 0)
                 {
                     using var dbContext = _dbContextFactory.CreateDbContext();
-                    var instance = await dbContext.JobScheduleConfigurationDbSet.FirstOrDefaultAsync(x => x.Id == id);
+                    var instance = await dbContext.JobExecutionInstancesDbSet.FirstOrDefaultAsync(x => x.Id == id);
                     string fileName = "x.log";
                     if (instance == null)
                     {
@@ -184,6 +181,7 @@ namespace NodeService.WebServer.Controllers
                     {
                         streamWriter.WriteLine($"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
                     }
+                    await streamWriter.FlushAsync();
                     memoryStream.Position = 0;
                     return File(memoryStream, "text/plain", fileName);
                 }

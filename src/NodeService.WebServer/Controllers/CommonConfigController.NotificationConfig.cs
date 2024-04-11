@@ -81,7 +81,7 @@
         }
 
         [HttpPost("/api/commonconfig/notificationsource/nodehealthycheck/update")]
-        public async Task<ApiResponse> UpdateNodeHealthyCheckConfigurationAsync(NodeHealthyCheckConfiguration model)
+        public async Task<ApiResponse> UpdateNodeHealthyCheckConfigurationAsync([FromBody]NodeHealthyCheckConfiguration model)
         {
             ApiResponse rsp = new ApiResponse();
             try

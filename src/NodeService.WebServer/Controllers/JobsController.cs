@@ -41,11 +41,11 @@ namespace NodeService.WebServer.Controllers
             {
                 if (parameters.BeginDateTime == null)
                 {
-                    parameters.BeginDateTime = DateTime.Today.ToUniversalTime().Date;
+                    parameters.BeginDateTime = DateTime.UtcNow.ToUniversalTime().Date;
                 }
                 if (parameters.EndDateTime == null)
                 {
-                    parameters.EndDateTime = DateTime.Today.ToUniversalTime().Date.AddDays(1).AddSeconds(-1);
+                    parameters.EndDateTime = DateTime.UtcNow.ToUniversalTime().Date.AddDays(1).AddSeconds(-1);
                 }
                 using var dbContext = _dbContextFactory.CreateDbContext();
                 var beginTime = parameters.BeginDateTime.Value;

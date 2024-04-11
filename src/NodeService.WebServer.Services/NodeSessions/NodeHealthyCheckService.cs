@@ -31,6 +31,10 @@ namespace NodeService.WebServer.Services.NodeSessions
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            if (!Debugger.IsAttached)
+            {
+                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+            }
             while (!stoppingToken.IsCancellationRequested)
             {
                 await CheckNodeHealthy(stoppingToken);
@@ -39,7 +43,7 @@ namespace NodeService.WebServer.Services.NodeSessions
 
         }
 
-        private async Task CheckNodeHealthy(CancellationToken stoppingToken)
+        private async Task CheckNodeHealthy(CancellationToken stoppingToken = default)
         {
             try
             {
@@ -88,21 +92,30 @@ namespace NodeService.WebServer.Services.NodeSessions
 
         }
 
-        private static bool TryReadConfiguration(
+        private bool TryReadConfiguration(
             Dictionary<string, object>? notificationSourceDictionary,
             out NodeHealthyCheckConfiguration? configuration)
         {
             configuration = null;
-            if (notificationSourceDictionary == null
-                ||
-                !notificationSourceDictionary.TryGetValue("Value", out var value)
-                || value is not string json
-                )
+            try
             {
-                return false;
+
+                if (notificationSourceDictionary == null
+                    ||
+                    !notificationSourceDictionary.TryGetValue("Value", out var value)
+                    || value is not string json
+                    )
+                {
+                    return false;
+                }
+                configuration = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(json);
+                return configuration != null;
             }
-            configuration = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(json);
-            return configuration != null;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+            }
+            return false;
         }
 
         private async Task SendNodeOfflineNotificationAsync(

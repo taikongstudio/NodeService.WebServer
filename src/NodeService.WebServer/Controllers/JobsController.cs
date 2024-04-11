@@ -185,7 +185,7 @@ namespace NodeService.WebServer.Controllers
                         streamWriter.WriteLine($"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
                     }
                     memoryStream.Position = 0;
-                    return File(memoryStream, "application/plaintext", id);
+                    return File(memoryStream, "text/plain", fileName);
                 }
                 else
                 {

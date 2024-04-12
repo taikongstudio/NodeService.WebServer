@@ -84,6 +84,7 @@
                     fileRecordFromDb.ModifyDateTime = fileRecord.ModifyDateTime;
                     fileRecordFromDb.Properties = fileRecord.Properties;
                     fileRecordFromDb.FileHashValue = fileRecord.FileHashValue;
+                    fileRecordFromDb.Size = fileRecord.Size;
                 }
                 await dbContext.SaveChangesAsync();
             }

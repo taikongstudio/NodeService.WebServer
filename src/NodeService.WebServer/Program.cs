@@ -211,7 +211,7 @@ public class Program
         builder.Services.AddHostedService<JobExecutionReportConsumerService>();
         builder.Services.AddHostedService<HeartBeatResponseConsumerService>();
         builder.Services.AddHostedService<HeartBeatRequestProducerService>();
-        builder.Services.AddHostedService<LogPersistenceService>();
+        builder.Services.AddHostedService<TaskLogPersistenceService>();
         builder.Services.AddHostedService<NotificationService>();
         builder.Services.AddHostedService<NodeHealthyCheckService>();
     }

@@ -2,16 +2,16 @@
 using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Models;
 
-namespace NodeService.WebServer.Services.NodeSessions
+namespace NodeService.WebServer.Services.Tasks
 {
-    public class LogPersistenceService : BackgroundService
+    public class TaskLogPersistenceService : BackgroundService
     {
         private readonly BatchQueue<IEnumerable<LogPersistenceGroup>> _logPersistenceGroupsBatchQueue;
         private readonly RocksDatabase _rocksDatabase;
-        private readonly ILogger<LogPersistenceService> _logger;
+        private readonly ILogger<TaskLogPersistenceService> _logger;
 
-        public LogPersistenceService(
-            ILogger<LogPersistenceService> logger,
+        public TaskLogPersistenceService(
+            ILogger<TaskLogPersistenceService> logger,
             BatchQueue<IEnumerable<LogPersistenceGroup>> logPersistenceGroupsBatchQueue,
             RocksDatabase rocksDatabase
             )

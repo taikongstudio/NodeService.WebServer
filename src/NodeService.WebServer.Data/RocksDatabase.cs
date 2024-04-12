@@ -48,7 +48,6 @@ namespace NodeService.Infrastructure.Models
                 };
             _flushOptions = new FlushOptions();
             _flushOptions.SetWaitForFlush(true);
-
             _rocksDb = RocksDbSharp.RocksDb.Open(_options, this.DatabasePath, _columnFamilies);
         }
 

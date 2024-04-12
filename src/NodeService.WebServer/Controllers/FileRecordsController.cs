@@ -85,6 +85,9 @@
                     fileRecordFromDb.Properties = fileRecord.Properties;
                     fileRecordFromDb.FileHashValue = fileRecord.FileHashValue;
                     fileRecordFromDb.Size = fileRecord.Size;
+                    fileRecordFromDb.OriginalFileName = fileRecord.OriginalFileName;
+                    fileRecordFromDb.CompressedSize = fileRecord.CompressedSize;
+                    fileRecordFromDb.State = fileRecord.State;
                 }
                 await dbContext.SaveChangesAsync();
             }

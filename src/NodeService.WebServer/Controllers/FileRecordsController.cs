@@ -82,12 +82,31 @@
                 else
                 {
                     fileRecordFromDb.ModifyDateTime = fileRecord.ModifyDateTime;
-                    fileRecordFromDb.Properties = fileRecord.Properties;
-                    fileRecordFromDb.FileHashValue = fileRecord.FileHashValue;
-                    fileRecordFromDb.Size = fileRecord.Size;
-                    fileRecordFromDb.OriginalFileName = fileRecord.OriginalFileName;
-                    fileRecordFromDb.CompressedSize = fileRecord.CompressedSize;
-                    fileRecordFromDb.State = fileRecord.State;
+                    if (fileRecord.Properties != null)
+                    {
+                        fileRecordFromDb.Properties = fileRecord.Properties;
+                    }
+                    if (fileRecord.FileHashValue != null)
+                    {
+                        fileRecordFromDb.FileHashValue = fileRecord.FileHashValue;
+                    }
+                    if (fileRecord.Size > 0)
+                    {
+                        fileRecordFromDb.Size = fileRecord.Size;
+                    }
+                    if (fileRecord.OriginalFileName != null)
+                    {
+                        fileRecordFromDb.OriginalFileName = fileRecord.OriginalFileName;
+                    }
+                    if (fileRecord.State != FileRecordState.None)
+                    {
+                        fileRecordFromDb.State = fileRecord.State;
+                    }
+                    if (fileRecord.CompressedSize > 0)
+                    {
+                        fileRecordFromDb.CompressedSize = fileRecord.CompressedSize;
+                    }
+
                 }
                 await dbContext.SaveChangesAsync();
             }

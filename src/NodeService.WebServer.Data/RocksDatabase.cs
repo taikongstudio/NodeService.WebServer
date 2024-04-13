@@ -47,7 +47,7 @@ namespace NodeService.Infrastructure.Models
                     },
                 };
             _flushOptions = new FlushOptions();
-            _flushOptions.SetWaitForFlush(true);
+            _flushOptions.SetWaitForFlush(false);
             _rocksDb = RocksDbSharp.RocksDb.Open(_options, this.DatabasePath, _columnFamilies);
         }
 
@@ -62,7 +62,7 @@ namespace NodeService.Infrastructure.Models
                 {
                     index = 0;
                 }
-                WriteBatch writeBatch = new WriteBatch();
+                using WriteBatch writeBatch = new WriteBatch();
                 foreach (var entry in entries)
                 {
                     var key = GetKey(id, index);
@@ -107,7 +107,6 @@ namespace NodeService.Infrastructure.Models
             int pageSize,
             CancellationToken cancellationToken = default)
         {
-            var readOptions = new ReadOptions();
             var cf = _rocksDb.GetColumnFamily(logColumnName);
             var logLength = GetEntriesCount(id);
             for (int index = pageSize * pageIndex; index < logLength && index < (pageIndex + 1) * pageSize; index++)

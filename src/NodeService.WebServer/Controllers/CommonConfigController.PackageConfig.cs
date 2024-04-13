@@ -19,7 +19,7 @@ namespace NodeService.WebServer.Controllers
         }
 
         [HttpGet("/api/commonconfig/package/download/{packageId}")]
-        public async Task<IActionResult> DownloadPluginAsync(string packageId)
+        public async Task<IActionResult> DownloadPackageAsync(string packageId)
         {
             ArgumentNullException.ThrowIfNullOrEmpty(packageId);
             using var dbContext = this._dbContextFactory.CreateDbContext();

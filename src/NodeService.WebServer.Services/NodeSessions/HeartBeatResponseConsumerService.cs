@@ -14,11 +14,8 @@ namespace NodeService.WebServer.Services.NodeSessions
         private readonly IMemoryCache _memoryCache;
         private readonly WebServerOptions _webServerOptions;
         private readonly ILogger<HeartBeatResponseConsumerService> _logger;
-        private readonly TaskLogDatabase _rocksDatabase;
-        private readonly IDisposable? _processUsageAnalysisMonitorToken;
-        private ProcessUsageAnalysis _processUsageAnalysis;
-        private readonly TaskLogDatabase _rocksDb;
         private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
+        private NodeSettings _nodeSettings;
 
         public HeartBeatResponseConsumerService(
             ILogger<HeartBeatResponseConsumerService> logger,
@@ -26,9 +23,7 @@ namespace NodeService.WebServer.Services.NodeSessions
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             BatchQueue<NodeHeartBeatSessionMessage> heartBeatMessageBatchBlock,
             IMemoryCache memoryCache,
-            IOptionsMonitor<WebServerOptions> optionsMonitor,
-            IOptionsMonitor<ProcessUsageAnalysis> processUsageAnalysisMonitor,
-            TaskLogDatabase rocksDatabase
+            IOptionsMonitor<WebServerOptions> optionsMonitor
             )
         {
             _logger = logger;
@@ -37,14 +32,7 @@ namespace NodeService.WebServer.Services.NodeSessions
             _hearBeatMessageBatchQueue = heartBeatMessageBatchBlock;
             _memoryCache = memoryCache;
             _webServerOptions = optionsMonitor.CurrentValue;
-            _rocksDatabase = rocksDatabase;
-            _processUsageAnalysisMonitorToken = processUsageAnalysisMonitor.OnChange(OnProcessUsageAnalysisChanged);
-            _processUsageAnalysis = processUsageAnalysisMonitor.CurrentValue;
-        }
-
-        private void OnProcessUsageAnalysisChanged(ProcessUsageAnalysis processUsageAnalysis, string? name)
-        {
-            _processUsageAnalysis = processUsageAnalysis;
+            _nodeSettings = new NodeSettings();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -113,7 +101,7 @@ namespace NodeService.WebServer.Services.NodeSessions
             Stopwatch stopwatch = new Stopwatch();
             try
             {
-
+                await RefreshNodeSettings(dbContext);
                 foreach (var hearBeatSessionMessage in arrayPoolCollection)
                 {
                     if (hearBeatSessionMessage == null)
@@ -139,6 +127,19 @@ namespace NodeService.WebServer.Services.NodeSessions
             {
                 _logger.LogInformation($"Process {arrayPoolCollection.CountNotNull()} messages, SaveElapsed:{stopwatch.Elapsed}");
                 stopwatch.Reset();
+            }
+        }
+
+        private async Task RefreshNodeSettings(ApplicationDbContext dbContext)
+        {
+            var dict = await dbContext.PropertyBagDbSet.FindAsync("NodeSettings");
+            if (dict == null || !dict.TryGetValue("Value", out var value))
+            {
+                _nodeSettings = new NodeSettings();
+            }
+            else
+            {
+                _nodeSettings = JsonSerializer.Deserialize<NodeSettings>(value as string);
             }
         }
 
@@ -182,7 +183,25 @@ namespace NodeService.WebServer.Services.NodeSessions
                     nodeInfo.Profile.IpAddress = hearBeatResponse.Properties["RemoteIpAddress"];
                     nodeInfo.Profile.InstallStatus = true;
                     nodeInfo.Profile.LoginName = hearBeatResponse.Properties[NodePropertyModel.Environment_UserName_Key];
-                    nodeInfo.Profile.FactoryName = hearBeatResponse.Properties[NodePropertyModel.FactoryName_key];
+                    //nodeInfo.Profile.FactoryName = hearBeatResponse.Properties[NodePropertyModel.FactoryName_key];
+                    nodeInfo.Profile.FactoryName = "Unknown";
+                    if (!string.IsNullOrEmpty(nodeInfo.Profile.IpAddress))
+                    {
+                        foreach (var mapping in this._nodeSettings.IpAddressMappings)
+                        {
+                            if (string.IsNullOrEmpty(mapping.Name)
+                                || string.IsNullOrEmpty(mapping.Value))
+                            {
+                                continue;
+                            }
+
+                            if (nodeInfo.Profile.IpAddress.StartsWith(mapping.Value))
+                            {
+                                nodeInfo.Profile.FactoryName = mapping.Tag;
+                                break;
+                            }
+                        }
+                    }
 
 
                     foreach (var item in hearBeatResponse.Properties)
@@ -213,18 +232,23 @@ namespace NodeService.WebServer.Services.NodeSessions
                             return;
                         }
                         var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
-                        if (_processUsageAnalysis == null || processInfoList == null)
+                        if (_nodeSettings.ProcessUsagesMapping == null || processInfoList == null)
                         {
                             return;
                         }
                         HashSet<string> usages = new HashSet<string>();
-                        foreach (var mapping in _processUsageAnalysis.Mappings)
+                        foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
                         {
+                            if (string.IsNullOrEmpty(mapping.Name)
+                                || string.IsNullOrEmpty(mapping.Value))
+                            {
+                                continue;
+                            }
                             foreach (var processInfo in processInfoList)
                             {
-                                if (processInfo.FileName.Contains(mapping.FileName, StringComparison.OrdinalIgnoreCase))
+                                if (processInfo.FileName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
                                 {
-                                    usages.Add(mapping.Name);
+                                    usages.Add(mapping.Value);
                                 }
                             }
                         }

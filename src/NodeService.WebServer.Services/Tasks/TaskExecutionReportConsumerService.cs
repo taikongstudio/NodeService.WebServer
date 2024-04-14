@@ -4,6 +4,7 @@ using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.NodeSessions;
+using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.Tasks
 {
@@ -274,6 +275,7 @@ namespace NodeService.WebServer.Services.Tasks
                     case JobExecutionStatus.Finished:
                     case JobExecutionStatus.Cancelled:
                         jobExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
+                        _taskLogCacheManager.GetCache(jobExecutionInstance.Id).Flush();
                         break;
                     default:
                         break;

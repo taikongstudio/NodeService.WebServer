@@ -165,12 +165,6 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         continue;
                     }
-                    bool isFilteredIn = FilterNode(jobScheduleConfig, nodeInfo);
-
-                    if (!isFilteredIn)
-                    {
-                        continue;
-                    }
                     var nodeId = new NodeId(nodeInfo.Id);
                     foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
                     {
@@ -199,35 +193,6 @@ namespace NodeService.WebServer.Services.Tasks
             _logger.LogInformation($"Job initialized {parameters.FireInstanceId}");
         }
 
-
-
-        private bool FilterNode(JobScheduleConfigModel jobScheduleConfig, NodeInfoModel nodeInfoModel)
-        {
-            switch (jobScheduleConfig.DnsFilterType)
-            {
-                case "include":
-                    return DnsFilterIncludeNode(jobScheduleConfig, nodeInfoModel);
-                case "exclude":
-                    return DnsFilterExcludeNode(jobScheduleConfig, nodeInfoModel);
-                default:
-                    return false;
-            }
-        }
-
-        private bool DnsFilterIncludeNode(JobScheduleConfigModel jobScheduleConfig, NodeInfoModel nodeInfo)
-        {
-            return jobScheduleConfig.DnsFilters.Any(x => x.Value == nodeInfo.Name);
-        }
-
-        private bool DnsFilterExcludeNode(JobScheduleConfigModel jobScheduleConfig, NodeInfoModel nodeInfo)
-        {
-            return !jobScheduleConfig.DnsFilters.Any(x => x.Value == nodeInfo.Name);
-        }
-
-        private bool NoFilter(NodeInfoModel nodeInfo)
-        {
-            return true;
-        }
 
     }
 }

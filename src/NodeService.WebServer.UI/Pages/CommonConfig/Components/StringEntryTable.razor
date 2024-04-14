@@ -40,6 +40,22 @@
             <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Value</div>
         }
     </PropertyColumn>
+    <PropertyColumn Hidden="@this.IsTagHidden" Title="@TagTitle" Property="c=>c.Tag" Sortable>
+        @if (mappingEntry.IsEditing && this.IsTagEditable)
+        {
+            <Input Type="text" @bind-Value="@mappingEntry.Tag" AutoFocus="@(!IsNameEditable && IsTagEditable)" />
+        }
+        else if (this.IsTagEditable)
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="()=>mappingEntry.BeginEdit()">
+                @mappingEntry.Tag
+            </div>
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Tag</div>
+        }
+    </PropertyColumn>
         @if (this.IsEditable)
         {
             <ActionColumn Fixed="right" Width="100" Title="操作">
@@ -95,6 +111,9 @@
     public string ValueTitle { get; set; } = "值";
 
     [Parameter]
+    public string TagTitle { get; set; } = "标签";
+
+    [Parameter]
     public bool IsNameEditable { get; set; } = true;
 
     [Parameter]
@@ -105,6 +124,12 @@
 
     [Parameter]
     public bool IsValueHidden { get; set; } = false;
+
+    [Parameter]
+    public bool IsTagHidden { get; set; } = true;
+
+    [Parameter]
+    public bool IsTagEditable { get; set; } = false;
 
 
     [Parameter]

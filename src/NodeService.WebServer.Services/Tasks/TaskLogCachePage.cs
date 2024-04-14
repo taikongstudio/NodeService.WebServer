@@ -19,7 +19,7 @@ namespace NodeService.WebServer.Services.Tasks
 
     public struct TaskLogCachePage : IDisposable
     {
-        private LogEntry[] _entries;
+        private LogEntry[]? _entries;
 
         private long _entriesOffset;
 
@@ -29,11 +29,11 @@ namespace NodeService.WebServer.Services.Tasks
 
         public int EntriesCount { get { return (int)Interlocked.Read(ref this._entriesOffset); } }
 
-        public int PageIndex {  get; private set; }
+        public int PageIndex { get; private set; }
 
-        public int PageSize {  get; private set; }
+        public int PageSize { get; private set; }
 
-        public int FlushedCount { get {return (int)Interlocked.Read(ref this._flushedCount); } }
+        public int FlushedCount { get { return (int)Interlocked.Read(ref this._flushedCount); } }
 
         public void IncrementFlushedCount(int value)
         {

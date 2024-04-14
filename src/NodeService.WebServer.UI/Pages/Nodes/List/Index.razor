@@ -5,6 +5,7 @@
 @inject ApiService ApiService;
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
+@inject IMessageService _message
 
 <GridContent>
     <Drawer Closable="true" Width="320" Visible="nodeInfoDrawerVisible" Title='("修改节点信息")' OnClose="_=>CloseModifyNodeInfoDrawer()">
@@ -75,6 +76,46 @@
 
         </Template>
     </Drawer>
+        <Modal Width="800"
+           Title="节点配置"
+           Visible="@_editFormVisible"
+           ConfirmLoading="@_editFormConfirmLoading"
+           OnOk="@HandleEditFormOk" 
+           OnCancel="@HandleEditFormCancel">
+        <Form Model="@_nodeSettings" Size="@AntSizeLDSType.Default"
+              LabelColSpan="4" 
+              Layout="@FormLayout.Horizontal"
+              WrapperColSpan="20"
+              OnFinish="OnEditFormFinish"
+              OnFinishFailed="OnEditFormFinishFailed"
+              @ref="@_editForm">
+            <FormItem Label="IP地址区域映射">
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddIpAddressMapping" Type="primary">
+                        </Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Danger Icon="@IconType.Outline.Delete" OnClick="RemoveSelectedIpAddressMapping" Type="primary">
+                        </Button>
+                    </SpaceItem>
+                </Space>
+      
+     
+                <StringEntryTable ValueTitle="Ip地址" NameTitle="区域" IsTagHidden="false" IsTagEditable="true" TagTitle="代号" SelectedItems="@_selectedIpAddressMappings" DataSource="@context.IpAddressMappings" />
+            </FormItem>
+            <FormItem Label="进程用途映射">
+
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddProcessUsageMapping" Type="primary">
+                </Button>
+                <Button Shape="@ButtonShape.Circle" Danger Icon="@IconType.Outline.Delete" OnClick="RemoveSelectedProcessUsageMapping" Type="primary">
+                    
+                </Button>
+                <StringEntryTable ValueTitle="用途" NameTitle="进程名称" SelectedItems="@_selectedProcessUsagesMappings" DataSource="@context.ProcessUsagesMapping" />
+            </FormItem>
+
+        </Form>
+    </Modal>
     <GridRow Gutter="(8, 0)">
         <GridCol Span="24">
              <Table Loading="@_loading" 
@@ -96,12 +137,18 @@
                                     <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryNodeListAsync"></Button>
                                 </SpaceItem>
                                 <SpaceItem>
-                                    <RadioGroup @bind-Value="_dbContextFactoryType" Size="middle">
-                                        <Radio RadioButton Value="@(FactoryType.All)">全部</Radio>
-                                        <Radio RadioButton Value="@(FactoryType.GM)">光明</Radio>
-                                        <Radio RadioButton Value="@(FactoryType.BL)">博罗</Radio>
-                                        <Radio RadioButton Value="@(FactoryType.Unknkown)">未知</Radio>
-                                    </RadioGroup>
+                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Setting" OnClick="ShowNodeSettingsModalAsync"></Button>
+
+                                </SpaceItem>
+                                <SpaceItem>
+                                    <Select DataSource="@_nodeSettings.IpAddressMappings"
+                                            @bind-value="@_selectedAreaTag"
+                                            TItem="StringEntry"
+                                            Style="width:200px"
+                                            TItemValue="string"
+                                            DefaultActiveFirstOption
+                                            LabelName="@nameof(StringEntry.Name)"
+                                            ValueName="@nameof(StringEntry.Tag)" />
                                 </SpaceItem>
                                 <SpaceItem>
                                     <RadioGroup @bind-Value="_nodeState" Size="middle">
@@ -118,7 +165,7 @@
                      </GridRow>
                  </TitleTemplate>
                  <ColumnDefinitions>
-                     <PropertyColumn Title="厂区" Filters="factory_name_Filters" OnFilter="((name,value)=>OnFilterFactoryName(value,name))" Sortable="true" Filterable="true" Property="c=>c.Profile.FactoryName">
+                     <PropertyColumn Title="厂区" Filters="areaNameFilters" OnFilter="((name,value)=>OnFilterFactoryName(value,name))" Sortable="true" Filterable="true" Property="c=>c.Profile.FactoryName">
                          @switch (context.Profile.FactoryName)
                         {
                             case "BL":
@@ -173,6 +220,10 @@
     ITable _table;
     string? _keywords;
 
+    bool _editFormVisible = false;
+    bool _editFormSubmitting = false;
+    bool _editFormConfirmLoading = false;
+
     enum NodeState
     {
         All,
@@ -180,19 +231,18 @@
         Offline,
     }
 
-    enum FactoryType
-    {
-        All,
-        GM,
-        BL,
-        Unknkown
-    }
-
     NodeState _nodeState;
-    FactoryType _dbContextFactoryType;
+    string _selectedAreaTag;
 
     IEnumerable<NodeInfoModel>? _dataSource = [];
     IEnumerable<NodeInfoModel>? _nodesDataSource = [];
+
+    IEnumerable<StringEntry> _selectedIpAddressMappings = [];
+    IEnumerable<StringEntry> _selectedProcessUsagesMappings = [];
+
+    NodeSettings _nodeSettings = new NodeSettings();
+
+    Form<NodeSettings> _editForm;
 
     bool _loading;
 
@@ -224,6 +274,14 @@
         this.nodeInfoDrawerVisible = false;
     }
 
+    async Task ShowNodeSettingsModalAsync()
+    {
+        _editFormVisible = true;
+        await this.QueryNodeSettingsAsync();
+    }
+
+
+
     async Task SubmitNodeInfoAsync()
     {
         try
@@ -248,11 +306,109 @@
     }
 
 
-    public TableFilter<string?>[] factory_name_Filters = new TableFilter<string?>[] {
-        new() { Text = "光明", Value = "GM" },
-        new() { Text = "博罗", Value = "BL" },
-        new() { Text = "未知", Value = "Unknown" },
-    };
+    public List<TableFilter<string?>> areaNameFilters = [];
+
+    private void HandleEditFormCancel(MouseEventArgs e)
+    {
+        this._editFormSubmitting = false;
+        this._editFormVisible = false;
+    }
+
+
+    private void HandleEditFormOk(MouseEventArgs e)
+    {
+        this._editFormSubmitting = true;
+        this._editForm.Submit();
+    }
+
+    private async Task QueryNodeSettingsAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryNodeSettingsAsync().ConfigureAwait(false);
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._nodeSettings = apiResponse.Result;
+                if (this._nodeSettings.IpAddressMappings != null)
+                {
+                    areaNameFilters.Clear();
+                    foreach (var item in this._nodeSettings.IpAddressMappings)
+                    {
+                        areaNameFilters.Add(new TableFilter<string?>()
+                            {
+                                Selected = item.Tag == "All",
+                                Text = item.Name,
+                                Value = item.Tag
+                            });
+                    }
+                    this._selectedAreaTag = this._nodeSettings.IpAddressMappings.FirstOrDefault().Tag;
+                    if (this._table!=null)
+                    {
+                        await InvokeAsync(this._table.ReloadData);
+                    }
+                }
+
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+
+    }
+
+
+    private async Task OnEditFormFinish(EditContext editContext)
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.UpdateNodeSettingsAsync(this._nodeSettings).ConfigureAwait(false);
+            if (apiResponse.ErrorCode == 0)
+            {
+                _editFormVisible = false;
+                await _message.Info("更新节点设置成功");
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.Message,
+                });
+        }
+        finally
+        {
+            this._editFormSubmitting = false;
+            this._editFormConfirmLoading = false;
+        }
+    }
+
+    private void OnEditFormFinishFailed(EditContext editContext)
+    {
+        this._editFormSubmitting = false;
+        this._editFormConfirmLoading = false;
+    }
 
     private void OnNodeNameChanged(MouseEventArgs e)
     {
@@ -266,7 +422,11 @@
 
     private bool OnFilterFactoryName(string value, string name)
     {
-        return string.IsNullOrEmpty(value) ? string.IsNullOrEmpty(name) : name.StartsWith(value);
+        if (name == "All")
+        {
+            return true;
+        }
+        return name == value;
     }
 
     void OnRowClick(RowData<NodeInfoModel> row)
@@ -289,11 +449,11 @@
             if (apiResponse.ErrorCode == 0)
             {
                 this._nodesDataSource = apiResponse.Result ?? [];
-                if (_table!=null)
+                if (_table != null)
                 {
                     await InvokeAsync(_table.ReloadData);
                 }
-       
+
             }
             else
             {
@@ -319,6 +479,7 @@
         await base.OnInitializedAsync();
         this._loading = true;
         await this.QueryNodeListAsync();
+        await this.QueryNodeSettingsAsync();
         this._loading = false;
     }
 
@@ -360,31 +521,11 @@
 
     private bool IsNodeInfoFactoryTypeMatched(NodeInfoModel nodeInfo)
     {
-        switch (this._dbContextFactoryType)
+        if (string.IsNullOrEmpty(this._selectedAreaTag) || this._selectedAreaTag == "All")
         {
-            case FactoryType.All:
-                return true;
-                break;
-            case FactoryType.GM:
-                if (nodeInfo.Profile.FactoryName == "GM")
-                {
-                    return true;
-                }
-                break;
-            case FactoryType.BL:
-                if (nodeInfo.Profile.FactoryName == "BL")
-                {
-                    return true;
-                }
-                break;
-            default:
-                if (nodeInfo.Profile.FactoryName == "Unknown")
-                {
-                    return true;
-                }
-                break;
+            return true;
         }
-        return false;
+        return this._selectedAreaTag == nodeInfo.Profile.FactoryName;
     }
 
     private bool IsKeywordsMatch(NodeInfoModel nodeInfo)
@@ -423,6 +564,44 @@
     private bool FilterNodeInfo(NodeInfoModel nodeInfo)
     {
         return this.IsNodeInfoFactoryTypeMatched(nodeInfo) && this.IsNodeStatusMatched(nodeInfo) && this.IsKeywordsMatch(nodeInfo);
+    }
+
+    private void AddIpAddressMapping()
+    {
+        var entry = new StringEntry();
+        this._nodeSettings.IpAddressMappings.Add(entry);
+        entry.BeginEdit();
+    }
+
+    private void RemoveSelectedIpAddressMapping()
+    {
+        if (this._selectedIpAddressMappings == null)
+        {
+            return;
+        }
+        foreach (var item in this._selectedIpAddressMappings)
+        {
+            this._nodeSettings.IpAddressMappings.Remove(item);
+        }
+    }
+
+    private void AddProcessUsageMapping()
+    {
+        var entry = new StringEntry();
+        this._nodeSettings.ProcessUsagesMapping.Add(entry);
+        entry.BeginEdit();
+    }
+
+    private void RemoveSelectedProcessUsageMapping()
+    {
+        if (this._selectedProcessUsagesMappings == null)
+        {
+            return;
+        }
+        foreach (var item in this._selectedProcessUsagesMappings)
+        {
+            this._nodeSettings.ProcessUsagesMapping.Remove(item);
+        }
     }
 
 }

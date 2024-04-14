@@ -9,11 +9,11 @@ namespace NodeService.WebServer.Extensions
             TimeSpan absoluteExpirationRelativeToNow)
             where T : new()
         {
-            var value = await memoryCache.GetOrCreateAsync(key, async (cacheEntry) =>
+            var value = await memoryCache.GetOrCreateAsync(key, (cacheEntry) =>
             {
                 var value = new T();
                 cacheEntry.AbsoluteExpirationRelativeToNow = absoluteExpirationRelativeToNow;
-                return value;
+                return Task.FromResult(value);
             });
             return value;
         }

@@ -1,5 +1,6 @@
 ﻿using MimeKit.Encodings;
 using NodeService.Infrastructure.Logging;
+using NodeService.Infrastructure.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -23,12 +24,14 @@ namespace NodeService.WebServer.Services.Tasks
 
         public int PageCount { get; set; }
 
-        public int Count {  get; set; }
+        public int Count { get; set; }
+
+        public DateTime DateTimeUtc { get; set; }
 
         public List<TaskLogCachePageDump> PageDumps { get; set; }
     }
 
-    public class TaskLogCache : IDisposable
+    public class TaskLogCache
     {
         private LinkedList<TaskLogCachePage> _pages;
 
@@ -42,6 +45,8 @@ namespace NodeService.WebServer.Services.Tasks
         public int Count { get { return (int)Interlocked.Read(ref this._count); } }
 
         public int PageCount { get; private set; }
+
+        public DateTime DateTimeUtc { get; private set; }
 
         [JsonIgnore]
         public TaskLogDatabase Database { get; set; }
@@ -188,23 +193,14 @@ namespace NodeService.WebServer.Services.Tasks
                     current = current.Next;
                 }
             }
-
+            Database.WriteTask($"{TaskLogCacheManager.Key}_{TaskId}", this.CreateDump());
         }
 
-        public void Dispose()
+        private TaskLogCacheDump CreateDump()
         {
-            var current = this._pages.First;
-            while (current != null)
-            {
-                current.ValueRef.Dispose();
-                current = current.Next;
-            }
-            current = this._pages.Last;
-            while (current != null)
-            {
-                this._pages.Remove(current);
-                current = current.Previous;
-            }
+            TaskLogCacheDump taskLogCacheDump = new TaskLogCacheDump();
+            this.Dump(taskLogCacheDump);
+            return taskLogCacheDump;
         }
 
         public void Dump(TaskLogCacheDump taskLogCacheDump)

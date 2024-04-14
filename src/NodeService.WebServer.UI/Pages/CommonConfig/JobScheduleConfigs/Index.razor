@@ -160,20 +160,15 @@
                     </RadioGroup>
                 </GridRow>
                 <GridRow >
-                    <div style="margin:20px 20px;border-color:dodgerblue;border-radius:8;border-width:1px">
-                        @foreach (var item in _selectedNodeInfos)
-                        {
-                            <Tag @key="item" Closable OnClose="()=>RemoveSelectedNode(item)">@item.Name</Tag>
-                        }
-                    </div>
-
+                    <SelectedNodesComponent RemoveSelectedNode="RemoveSelectedNode" SelectedNodes="@_selectedNodeInfos"/>
                 </GridRow>
 
                 <Table OnChange="OnNodeTableChange"
                        @ref="_nodeTable"
                        Context="nodeInfo"
                        TItem="NodeInfoModel"
-                       @bind-SelectedRows="@_selectedNodeInfos"
+                       SelectedRows="@_selectedNodeInfos"
+                       SelectedRowsChanged="OnSelectedNodeChanged"
                        DataSource="@_nodeInfoList"
                        Size="TableSize.Small">
                     <TitleTemplate>
@@ -190,65 +185,14 @@
                     <ColumnDefinitions>
                         <Selection Key="@nodeInfo.Id" Type="checkbox" />
                         <PropertyColumn Title="标志" Ellipsis Property="c=>c.Id" Sortable></PropertyColumn>
-                        <PropertyColumn Title="节点名称" Property="c=>c.Name" Sortable></PropertyColumn>
-                        <PropertyColumn Title="状态" Property="c=>c.Status" Sortable>
-                            @switch (nodeInfo.Status)
-                            {
-                                case NodeStatus.Online:
-                                    <Badge Status="@BadgeStatus.Processing" Text="在线"></Badge>
-                                    break;
-                                case NodeStatus.Offline:
-                                    <Badge Status="@BadgeStatus.Warning" Text="离线"></Badge>
-                                    break;
-                                case NodeStatus.NotConfigured:
-                                    <Badge Status="@BadgeStatus.Warning" Text="未配置"></Badge>
-                                    break;
-                            }
+                        <PropertyColumn Title="节点名称" Property="c=>c.Name" Sortable>
+                            <Badge Status="@(nodeInfo.Status== NodeStatus.Online?BadgeStatus.Processing: BadgeStatus.Warning)" Text="@nodeInfo.Name"></Badge>
+
                         </PropertyColumn>
                         <PropertyColumn Title="Ip地址" Property="c=>c.Profile.IpAddress" Sortable></PropertyColumn>
                         <PropertyColumn Title="用途" Ellipsis Property="c=>c.Profile.Usages" Sortable></PropertyColumn>
                     </ColumnDefinitions>
                 </Table>
-            </FormItem>
-            <FormItem Label="Dns过滤类型">
-                <RadioGroup @bind-Value="@context.DnsFilterType">
-                    <Radio RadioButton Value="@("include")">包含</Radio>
-                    <Radio RadioButton Value="@("exclude")">排除</Radio>
-                </RadioGroup>
-            </FormItem>
-            <FormItem Label="Dns过滤">
-                <Button OnClick="AddDnsFilter" Type="primary" Style="margin-bottom:16px;margin-left:0px;">
-                    添加
-                </Button>
-                <Button OnClick="RemoveSelectedDnsFilters" Disabled="@(this._selectedDnsFilters.IsNullOrEmpty())" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                    删除
-                </Button>
-                <StringEntryTable DataSource="@context.DnsFilters"
-                                  NameTitle="备注"
-                                  ValueTitle="Dns"
-                                  @bind-SelectedItems="@_selectedDnsFilters"
-                                  RemoveItemAction="@RemoveSelectedDnsFilter" />
-            </FormItem>
-
-            <FormItem Label="Ip地址过滤类型">
-                <RadioGroup @bind-Value="@context.IpAddressFilterType">
-                    <Radio RadioButton Value="@("include")">包含</Radio>
-                    <Radio RadioButton Value="@("exclude")">排除</Radio>
-                </RadioGroup>
-            </FormItem>
-
-            <FormItem Label="Ip地址过滤">
-                <Button OnClick="AddIpAddressFilter" Type="primary" Style="margin-bottom:16px;margin-left:0px;">
-                    添加
-                </Button>
-                <Button OnClick="RemoveSelectedIpAddressFilters" Disabled="@(this._selectedIpAddressFilters.IsNullOrEmpty())" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                    删除
-                </Button>
-                <StringEntryTable DataSource="@context.IpAddressFilters" 
-                                  NameTitle="备注"
-                                  ValueTitle="Ip地址"
-                                  @bind-SelectedItems="@_selectedIpAddressFilters"
-                                  RemoveItemAction="@RemoveSelectedIpAddressFilter" />
             </FormItem>
 
         </Form>
@@ -1606,6 +1550,7 @@
         var list = this._selectedNodeInfos.ToList();
         list.Remove(nodeInfo);
         this._selectedNodeInfos = list;
+        this.StateHasChanged();
     }
 
     private bool FilterModel(JobScheduleConfigModel model)
@@ -1621,5 +1566,11 @@
     {
         this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
         this._dataSource.Refresh();
+    }
+
+    void OnSelectedNodeChanged(IEnumerable<NodeInfoModel> selectedNodes)
+    {
+        this._selectedNodeInfos = selectedNodes;
+        this.StateHasChanged();
     }
 }

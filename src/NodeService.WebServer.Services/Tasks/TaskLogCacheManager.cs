@@ -10,7 +10,7 @@ namespace NodeService.WebServer.Services.Tasks
 {
     public class TaskLogCacheManager
     {
-        private const string Key = "Task";
+        public const string Key = "Task";
         private readonly TaskLogDatabase _taskLogDatabase;
         private readonly ConcurrentDictionary<string, TaskLogCache> _taskLogCaches;
         private JsonSerializerOptions _jsonSerializerOptions;
@@ -60,32 +60,12 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        private void WriteTaskLogCaches()
-        {
-            if (this._taskLogCaches.Count == 0)
-            {
-                return;
-            }
-            foreach (var taskLogCache in this._taskLogCaches.Values)
-            {
-                _taskLogDatabase.WriteTask($"{Key}_{taskLogCache.TaskId}", CreateDump(taskLogCache));
-            }
-        }
-
-        private TaskLogCacheDump CreateDump(TaskLogCache taskLogCache)
-        {
-            TaskLogCacheDump taskLogCacheDump = new TaskLogCacheDump();
-            taskLogCache.Dump(taskLogCacheDump);
-            return taskLogCacheDump;
-        }
-
         public void Flush()
         {
             foreach (var taskLogCache in this._taskLogCaches.Values)
             {
                 taskLogCache.Flush();
             }
-            WriteTaskLogCaches();
         }
 
 

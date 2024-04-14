@@ -4,24 +4,24 @@ using NodeService.WebServer.Data;
 
 namespace NodeService.WebServer.Services.Tasks
 {
-    public class JobScheduleService : BackgroundService
+    public class TaskScheduleService : BackgroundService
     {
 
         private readonly IAsyncQueue<JobScheduleMessage> _jobSchedulerMessageQueue;
         private readonly IServiceProvider _serviceProvider;
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly ILogger<JobScheduleService> _logger;
+        private readonly ILogger<TaskScheduleService> _logger;
         private readonly ISchedulerFactory _schedulerFactory;
         private IScheduler Scheduler;
-        private readonly JobSchedulerDictionary _jobSchedulerDictionary;
+        private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
 
-        public JobScheduleService(
+        public TaskScheduleService(
             IServiceProvider serviceProvider,
             IAsyncQueue<JobScheduleMessage> jobScheduleMessageQueue,
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             ISchedulerFactory schedulerFactory,
-            JobSchedulerDictionary jobSchedulerDictionary,
-            ILogger<JobScheduleService> logger)
+            TaskSchedulerDictionary jobSchedulerDictionary,
+            ILogger<TaskScheduleService> logger)
         {
             _serviceProvider = serviceProvider;
             _dbContextFactory = dbContextFactory;
@@ -129,8 +129,12 @@ namespace NodeService.WebServer.Services.Tasks
             JobScheduleConfigModel jobScheduleConfig)
         {
 
-            var jobScheduler = _serviceProvider.GetService<JobScheduler>();
-            var asyncDisposable = await jobScheduler.ScheduleAsync<FireJob>(jobSchedulerKey,
+            var jobScheduler = _serviceProvider.GetService<TaskScheduler>();
+            if (jobScheduler == null)
+            {
+                throw new InvalidOperationException();
+            }
+            var asyncDisposable = await jobScheduler.ScheduleAsync<FireTaskJob>(jobSchedulerKey,
                  jobSchedulerKey.TriggerSource == JobTriggerSource.Schedule ?
                  TriggerBuilderHelper.BuildScheduleTrigger(jobScheduleConfig.CronExpressions.Select(x => x.Value)) :
                  TriggerBuilderHelper.BuildStartNowTrigger(),

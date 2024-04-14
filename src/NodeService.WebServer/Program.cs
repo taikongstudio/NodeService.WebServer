@@ -16,6 +16,7 @@ using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.UI.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using TaskScheduler = NodeService.WebServer.Services.Tasks.TaskScheduler;
 
 public class Program
 {
@@ -207,8 +208,8 @@ public class Program
 
     private static void ConfigureHostedServices(WebApplicationBuilder builder)
     {
-        builder.Services.AddHostedService<JobScheduleService>();
-        builder.Services.AddHostedService<JobExecutionReportConsumerService>();
+        builder.Services.AddHostedService<TaskScheduleService>();
+        builder.Services.AddHostedService<TaskExecutionReportConsumerService>();
         builder.Services.AddHostedService<HeartBeatResponseConsumerService>();
         builder.Services.AddHostedService<HeartBeatRequestProducerService>();
         builder.Services.AddHostedService<TaskLogPersistenceService>();
@@ -347,19 +348,19 @@ public class Program
     private static void ConfigureSingleton(WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<IApplicationDbRepository, ApplicationDbRepository>();
-        builder.Services.AddSingleton<JobSchedulerDictionary>();
+        builder.Services.AddSingleton<TaskSchedulerDictionary>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
-        builder.Services.AddSingleton<IAsyncQueue<RocksDatabase>>(new AsyncQueue<RocksDatabase>());
+        builder.Services.AddSingleton<IAsyncQueue<TaskLogDatabase>>(new AsyncQueue<TaskLogDatabase>());
         builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>>(new AsyncQueue<JobExecutionEventRequest>());
         builder.Services.AddSingleton<IAsyncQueue<JobScheduleMessage>>(new AsyncQueue<JobScheduleMessage>());
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>>(new AsyncQueue<NotificationMessage>());
-        builder.Services.AddSingleton<BatchQueue<JobExecutionReportMessage>>(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
-        builder.Services.AddSingleton<BatchQueue<NodeHeartBeatSessionMessage>>(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
-        builder.Services.AddSingleton<BatchQueue<IEnumerable<LogPersistenceGroup>>>(new BatchQueue<IEnumerable<LogPersistenceGroup>>(1024 * 2, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
-        builder.Services.AddSingleton<JobExecutionInstanceInitializer>();
-        builder.Services.AddSingleton<RocksDatabase>();
-        builder.Services.AddSingleton<JobScheduler>();
+        builder.Services.AddSingleton<TaskExecutionInstanceInitializer>();
+        builder.Services.AddSingleton<TaskLogDatabase>();
+        builder.Services.AddSingleton<TaskScheduler>();
+        builder.Services.AddSingleton<TaskLogCacheManager>();
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
     }
 

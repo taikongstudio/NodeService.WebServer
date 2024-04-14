@@ -12,23 +12,23 @@ namespace NodeService.WebServer.Controllers
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         private readonly INodeSessionService _nodeSessionService;
         private readonly IMemoryCache _memoryCache;
-        private readonly RocksDatabase _database;
-        private readonly JobExecutionInstanceInitializer _jobExecutionInstanceInitializer;
+        private readonly TaskLogCacheManager _taskLogCacheManager;
+        private readonly TaskExecutionInstanceInitializer _taskExecutionInstanceInitializer;
 
         public JobsController(
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             INodeSessionService nodeSessionService,
             ILogger<NodesController> logger,
             IMemoryCache memoryCache,
-            JobExecutionInstanceInitializer jobExecutionInstanceInitializer,
-            RocksDatabase database)
+            TaskExecutionInstanceInitializer taskExecutionInstanceInitializer,
+            TaskLogCacheManager taskLogCacheManager)
         {
             this._logger = logger;
             this._dbContextFactory = dbContextFactory;
             this._nodeSessionService = nodeSessionService;
             this._memoryCache = memoryCache;
-            _database = database;
-            _jobExecutionInstanceInitializer = jobExecutionInstanceInitializer;
+            _taskLogCacheManager = taskLogCacheManager;
+            _taskExecutionInstanceInitializer = taskExecutionInstanceInitializer;
         }
 
         [HttpGet("/api/jobs/instances/list")]
@@ -131,7 +131,7 @@ namespace NodeService.WebServer.Controllers
                 {
                     jobExecutionInstance.CancelTimes++;
                     await dbContext.SaveChangesAsync();
-                    await _jobExecutionInstanceInitializer.TryCancelAsync(jobExecutionInstance.Id);
+                    await _taskExecutionInstanceInitializer.TryCancelAsync(jobExecutionInstance.Id);
                     var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
                         new NodeSessionId(jobExecutionInstance.NodeInfoId),
                         jobExecutionInstance.ToCancelEvent());
@@ -149,31 +149,29 @@ namespace NodeService.WebServer.Controllers
 
 
 
-        [HttpGet("/api/jobs/instances/{id}/log")]
-        public async Task<IActionResult> QueryJobLogAsync(string id, QueryParametersModel queryParameters)
+        [HttpGet("/api/jobs/instances/{taskId}/log")]
+        public async Task<IActionResult> QueryJobLogAsync(string taskId, QueryParametersModel queryParameters)
         {
             PaginationResponse<LogEntry> apiResponse = new PaginationResponse<LogEntry>();
             try
             {
-                apiResponse.TotalCount = _database.GetEntriesCount(id);
+                apiResponse.TotalCount = _taskLogCacheManager.GetCache(taskId).Count;
                 if (queryParameters.PageSize == 0)
                 {
                     using var dbContext = _dbContextFactory.CreateDbContext();
-                    var instance = await dbContext.JobExecutionInstancesDbSet.FirstOrDefaultAsync(x => x.Id == id);
+                    var instance = await dbContext.JobExecutionInstancesDbSet.FirstOrDefaultAsync(x => x.Id == taskId);
                     string fileName = "x.log";
                     if (instance == null)
                     {
-                        fileName = $"{id}.log";
+                        fileName = $"{taskId}.log";
                     }
                     else
                     {
                         fileName = $"{instance.Name}.log";
                     }
-                    var result = _database.ReadEntries<LogEntry>(
-                            id,
-                            0,
-                            apiResponse.TotalCount)
-                            .OrderBy(static x => x.Index);
+                    var result = _taskLogCacheManager.GetCache(taskId).GetEntries(
+                        queryParameters.PageIndex,
+                        queryParameters.PageSize);
                     var memoryStream = new MemoryStream();
                     using var streamWriter = new StreamWriter(memoryStream, Encoding.UTF8, leaveOpen: true);
 
@@ -187,8 +185,7 @@ namespace NodeService.WebServer.Controllers
                 }
                 else
                 {
-                    apiResponse.Result = _database.ReadEntries<LogEntry>(
-                        id,
+                    apiResponse.Result = _taskLogCacheManager.GetCache(taskId).GetEntries(
                         queryParameters.PageIndex,
                         queryParameters.PageSize)
                         .OrderBy(static x => x.Index);

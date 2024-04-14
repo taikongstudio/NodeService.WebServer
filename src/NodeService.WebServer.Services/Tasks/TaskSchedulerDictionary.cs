@@ -13,7 +13,7 @@
         public JobTriggerSource TriggerSource { get; init; }
     }
 
-    public class JobSchedulerDictionary : ConcurrentDictionary<JobSchedulerKey, IAsyncDisposable>
+    public class TaskSchedulerDictionary : ConcurrentDictionary<JobSchedulerKey, IAsyncDisposable>
     {
 
     }

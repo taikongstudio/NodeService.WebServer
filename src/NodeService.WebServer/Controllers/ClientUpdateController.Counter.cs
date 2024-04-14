@@ -9,6 +9,8 @@
             ApiResponse<bool> apiResponse = new ApiResponse<bool>();
             try
             {
+                apiResponse.Result = true;
+                return apiResponse;
                 using var dbContext = this._dbContextFactory.CreateDbContext();
                 var remoteIpAddress = this.HttpContext.Connection.RemoteIpAddress.MapToIPv4().ToString();
                 var updateConfig = await dbContext.ClientUpdateConfigurationDbSet.FindAsync(model.ClientUpdateConfigId);

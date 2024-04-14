@@ -3,17 +3,17 @@
     public abstract class JobBase : IJob, IAsyncDisposable
     {
 
-        public IAsyncDisposable AsyncDispoable { get; set; }
+        public IAsyncDisposable? AsyncDispoable { get; set; }
 
 
-        public ILogger Logger { get; set; }
+        public required ILogger Logger { get; set; }
 
-        public IServiceProvider ServiceProvider { get; set; }
+        public required IServiceProvider ServiceProvider { get; set; }
 
 
         public JobTriggerSource TriggerSource { get; set; }
 
-        public IDictionary<string, object?> Properties { get; set; }
+        public required IDictionary<string, object?> Properties { get; set; }
 
         public async ValueTask DisposeAsync()
         {

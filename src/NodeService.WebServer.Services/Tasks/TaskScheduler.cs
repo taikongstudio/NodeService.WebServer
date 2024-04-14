@@ -1,23 +1,24 @@
 ﻿
 
 using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.Reactive.Disposables;
 
 namespace NodeService.WebServer.Services.Tasks
 {
-    public class JobScheduler
+    public class TaskScheduler
     {
-        private class Disposable : IAsyncDisposable
+        private class AsyncDisposable : IAsyncDisposable
         {
             private JobKey _jobKey;
             private readonly IScheduler _scheduler;
 
-            public Disposable(IScheduler scheduler)
+            public AsyncDisposable(IScheduler scheduler)
             {
-
                 _scheduler = scheduler;
             }
 
-            public void SetJobKey(JobKey jobKey)
+            public void SetKey(JobKey jobKey)
             {
                 _jobKey = jobKey;
             }
@@ -31,16 +32,17 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
+
         private readonly ISchedulerFactory _schedulerFactory;
         private readonly ILogger _logger;
         private IScheduler _scheduler;
-        private readonly JobSchedulerDictionary _jobSchedulerDictionary;
+        private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
         private readonly IServiceProvider _serviceProvider;
 
-        public JobScheduler(
+        public TaskScheduler(
             ISchedulerFactory schedulerFactory,
-            ILogger<JobScheduler> logger,
-            JobSchedulerDictionary jobSchedulerDictionary,
+            ILogger<TaskScheduler> logger,
+            TaskSchedulerDictionary jobSchedulerDictionary,
              IServiceProvider serviceProvider
             )
         {
@@ -58,11 +60,12 @@ namespace NodeService.WebServer.Services.Tasks
             where T : JobBase
         {
             _scheduler = await _schedulerFactory.GetScheduler();
-            var asyncDisposable = new Disposable(_scheduler);
+            AsyncDisposable asyncDisposable = new AsyncDisposable(_scheduler);
             try
             {
+
                 var jobType = typeof(T);
-                IDictionary<string, object> props = new Dictionary<string, object>()
+                IDictionary<string, object?> props = new Dictionary<string, object?>()
                 {
                     {nameof(JobBase.Logger),_serviceProvider.GetService<ILogger<T>>()},
                     {nameof(JobBase.Properties),properties},
@@ -75,9 +78,7 @@ namespace NodeService.WebServer.Services.Tasks
                 IJobDetail job = JobBuilder.Create(jobType)
                     .SetJobData(new JobDataMap(props))
                     .Build();
-
-                asyncDisposable.SetJobKey(job.Key);
-
+                asyncDisposable.SetKey(job.Key);
                 Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>> jobsAndTriggers = [];
                 jobsAndTriggers.Add(job, triggers);
 

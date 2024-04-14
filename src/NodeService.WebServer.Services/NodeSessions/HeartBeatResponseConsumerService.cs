@@ -14,10 +14,10 @@ namespace NodeService.WebServer.Services.NodeSessions
         private readonly IMemoryCache _memoryCache;
         private readonly WebServerOptions _webServerOptions;
         private readonly ILogger<HeartBeatResponseConsumerService> _logger;
-        private readonly RocksDatabase _rocksDatabase;
+        private readonly TaskLogDatabase _rocksDatabase;
         private readonly IDisposable? _processUsageAnalysisMonitorToken;
         private ProcessUsageAnalysis _processUsageAnalysis;
-        private readonly RocksDatabase _rocksDb;
+        private readonly TaskLogDatabase _rocksDb;
         private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
 
         public HeartBeatResponseConsumerService(
@@ -28,7 +28,7 @@ namespace NodeService.WebServer.Services.NodeSessions
             IMemoryCache memoryCache,
             IOptionsMonitor<WebServerOptions> optionsMonitor,
             IOptionsMonitor<ProcessUsageAnalysis> processUsageAnalysisMonitor,
-            RocksDatabase rocksDatabase
+            TaskLogDatabase rocksDatabase
             )
         {
             _logger = logger;

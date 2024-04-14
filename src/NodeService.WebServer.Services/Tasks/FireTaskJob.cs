@@ -2,11 +2,11 @@
 
 namespace NodeService.WebServer.Services.Tasks
 {
-    public class FireJob : JobBase
+    public class FireTaskJob : JobBase
     {
 
 
-        public FireJob()
+        public FireTaskJob()
         {
 
         }
@@ -44,7 +44,7 @@ namespace NodeService.WebServer.Services.Tasks
                 PreviousFireTimeUtc = context.PreviousFireTimeUtc,
                 ScheduledFireTimeUtc = context.ScheduledFireTimeUtc,
             };
-            var initializer = ServiceProvider.GetService<JobExecutionInstanceInitializer>();
+            var initializer = ServiceProvider.GetService<TaskExecutionInstanceInitializer>();
             await initializer.InitAsync(jobFireParameters);
             Logger.LogInformation($"Job fire instance id:{context.FireInstanceId} end init");
         }

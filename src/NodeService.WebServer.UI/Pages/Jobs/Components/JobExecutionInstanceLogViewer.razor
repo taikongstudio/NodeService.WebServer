@@ -120,7 +120,7 @@
     async Task<bool> LoadNextLogPageAsync(CancellationToken cancellationToken = default)
     {
 
-        int pageSize = 500;
+        int pageSize = 512;
         var apiResponse = await ApiService.QueryJobExecutionInstanceLogAsync(LogQueryId,
          new QueryParameters(_logPageIndex, pageSize),
          cancellationToken
@@ -131,7 +131,7 @@
 
             foreach (var item in apiResponse.Result)
             {
-                sb.AppendLine($"{item.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
+                sb.AppendLine($"{item.Index} {item.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
             }
 
             var log = sb.ToString();

@@ -1,10 +1,10 @@
 ﻿namespace NodeService.WebServer.Services.Tasks
 {
-    public class PenddingContext : IAsyncDisposable
+    public class TaskPenddingContext : IAsyncDisposable
     {
         private CancellationTokenSource _penddingCancelTokenSource;
 
-        public PenddingContext(string id)
+        public TaskPenddingContext(string id)
         {
             Id = id;
         }

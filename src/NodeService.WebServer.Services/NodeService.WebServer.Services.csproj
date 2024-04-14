@@ -19,6 +19,7 @@
 		<PackageReference Include="Grpc.AspNetCore.Server" Version="2.61.0" />
 		<PackageReference Include="Grpc.AspNetCore" Version="2.61.0" />
 		<PackageReference Include="Grpc.AspNetCore.Web" Version="2.61.0" />
+		<PackageReference Include="System.Reactive" Version="6.0.1-preview.1" />
 	</ItemGroup>
 
 

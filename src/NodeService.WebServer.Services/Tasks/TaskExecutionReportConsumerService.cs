@@ -3,28 +3,28 @@ using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Models;
-using NodeService.WebServer.Services.Tasks;
+using NodeService.WebServer.Services.NodeSessions;
 
-namespace NodeService.WebServer.Services.NodeSessions
+namespace NodeService.WebServer.Services.Tasks
 {
-    public class JobExecutionReportConsumerService : BackgroundService
+    public class TaskExecutionReportConsumerService : BackgroundService
     {
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         private readonly BatchQueue<JobExecutionReportMessage> _jobExecutionReportBatchQueue;
         private readonly IAsyncQueue<JobScheduleMessage> _jobScheduleAsyncQueue;
-        private readonly ILogger<JobExecutionReportConsumerService> _logger;
-        private readonly JobSchedulerDictionary _jobSchedulerDictionary;
-        private readonly JobScheduler _jobScheduler;
-        private readonly BatchQueue<IEnumerable<LogPersistenceGroup>> _logPersistenceGroupsBatchQueue;
+        private readonly ILogger<TaskExecutionReportConsumerService> _logger;
+        private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
+        private readonly TaskScheduler _jobScheduler;
+        private readonly TaskLogCacheManager _taskLogCacheManager;
 
-        public JobExecutionReportConsumerService(
+        public TaskExecutionReportConsumerService(
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             BatchQueue<JobExecutionReportMessage> jobExecutionReportBatchQueue,
-            BatchQueue<IEnumerable<LogPersistenceGroup>> logPersistenceGroupsBatchQueue,
+            TaskLogCacheManager taskLogCacheManager,
             IAsyncQueue<JobScheduleMessage> jobScheduleAsyncQueue,
-            ILogger<JobExecutionReportConsumerService> logger,
-            JobSchedulerDictionary jobSchedulerDictionary,
-            JobScheduler jobScheduler
+            ILogger<TaskExecutionReportConsumerService> logger,
+            TaskSchedulerDictionary jobSchedulerDictionary,
+            TaskScheduler jobScheduler
             )
         {
             _dbContextFactory = dbContextFactory;
@@ -33,7 +33,7 @@ namespace NodeService.WebServer.Services.NodeSessions
             _logger = logger;
             _jobSchedulerDictionary = jobSchedulerDictionary;
             _jobScheduler = jobScheduler;
-            _logPersistenceGroupsBatchQueue = logPersistenceGroupsBatchQueue;
+            _taskLogCacheManager = taskLogCacheManager;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -70,7 +70,7 @@ namespace NodeService.WebServer.Services.NodeSessions
             }
         }
 
-        private static string? GetId(JobExecutionReportMessage message)
+        private static string? GetId(JobExecutionReportMessage? message)
         {
             if (message == null)
             {
@@ -99,7 +99,7 @@ namespace NodeService.WebServer.Services.NodeSessions
         }
 
         private async Task ProcessJobExecutionReportsAsync(
-            ArrayPoolCollection<JobExecutionReportMessage> arrayPoolCollection,
+            ArrayPoolCollection<JobExecutionReportMessage?> arrayPoolCollection,
             CancellationToken stoppingToken = default)
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
@@ -107,54 +107,53 @@ namespace NodeService.WebServer.Services.NodeSessions
             var timeSpan = TimeSpan.Zero;
             try
             {
-                List<LogPersistenceGroup> logPersistenceGroups = [];
-                foreach (var messageGroup in arrayPoolCollection
+                List<TaskLogCachePage> taskLogPersistenceGroups = [];
+                foreach (var taskReportGroup in arrayPoolCollection
                     .GroupBy(GetId))
                 {
-                    if (messageGroup.Key == null)
+                    if (taskReportGroup.Key == null)
                     {
                         continue;
                     }
                     Stopwatch stopwatchQuery = Stopwatch.StartNew();
-                    var id = messageGroup.Key;
-                    var jobExecutionInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(id);
+                    var taskId = taskReportGroup.Key;
+                    var taskInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(taskId);
                     stopwatchQuery.Stop();
-                    _logger.LogInformation($"{id}:Query:{stopwatchQuery.Elapsed}");
+                    _logger.LogInformation($"{taskId}:Query:{stopwatchQuery.Elapsed}");
 
-                    if (jobExecutionInstance == null)
+                    if (taskInstance == null)
                     {
                         continue;
                     }
 
-                    var logPersistenceGroup = new LogPersistenceGroup(id);
 
-
-                    foreach (var reportMessage in messageGroup)
+                    foreach (var reportMessage in taskReportGroup)
                     {
+                        if (reportMessage == null)
+                        {
+                            continue;
+                        }
                         var report = reportMessage.GetMessage();
                         if (report.LogEntries.Count > 0)
                         {
-                            logPersistenceGroup.EntriesList.Add(report.LogEntries.Select(Convert));
-                            logPersistenceGroup.TotalEntiresCount += report.LogEntries.Count;
+                            _taskLogCacheManager.GetCache(taskId).AppendEntries(report.LogEntries.Select(Convert));
                         }
                     }
 
-                    _logger.LogInformation($"{id}:log count:{logPersistenceGroup.TotalEntiresCount}");
-
-                    if (logPersistenceGroup.TotalEntiresCount > 0)
-                    {
-                        logPersistenceGroups.Add(logPersistenceGroup);
-                    }
 
                     Stopwatch stopwatchProcessMessage = new Stopwatch();
-                    foreach (var messageStatusGroup in messageGroup.GroupBy(static x => x.GetMessage().Status))
+                    foreach (var messageStatusGroup in taskReportGroup.GroupBy(static x => x.GetMessage().Status))
                     {
 
                         stopwatchProcessMessage.Start();
 
                         foreach (var reportMessage in messageStatusGroup)
                         {
-                            await ProcessJobExecutionReportAsync(jobExecutionInstance, reportMessage, stoppingToken);
+                            if (reportMessage == null)
+                            {
+                                continue;
+                            }
+                            await ProcessJobExecutionReportAsync(taskInstance, reportMessage, stoppingToken);
                         }
 
                         stopwatchProcessMessage.Stop();
@@ -165,12 +164,6 @@ namespace NodeService.WebServer.Services.NodeSessions
                         stopwatchSave.Stop();
                     }
 
-                }
-                if (logPersistenceGroups.Count > 0)
-                {
-                    _logPersistenceGroupsBatchQueue.Post(logPersistenceGroups);
-
-                    _logger.LogInformation($"Post log groups:{logPersistenceGroups.Count}");
                 }
             }
             catch (Exception ex)

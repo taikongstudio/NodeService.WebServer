@@ -5,29 +5,29 @@ namespace NodeService.WebServer.Services.Tasks
 {
 
 
-    public class JobExecutionInstanceInitializer
+    public class TaskExecutionInstanceInitializer
     {
         readonly INodeSessionService _nodeSessionService;
         readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        readonly ILogger<JobExecutionInstanceInitializer> _logger;
+        readonly ILogger<TaskExecutionInstanceInitializer> _logger;
         private readonly BatchQueue<JobExecutionReportMessage> _jobExecutionReportBatchQueue;
-        readonly ConcurrentDictionary<string, PenddingContext> _penddingContextDictionary;
+        readonly ConcurrentDictionary<string, TaskPenddingContext> _penddingContextDictionary;
 
 
-        public ActionBlock<PenddingContext> PenddingActionBlock { get; private set; }
+        public ActionBlock<TaskPenddingContext> PenddingActionBlock { get; private set; }
 
-        public JobExecutionInstanceInitializer(
+        public TaskExecutionInstanceInitializer(
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
-            ILogger<JobExecutionInstanceInitializer> logger,
+            ILogger<TaskExecutionInstanceInitializer> logger,
             BatchQueue<JobExecutionReportMessage> jobExecutionReportBatchQueue,
             INodeSessionService nodeSessionService)
         {
-            _penddingContextDictionary = new ConcurrentDictionary<string, PenddingContext>();
+            _penddingContextDictionary = new ConcurrentDictionary<string, TaskPenddingContext>();
             _nodeSessionService = nodeSessionService;
             _dbContextFactory = dbContextFactory;
             _logger = logger;
             _jobExecutionReportBatchQueue = jobExecutionReportBatchQueue;
-            PenddingActionBlock = new ActionBlock<PenddingContext>(ProcessPenddingContextAsync, new ExecutionDataflowBlockOptions()
+            PenddingActionBlock = new ActionBlock<TaskPenddingContext>(ProcessPenddingContextAsync, new ExecutionDataflowBlockOptions()
             {
                 EnsureOrdered = false,
                 MaxDegreeOfParallelism = Environment.ProcessorCount,
@@ -36,7 +36,7 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
 
-        private async Task ProcessPenddingContextAsync(PenddingContext context)
+        private async Task ProcessPenddingContextAsync(TaskPenddingContext context)
         {
             bool canSendFireEventToNode = false;
             try
@@ -178,7 +178,7 @@ namespace NodeService.WebServer.Services.Tasks
                                                 nodeSessionId,
                                                 null,
                                                 parameters);
-                        var context = _penddingContextDictionary.GetOrAdd(jobExecutionInstance.Id, new PenddingContext(jobExecutionInstance.Id)
+                        var context = _penddingContextDictionary.GetOrAdd(jobExecutionInstance.Id, new TaskPenddingContext(jobExecutionInstance.Id)
                         {
                             NodeServerService = _nodeSessionService,
                             NodeSessionId = nodeSessionId,

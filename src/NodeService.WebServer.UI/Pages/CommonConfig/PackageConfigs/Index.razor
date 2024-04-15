@@ -47,6 +47,13 @@
                        上传文件
                     </label>
                 </Upload>
+                @if (!string.IsNullOrEmpty(_fileError))
+                {
+                    <Alert Type="@AlertType.Error"
+                           Message="错误"
+                           Description="@_fileError"
+                           ShowIcon="true" />
+                }
             </FormItem>
             <FormItem Label="哈希">
                 <Input Disabled @bind-Value="@context.Hash" />
@@ -180,6 +187,7 @@
     bool _editFormSubmitting = false;
     bool _editFormConfirmLoading = false;
     bool _loading;
+    string _fileError = string.Empty;
     Form<PackageConfigModel> _editForm;
     PackageConfigModel _editModel = new PackageConfigModel();
     List<UploadFileItem> _uploadFileItems = new List<UploadFileItem>();
@@ -245,6 +253,10 @@
 
     private void HandleEditOk(MouseEventArgs e)
     {
+        if (this._fileError != null)
+        {
+            return;
+        }
         this._editFormSubmitting = true;
         this._editForm.Submit();
 
@@ -334,23 +346,49 @@
 
     private async Task OnInputFileChanged(InputFileChangeEventArgs e)
     {
-        this._file = e.File;
-        this._loading = true;
-        var readStream = e.File.OpenReadStream(1024 * 1024 * 200);
-        using var memoryStream = new MemoryStream();
-        await readStream.CopyToAsync(memoryStream).ConfigureAwait(false);
-        memoryStream.Position = 0;
-        var bytes = await System.Security.Cryptography.SHA256.HashDataAsync(memoryStream).ConfigureAwait(false);
-        this._editModel.Hash = BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
-        memoryStream.Position = 0;
+        try
+        {
+            this._file = e.File;
+            this._loading = true;
+            this._entryPoints = [];
+            this._editModel.Hash = null;
+            var readStream = e.File.OpenReadStream(1024 * 1024 * 200);
+            using var memoryStream = new MemoryStream();
+            await readStream.CopyToAsync(memoryStream).ConfigureAwait(false);
+            memoryStream.Position = 0;
 
-        System.IO.Compression.ZipArchive zipArchive = new System.IO.Compression.ZipArchive(memoryStream);
+            if (!ZipArchiveHelper.TryUpdate(memoryStream, out var zipArchive))
+            {
+                this._fileError = "not a zip package";
+                return;
+            }
+            if (!zipArchive.Entries.Any(ZipArchiveHelper.HasPackageKey))
+            {
+                this._fileError = "Invalid package";
+                return;
+            }
+            this._entryPoints = zipArchive.Entries.Where(IsEntryPoint).Select(x => x.FullName).ToList();
+            memoryStream.Position = 0;
+            var fileContents = await System.Security.Cryptography.SHA256.HashDataAsync(memoryStream).ConfigureAwait(false);
+            this._editModel.Hash = BitConverter.ToString(fileContents).Replace("-", "").ToLowerInvariant();
+            memoryStream.Position = 0;
+            this._fileError = null;
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "操作",
+                    Description = ex.ToString(),
+                });
+        }
+        finally
+        {
+            this._loading = false;
+        }
 
-        this._entryPoints = zipArchive.Entries.Where(IsEntryPoint).Select(x => x.FullName).ToList();
-
-
-        this._loading = false;
     }
+
 
     private bool IsEntryPoint(ZipArchiveEntry zipArchiveEntry)
     {

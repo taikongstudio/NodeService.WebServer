@@ -34,19 +34,28 @@ namespace NodeService.WebServer.Controllers
             }
             var fileContents = await this._memoryCache.GetOrCreateAsync<byte[]>(model.DownloadUrl, async () =>
             {
-                using var memoryStream = new MemoryStream();
+                using var stream = new MemoryStream();
                 await this._virtualFileSystem.ConnectAsync();
-                if (await this._virtualFileSystem.DownloadStream(model.DownloadUrl, memoryStream))
+                if (await this._virtualFileSystem.DownloadStream(model.DownloadUrl, stream))
                 {
-                    memoryStream.Position = 0;
-                    var hash = await CryptographyHelper.CalculateSHA256Async(memoryStream);
-                    memoryStream.Position = 0;
+                    stream.Position = 0;
+                    var hash = await CryptographyHelper.CalculateSHA256Async(stream);
+                    stream.Position = 0;
                     if (hash != model.Hash)
                     {
                         return null;
                     }
+                    if (!ZipArchiveHelper.TryRead(stream, out var zipArchive))
+                    {
+                        return null;
+                    }
+                    if (!zipArchive.Entries.Any(ZipArchiveHelper.HasPackageKey))
+                    {
+                        return null;
+                    }
+                    stream.Position = 0;
                 }
-                return memoryStream.ToArray();
+                return stream.ToArray();
             }, TimeSpan.FromHours(1));
             if (fileContents == null)
             {
@@ -70,6 +79,19 @@ namespace NodeService.WebServer.Controllers
                 var fileName = Guid.NewGuid().ToString("N");
                 var remotePath = Path.Combine(this._webServerOptions.GetPackagePath(package.Id), fileName);
                 await this._virtualFileSystem.ConnectAsync();
+                var stream = package.File.OpenReadStream();
+                if (!ZipArchiveHelper.TryRead(stream, out var zipArchive))
+                {
+                    apiResponse.ErrorCode = -1;
+                    apiResponse.Message = "not a zip package";
+                    return apiResponse;
+                }
+                if (!zipArchive.Entries.Any(ZipArchiveHelper.HasPackageKey))
+                {
+                    apiResponse.ErrorCode = -1;
+                    apiResponse.Message = "Invalid package";
+                    return apiResponse;
+                }
                 if (!await this._virtualFileSystem.UploadStream(remotePath, package.File.OpenReadStream()))
                 {
                     apiResponse.ErrorCode = -1;

@@ -220,40 +220,19 @@ namespace NodeService.WebServer.Services.NodeSessions
                         }
                     }
 
-                    if (propsDict.Count <= 0)
+                    if (propsDict.Count > 0)
                     {
-                        return;
+                        if (propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key, out var processString))
+                        {
+                            if (!string.IsNullOrEmpty(processString) && processString.IndexOf('[') >= 0)
+                            {
+                                var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
+                                AnalysisProcessInfoList(nodeInfo, processInfoList);
+                            }
+
+                        }
                     }
 
-                    if (propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key, out var processString))
-                    {
-                        if (string.IsNullOrEmpty(processString) || processString.IndexOf('[') < 0)
-                        {
-                            return;
-                        }
-                        var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
-                        if (_nodeSettings.ProcessUsagesMapping == null || processInfoList == null)
-                        {
-                            return;
-                        }
-                        HashSet<string> usages = new HashSet<string>();
-                        foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
-                        {
-                            if (string.IsNullOrEmpty(mapping.Name)
-                                || string.IsNullOrEmpty(mapping.Value))
-                            {
-                                continue;
-                            }
-                            foreach (var processInfo in processInfoList)
-                            {
-                                if (processInfo.FileName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    usages.Add(mapping.Value);
-                                }
-                            }
-                        }
-                        nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(static x => x));
-                    }
                 }
 
 
@@ -291,7 +270,28 @@ namespace NodeService.WebServer.Services.NodeSessions
 
         }
 
-
-
+        private void AnalysisProcessInfoList(NodeInfoModel? nodeInfo, ProcessInfo[]? processInfoList)
+        {
+            if (_nodeSettings.ProcessUsagesMapping != null && processInfoList != null)
+            {
+                HashSet<string> usages = new HashSet<string>();
+                foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
+                {
+                    if (string.IsNullOrEmpty(mapping.Name)
+                        || string.IsNullOrEmpty(mapping.Value))
+                    {
+                        continue;
+                    }
+                    foreach (var processInfo in processInfoList)
+                    {
+                        if (processInfo.FileName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            usages.Add(mapping.Value);
+                        }
+                    }
+                }
+                nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(static x => x));
+            }
+        }
     }
 }

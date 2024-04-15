@@ -68,43 +68,47 @@
         }
 
         [HttpPost("/api/filerecords/{nodeId}/addorupdate")]
-        public async Task<ApiResponse> AddOrUpdateAsync([FromBody] FileRecordModel fileRecord)
+        public async Task<ApiResponse> AddOrUpdateAsync([FromBody] FileRecordModel model)
         {
             ApiResponse apiResponse = new ApiResponse();
             using var dbContext = _dbContextFactory.CreateDbContext();
             try
             {
-                var fileRecordFromDb = await dbContext.FileRecordsDbSet.FindAsync(fileRecord.Id, fileRecord.Name);
+                var fileRecordFromDb = await dbContext.FileRecordsDbSet.FindAsync(model.Id, model.Name);
                 if (fileRecordFromDb == null)
                 {
-                    await dbContext.FileRecordsDbSet.AddAsync(fileRecord);
+                    await dbContext.FileRecordsDbSet.AddAsync(model);
                 }
                 else
                 {
-                    fileRecordFromDb.ModifyDateTime = fileRecord.ModifyDateTime;
-                    if (fileRecord.Properties != null)
+                    fileRecordFromDb.ModifyDateTime = model.ModifyDateTime;
+                    if (model.Properties != null)
                     {
-                        fileRecordFromDb.Properties = fileRecord.Properties;
+                        fileRecordFromDb.Properties = model.Properties;
                     }
-                    if (fileRecord.FileHashValue != null)
+                    if (model.FileHashValue != null)
                     {
-                        fileRecordFromDb.FileHashValue = fileRecord.FileHashValue;
+                        fileRecordFromDb.FileHashValue = model.FileHashValue;
                     }
-                    if (fileRecord.Size > 0)
+                    if (model.Size > 0)
                     {
-                        fileRecordFromDb.Size = fileRecord.Size;
+                        fileRecordFromDb.Size = model.Size;
                     }
-                    if (fileRecord.OriginalFileName != null)
+                    if (model.OriginalFileName != null)
                     {
-                        fileRecordFromDb.OriginalFileName = fileRecord.OriginalFileName;
+                        fileRecordFromDb.OriginalFileName = model.OriginalFileName;
                     }
-                    if (fileRecord.State != FileRecordState.None)
+                    if (model.State != FileRecordState.None)
                     {
-                        fileRecordFromDb.State = fileRecord.State;
+                        fileRecordFromDb.State = model.State;
                     }
-                    if (fileRecord.CompressedSize > 0)
+                    if (model.CompressedSize > 0)
                     {
-                        fileRecordFromDb.CompressedSize = fileRecord.CompressedSize;
+                        fileRecordFromDb.CompressedSize = model.CompressedSize;
+                    }
+                    if (model.CompressedFileHashValue != null)
+                    {
+                        fileRecordFromDb.CompressedFileHashValue = model.CompressedFileHashValue;
                     }
 
                 }

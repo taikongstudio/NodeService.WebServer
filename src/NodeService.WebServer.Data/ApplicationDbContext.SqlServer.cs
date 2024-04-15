@@ -1,4 +1,5 @@
-﻿namespace NodeService.WebServer.Data
+﻿
+namespace NodeService.WebServer.Data
 {
     public partial class ApplicationDbContext
     {
@@ -13,6 +14,20 @@
             SqlServer_BuildFileUploadRecordModel(modelBuilder);
             SqlServer_BuildNotificationRecordModel(modelBuilder);
             SqlServer_BuildJobFireConfigurationModel(modelBuilder);
+            SqlServer_BuildClientUpdateCounterModel(modelBuilder);
+        }
+
+        private void SqlServer_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ClientUpdateCounterModel>(entityBuilder =>
+            {
+                entityBuilder.HasKey(nameof(ClientUpdateCounterModel.Id));
+                modelBuilder.Entity<ClientUpdateCounterModel>()
+                    .Property(x => x.Counters)
+                    .HasConversion(x => Serialize(x), x => Deserialize<List<CategoryModel>>(x))
+                    .Metadata
+                    .SetValueComparer(GetEnumerableComparer<CategoryModel>());
+            });
         }
 
         private void SqlServer_BuildNotificationRecordModel(ModelBuilder modelBuilder)
@@ -92,12 +107,6 @@
             modelBuilder.Entity<NodeInfoModel>()
                 .HasKey(nameof(NodeInfoModel.Id));
 
-            //modelBuilder.Entity<NodeInfoModel>()
-            //    .HasMany(x => x.ConfigurationBindings)
-            //    .WithOne(x => x.Owner)
-            //    .HasForeignKey(x => x.OwnerId)
-            //    .IsRequired();
-
             modelBuilder.Entity<NodeInfoModel>()
                 .HasMany(x => x.JobExecutionInstances)
                 .WithOne(x => x.NodeInfo)
@@ -114,19 +123,6 @@
             modelBuilder.Entity<NodeInfoModel>()
                 .Navigation(x => x.Profile)
                 .AutoInclude(true);
-
-            //modelBuilder.Entity<NodeInfoModel>()
-            // .HasMany(e => e.Configurations)
-            // .WithMany(e => e.NodeList)
-            // .UsingEntity<NodeInfoConfigurationBindingModel>(
-            //     l => l.HasOne<ConfigurationModel>(e => e.Target).WithMany(e => e.NodeBindings).HasForeignKey(e => e.TargetId),
-            //     r => r.HasOne<NodeInfoModel>(e => e.Owner).WithMany(e => e.ConfigurationBindings).HasForeignKey(e => e.OwnerId));
-
-            //modelBuilder.Entity<NodeInfoModel>()
-            //    .HasMany(e => e.Configurations)
-            //    .WithMany(e => e.NodeList)
-            //    .UsingEntity<NodeInfoConfigurationBindingModel>(x => x.Property(e => e.PublicationDate).HasDefaultValue(DateTime.UtcNow));
-
         }
 
         private static void SqlServer_BuildConfigurationModels(ModelBuilder modelBuilder)

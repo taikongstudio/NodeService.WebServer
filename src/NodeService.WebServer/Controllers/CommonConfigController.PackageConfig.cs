@@ -21,24 +21,38 @@ namespace NodeService.WebServer.Controllers
         [HttpGet("/api/commonconfig/package/download/{packageId}")]
         public async Task<IActionResult> DownloadPackageAsync(string packageId)
         {
-            ArgumentNullException.ThrowIfNullOrEmpty(packageId);
+            ArgumentException.ThrowIfNullOrEmpty(packageId);
             using var dbContext = this._dbContextFactory.CreateDbContext();
             var model = await dbContext.GetDbSet<PackageConfigModel>().FindAsync(packageId);
             if (model == null)
             {
                 return NotFound();
             }
-            var bytes = await this._memoryCache.GetOrCreateAsync<byte[]>(model.DownloadUrl, async () =>
+            if (model.DownloadUrl == null)
             {
-                var memoryStream = new MemoryStream();
+                return NotFound();
+            }
+            var fileContents = await this._memoryCache.GetOrCreateAsync<byte[]>(model.DownloadUrl, async () =>
+            {
+                using var memoryStream = new MemoryStream();
                 await this._virtualFileSystem.ConnectAsync();
                 if (await this._virtualFileSystem.DownloadStream(model.DownloadUrl, memoryStream))
                 {
                     memoryStream.Position = 0;
+                    var hash = await CryptographyHelper.CalculateSHA256Async(memoryStream);
+                    memoryStream.Position = 0;
+                    if (hash != model.Hash)
+                    {
+                        return null;
+                    }
                 }
                 return memoryStream.ToArray();
             }, TimeSpan.FromHours(1));
-            return File(bytes, "application/octet-stream", model.FileName);
+            if (fileContents == null)
+            {
+                return NotFound();
+            }
+            return File(fileContents, "application/octet-stream", model.FileName);
         }
 
         [HttpPost("/api/commonconfig/package/addorupdate")]

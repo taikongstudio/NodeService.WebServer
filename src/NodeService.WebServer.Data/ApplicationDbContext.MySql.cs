@@ -1,4 +1,5 @@
-﻿namespace NodeService.WebServer.Data
+﻿
+namespace NodeService.WebServer.Data
 {
     public partial class ApplicationDbContext
     {
@@ -13,6 +14,19 @@
             MySql_BuildFileUploadRecordModel(modelBuilder);
             MySql_BuildNotificationRecordModel(modelBuilder);
             MySql_BuildJobFireConfigurationModel(modelBuilder);
+            MySql_BuildClientUpdateCounterModel(modelBuilder);
+        }
+
+        private void MySql_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ClientUpdateCounterModel>()
+            .HasKey(t => new { t.Id, t.Name });
+
+            modelBuilder.Entity<ClientUpdateCounterModel>()
+            .Property(x => x.Counters)
+            .HasConversion(x => Serialize(x), x => Deserialize<List<CategoryModel>>(x))
+            .Metadata
+            .SetValueComparer(GetEnumerableComparer<CategoryModel>());
         }
 
         private void MySql_BuildNotificationRecordModel(ModelBuilder modelBuilder)
@@ -51,12 +65,6 @@
             modelBuilder.Entity<ClientUpdateConfigModel>()
                 .Navigation(x => x.PackageConfig)
                 .AutoInclude(true);
-
-            modelBuilder.Entity<ClientUpdateConfigModel>()
-                .Property(x => x.Counters)
-                .HasConversion(x => Serialize(x), x => Deserialize<List<ClientUpdateCounterModel>>(x))
-                .Metadata
-                .SetValueComparer(GetEnumerableComparer<ClientUpdateCounterModel>());
         }
 
 

@@ -15,49 +15,6 @@
             _dbContextFactory = dbContextFactory;
         }
 
-        [HttpPost("/api/management/analysisnodeprops")]
-        public async Task<ApiResponse<int>> AnalysisNodePropsAsync(
-            [FromQuery] int? count,
-            [FromBody] ProcessUsageMapping[] processUsageMappings)
-        {
-            ApiResponse<int> apiResponse = new ApiResponse<int>();
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            var nodeInfoList = await dbContext.NodeInfoDbSet.Include(x => x.Profile)
-                .ToArrayAsync();
-            if (count == null)
-            {
-                count = 30;
-            }
-            dbContext.NodeInfoDbSet.AttachRange(nodeInfoList);
-
-            foreach (var nodeInfo in nodeInfoList)
-            {
-                string nodeId = nodeInfo.Id;
-                var nodePropsSnapshotList =
-                    await dbContext.NodePropertiesSnapshotsDbSet.FromSqlRaw($"select *\r\n" +
-                    $"from NodePropertySnapshotsDbSet\r\nwhere NodeInfoId ='{nodeId}'\r\n limit {count}")
-                    .ToArrayAsync();
-                HashSet<string> usages = new HashSet<string>();
-                foreach (var nodePropsSnapshot in nodePropsSnapshotList)
-                {
-                    var nodeProperpty = NodePropertyModel.FromNodePropertyItems(nodePropsSnapshot.NodeProperties);
-                    foreach (var mapping in processUsageMappings)
-                    {
-                        if (nodeProperpty.Processes.Any(x => x.FileName.Contains(mapping.FileName)))
-                        {
-                            usages.Add(mapping.Name);
-                        }
-                    }
-                }
-                nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(x => x));
-
-            }
-
-            var changesCount = await dbContext.SaveChangesAsync();
-            apiResponse.Result = changesCount;
-            return apiResponse;
-        }
-
         [HttpGet("/api/management/sync")]
         public async Task<ApiResponse<int>> SyncNodeInfoFromMachineInfoAsync()
         {

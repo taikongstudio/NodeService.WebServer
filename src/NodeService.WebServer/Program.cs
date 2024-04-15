@@ -143,7 +143,6 @@ public class Program
 
         builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
         builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
-        builder.Services.Configure<ProcessUsageAnalysis>(builder.Configuration.GetSection(nameof(ProcessUsageAnalysis)));
         builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
 
         builder.Services.AddControllersWithViews();

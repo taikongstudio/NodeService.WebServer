@@ -110,6 +110,7 @@ namespace NodeService.WebServer.Data
 
         public DbSet<NotificationRecordModel> NotificationRecordsDbSet { get; set; }
 
+        public DbSet<ClientUpdateCounterModel> ClientUpdateCountersDbSet { get; set; }
 
         private static string Serialize<T>(T? value)
         {

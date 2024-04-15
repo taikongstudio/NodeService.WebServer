@@ -9,39 +9,39 @@
             ApiResponse<bool> apiResponse = new ApiResponse<bool>();
             try
             {
-                apiResponse.Result = true;
-                return apiResponse;
                 using var dbContext = this._dbContextFactory.CreateDbContext();
-                var remoteIpAddress = this.HttpContext.Connection.RemoteIpAddress.MapToIPv4().ToString();
-                var updateConfig = await dbContext.ClientUpdateConfigurationDbSet.FindAsync(model.ClientUpdateConfigId);
-                var counter = updateConfig.Counters.FirstOrDefault(x => x.IpAddress == remoteIpAddress && x.CategoryName == model.CategoryName);
+                var counter = await dbContext.ClientUpdateCountersDbSet.FindAsync(model.ClientUpdateConfigId, model.NodeName);
                 if (counter == null)
                 {
                     counter = new ClientUpdateCounterModel()
                     {
-                        IpAddress = remoteIpAddress,
-                        CategoryName = model.CategoryName,
-                        DnsName = model.NodeName,
-                        CountValue = 1,
+                        Id = model.ClientUpdateConfigId,
+                        Name = model.NodeName,
                     };
-                    var newCounterList = updateConfig.Counters.ToList();
-                    newCounterList.Add(counter);
-                    updateConfig.Counters = newCounterList;
+                    await dbContext.ClientUpdateCountersDbSet.AddAsync(counter);
+                }
+                var newCounterList = counter.Counters.ToList();
+                CategoryModel? category = null;
+                foreach (var item in newCounterList)
+                {
+                    if (item.CategoryName == model.CategoryName)
+                    {
+                        category = item;
+                        break;
+                    }
+                }
+                if (category == null)
+                {
+                    category = new CategoryModel() { CategoryName = model.CategoryName, CountValue = 1 };
+                    newCounterList.Add(category);
                 }
                 else
                 {
-                    var newCounterList = updateConfig.Counters.ToList();
-                    var newCounter = new ClientUpdateCounterModel()
-                    {
-                        CategoryName = model.CategoryName,
-                        CountValue = counter.CountValue + 1,
-                        IpAddress = remoteIpAddress,
-                        DnsName = model.NodeName,
-                    };
-                    newCounterList.Remove(counter);
-                    newCounterList.Add(newCounter);
-                    updateConfig.Counters = newCounterList;
+                    category.CountValue++;
                 }
+
+                counter.Counters = newCounterList;
+                
                 await dbContext.SaveChangesAsync();
                 apiResponse.Result = true;
             }

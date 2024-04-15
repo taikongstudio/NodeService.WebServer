@@ -51,12 +51,6 @@
             modelBuilder.Entity<ClientUpdateConfigModel>()
                 .Navigation(x => x.PackageConfig)
                 .AutoInclude(true);
-
-            modelBuilder.Entity<ClientUpdateConfigModel>()
-                .Property(x => x.Counters)
-                .HasConversion(x => Serialize(x), x => Deserialize<List<ClientUpdateCounterModel>>(x))
-                .Metadata
-                .SetValueComparer(GetEnumerableComparer<ClientUpdateCounterModel>());
         }
 
 

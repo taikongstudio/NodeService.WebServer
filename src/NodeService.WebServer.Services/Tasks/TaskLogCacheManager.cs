@@ -49,15 +49,23 @@ namespace NodeService.WebServer.Services.Tasks
 
         private void ReadTaskLogCaches()
         {
-            var taskLogCacheDumps = _taskLogDatabase.ReadTasksWithPrefix<TaskLogCacheDump>(
-                Key
-                );
-            foreach (var taskLogCacheDump in taskLogCacheDumps)
+            try
             {
-                TaskLogCache taskLogCache = new TaskLogCache(taskLogCacheDump);
-                taskLogCache.Database = _taskLogDatabase;
-                this._taskLogCaches.TryAdd(taskLogCacheDump.TaskId, taskLogCache);
+                var taskLogCacheDumps = _taskLogDatabase.ReadTasksWithPrefix<TaskLogCacheDump>(
+                    Key
+                    );
+                foreach (var taskLogCacheDump in taskLogCacheDumps)
+                {
+                    TaskLogCache taskLogCache = new TaskLogCache(taskLogCacheDump);
+                    taskLogCache.Database = _taskLogDatabase;
+                    this._taskLogCaches.TryAdd(taskLogCacheDump.TaskId, taskLogCache);
+                }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+
         }
 
         public void Flush()

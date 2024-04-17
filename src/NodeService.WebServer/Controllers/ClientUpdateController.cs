@@ -13,16 +13,21 @@
         }
 
         [HttpGet("/api/clientupdate/getupdate")]
-        public async Task<ApiResponse<ClientUpdateConfigModel>> GetUpdateAsync()
+        public async Task<ApiResponse<ClientUpdateConfigModel>> GetUpdateAsync([FromQuery] string? name)
         {
             ApiResponse<ClientUpdateConfigModel> apiResponse = new ApiResponse<ClientUpdateConfigModel>();
             try
             {
                 using var dbContext = this._dbContextFactory.CreateDbContext();
+                if (string.IsNullOrEmpty(name))
+                {
+                    name = "NodeService.WindowsService";
+                }
                 apiResponse.Result = await
                     dbContext
                     .ClientUpdateConfigurationDbSet
-                    .Where(static x => x.Status == ClientUpdateStatus.Public)
+                    .Where(x => x.Status == ClientUpdateStatus.Public)
+                    .Where(x => x.Name == name)
                     .OrderByDescending(static x => x.Version)
                     .FirstOrDefaultAsync();
             }

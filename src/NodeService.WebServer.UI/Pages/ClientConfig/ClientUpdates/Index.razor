@@ -19,13 +19,12 @@
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
 
-
+            <FormItem Label="名称">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
             <FormItem Label="版本">
                 <Input @bind-Value="@context.Version"  />
              </FormItem>
-            <FormItem Label="版本名称">
-                <Input @bind-Value="@context.Name" />
-            </FormItem>
             <FormItem Label="公开">
                 <RadioGroup @bind-Value="@context.Status" TValue="ClientUpdateStatus">
                     @foreach (var clientUpdateStatus in Enum.GetValues<ClientUpdateStatus>())

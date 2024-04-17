@@ -39,7 +39,7 @@ namespace NodeService.WebServer.Services.Tasks
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-
+            _taskLogCacheManager.Load();
             await foreach (var arrayPoolCollection in _jobExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
             {
                 int count = arrayPoolCollection.CountNotNull();

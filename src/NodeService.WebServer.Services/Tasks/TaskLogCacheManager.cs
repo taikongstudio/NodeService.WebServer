@@ -13,11 +13,16 @@ namespace NodeService.WebServer.Services.Tasks
         public const string Key = "Task";
         private readonly TaskLogDatabase _taskLogDatabase;
         private readonly ConcurrentDictionary<string, TaskLogCache> _taskLogCaches;
+        private readonly ILogger<TaskLogCacheManager> _logger;
         private JsonSerializerOptions _jsonSerializerOptions;
         private long _initialized;
         public int PageSize {  get; private  set; }
-        public TaskLogCacheManager(TaskLogDatabase taskLogDatabase, int pageSize = 512)
+        public TaskLogCacheManager(
+            ILogger<TaskLogCacheManager> logger,
+            TaskLogDatabase taskLogDatabase,
+            int pageSize = 512)
         {
+            _logger = logger;
             _jsonSerializerOptions = new JsonSerializerOptions()
             {
                 IncludeFields = true,
@@ -29,7 +34,6 @@ namespace NodeService.WebServer.Services.Tasks
             }
             PageSize = pageSize;
             _taskLogCaches = new ConcurrentDictionary<string, TaskLogCache>();
-            ReadTaskLogCaches();
         }
 
         public TaskLogCache GetCache(string taskId)
@@ -47,8 +51,11 @@ namespace NodeService.WebServer.Services.Tasks
             return taskLogCache;
         }
 
-        private void ReadTaskLogCaches()
+        public void Load()
         {
+            Stopwatch stopwatch = Stopwatch.StartNew();
+            _logger.LogInformation("Start read log record");
+            int count = 0;
             try
             {
                 var taskLogCacheDumps = _taskLogDatabase.ReadTasksWithPrefix<TaskLogCacheDump>(
@@ -59,13 +66,18 @@ namespace NodeService.WebServer.Services.Tasks
                     TaskLogCache taskLogCache = new TaskLogCache(taskLogCacheDump);
                     taskLogCache.Database = _taskLogDatabase;
                     this._taskLogCaches.TryAdd(taskLogCacheDump.TaskId, taskLogCache);
+                    count++;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                _logger.LogError(ex.ToString());
             }
-
+            finally
+            {
+                stopwatch.Stop();
+                _logger.LogInformation($"finish read {count} log record,spent:{stopwatch.Elapsed}");
+            }
         }
 
         public void Flush()

@@ -10,13 +10,13 @@ namespace NodeService.WebServer.Services.Tasks
 {
     public class TaskLogCacheManager
     {
-        public const string Key = "Task";
+        public const string TaskKeyPrefix = "Task_";
         private readonly TaskLogDatabase _taskLogDatabase;
         private readonly ConcurrentDictionary<string, TaskLogCache> _taskLogCaches;
         private readonly ILogger<TaskLogCacheManager> _logger;
         private JsonSerializerOptions _jsonSerializerOptions;
         private long _initialized;
-        public int PageSize {  get; private  set; }
+        public int PageSize { get; private set; }
         public TaskLogCacheManager(
             ILogger<TaskLogCacheManager> logger,
             TaskLogDatabase taskLogDatabase,
@@ -38,16 +38,24 @@ namespace NodeService.WebServer.Services.Tasks
 
         public TaskLogCache GetCache(string taskId)
         {
-            var taskLogCache = _taskLogCaches.GetOrAdd(taskId, CreateTaskLogCache);
+            var taskLogCache = _taskLogCaches.GetOrAdd(taskId, EnsureTaskLogCache);
             return taskLogCache;
         }
 
-        private TaskLogCache CreateTaskLogCache(string taskId)
+        private TaskLogCache EnsureTaskLogCache(string taskId)
         {
-            var taskLogCache = new TaskLogCache(taskId, PageSize)
+            TaskLogCache? taskLogCache = null;
+            if (!_taskLogDatabase.TryReadTask<TaskLogCacheDump>(
+                TaskLogCache.BuildTaskKey(taskId),
+                out var taskLogCacheDump) || taskLogCacheDump == null)
             {
-                Database = _taskLogDatabase
-            };
+                taskLogCache = new TaskLogCache(taskId, PageSize);
+            }
+            else
+            {
+                taskLogCache = new TaskLogCache(taskLogCacheDump);
+            }
+            taskLogCache.Database = _taskLogDatabase;
             return taskLogCache;
         }
 
@@ -58,13 +66,15 @@ namespace NodeService.WebServer.Services.Tasks
             int count = 0;
             try
             {
-                var taskLogCacheDumps = _taskLogDatabase.ReadTasksWithPrefix<TaskLogCacheDump>(
-                    Key
-                    );
+                var taskLogCacheDumps = _taskLogDatabase.ReadTasksWithPrefix<TaskLogCacheDump>(TaskKeyPrefix);
                 foreach (var taskLogCacheDump in taskLogCacheDumps)
                 {
                     TaskLogCache taskLogCache = new TaskLogCache(taskLogCacheDump);
                     taskLogCache.Database = _taskLogDatabase;
+                    if (taskLogCache.CreationDateTimeUtc != DateTime.MinValue && DateTime.UtcNow - taskLogCache.CreationDateTimeUtc > TimeSpan.FromDays(7))
+                    {
+                        continue;
+                    }
                     this._taskLogCaches.TryAdd(taskLogCacheDump.TaskId, taskLogCache);
                     count++;
                 }
@@ -86,10 +96,19 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 taskLogCache.Flush();
             }
+            List<TaskLogCache> taskLogCacheList = new List<TaskLogCache>();
+            foreach (var item in this._taskLogCaches)
+            {
+                if (DateTime.UtcNow - item.Value.LastWriteTimeUtc > TimeSpan.FromHours(6))
+                {
+                    taskLogCacheList.Add(item.Value);
+                }
+            }
+            foreach (var taskLogCache in taskLogCacheList)
+            {
+                this._taskLogCaches.TryRemove(taskLogCache.TaskId, out _);
+            }
         }
-
-
-
 
     }
 }

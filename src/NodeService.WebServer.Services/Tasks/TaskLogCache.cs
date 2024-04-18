@@ -26,9 +26,14 @@ namespace NodeService.WebServer.Services.Tasks
 
         public int Count { get; set; }
 
-        public DateTime DateTimeUtc { get; set; }
+        public DateTime CreationDateTimeUtc { get; set; }
+
+        public DateTime LastWriteTimeUtc { get; set; }
+
+        public DateTime LastAccessTimeUtc { get; set; }
 
         public List<TaskLogCachePageDump> PageDumps { get; set; }
+
     }
 
     public class TaskLogCache
@@ -46,13 +51,18 @@ namespace NodeService.WebServer.Services.Tasks
 
         public int PageCount { get; private set; }
 
-        public DateTime DateTimeUtc { get; private set; }
+        public DateTime CreationDateTimeUtc { get; set; }
+
+        public DateTime LastWriteTimeUtc { get; set; }
+
+        public DateTime LastAccessTimeUtc { get; set; }
 
         [JsonIgnore]
         public TaskLogDatabase Database { get; set; }
 
         public TaskLogCache(string taskId, int pageSize)
         {
+            this.CreationDateTimeUtc = DateTime.UtcNow;
             TaskId = taskId;
             PageSize = pageSize;
             this._pages = new LinkedList<TaskLogCachePage>();
@@ -62,6 +72,9 @@ namespace NodeService.WebServer.Services.Tasks
         {
             this.PageCount = dump.PageCount;
             this._count = dump.Count;
+            this.CreationDateTimeUtc = dump.CreationDateTimeUtc;
+            this.LastAccessTimeUtc = dump.LastAccessTimeUtc;
+            this.LastAccessTimeUtc = dump.LastAccessTimeUtc;
             foreach (var pageDump in dump.PageDumps)
             {
                 this._pages.AddLast(new LinkedListNode<TaskLogCachePage>(new TaskLogCachePage(pageDump)));
@@ -103,6 +116,7 @@ namespace NodeService.WebServer.Services.Tasks
 
         private IEnumerable<LogEntry> GetPageEntries(ref TaskLogCachePage taskLogCachePage)
         {
+            this.LastAccessTimeUtc = DateTime.UtcNow;
             if (taskLogCachePage.IsPersistenced)
             {
                 return this.Database.ReadLogEntries<LogEntry>(this.TaskId, taskLogCachePage.PageIndex, taskLogCachePage.PageSize);
@@ -112,6 +126,7 @@ namespace NodeService.WebServer.Services.Tasks
 
         public void AppendEntries(IEnumerable<LogEntry> logEntries)
         {
+            this.LastWriteTimeUtc = DateTime.UtcNow;
             lock (this._pages)
             {
                 if (logEntries == null)
@@ -193,7 +208,12 @@ namespace NodeService.WebServer.Services.Tasks
                     current = current.Next;
                 }
             }
-            Database.WriteTask($"{TaskLogCacheManager.Key}_{TaskId}", this.CreateDump());
+            Database.WriteTask(BuildTaskKey(TaskId), this.CreateDump());
+        }
+
+        public static string BuildTaskKey(string taskId)
+        {
+            return $"{TaskLogCacheManager.TaskKeyPrefix}{taskId}";
         }
 
         private TaskLogCacheDump CreateDump()

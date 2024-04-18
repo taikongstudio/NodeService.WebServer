@@ -186,6 +186,29 @@ namespace NodeService.Infrastructure.Models
             yield break;
         }
 
+        public bool TryReadTask<T>(
+    string key,
+    out T? task,
+    JsonSerializerOptions? options = null,
+    CancellationToken cancellationToken = default)
+        {
+            task = default;
+            try
+            {
+                var cf = _rocksDb.GetColumnFamily(TaskColumn);
+                var value = _rocksDb.Get(key, cf: cf, encoding: Encoding.UTF8);
+                if (value != null)
+                {
+                    task = JsonSerializer.Deserialize<T>(value, options);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+            return false;
+        }
+
         public void Dispose()
         {
             _rocksDb.Dispose();

@@ -54,7 +54,7 @@ namespace NodeService.WebServer.Services.Tasks
                 {
 
                     stopwatch.Start();
-                    await ProcessJobExecutionReportsAsync(arrayPoolCollection, stoppingToken);
+                    await ProcessTaskExecutionReportsAsync(arrayPoolCollection, stoppingToken);
                     stopwatch.Stop();
                     _logger.LogInformation($"process {count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_jobExecutionReportBatchQueue.AvailableCount}");
                     stopwatch.Reset();
@@ -71,7 +71,7 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        private static string? GetId(JobExecutionReportMessage? message)
+        private static string? GetTaskId(JobExecutionReportMessage? message)
         {
             if (message == null)
             {
@@ -99,7 +99,7 @@ namespace NodeService.WebServer.Services.Tasks
             };
         }
 
-        private async Task ProcessJobExecutionReportsAsync(
+        private async Task ProcessTaskExecutionReportsAsync(
             ArrayPoolCollection<JobExecutionReportMessage?> arrayPoolCollection,
             CancellationToken stoppingToken = default)
         {
@@ -110,7 +110,7 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 List<TaskLogCachePage> taskLogPersistenceGroups = [];
                 foreach (var taskReportGroup in arrayPoolCollection
-                    .GroupBy(GetId))
+                    .GroupBy(GetTaskId))
                 {
                     if (taskReportGroup.Key == null)
                     {
@@ -119,6 +119,11 @@ namespace NodeService.WebServer.Services.Tasks
                     Stopwatch stopwatchQuery = Stopwatch.StartNew();
                     var taskId = taskReportGroup.Key;
                     var taskInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(taskId);
+                    if (taskInstance == null)
+                    {
+                        continue;
+                    }
+                    await dbContext.Entry(taskInstance).ReloadAsync();
                     stopwatchQuery.Stop();
                     _logger.LogInformation($"{taskId}:Query:{stopwatchQuery.Elapsed}");
 
@@ -154,7 +159,7 @@ namespace NodeService.WebServer.Services.Tasks
                             {
                                 continue;
                             }
-                            await ProcessJobExecutionReportAsync(taskInstance, reportMessage, stoppingToken);
+                            await ProcessTaskExecutionReportAsync(taskInstance, reportMessage, stoppingToken);
                         }
 
                         stopwatchProcessMessage.Stop();
@@ -190,7 +195,7 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        private async Task ScheduleExecutionTimeLimitJob(JobExecutionInstanceModel jobExecutionInstance)
+        private async Task ScheduleTaskExecutionTimeLimitJob(JobExecutionInstanceModel jobExecutionInstance)
         {
             if (jobExecutionInstance == null)
             {
@@ -218,7 +223,7 @@ namespace NodeService.WebServer.Services.Tasks
             _jobSchedulerDictionary.TryAdd(key, asyncDisposable);
         }
 
-        private async Task ProcessJobExecutionReportAsync(
+        private async Task ProcessTaskExecutionReportAsync(
             JobExecutionInstanceModel jobExecutionInstance,
             NodeSessionMessage<JobExecutionReport> message,
             CancellationToken stoppingToken = default)
@@ -238,7 +243,7 @@ namespace NodeService.WebServer.Services.Tasks
                     case JobExecutionStatus.Pendding:
                         break;
                     case JobExecutionStatus.Started:
-                        await ScheduleExecutionTimeLimitJob(jobExecutionInstance);
+                        await ScheduleTaskExecutionTimeLimitJob(jobExecutionInstance);
                         break;
                     case JobExecutionStatus.Running:
                         break;
@@ -246,7 +251,7 @@ namespace NodeService.WebServer.Services.Tasks
                         await CancelExecutionTimeLimitJob(jobSchedulerKey);
                         break;
                     case JobExecutionStatus.Finished:
-                        await ScheduleChildJobs(jobExecutionInstance.Id, stoppingToken);
+                        await ScheduleChildTasks(jobExecutionInstance.Id, stoppingToken);
                         await CancelExecutionTimeLimitJob(jobSchedulerKey);
                         break;
                     case JobExecutionStatus.Cancelled:
@@ -275,13 +280,14 @@ namespace NodeService.WebServer.Services.Tasks
                     case JobExecutionStatus.Finished:
                     case JobExecutionStatus.Cancelled:
                         jobExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
-                        _taskLogCacheManager.GetCache(jobExecutionInstance.Id).Flush();
                         break;
                     default:
                         break;
                 }
-
-                jobExecutionInstance.Status = report.Status;
+                if (jobExecutionInstance.Status < report.Status)
+                {
+                    jobExecutionInstance.Status = report.Status;
+                }
                 if (report.Message != null)
                 {
                     jobExecutionInstance.Message = report.Message;
@@ -296,7 +302,7 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
 
-        private async Task ScheduleChildJobs(
+        private async Task ScheduleChildTasks(
             string id,
             CancellationToken stoppingToken = default)
         {

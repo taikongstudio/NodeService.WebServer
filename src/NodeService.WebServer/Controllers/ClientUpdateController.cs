@@ -19,10 +19,10 @@
             try
             {
                 using var dbContext = this._dbContextFactory.CreateDbContext();
-                //if (string.IsNullOrEmpty(name))
-                //{
-                //    name = "NodeService.WindowsService";
-                //}
+                if (string.IsNullOrEmpty(name))
+                {
+                    name = "NodeService.WindowsService";
+                }
                 apiResponse.Result = await
                     dbContext
                     .ClientUpdateConfigurationDbSet

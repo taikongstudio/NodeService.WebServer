@@ -1,9 +1,5 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Nodes.NodeDetail
-@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.FileExplorer
-@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.BasicInformation
-@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.EnvironmentVariables
-@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.NetworkInterfaces
-@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components.ProcessList
+@using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components
 @inject ApiService ApiService
 @page "/nodes/{nodeId}"
 @inject NotificationService _notice
@@ -53,19 +49,28 @@
                 </TabPane>
                 <TabPane Key="5">
                     <TabTemplate>
+                        <span><Icon Type="file" />服务</span>
+                    </TabTemplate>
+                    <ChildContent>
+                        <Win32ServiceProcessList Win32Services="@_nodeProperties.Win32Services" />
+                    </ChildContent>
+
+                </TabPane>
+                <TabPane Key="6">
+                    <TabTemplate>
                         <span><Icon Type="file" />文件浏览器</span>
                     </TabTemplate>
                     <ChildContent>
                         <FileExplorer NodeId="@NodeId" />
                     </ChildContent>
                 </TabPane>
-                <TabPane Key="6">
+                <TabPane Key="7">
                     <TabTemplate>
                         <span><Icon Type="code" />配置</span>
                     </TabTemplate>
                     <ChildContent>Tab 1</ChildContent>
                 </TabPane>
-                <TabPane Key="7">
+                <TabPane Key="8">
                     <TabTemplate>
                         <span><Icon Type="code" />终端</span>
                     </TabTemplate>

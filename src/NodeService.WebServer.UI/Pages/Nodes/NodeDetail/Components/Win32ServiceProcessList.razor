@@ -1,0 +1,52 @@
+﻿<Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+
+<Table @ref="@_table" 
+    Resizable 
+    OnChange="OnTableChange" 
+    Size="TableSize.Small" 
+    EnableVirtualization="true" 
+    TItem="ServiceProcessInfo" 
+    DataSource="@_dataSource">
+    <PropertyColumn Title="名称" Ellipsis Sortable="true" Filterable="true" Property="c=>c.Name"></PropertyColumn>
+    <PropertyColumn Title="PID" Sortable="true" Property="c=>c.ProcessId"></PropertyColumn>
+    <PropertyColumn Title="状态" Sortable="true" Property="c=>c.Status"></PropertyColumn>
+    <PropertyColumn Title="启动类型" Sortable="true" Property="c=>c.StartMode"></PropertyColumn>
+    <PropertyColumn Title="路径" Ellipsis Sortable="true" Property="c=>c.PathName"></PropertyColumn>
+    <PropertyColumn Title="UI互操作" Sortable="true" Property="c=>c.DesktopInteract"></PropertyColumn>
+
+    <ActionColumn Fixed="right" Title="操作">
+        <Space Size=@("middle")>
+            <SpaceItem>
+
+            </SpaceItem>
+        </Space>
+    </ActionColumn>
+</Table>
+
+@code {
+    private IEnumerable<ServiceProcessInfo> _dataSource = [];
+
+    [Parameter]
+    public IEnumerable<ServiceProcessInfo> Win32Services { get; set; } = [];
+
+    ITable _table;
+    string _searchText;
+
+    void OnTableChange(QueryModel<ServiceProcessInfo> query)
+    {
+        if (this.Win32Services == null || string.IsNullOrEmpty(this._searchText))
+        {
+            _dataSource = this.Win32Services;
+            return;
+        }
+        _dataSource = query.ExecuteQuery(this.Win32Services.AsQueryable()).Where(
+        x => x.Name != null && x.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase)
+        ||
+        x.DisplayName != null && x.DisplayName.Contains(this._searchText, StringComparison.OrdinalIgnoreCase)
+        ||
+        x.ProcessId.ToString().Contains(this._searchText, StringComparison.OrdinalIgnoreCase)
+        ||
+        x.PathName != null && x.PathName.Contains(this._searchText, StringComparison.OrdinalIgnoreCase)
+        );
+    }
+}

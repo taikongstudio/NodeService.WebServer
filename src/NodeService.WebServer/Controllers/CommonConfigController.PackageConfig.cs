@@ -108,6 +108,7 @@ namespace NodeService.WebServer.Controllers
                 }
                 else
                 {
+                    _memoryCache.Remove(model.DownloadUrl);
                     if (model.DownloadUrl != null)
                     {
                         await this._virtualFileSystem.DeleteFileAsync(model.DownloadUrl);

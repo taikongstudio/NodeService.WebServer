@@ -23,13 +23,57 @@
                 {
                     name = "NodeService.WindowsService";
                 }
-                apiResponse.Result = await
+                var clientUpdateConfig = await
                     dbContext
                     .ClientUpdateConfigurationDbSet
                     .Where(x => x.Status == ClientUpdateStatus.Public)
                     .Where(x => x.Name == name)
                     .OrderByDescending(static x => x.Version)
                     .FirstOrDefaultAsync();
+
+                if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null)
+                {
+                    var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
+                    var nodes = await dbContext.NodeInfoDbSet.ToArrayAsync();
+                    if (clientUpdateConfig.DnsFilterType == "include")
+                    {
+                        foreach (var filter in clientUpdateConfig.DnsFilters)
+                        {
+                            foreach (var item in nodes)
+                            {
+                                if (item.Name == filter.Value)
+                                {
+                                    if (item.Profile.IpAddress == ipAddress)
+                                    {
+                                        apiResponse.Result = clientUpdateConfig;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (clientUpdateConfig.DnsFilterType == "exclude")
+                    {
+                        foreach (var filter in clientUpdateConfig.DnsFilters)
+                        {
+                            foreach (var item in nodes)
+                            {
+                                if (item.Name == filter.Value)
+                                {
+                                    if (item.Profile.IpAddress == ipAddress)
+                                    {
+                                        apiResponse.Result = null;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    apiResponse.Result = clientUpdateConfig;
+                }
             }
             catch (Exception ex)
             {

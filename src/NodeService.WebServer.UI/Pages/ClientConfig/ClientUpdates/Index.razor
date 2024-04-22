@@ -58,14 +58,14 @@
                 <Button OnClick="AddDnsFilter" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
                     添加
                 </Button>
-                <Button OnClick="RemoveSelectedDnsFilters" Disabled="@(this._selectedDnsFilters.IsNullOrEmpty())" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
+                <Button OnClick="RemoveSelectedDnsFilters" Disabled="@(this._selectedNodeFilters.IsNullOrEmpty())" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
                     删除
                 </Button>
                 <StringEntryTable DataSource="@context.DnsFilters"
                                   NameTitle="备注"
-                                  ValueTitle="Dns"
-                                  @bind-SelectedItems="@_selectedDnsFilters"
-                                  RemoveItemAction="@RemoveSelectedDnsFilter" />
+                                  ValueTitle="节点名称"
+                                  @bind-SelectedItems="@_selectedNodeFilters"
+                                  RemoveItemAction="@RemoveSelectedNodeFilter" />
             </FormItem>
         </Form>
     </Modal>
@@ -140,7 +140,7 @@
     bool _editFormConfirmLoading = false;
     Form<ClientUpdateConfigModel> _editForm;
     ClientUpdateConfigModel _editModel = new ClientUpdateConfigModel();
-    IEnumerable<StringEntry> _selectedDnsFilters;
+    IEnumerable<StringEntry> _selectedNodeFilters;
     IEnumerable<PackageConfigModel> _packageSource;
     IEnumerable<PackageConfigModel> _selectedPackageConfigs;
 
@@ -369,12 +369,12 @@
 
     private void RemoveSelectedDnsFilters()
     {
-        foreach (var item in this._selectedDnsFilters)
+        foreach (var item in this._selectedNodeFilters)
         {
             this._editModel.DnsFilters.Remove(item);
         }
     }
-    private void RemoveSelectedDnsFilter(StringEntry filter)
+    private void RemoveSelectedNodeFilter(StringEntry filter)
     {
         this._editModel.DnsFilters.Remove(filter);
     }

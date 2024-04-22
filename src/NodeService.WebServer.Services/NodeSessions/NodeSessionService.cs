@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Services.NodeSessions
 {
@@ -120,7 +121,7 @@ namespace NodeService.WebServer.Services.NodeSessions
         }
 
         public async Task<IEnumerable<JobExecutionInstanceModel>> QueryJobExecutionInstances(
-            NodeId nodeSessionId,
+            NodeId nodeId,
             QueryJobExecutionInstancesParameters parameters,
             CancellationToken cancellationToken = default)
         {
@@ -130,8 +131,8 @@ namespace NodeService.WebServer.Services.NodeSessions
                  dbContext
                 .JobExecutionInstancesDbSet
                 .AsQueryable();
-            string id = nodeSessionId.Value;
-            if (nodeSessionId != NodeId.Any)
+            string id = nodeId.Value;
+            if (nodeId != NodeId.Any)
             {
                 queryable = queryable.Where(x => x.NodeInfoId == id);
             }

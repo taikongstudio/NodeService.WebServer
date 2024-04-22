@@ -284,11 +284,11 @@ namespace NodeService.WebServer.Services.Tasks
                     default:
                         break;
                 }
-                if (jobExecutionInstance.Status < report.Status)
+                if (jobExecutionInstance.Status < report.Status && report.Status != JobExecutionStatus.PenddingTimeout)
                 {
                     jobExecutionInstance.Status = report.Status;
                 }
-                if (report.Message != null)
+                if (!string.IsNullOrEmpty(report.Message))
                 {
                     jobExecutionInstance.Message = report.Message;
                 }

@@ -367,10 +367,10 @@
                 this._fileError = "Invalid package";
                 return;
             }
-            this._entryPoints = zipArchive.Entries.Where(IsEntryPoint).Select(x => x.FullName).ToList();
+            this._entryPoints = zipArchive.Entries.Where(IsEntryPoint).Select(static x => x.FullName).ToList();
             memoryStream.Position = 0;
-            var fileContents = await System.Security.Cryptography.SHA256.HashDataAsync(memoryStream).ConfigureAwait(false);
-            this._editModel.Hash = BitConverter.ToString(fileContents).Replace("-", "").ToLowerInvariant();
+            var hash = await System.Security.Cryptography.SHA256.HashDataAsync(memoryStream).ConfigureAwait(false);
+            this._editModel.Hash = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             memoryStream.Position = 0;
             this._fileError = null;
         }

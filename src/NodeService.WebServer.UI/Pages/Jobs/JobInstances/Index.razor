@@ -81,7 +81,7 @@
                     </Select>
                     </SpaceItem>
                     <SpaceItem>
-                        <Button Type="@ButtonType.Primary" OnClick="QueryDataListAsync">查询</Button>
+                        <Button Type="@ButtonType.Primary" OnClick="QueryTaskListAsync">查询</Button>
                     </SpaceItem>
 
                 </Space>
@@ -108,31 +108,31 @@
                 @switch (context.Status)
                 {
                     case JobExecutionStatus.Unknown:
-                             <Text>未知</text>
+                        <Text>未知</Text>
                         break;
                     case JobExecutionStatus.Triggered:
-                             <Text>已触发</text>
+                             <Text>已触发</Text>
                         break;
                     case JobExecutionStatus.Pendding:
-                             <Text>等待</text>
+                             <Text>等待</Text>
                         break;
                     case JobExecutionStatus.Started:
-                             <Text>已启动</text>
+                             <Text>已启动</Text>
                         break;
                     case JobExecutionStatus.Running:
-                             <Text>运行中</text>
+                             <Text>运行中</Text>
                         break;
                     case JobExecutionStatus.Finished:
-                             <Text>完成</text>
+                             <Text>完成</Text>
                         break;
                     case JobExecutionStatus.Cancelled:
-                             <Text>已取消</text>
+                             <Text>已取消</Text>
                         break;
                     case JobExecutionStatus.Failed:
-                             <Text>失败</text>
+                             <Text>失败</Text>
                         break;
                     case JobExecutionStatus.PenddingTimeout:
-                             <Text>等待超时</text>
+                             <Text>等待超时</Text>
                         break;
                 }
             </PropertyColumn>
@@ -259,7 +259,7 @@
         this.DateTimes[1] = this.EndDateTime;
         await this.QueryJobScheduleConfigListAsync().ConfigureAwait(false);
         await this.QueryNodeInfoListAsync().ConfigureAwait(false);
-        await this.QueryDataListAsync().ConfigureAwait(false);
+        await this.QueryTaskListAsync().ConfigureAwait(false);
     }
 
     private void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
@@ -268,7 +268,7 @@
         this.EndDateTime = e.Dates[1] ?? DateTime.Today.AddDays(1).Date.AddSeconds(-1);
     }
 
-    private async Task QueryDataListAsync()
+    private async Task QueryTaskListAsync()
     {
         try
         {

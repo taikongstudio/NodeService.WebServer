@@ -96,6 +96,11 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 taskLogCache.Flush();
             }
+            RemoveTaskLogCaches();
+        }
+
+        private void RemoveTaskLogCaches()
+        {
             List<TaskLogCache> taskLogCacheList = new List<TaskLogCache>();
             foreach (var item in this._taskLogCaches)
             {
@@ -107,8 +112,8 @@ namespace NodeService.WebServer.Services.Tasks
             foreach (var taskLogCache in taskLogCacheList)
             {
                 this._taskLogCaches.TryRemove(taskLogCache.TaskId, out _);
+                _logger.LogInformation($"Remove {taskLogCache.TaskId},LastWriteTimeUtc:{taskLogCache.LastWriteTimeUtc}");
             }
         }
-
     }
 }

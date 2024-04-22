@@ -5,11 +5,16 @@
     public partial class ClientUpdateController : Controller
     {
 
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
-        public ClientUpdateController(IDbContextFactory<ApplicationDbContext> dbContext)
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+        private readonly IMemoryCache _memoryCache;
+
+        public ClientUpdateController(
+            IDbContextFactory<ApplicationDbContext> dbContext,
+            IMemoryCache memoryCache)
         {
             this._dbContextFactory = dbContext;
+            _memoryCache = memoryCache;
         }
 
         [HttpGet("/api/clientupdate/getupdate")]
@@ -34,38 +39,37 @@
                 if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null)
                 {
                     var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
-                    var nodes = await dbContext.NodeInfoDbSet.ToArrayAsync();
+
+   
                     if (clientUpdateConfig.DnsFilterType == "include")
                     {
                         foreach (var filter in clientUpdateConfig.DnsFilters)
                         {
-                            foreach (var item in nodes)
+                            var nodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Name == filter.Value);
+                            if (nodeInfo==null)
                             {
-                                if (item.Name == filter.Value)
-                                {
-                                    if (item.Profile.IpAddress == ipAddress)
-                                    {
-                                        apiResponse.Result = clientUpdateConfig;
-                                        break;
-                                    }
-                                }
+                                continue;
+                            }
+                            if (nodeInfo.Profile.IpAddress == ipAddress)
+                            {
+                                apiResponse.Result = clientUpdateConfig;
+                                break;
                             }
                         }
                     }
-                    if (clientUpdateConfig.DnsFilterType == "exclude")
+                    else if (clientUpdateConfig.DnsFilterType == "exclude")
                     {
                         foreach (var filter in clientUpdateConfig.DnsFilters)
                         {
-                            foreach (var item in nodes)
+                            var nodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Name == filter.Value);
+                            if (nodeInfo == null)
                             {
-                                if (item.Name == filter.Value)
-                                {
-                                    if (item.Profile.IpAddress == ipAddress)
-                                    {
-                                        apiResponse.Result = null;
-                                        break;
-                                    }
-                                }
+                                continue;
+                            }
+                            if (nodeInfo.Profile.IpAddress == ipAddress)
+                            {
+                                apiResponse.Result = null;
+                                break;
                             }
                         }
                     }

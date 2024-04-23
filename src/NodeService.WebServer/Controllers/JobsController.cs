@@ -32,7 +32,7 @@ namespace NodeService.WebServer.Controllers
         }
 
         [HttpGet("/api/jobs/instances/list")]
-        public async Task<ApiResponse<IEnumerable<JobExecutionInstanceModel>>> QueryJobExecutionInstanceListAsync(
+        public async Task<ApiResponse<IEnumerable<JobExecutionInstanceModel>>> QueryTaskExecutionInstanceListAsync(
             QueryJobExecutionInstanceParameters parameters
             )
         {
@@ -150,7 +150,7 @@ namespace NodeService.WebServer.Controllers
 
 
         [HttpGet("/api/jobs/instances/{taskId}/log")]
-        public async Task<IActionResult> QueryJobLogAsync(string taskId, QueryParametersModel queryParameters)
+        public async Task<IActionResult> QueryTaskLogAsync(string taskId, QueryParametersModel queryParameters)
         {
             PaginationResponse<LogEntry> apiResponse = new PaginationResponse<LogEntry>();
             try

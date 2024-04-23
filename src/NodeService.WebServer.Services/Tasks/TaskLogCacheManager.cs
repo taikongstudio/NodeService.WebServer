@@ -71,7 +71,8 @@ namespace NodeService.WebServer.Services.Tasks
                 {
                     TaskLogCache taskLogCache = new TaskLogCache(taskLogCacheDump);
                     taskLogCache.Database = _taskLogDatabase;
-                    if (taskLogCache.CreationDateTimeUtc != DateTime.MinValue && DateTime.UtcNow - taskLogCache.CreationDateTimeUtc > TimeSpan.FromDays(7))
+                    TryTruncateCache(taskLogCache);
+                    if (taskLogCache.IsTruncated)
                     {
                         continue;
                     }
@@ -90,6 +91,15 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
+        private void TryTruncateCache(TaskLogCache taskLogCache)
+        {
+            if (taskLogCache.CreationDateTimeUtc.ToLocalTime() != DateTime.MinValue && DateTime.UtcNow - taskLogCache.CreationDateTimeUtc > TimeSpan.FromDays(7))
+            {
+                taskLogCache.Truncate();
+                _logger.LogInformation($"Truncate cache:{taskLogCache.TaskId}");
+            }
+        }
+
         public void Flush()
         {
             foreach (var taskLogCache in this._taskLogCaches.Values)
@@ -97,16 +107,19 @@ namespace NodeService.WebServer.Services.Tasks
                 taskLogCache.Flush();
                 _logger.LogInformation($"task log cache:{taskLogCache.TaskId} flush");
             }
-            RemoveTaskLogCaches();
+            DetachTaskLogCaches();
         }
 
-        private void RemoveTaskLogCaches()
+        private void DetachTaskLogCaches()
         {
             _logger.LogInformation($"begin remove task log cache");
             List<TaskLogCache> taskLogCacheList = new List<TaskLogCache>();
             foreach (var item in this._taskLogCaches)
             {
-                if (DateTime.UtcNow - item.Value.LastWriteTimeUtc > TimeSpan.FromHours(6))
+                if (DateTime.UtcNow - item.Value.LastWriteTimeUtc > TimeSpan.FromHours(6)
+                    &&
+                    DateTime.UtcNow - item.Value.LoadedDateTime > TimeSpan.FromMinutes(10)
+                    )
                 {
                     taskLogCacheList.Add(item.Value);
                 }
@@ -114,6 +127,8 @@ namespace NodeService.WebServer.Services.Tasks
             foreach (var taskLogCache in taskLogCacheList)
             {
                 this._taskLogCaches.TryRemove(taskLogCache.TaskId, out _);
+                TryTruncateCache(taskLogCache);
+                taskLogCache.Clear();
                 _logger.LogInformation($"remove task log cache:{taskLogCache.TaskId}");
                 _logger.LogInformation($"Remove {taskLogCache.TaskId},LastWriteTimeUtc:{taskLogCache.LastWriteTimeUtc}");
             }

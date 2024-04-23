@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RocksDbSharp;
 using System.Text;
 using static Grpc.Core.Metadata;
@@ -166,6 +167,18 @@ namespace NodeService.Infrastructure.Models
                 yield return JsonSerializer.Deserialize<T>(value, options: options);
             }
             yield break;
+        }
+
+        public void ClearLogEntries(string id, int pageIndex, int pageSize)
+        {
+            var cf = _rocksDb.GetColumnFamily(LogColumn);
+            var logLength = GetEntriesCount(id);
+            for (int index = pageSize * pageIndex; index < logLength && index < (pageIndex + 1) * pageSize; index++)
+            {
+                var key = GetKey(id, index);
+                _rocksDb.Remove(key, cf);
+            }
+            _rocksDb.Flush(_flushOptions);
         }
 
         public IEnumerable<T> ReadTasksWithPrefix<T>(

@@ -37,7 +37,7 @@ namespace NodeService.WebServerTools
         {
 
             ConfigureDbContext(builder);
-            builder.Services.AddHostedService<ImportFromDbService>();
+            builder.Services.AddHostedService<MergeNodeService>();
             builder.Services.AddSingleton<HttpClient>(sp =>
             {
                 return new HttpClient()

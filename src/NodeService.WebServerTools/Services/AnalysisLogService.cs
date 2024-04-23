@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using NodeService.Infrastructure;
+using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data;
 
 namespace NodeService.WebServerTools.Services
@@ -29,7 +30,7 @@ namespace NodeService.WebServerTools.Services
                 .Where(x => x.JobScheduleConfigId == "b1fe6c08-505f-46fa-aa03-92c9d48d73c7")
                 .ToArrayAsync())
             {
-                var logMessageEntries = await _apiService.DownloadJobExecutionInstanceLogAsync(jobExecutionInstance.Id);
+                var logMessageEntries = await _apiService.QueryJobExecutionInstanceLogAsync(jobExecutionInstance.Id,QueryParameters.All);
                 foreach (var logMessageEntry in logMessageEntries.Result)
                 {
                     if (logMessageEntry.Value == null)

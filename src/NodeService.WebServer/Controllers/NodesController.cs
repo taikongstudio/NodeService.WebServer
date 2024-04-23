@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Controllers
+﻿using System.Linq;
+
+namespace NodeService.WebServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]/[action]")]
@@ -49,6 +51,11 @@
                     .ThenByDescending(x => x.Profile.ServerUpdateTimeUtc)
                     .ThenBy(x => x.Name)
                     .ToListAsync();
+
+                //apiResponse.Result = apiResponse.Result
+                //    .GroupBy(node => node.Name)
+                //    .Select(nodes => nodes.OrderByDescending(node => node.Profile.ServerUpdateTimeUtc)
+                //                          .FirstOrDefault());
             }
             catch (Exception ex)
             {

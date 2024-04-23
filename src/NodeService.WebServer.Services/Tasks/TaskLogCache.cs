@@ -24,6 +24,8 @@ namespace NodeService.WebServer.Services.Tasks
 
         public int PageCount { get; set; }
 
+        public bool IsTruncated { get; set; }
+
         public int Count { get; set; }
 
         public DateTime CreationDateTimeUtc { get; set; }
@@ -57,6 +59,11 @@ namespace NodeService.WebServer.Services.Tasks
 
         public DateTime LastAccessTimeUtc { get; set; }
 
+        public bool IsTruncated { get; set; }
+
+        [JsonIgnore]
+        public DateTime LoadedDateTime {  get; set; }
+
         [JsonIgnore]
         public TaskLogDatabase Database { get; set; }
 
@@ -66,6 +73,7 @@ namespace NodeService.WebServer.Services.Tasks
             TaskId = taskId;
             PageSize = pageSize;
             this._pages = new LinkedList<TaskLogCachePage>();
+            LoadedDateTime = DateTime.UtcNow;
         }
 
         public TaskLogCache(TaskLogCacheDump dump) : this(dump.TaskId, dump.PageSize)
@@ -75,6 +83,7 @@ namespace NodeService.WebServer.Services.Tasks
             this.CreationDateTimeUtc = dump.CreationDateTimeUtc;
             this.LastAccessTimeUtc = dump.LastAccessTimeUtc;
             this.LastAccessTimeUtc = dump.LastAccessTimeUtc;
+            this.IsTruncated = dump.IsTruncated;
             foreach (var pageDump in dump.PageDumps)
             {
                 this._pages.AddLast(new LinkedListNode<TaskLogCachePage>(new TaskLogCachePage(pageDump)));
@@ -83,6 +92,12 @@ namespace NodeService.WebServer.Services.Tasks
 
         public IEnumerable<LogEntry> GetEntries(int pageIndex, int pageSize)
         {
+
+            if (this.IsTruncated)
+            {
+                yield break;
+            }
+
             int startIndex = pageIndex * pageSize;
             int endIndex = Math.Min(this.Count, (pageIndex + 1) * pageSize);
             int startPageIndex = EntryIndexToPageIndex(startIndex, PageSize, out var startPageOffset);
@@ -123,6 +138,7 @@ namespace NodeService.WebServer.Services.Tasks
             }
             return taskLogCachePage.GetEntries();
         }
+
 
         public void AppendEntries(IEnumerable<LogEntry> logEntries)
         {
@@ -229,6 +245,7 @@ namespace NodeService.WebServer.Services.Tasks
             taskLogCacheDump.PageCount = this.PageCount;
             taskLogCacheDump.PageSize = this.PageSize;
             taskLogCacheDump.Count = this.Count;
+            taskLogCacheDump.IsTruncated = this.IsTruncated;
             var current = this._pages.First;
             while (current != null)
             {
@@ -236,6 +253,29 @@ namespace NodeService.WebServer.Services.Tasks
                 current.ValueRef.Dump(pageDump);
                 taskLogCacheDump.PageDumps.Add(pageDump);
                 current = current.Next;
+            }
+        }
+
+        public void Clear()
+        {
+            this._pages.Clear();
+        }
+
+        public void Truncate()
+        {
+            lock (this._pages)
+            {
+                foreach (var page in this._pages)
+                {
+                    RemovePageEntries(page);
+                }
+            }
+            this.IsTruncated = true;
+            Database.WriteTask(BuildTaskKey(TaskId), this.CreateDump());
+
+            void RemovePageEntries(TaskLogCachePage page)
+            {
+                Database.ClearLogEntries(this.TaskId, page.PageIndex, page.PageSize);
             }
         }
     }

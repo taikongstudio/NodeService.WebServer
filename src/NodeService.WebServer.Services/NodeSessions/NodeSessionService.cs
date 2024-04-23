@@ -236,6 +236,19 @@ namespace NodeService.WebServer.Services.NodeSessions
             if (nodeInfo == null)
             {
                 nodeInfo = NodeInfoModel.Create(nodeId, nodeName);
+                var nodeProfile = await dbContext.NodeProfilesDbSet.OrderByDescending(x => x.ServerUpdateTimeUtc)
+                                                                   .FirstOrDefaultAsync(x => x.Name == nodeName);
+                if (nodeProfile != null)
+                {
+                    var oldNodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Id == nodeProfile.NodeInfoId);
+                    if (oldNodeInfo != null)
+                    {
+                        dbContext.NodeInfoDbSet.Remove(oldNodeInfo);
+                    }
+                    nodeProfile.NodeInfoId = nodeId;
+                    nodeInfo.Profile = nodeProfile;
+                    nodeInfo.ProfileId = nodeInfo.Profile.Id;
+                }
                 await dbContext.NodeInfoDbSet.AddAsync(nodeInfo);
                 await dbContext.SaveChangesAsync();
             }

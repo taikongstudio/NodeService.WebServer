@@ -36,17 +36,17 @@
                     .OrderByDescending(static x => x.Version)
                     .FirstOrDefaultAsync();
 
-                if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null)
+                if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null && clientUpdateConfig.DnsFilters.Any())
                 {
                     var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
 
-   
+
                     if (clientUpdateConfig.DnsFilterType == "include")
                     {
                         foreach (var filter in clientUpdateConfig.DnsFilters)
                         {
                             var nodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Name == filter.Value);
-                            if (nodeInfo==null)
+                            if (nodeInfo == null)
                             {
                                 continue;
                             }

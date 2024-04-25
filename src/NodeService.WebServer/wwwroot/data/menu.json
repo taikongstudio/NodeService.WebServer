@@ -107,6 +107,11 @@
           "key": "CommonConfig.RestApiConfigs"
         },
         {
+          "path": "/CommonConfig/WindowsTaskConfigs",
+          "name": "Windows计划任务配置",
+          "key": "CommonConfig.WindowsTaskConfigs"
+        },
+        {
           "path": "/CommonConfig/JobTypeDescConfigs",
           "name": "作业类型描述配置",
           "key": "CommonConfig.JobTypeDescConfigs"

@@ -59,6 +59,7 @@ namespace NodeService.WebServer.Data
             this._dbSetMapping.Add(typeof(RestApiConfigModel), RestApiConfigurationDbSet);
             this._dbSetMapping.Add(typeof(LogUploadConfigModel), LogUploadConfigurationDbSet);
             this._dbSetMapping.Add(typeof(NotificationConfigModel), NotificationConfigurationsDbSet);
+            this._dbSetMapping.Add(typeof(WindowsTaskConfigModel), WindowsTaskConfigurationDbSet);
         }
 
 
@@ -111,6 +112,8 @@ namespace NodeService.WebServer.Data
         public DbSet<NotificationRecordModel> NotificationRecordsDbSet { get; set; }
 
         public DbSet<ClientUpdateCounterModel> ClientUpdateCountersDbSet { get; set; }
+
+        public DbSet<WindowsTaskConfigModel> WindowsTaskConfigurationDbSet { get; set; }
 
         private static string Serialize<T>(T? value)
         {

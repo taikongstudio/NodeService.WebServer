@@ -26,23 +26,47 @@ namespace NodeService.WebServerTools.Services
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
             await dbContext.Database.EnsureCreatedAsync();
-            foreach (var jobExecutionInstance in await dbContext.JobExecutionInstancesDbSet.AsQueryable()
-                .Where(x => x.JobScheduleConfigId == "b1fe6c08-505f-46fa-aa03-92c9d48d73c7")
-                .ToArrayAsync())
+            try
             {
-                var logMessageEntries = await _apiService.QueryJobExecutionInstanceLogAsync(jobExecutionInstance.Id,QueryParameters.All);
-                foreach (var logMessageEntry in logMessageEntries.Result)
+                using var streamWriter = new StreamWriter(File.Open("d:\\task.txt", FileMode.OpenOrCreate));
+
+                foreach (var jobExecutionInstance in await dbContext.JobExecutionInstancesDbSet.AsQueryable()
+                    .Where(x => x.Name.Contains("8354021"))
+                    .ToArrayAsync())
                 {
-                    if (logMessageEntry.Value == null)
+
+                    jobExecutionInstance.NodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Id == jobExecutionInstance.NodeInfoId);
+
+                    int pageIndex = 0;
+                    int pageSize = 512;
+
+
+
+                    var rsp = await _apiService.QueryJobExecutionInstanceLogAsync(jobExecutionInstance.Id,
+                        new QueryParameters(pageIndex, pageSize));
+
+                    if (!rsp.Result.Any())
                     {
                         continue;
                     }
-                    if (logMessageEntry.Value.Contains("Exception"))
+                    var ok = rsp.Result.Any(x => x.Value.Contains(""));
+                    if (ok)
                     {
-                        _logger.LogInformation(logMessageEntry.Value);
+                        continue;
                     }
+                    streamWriter.Write(jobExecutionInstance.NodeInfo.Name);
+                    streamWriter.Write("\t\t");
+                    streamWriter.WriteLine(ok);
+                    pageIndex++;
+
                 }
+                streamWriter.Flush();
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message);
+            }
+
         }
 
     }

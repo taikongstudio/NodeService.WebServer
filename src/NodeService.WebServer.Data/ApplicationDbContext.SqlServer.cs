@@ -294,6 +294,15 @@ namespace NodeService.WebServer.Data
                     });
             });
 
+            modelBuilder.Entity<WindowsTaskConfigModel>(builder =>
+            {
+                builder.OwnsOne(
+                    model => model.Value, ownedNavigationBuilder =>
+                    {
+                        ownedNavigationBuilder.ToJson();
+                    });
+            });
+
             modelBuilder.Entity<NotificationConfigModel>(builder =>
             {
                 builder.OwnsOne(

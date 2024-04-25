@@ -31,28 +31,28 @@ namespace NodeService.WebServerTools.Services
             foreach (var group in nodes.GroupBy(x => x.Name))
             {
                 var lastOnlineNode = group.OrderByDescending(x => x.Profile.ServerUpdateTimeUtc).FirstOrDefault();
-                if (lastOnlineNode==null)
+                if (lastOnlineNode == null)
                 {
                     continue;
                 }
-                foreach (var item in group.Where(x => x.Id != lastOnlineNode.Id)
+                lastOnlineNode = await dbContext.NodeInfoDbSet.FindAsync(lastOnlineNode.Id);
+                int count = 0;
+                foreach (var node in group.Where(x => x.Id != lastOnlineNode.Id)
                     .OrderByDescending(x => x.Profile.ServerUpdateTimeUtc))
                 {
-                    var nodeProfile = await dbContext.NodeProfilesDbSet.FirstOrDefaultAsync(x => x.Name == group.Key);
-                    if (nodeProfile != null)
+                    _logger.LogInformation($"Remove:{node.Id}");
+                    dbContext.NodeInfoDbSet.Remove(node);
+                    if (count>1)
                     {
-                        var oldNodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Id == nodeProfile.NodeInfoId);
-                        if (oldNodeInfo != null)
-                        {
-                            _logger.LogInformation($"Remove:{oldNodeInfo.Id}");
-                            dbContext.NodeInfoDbSet.Remove(oldNodeInfo);
-                        }
-                        nodeProfile.NodeInfoId = lastOnlineNode.Id;
-                        lastOnlineNode.Profile = nodeProfile;
-                        lastOnlineNode.ProfileId = lastOnlineNode.Profile.Id;
+                        continue;
                     }
-                    await dbContext.SaveChangesAsync();
+                    var profile = node.Profile;
+                    profile.NodeInfoId = lastOnlineNode.Id;
+                    lastOnlineNode.Profile = profile;
+                    lastOnlineNode.ProfileId = lastOnlineNode.Profile.Id;
+                    count++;
                 }
+                await dbContext.SaveChangesAsync();
             }
         }
     }

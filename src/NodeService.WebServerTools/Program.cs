@@ -37,12 +37,12 @@ namespace NodeService.WebServerTools
         {
 
             ConfigureDbContext(builder);
-            builder.Services.AddHostedService<MergeNodeService>();
+            builder.Services.AddHostedService<AnalysisLogService>();
             builder.Services.AddSingleton<HttpClient>(sp =>
             {
                 return new HttpClient()
                 {
-                    BaseAddress = new Uri("http://http://172.27.242.223:50060")
+                    BaseAddress = new Uri("http://172.27.242.223:50060")
                 };
             });
             builder.Services.AddSingleton<ApiService>();

@@ -229,6 +229,14 @@ namespace NodeService.WebServer.Data
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<NotificationConfiguration>(v, (JsonSerializerOptions)null));
             });
+
+            modelBuilder.Entity<WindowsTaskConfigModel>(builder =>
+            {
+                builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<WindowsTaskDefintionConfiguration>(v, (JsonSerializerOptions)null));
+            });
         }
     }
 }

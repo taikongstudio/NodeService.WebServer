@@ -23,11 +23,11 @@
             ApiResponse<ClientUpdateConfigModel> apiResponse = new ApiResponse<ClientUpdateConfigModel>();
             try
             {
-                using var dbContext = this._dbContextFactory.CreateDbContext();
                 if (string.IsNullOrEmpty(name))
                 {
-                    name = "NodeService.WindowsService";
+                    return apiResponse;
                 }
+                using var dbContext = this._dbContextFactory.CreateDbContext();
                 var clientUpdateConfig = await
                     dbContext
                     .ClientUpdateConfigurationDbSet

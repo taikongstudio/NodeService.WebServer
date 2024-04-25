@@ -191,7 +191,7 @@
     {
         try
         {
-            this._editModel.Value.XmlText = await this._editor.GetValue();
+            this._editModel.Value.XmlText = await this._editor.GetValue(preserveBOM: false, lineEnding: string.Empty);
             await this._editor.SetValue(string.Empty);
             var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel);
             if (apiResponse.ErrorCode == 0)

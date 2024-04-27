@@ -94,10 +94,10 @@
              <PropertyColumn Title="触发源头"  Sortable="true" Property="c=>c.TriggerSource">
                  @switch (context.TriggerSource)
                 {
-                    case JobTriggerSource.Schedule:
+                    case TaskTriggerSource.Schedule:
                         <Text>调度触发</Text>
                         break;
-                    case JobTriggerSource.Manual:
+                    case TaskTriggerSource.Manual:
                         <Text>手动触发</Text>
                         break;
                     default:
@@ -421,7 +421,7 @@
         try
         {
             _loading = true;
-            var apiResponse = await this.ApiService.QueryJobScheduleConfigurationListAsync(QueryParameters.All).ConfigureAwait(false);
+            var apiResponse = await this.ApiService.QueryTaskScheduleConfigurationListAsync(QueryParameters.All).ConfigureAwait(false);
             _loading = false;
             if (apiResponse.ErrorCode == 0)
             {

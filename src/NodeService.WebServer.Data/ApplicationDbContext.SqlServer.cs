@@ -234,7 +234,7 @@ namespace NodeService.WebServer.Data
                                .Metadata
                                .SetValueComparer(GetEnumerableComparer<StringEntry>());
 
-                        ownedNavigationBuilder.Property(x => x.ChildJobs)
+                        ownedNavigationBuilder.Property(x => x.ChildTaskDefinitions)
                                .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
                                .Metadata
                                .SetValueComparer(GetEnumerableComparer<StringEntry>());

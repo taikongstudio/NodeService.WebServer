@@ -32,16 +32,12 @@ namespace NodeService.WebServer.Services.Tasks
 
         public static ReadOnlyCollection<ITrigger> BuildStartNowTrigger()
         {
-            return new ReadOnlyCollection<ITrigger>(new ITrigger[] {
-                     TriggerBuilder.Create().StartNow().Build()
-                });
+            return new([TriggerBuilder.Create().StartNow().Build()]);
         }
 
-        public static ReadOnlyCollection<ITrigger> BuildStartAtTrigger(TimeSpan timeSpan)
+        public static ReadOnlyCollection<ITrigger> BuildDelayTrigger(TimeSpan timeSpan)
         {
-            return new ReadOnlyCollection<ITrigger>(new ITrigger[] {
-                     TriggerBuilder.Create().StartAt(DateTime.UtcNow.ToUniversalTime().Add(timeSpan)).Build()
-                });
+            return new([TriggerBuilder.Create().StartAt(DateTime.UtcNow.ToUniversalTime().Add(timeSpan)).Build()]);
         }
 
     }

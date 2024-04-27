@@ -12,8 +12,8 @@
 
         private async Task AddOrUpdateJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)
         {
-            await _serviceProvider.GetService<IAsyncQueue<JobScheduleMessage>>().EnqueueAsync(
-                    new(JobTriggerSource.Schedule, jobScheduleConfig.Id, jobScheduleConfig.TriggerType == JobScheduleTriggerType.Manual));
+            await _serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>().EnqueueAsync(
+                    new(TaskTriggerSource.Schedule, jobScheduleConfig.Id, jobScheduleConfig.TriggerType == JobScheduleTriggerType.Manual));
         }
 
 
@@ -25,8 +25,8 @@
             ApiResponse apiResponse = new ApiResponse();
             try
             {
-                await _serviceProvider.GetService<IAsyncQueue<JobScheduleMessage>>().EnqueueAsync(
-                    new(JobTriggerSource.Manual, jobScheduleId));
+                await _serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>().EnqueueAsync(
+                    new(TaskTriggerSource.Manual, jobScheduleId));
             }
             catch (Exception ex)
             {
@@ -59,8 +59,8 @@
 
         private async Task RemoveJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)
         {
-            var messageQueue = this._serviceProvider.GetService<IAsyncQueue<JobScheduleMessage>>();
-            await messageQueue.EnqueueAsync(new(JobTriggerSource.Schedule, jobScheduleConfig.Id, true));
+            var messageQueue = this._serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>();
+            await messageQueue.EnqueueAsync(new(TaskTriggerSource.Schedule, jobScheduleConfig.Id, true));
         }
 
 

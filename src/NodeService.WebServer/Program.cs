@@ -228,7 +228,7 @@ public class Program
 
         builder.Services.AddScoped<AuthenticationStateProvider, ApiAuthenticationStateProvider>();
 
-        builder.Services.AddScoped<AsyncFtpClient>(serviceProvider =>
+        builder.Services.AddScoped(serviceProvider =>
         {
             var optionSnapshot = serviceProvider.GetService<IOptionsSnapshot<FtpOptions>>();
             var ftpServerConfig = optionSnapshot.Value;
@@ -238,7 +238,7 @@ public class Program
                 ftpServerConfig.Port);
         });
 
-        builder.Services.AddScoped<FileSystem.FileSystemClient>(serviceProvider =>
+        builder.Services.AddScoped(serviceProvider =>
         {
             var httpsEndpointUrl = builder.Configuration.GetValue<string>("Kestrel:Endpoints:MyHttpsEndpoint:Url");
             var requestUri = new Uri(httpsEndpointUrl);
@@ -332,7 +332,7 @@ public class Program
                 OnAuthenticationFailed = context =>
                 {
                     if (context.Exception.GetType() == typeof(SecurityTokenExpiredException))
-                        context.Response.Headers.Add("Token-Expired", "true");
+                        context.Response.Headers.Append("Token-Expired", "true");
 
                     return Task.CompletedTask;
                 }
@@ -351,7 +351,7 @@ public class Program
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
         builder.Services.AddSingleton<IAsyncQueue<TaskLogDatabase>>(new AsyncQueue<TaskLogDatabase>());
         builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>>(new AsyncQueue<JobExecutionEventRequest>());
-        builder.Services.AddSingleton<IAsyncQueue<JobScheduleMessage>>(new AsyncQueue<JobScheduleMessage>());
+        builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>>(new AsyncQueue<TaskScheduleMessage>());
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>>(new AsyncQueue<NotificationMessage>());
         builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));

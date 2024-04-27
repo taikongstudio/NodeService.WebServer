@@ -121,7 +121,7 @@
     {
 
         int pageSize = 512;
-        var apiResponse = await ApiService.QueryJobExecutionInstanceLogAsync(LogQueryId,
+        var apiResponse = await ApiService.QueryTaskExecutionInstanceLogAsync(LogQueryId,
          new QueryParameters(_logPageIndex, pageSize),
          cancellationToken
         );

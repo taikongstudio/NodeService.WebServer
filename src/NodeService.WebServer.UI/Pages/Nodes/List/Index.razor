@@ -166,18 +166,7 @@
                  </TitleTemplate>
                  <ColumnDefinitions>
                      <PropertyColumn Title="厂区" Filters="areaNameFilters" OnFilter="((name,value)=>OnFilterFactoryName(value,name))" Sortable="true" Filterable="true" Property="c=>c.Profile.FactoryName">
-                         @switch (context.Profile.FactoryName)
-                        {
-                            case "BL":
-                                <Text>博罗</Text>
-                            break;
-                            case "GM":
-                                <Text>光明</Text>
-                                break;
-                            default:
-                                <Text>未知</Text>
-                                break;
-                        }
+                        <Text>@this._nodeSettings.IpAddressMappings.FirstOrDefault(x=>x.Tag==context.Profile.FactoryName)?.Name</Text>
                      </PropertyColumn>
                      <PropertyColumn Title="节点名称" Sortable="true" Property="c=>c.Name">
                         @switch (context.Status)
@@ -377,6 +366,7 @@
             var apiResponse = await this.ApiService.UpdateNodeSettingsAsync(this._nodeSettings).ConfigureAwait(false);
             if (apiResponse.ErrorCode == 0)
             {
+                await this.QueryNodeSettingsAsync();
                 _editFormVisible = false;
                 await _message.Info("更新节点设置成功");
             }
@@ -434,10 +424,11 @@
 
     }
 
-    private async Task OnRefreshClick()
+    private async Task RefreshAsync()
     {
         this._loading = true;
-        await this.QueryNodeListAsync().ConfigureAwait(false);
+        await this.QueryNodeSettingsAsync();
+        await this.QueryNodeListAsync();
         this._loading = false;
     }
 
@@ -477,10 +468,8 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        this._loading = true;
-        await this.QueryNodeListAsync();
-        await this.QueryNodeSettingsAsync();
-        this._loading = false;
+        await this.RefreshAsync();
+
     }
 
     private void OnNodeStatusChanged(NodeState nodeState)

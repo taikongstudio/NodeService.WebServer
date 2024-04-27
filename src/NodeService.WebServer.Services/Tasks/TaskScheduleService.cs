@@ -1,34 +1,35 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
+using System.Threading;
 
 namespace NodeService.WebServer.Services.Tasks
 {
     public class TaskScheduleService : BackgroundService
     {
 
-        private readonly IAsyncQueue<JobScheduleMessage> _jobSchedulerMessageQueue;
+        private readonly IAsyncQueue<TaskScheduleMessage> _taskSchedulerMessageQueue;
         private readonly IServiceProvider _serviceProvider;
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
         private readonly ILogger<TaskScheduleService> _logger;
         private readonly ISchedulerFactory _schedulerFactory;
         private IScheduler Scheduler;
-        private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
+        private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
 
         public TaskScheduleService(
             IServiceProvider serviceProvider,
-            IAsyncQueue<JobScheduleMessage> jobScheduleMessageQueue,
+            IAsyncQueue<TaskScheduleMessage> taskScheduleMessageQueue,
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             ISchedulerFactory schedulerFactory,
-            TaskSchedulerDictionary jobSchedulerDictionary,
+            TaskSchedulerDictionary taskSchedulerDictionary,
             ILogger<TaskScheduleService> logger)
         {
             _serviceProvider = serviceProvider;
             _dbContextFactory = dbContextFactory;
             _logger = logger;
             _schedulerFactory = schedulerFactory;
-            _jobSchedulerDictionary = jobSchedulerDictionary;
-            _jobSchedulerMessageQueue = jobScheduleMessageQueue;
+            _taskSchedulerDictionary = taskSchedulerDictionary;
+            _taskSchedulerMessageQueue = taskScheduleMessageQueue;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -39,13 +40,13 @@ namespace NodeService.WebServer.Services.Tasks
                 await Scheduler.Start(stoppingToken);
             }
 
-            await ScheduleJobsFromDbContext();
+            await ScheduleTasksFromDbContextAsync(stoppingToken);
             while (!stoppingToken.IsCancellationRequested)
             {
-                var jobScheduleMessage = await _jobSchedulerMessageQueue.DeuqueAsync(stoppingToken);
+                var taskScheduleMessage = await _taskSchedulerMessageQueue.DeuqueAsync(stoppingToken);
                 try
                 {
-                    await ScheduleAsync(jobScheduleMessage);
+                    await ScheduleTaskAsync(taskScheduleMessage, stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -55,66 +56,80 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        private async ValueTask ScheduleAsync(JobScheduleMessage jobScheduleMessage)
+        private async ValueTask ScheduleTaskAsync(
+            TaskScheduleMessage taskScheduleMessage,
+            CancellationToken cancellationToken = default)
         {
-            if (jobScheduleMessage.JobScheduleConfigId == null)
+            if (taskScheduleMessage.TaskScheduleConfigId == null)
             {
                 return;
             }
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            var jobScheduleConfig = await dbContext
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var taskScheduleConfig = await dbContext
                 .JobScheduleConfigurationDbSet
                 .AsQueryable()
-                .FirstOrDefaultAsync(x => x.Id == jobScheduleMessage.JobScheduleConfigId);
-            if (jobScheduleConfig == null)
+                .FirstOrDefaultAsync(
+                x => x.Id == taskScheduleMessage.TaskScheduleConfigId,
+                cancellationToken);
+            if (taskScheduleConfig == null)
             {
-                await CancelJobAsync(jobScheduleMessage.JobScheduleConfigId);
+                await CancelTaskAsync(taskScheduleMessage.TaskScheduleConfigId);
                 return;
             }
-            var jobSchedulerKey = new JobSchedulerKey(jobScheduleMessage.JobScheduleConfigId, jobScheduleMessage.TriggerSource);
-            if (_jobSchedulerDictionary.TryGetValue(jobSchedulerKey, out var asyncDisposable))
+            var taskSchedulerKey = new TaskSchedulerKey(
+                taskScheduleMessage.TaskScheduleConfigId,
+                taskScheduleMessage.TriggerSource);
+            if (_taskSchedulerDictionary.TryGetValue(taskSchedulerKey, out var asyncDisposable))
             {
                 await asyncDisposable.DisposeAsync();
-                if (!jobScheduleConfig.IsEnabled || jobScheduleMessage.IsCancellationRequested)
+                if (!taskScheduleConfig.IsEnabled || taskScheduleMessage.IsCancellationRequested)
                 {
-                    _jobSchedulerDictionary.TryRemove(jobSchedulerKey, out _);
+                    _taskSchedulerDictionary.TryRemove(taskSchedulerKey, out _);
                     return;
                 }
-                var newAsyncDisposable = await ScheduleJobAsync(jobSchedulerKey, jobScheduleConfig);
-                _jobSchedulerDictionary.TryUpdate(jobSchedulerKey, newAsyncDisposable, asyncDisposable);
+                var newAsyncDisposable = await ScheduleTaskAsync(
+                    taskSchedulerKey,
+                    taskScheduleMessage.ParentTaskExecutionInstanceId,
+                    taskScheduleConfig);
+                _taskSchedulerDictionary.TryUpdate(taskSchedulerKey, newAsyncDisposable, asyncDisposable);
             }
-            else if (!jobScheduleMessage.IsCancellationRequested)
+            else if (!taskScheduleMessage.IsCancellationRequested)
             {
-                asyncDisposable = await ScheduleJobAsync(jobSchedulerKey, jobScheduleConfig);
-                _jobSchedulerDictionary.TryAdd(jobSchedulerKey, asyncDisposable);
+                asyncDisposable = await ScheduleTaskAsync(
+                    taskSchedulerKey,
+                    taskScheduleMessage.ParentTaskExecutionInstanceId,
+                    taskScheduleConfig);
+                _taskSchedulerDictionary.TryAdd(taskSchedulerKey, asyncDisposable);
             }
 
         }
 
-        private async ValueTask CancelJobAsync(string key)
+        private async ValueTask CancelTaskAsync(string key)
         {
-            for (JobTriggerSource i = JobTriggerSource.Schedule; i < JobTriggerSource.Max - 1; i++)
+            for (TaskTriggerSource i = TaskTriggerSource.Schedule; i < TaskTriggerSource.Max - 1; i++)
             {
-                var jobSchedulerKey = new JobSchedulerKey(key, JobTriggerSource.Schedule);
-                if (_jobSchedulerDictionary.TryRemove(jobSchedulerKey, out var asyncDisposable))
+                var taskSchedulerKey = new TaskSchedulerKey(key, TaskTriggerSource.Schedule);
+                if (_taskSchedulerDictionary.TryRemove(taskSchedulerKey, out var asyncDisposable))
                 {
                     await asyncDisposable.DisposeAsync();
                 }
             }
         }
 
-        private async ValueTask ScheduleJobsFromDbContext()
+        private async ValueTask ScheduleTasksFromDbContextAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                using var dbContext = _dbContextFactory.CreateDbContext();
-                var jobScheduleConfigs = await dbContext.JobScheduleConfigurationDbSet
+                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                var taskScheduleConfigs = await dbContext.JobScheduleConfigurationDbSet
                     .AsAsyncEnumerable()
                     .Where(x => x.IsEnabled && x.TriggerType == JobScheduleTriggerType.Schedule)
-                    .ToListAsync();
-                foreach (var jobScheduleConfig in jobScheduleConfigs)
+                    .ToListAsync(cancellationToken);
+                foreach (var jobScheduleConfig in taskScheduleConfigs)
                 {
-                    await _jobSchedulerMessageQueue.EnqueueAsync(new(JobTriggerSource.Schedule, jobScheduleConfig.Id));
+                    await _taskSchedulerMessageQueue.EnqueueAsync(
+                        new(TaskTriggerSource.Schedule, jobScheduleConfig.Id),
+                        cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -124,27 +139,34 @@ namespace NodeService.WebServer.Services.Tasks
 
         }
 
-        private async ValueTask<IAsyncDisposable> ScheduleJobAsync(
-            JobSchedulerKey jobSchedulerKey,
-            JobScheduleConfigModel jobScheduleConfig)
+        private async ValueTask<IAsyncDisposable> ScheduleTaskAsync(
+            TaskSchedulerKey taskSchedulerKey,
+            string? parentTaskId,
+            JobScheduleConfigModel taskScheduleConfig,
+            CancellationToken cancellationToken = default)
         {
 
-            var jobScheduler = _serviceProvider.GetService<TaskScheduler>();
-            if (jobScheduler == null)
+            var taskScheduler = _serviceProvider.GetService<TaskScheduler>();
+            if (taskScheduler == null)
             {
                 throw new InvalidOperationException();
             }
-            var asyncDisposable = await jobScheduler.ScheduleAsync<FireTaskJob>(jobSchedulerKey,
-                 jobSchedulerKey.TriggerSource == JobTriggerSource.Schedule ?
-                 TriggerBuilderHelper.BuildScheduleTrigger(jobScheduleConfig.CronExpressions.Select(x => x.Value)) :
+            var asyncDisposable = await taskScheduler.ScheduleAsync<FireTaskJob>(taskSchedulerKey,
+                 taskSchedulerKey.TriggerSource == TaskTriggerSource.Schedule ?
+                 TriggerBuilderHelper.BuildScheduleTrigger(taskScheduleConfig.CronExpressions.Select(x => x.Value)) :
                  TriggerBuilderHelper.BuildStartNowTrigger(),
                  new Dictionary<string, object?>()
                  {
                     {
-                        "JobScheduleConfig",
-                        jobScheduleConfig
+                        nameof(FireTaskParameters.TaskScheduleConfig),
+                        taskScheduleConfig
+                    },
+                    {
+                        nameof(FireTaskParameters.ParentTaskId),
+                        parentTaskId
                     }
-                 }
+                 },
+                 cancellationToken
              );
             return asyncDisposable;
         }

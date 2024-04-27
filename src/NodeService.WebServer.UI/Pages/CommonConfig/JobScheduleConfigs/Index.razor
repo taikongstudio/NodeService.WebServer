@@ -70,31 +70,8 @@
                                    PackageConfigurations="@_packageConfigs"
                                    RestApiConfigurations="@_restApiConfigs" />
             }
-            <FormItem Label="子作业">
-                <Select DataSource="@_dataSource.Items.Where(x=>x.Id!=this._editModel.Id)"
-                        @bind-Value="@_selectedJobScheduleConfigId"
-                        LabelName="@nameof(ModelBase.Name)"
-                        ValueName="@nameof(ModelBase.Id)" />
-                <Button Style="margin-top:16px;margin-left:0px;margin-bottom:16px;" OnClick="AddJobScheduleConfigTemplateBinding" Disabled="@(this._selectedJobScheduleConfigId==null)" Type="primary">
-                    添加
-                </Button>
-                <Button Style="margin-top:16px;margin-left:16px;margin-bottom:16px;" OnClick="RemoveSelectedJobScheduleConfigTemplateBinding" Disabled="@(!_dataSource.Items.Where(x=>x.Id!=this._editModel.Id).Any())" Type="primary">
-                    删除
-                </Button>
-                <Table @ref="@_jobTable"
-                       Context="job"
-                       TItem="StringEntry"
-                       @bind-SelectedRows="@_selectedJobScheduleBindings"
-                       DataSource="@context.ChildJobs"
-                       Size="TableSize.Small">
-                    <Selection Key="@job.Id" Type="checkbox" />
-                    <PropertyColumn Title="标志" Property="c=>c.Value" Sortable></PropertyColumn>
-                    <PropertyColumn Title="名称" Property="c=>c.Name" Sortable></PropertyColumn>
-                </Table>
-
-            </FormItem>
             <FormItem Label="执行时长" Help="控制作业的执行时长，单位为秒，默认值0表示不限制执行时长。">
-                <AntDesign.InputNumber TValue="int" @bind-Checked="@context.ExecutionLimitTimeSeconds" /><Text> 秒</Text>
+                <AntDesign.InputNumber TValue="int" @bind-Value="@context.ExecutionLimitTimeSeconds" /><Text> 秒</Text>
             </FormItem>
             <FormItem Label="触发方式" >
                 <RadioGroup @bind-Value="@context.TriggerType">
@@ -102,15 +79,24 @@
                     <Radio RadioButton Value="@JobScheduleTriggerType.Manual">手动执行</Radio>
                 </RadioGroup>
             </FormItem>
-            <FormItem Label="执行策略">
-                <RadioGroup @bind-Value="@context.ExecutionStrategy">
-                    <Radio RadioButton Value="@JobExecutionStrategy.Concurrent">并行执行作业</Radio>
-                    <Radio RadioButton Value="@JobExecutionStrategy.WaitAny">等待任意作业结束</Radio>
-                    <Radio RadioButton Value="@JobExecutionStrategy.WaitAll">等待全部作业结束</Radio>
-                    <Radio RadioButton Value="@JobExecutionStrategy.KillAll">杀死全部作业</Radio>
+            <FormItem Label="优先级">
+                <RadioGroup Style="margin-left:20px" @bind-Value="context.Value.Priority" Size="middle">
+                    <Radio RadioButton Value="@(TaskExecutionPriority.Lowest)">最低</Radio>
+                    <Radio RadioButton Value="@(TaskExecutionPriority.Low)">低</Radio>
+                    <Radio RadioButton Value="@(TaskExecutionPriority.Normal)">正常</Radio>
+                    <Radio RadioButton Value="@(TaskExecutionPriority.High)">高</Radio>
+                    <Radio RadioButton Value="@(TaskExecutionPriority.Highest)">最高</Radio>
                 </RadioGroup>
             </FormItem>
-            @if (context.ExecutionStrategy == JobExecutionStrategy.WaitAny || context.ExecutionStrategy == JobExecutionStrategy.WaitAll || context.ExecutionStrategy == JobExecutionStrategy.KillAll)
+            <FormItem Label="并发执行策略">
+                <RadioGroup @bind-Value="@context.ExecutionStrategy">
+                    <Radio RadioButton Value="@JobExecutionStrategy.Skip">请勿启动新示例</Radio>
+                    <Radio RadioButton Value="@JobExecutionStrategy.Concurrent">并行运行新示例</Radio>
+                    <Radio RadioButton Value="@JobExecutionStrategy.Queue">对新实例排队</Radio>
+                    <Radio RadioButton Value="@JobExecutionStrategy.Stop">停止现有实例</Radio>
+                </RadioGroup>
+            </FormItem>
+            @if (context.ExecutionStrategy == JobExecutionStrategy.Queue || context.ExecutionStrategy == JobExecutionStrategy.Stop)
             {
                 <FormItem Label="等待时长">
                     <AntDesign.InputNumber Max="3600" Min="30" @bind-Value="@context.PenddingLimitTimeSeconds" /><Text> 秒</Text>
@@ -147,11 +133,18 @@
                 </GridRow>
 
                 <GridRow>
-                    <RadioGroup @bind-Value="_dbContextFactoryType" Size="middle">
-                        <Radio RadioButton Value="@(FactoryType.All)">全部区域</Radio>
-                        <Radio RadioButton Value="@(FactoryType.GM)">光明</Radio>
-                        <Radio RadioButton Value="@(FactoryType.BL)">博罗</Radio>
-                        <Radio RadioButton Value="@(FactoryType.Unknkown)">未知</Radio>
+                    <RadioGroup @bind-Value="_selectedAreaTag" Size="middle">
+                        @if (_nodeSettings == null || _nodeSettings.IpAddressMappings == null)
+                        {
+                            <Radio Disabled RadioButton>Loading...</Radio>
+                        }
+                        else
+                        {
+                            foreach (var item in _nodeSettings.IpAddressMappings)
+                            {
+                                <Radio RadioButton Value="@(item.Tag)">@item.Name</Radio>
+                            }
+                        }
                     </RadioGroup>
                     <RadioGroup Style="margin-left:20px" @bind-Value="_nodeState" Size="middle">
                         <Radio RadioButton Value="@(NodeState.All)">全部状态</Radio>
@@ -194,6 +187,29 @@
                     </ColumnDefinitions>
                 </Table>
             </FormItem>
+            <FormItem Label="子作业">
+                <Select DataSource="@_dataSource.Items.Where(x=>x.Id!=this._editModel.Id)"
+                        @bind-Value="@_selectedTaskScheduleConfigId"
+                        LabelName="@nameof(ModelBase.Name)"
+                        ValueName="@nameof(ModelBase.Id)" />
+                <Button Style="margin-top:16px;margin-left:0px;margin-bottom:16px;" OnClick="AddChildTask" Disabled="@(this._selectedTaskScheduleConfigId==null)" Type="primary">
+                    添加
+                </Button>
+                <Button Style="margin-top:16px;margin-left:16px;margin-bottom:16px;" OnClick="RemoveChildTask" Disabled="@(!_dataSource.Items.Where(x=>x.Id!=this._editModel.Id).Any())" Type="primary">
+                    删除
+                </Button>
+                <Table @ref="@_jobTable"
+                       Context="job"
+                       TItem="StringEntry"
+                       @bind-SelectedRows="@_selectedChildTaskDefinitions"
+                       DataSource="@context.ChildTaskDefinitions"
+                       Size="TableSize.Small">
+                    <Selection Key="@job.Id" Type="checkbox" />
+                    <PropertyColumn Title="标志" Property="c=>c.Value" Sortable></PropertyColumn>
+                    <PropertyColumn Title="名称" Property="c=>c.Name" Sortable></PropertyColumn>
+                </Table>
+
+            </FormItem>
 
         </Form>
     </Modal>
@@ -202,7 +218,7 @@
             <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新建配置</Button>
         </SpaceItem>
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="QueryConfigurationListAsync">刷新</Button>
+            <Button Type="@ButtonType.Primary" OnClick="RefreshAsync">刷新</Button>
         </SpaceItem>
 
     </Space>
@@ -330,7 +346,7 @@
     JobScheduleConfigModel _editModel = new JobScheduleConfigModel();
 
 
-    string _selectedJobScheduleConfigId;
+    string _selectedTaskScheduleConfigId;
 
     IEnumerable<StringEntry> _selectedEnvVars;
     IEnumerable<StringEntry> _selectedCronExpressions;
@@ -347,7 +363,7 @@
     IEnumerable<RestApiConfigModel> _restApiConfigs;
     IEnumerable<KafkaConfigModel> _kafkaConfigs;
     IEnumerable<FtpDownloadConfigModel> _ftpDownloadConfigs;
-    IEnumerable<StringEntry> _selectedJobScheduleBindings;
+    IEnumerable<StringEntry> _selectedChildTaskDefinitions;
 
     JobScheduleConfigModel _jobForTrigger;
     Form<JobScheduleConfigModel> _triggerJobForm;
@@ -364,17 +380,10 @@
         Offline,
     }
 
-    enum FactoryType
-    {
-        All,
-        GM,
-        BL,
-        Unknkown
-    }
-
     NodeState _nodeState;
-    FactoryType _dbContextFactoryType;
     private bool _loading;
+    string? _selectedAreaTag;
+    NodeSettings _nodeSettings = new NodeSettings();
 
     private PaginationDataSource<JobScheduleConfigModel> _dataSource;
 
@@ -471,6 +480,7 @@
         await this.QueryRestApiConfigurationListAsync();
         await this.QueryJobTypeDescConfigAsync();
         await this.QueryKafkaConfigurationListAsync();
+        await this.QueryNodeSettingsAsync();
         await this.QueryNodeInfoListAsync();
     }
 
@@ -496,7 +506,7 @@
             if (apiResponse.ErrorCode == 0)
             {
                 await this._dataSource.UpdateSourceAsync();
-                await RefreshDataSource(this._dataSource.Items);
+                await RefreshDataSourceAsync(this._dataSource.Items);
                 this._editFormVisible = false;
                 this._selectedNodeInfos = [];
             }
@@ -582,7 +592,7 @@
         this._triggerJobFormSubmitting = false;
     }
 
-    private async Task RefreshDataSource(IEnumerable<JobScheduleConfigModel> models)
+    private async Task RefreshDataSourceAsync(IEnumerable<JobScheduleConfigModel> models)
     {
         this._loading = true;
         await this.QueryAllConfigurationListAsync().ConfigureAwait(false);
@@ -628,7 +638,7 @@
             if (apiResponse.ErrorCode == 0)
             {
                 await this._dataSource.UpdateSourceAsync();
-                await RefreshDataSource(this._dataSource.Items);
+                await RefreshDataSourceAsync(this._dataSource.Items);
             }
             else
             {
@@ -799,19 +809,19 @@
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        await this.QueryConfigurationListAsync().ConfigureAwait(false);
+        await this.RefreshAsync().ConfigureAwait(false);
     }
 
-    private async Task QueryConfigurationListAsync()
+    private async Task RefreshAsync()
     {
         try
         {
             this._loading = true;
-            var apiResponse = await this.ApiService.QueryJobScheduleConfigurationListAsync(QueryParameters.All).ConfigureAwait(false);
+            var apiResponse = await this.ApiService.QueryTaskScheduleConfigurationListAsync(QueryParameters.All).ConfigureAwait(false);
             if (apiResponse.ErrorCode == 0)
             {
                 await this._dataSource.UpdateSourceAsync();
-                await RefreshDataSource(_dataSource.Items).ConfigureAwait(false);
+                await RefreshDataSourceAsync(_dataSource.Items).ConfigureAwait(false);
                 this._loading = false;
             }
             else
@@ -1220,6 +1230,35 @@
         }
     }
 
+    private async Task QueryNodeSettingsAsync()
+    {
+        try
+        {
+            var apiResponse = await this.ApiService.QueryNodeSettingsAsync();
+            if (apiResponse.ErrorCode == 0)
+            {
+                this._nodeSettings = apiResponse.Result ?? new();
+                this._selectedAreaTag = this._nodeSettings.IpAddressMappings.FirstOrDefault()?.Tag;
+            }
+            else
+            {
+                await this._notice.Open(new NotificationConfig()
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message,
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await this._notice.Open(new NotificationConfig()
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString(),
+                });
+        }
+    }
+
     private async Task QueryMysqlConfigurationListAsync()
     {
         try
@@ -1381,27 +1420,27 @@
             &&
             IsNodeStatusMatched(x)
             &&
-            IsNodeInfoFactoryTypeMatched(x)
+            IsNodeInfoAreaTagMatched(x)
             );
     }
 
-    private void AddJobScheduleConfigTemplateBinding()
+    private void AddChildTask()
     {
-        var target = this._dataSource.Items.FirstOrDefault(x => x.Id == _selectedJobScheduleConfigId);
+        var target = this._dataSource.Items.FirstOrDefault(x => x.Id == _selectedTaskScheduleConfigId);
         if (target == null)
         {
             return;
         }
-        if (this._editModel.ChildJobs.Any(x => x.Id == _selectedJobScheduleConfigId))
+        if (this._editModel.ChildTaskDefinitions.Any(x => x.Id == _selectedTaskScheduleConfigId))
         {
             return;
         }
-        var jobScheduleConfig = this._dataSource.Items.FirstOrDefault(x => x.Id == _selectedJobScheduleConfigId);
-        this._editModel.ChildJobs.Add(new StringEntry()
+        var taskScheduleConfig = this._dataSource.Items.FirstOrDefault(x => x.Id == _selectedTaskScheduleConfigId);
+        this._editModel.ChildTaskDefinitions.Add(new StringEntry()
             {
-                Id = jobScheduleConfig.Id,
-                Name = jobScheduleConfig.Name,
-                Value = jobScheduleConfig.Id
+                Id = taskScheduleConfig.Id,
+                Name = taskScheduleConfig.Name,
+                Value = taskScheduleConfig.Id
             });
     }
 
@@ -1433,16 +1472,16 @@
 
 
 
-    private void RemoveSelectedJobScheduleConfigTemplateBinding()
+    private void RemoveChildTask()
     {
-        if (this._selectedJobScheduleBindings == null || !this._selectedJobScheduleBindings.Any())
+        if (this._selectedChildTaskDefinitions == null || !this._selectedChildTaskDefinitions.Any())
         {
             return;
         }
 
-        foreach (var item in this._selectedJobScheduleBindings)
+        foreach (var item in this._selectedChildTaskDefinitions)
         {
-            this._editModel.ChildJobs.Remove(item);
+            this._editModel.ChildTaskDefinitions.Remove(item);
         }
         this._jobTable.UnselectAll();
         this._jobTable.ReloadData();
@@ -1516,33 +1555,13 @@
         return false;
     }
 
-    private bool IsNodeInfoFactoryTypeMatched(NodeInfoModel nodeInfo)
+    private bool IsNodeInfoAreaTagMatched(NodeInfoModel nodeInfo)
     {
-        switch (this._dbContextFactoryType)
+        if (nodeInfo.Profile.FactoryName == "All")
         {
-            case FactoryType.All:
-                return true;
-                break;
-            case FactoryType.GM:
-                if (nodeInfo.Profile.FactoryName == "GM")
-                {
-                    return true;
-                }
-                break;
-            case FactoryType.BL:
-                if (nodeInfo.Profile.FactoryName == "BL")
-                {
-                    return true;
-                }
-                break;
-            default:
-                if (nodeInfo.Profile.FactoryName == "Unknown")
-                {
-                    return true;
-                }
-                break;
+            return true;
         }
-        return false;
+        return _nodeSettings.IpAddressMappings.Any(x => x.Tag == nodeInfo.Profile.FactoryName);
     }
 
     private void RemoveSelectedNode(NodeInfoModel nodeInfo)

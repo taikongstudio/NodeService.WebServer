@@ -24,7 +24,7 @@ namespace NodeService.WebServer.Services.Tasks
             }
             finally
             {
-                if (TriggerSource == JobTriggerSource.Manual)
+                if (TriggerSource == TaskTriggerSource.Manual && AsyncDispoable != null)
                 {
                     await AsyncDispoable.DisposeAsync();
                 }
@@ -33,20 +33,22 @@ namespace NodeService.WebServer.Services.Tasks
 
         private async Task ExecuteCoreAsync(IJobExecutionContext context)
         {
-            Logger.LogInformation($"Job fire instance id:{context.FireInstanceId}");
+            Logger.LogInformation($"Task fire instance id:{context.FireInstanceId}");
 
-            var jobFireParameters = new JobFireParameters()
+            string? parentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string;
+            var fireTaskParameters = new FireTaskParameters()
             {
-                JobScheduleConfig = Properties["JobScheduleConfig"] as JobScheduleConfigModel,
-                FireInstanceId = $"{Guid.NewGuid()}_{context.FireInstanceId}",
+                TaskScheduleConfig = Properties[nameof(FireTaskParameters.TaskScheduleConfig)] as JobScheduleConfigModel,
+                FireInstanceId = $"{Guid.NewGuid()}_{parentTaskId}_{context.FireInstanceId}",
                 FireTimeUtc = context.FireTimeUtc,
                 NextFireTimeUtc = context.NextFireTimeUtc,
                 PreviousFireTimeUtc = context.PreviousFireTimeUtc,
                 ScheduledFireTimeUtc = context.ScheduledFireTimeUtc,
+                ParentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string
             };
             var initializer = ServiceProvider.GetService<TaskExecutionInstanceInitializer>();
-            await initializer.InitAsync(jobFireParameters);
-            Logger.LogInformation($"Job fire instance id:{context.FireInstanceId} end init");
+            await initializer.InitAsync(fireTaskParameters);
+            Logger.LogInformation($"Task fire instance id:{context.FireInstanceId} end init");
         }
 
 

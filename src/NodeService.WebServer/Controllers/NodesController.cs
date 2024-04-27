@@ -8,7 +8,7 @@ namespace NodeService.WebServer.Controllers
     {
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
-        private readonly IAsyncQueue<JobScheduleMessage> _asyncQueue;
+        private readonly IAsyncQueue<TaskScheduleMessage> _asyncQueue;
         private readonly INodeSessionService _nodeSessionService;
         private readonly IMemoryCache _memoryCache;
         private readonly IVirtualFileSystem _virtualFileSystem;
@@ -22,7 +22,7 @@ namespace NodeService.WebServer.Controllers
             IOptionsSnapshot<WebServerOptions> webServerOptions,
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             ILogger<NodesController> logger,
-            IAsyncQueue<JobScheduleMessage> jobScheduleServiceMessageQueue,
+            IAsyncQueue<TaskScheduleMessage> jobScheduleServiceMessageQueue,
             INodeSessionService nodeSessionService)
         {
             _logger = logger;

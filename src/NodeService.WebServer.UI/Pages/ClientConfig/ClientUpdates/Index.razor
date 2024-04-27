@@ -58,7 +58,7 @@
                 <Button OnClick="AddDnsFilter" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
                     添加
                 </Button>
-                <Button OnClick="RemoveSelectedDnsFilters" Disabled="@(this._selectedNodeFilters.IsNullOrEmpty())" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
+                <Button OnClick="RemoveSelectedDnsFilters"  Type="primary" Style="margin-bottom:16px;margin-left:16px;">
                     删除
                 </Button>
                 <StringEntryTable DataSource="@context.DnsFilters"
@@ -140,7 +140,7 @@
     bool _editFormConfirmLoading = false;
     Form<ClientUpdateConfigModel> _editForm;
     ClientUpdateConfigModel _editModel = new ClientUpdateConfigModel();
-    IEnumerable<StringEntry> _selectedNodeFilters;
+    IEnumerable<StringEntry> _selectedNodeFilters = [];
     IEnumerable<PackageConfigModel> _packageSource;
     IEnumerable<PackageConfigModel> _selectedPackageConfigs;
 
@@ -369,6 +369,11 @@
 
     private void RemoveSelectedDnsFilters()
     {
+        if (this._selectedNodeFilters == null)
+        {
+            return;
+        }
+
         foreach (var item in this._selectedNodeFilters)
         {
             this._editModel.DnsFilters.Remove(item);

@@ -1,8 +1,8 @@
 ﻿namespace NodeService.WebServer.Services.Tasks
 {
-    public readonly record struct JobSchedulerKey
+    public readonly record struct TaskSchedulerKey
     {
-        public JobSchedulerKey(string key, JobTriggerSource triggerSource)
+        public TaskSchedulerKey(string key, TaskTriggerSource triggerSource)
         {
             Key = key;
             TriggerSource = triggerSource;
@@ -10,10 +10,10 @@
 
         public string Key { get; init; }
 
-        public JobTriggerSource TriggerSource { get; init; }
+        public TaskTriggerSource TriggerSource { get; init; }
     }
 
-    public class TaskSchedulerDictionary : ConcurrentDictionary<JobSchedulerKey, IAsyncDisposable>
+    public class TaskSchedulerDictionary : ConcurrentDictionary<TaskSchedulerKey, IAsyncDisposable>
     {
 
     }

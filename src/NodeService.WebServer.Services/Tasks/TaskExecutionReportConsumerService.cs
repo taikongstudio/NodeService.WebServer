@@ -4,6 +4,7 @@ using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.NodeSessions;
+using System;
 using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.Tasks
@@ -11,36 +12,36 @@ namespace NodeService.WebServer.Services.Tasks
     public class TaskExecutionReportConsumerService : BackgroundService
     {
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly BatchQueue<JobExecutionReportMessage> _jobExecutionReportBatchQueue;
-        private readonly IAsyncQueue<JobScheduleMessage> _jobScheduleAsyncQueue;
+        private readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
+        private readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
         private readonly ILogger<TaskExecutionReportConsumerService> _logger;
-        private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
-        private readonly TaskScheduler _jobScheduler;
+        private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
+        private readonly TaskScheduler _taskScheduler;
         private readonly TaskLogCacheManager _taskLogCacheManager;
 
         public TaskExecutionReportConsumerService(
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
             BatchQueue<JobExecutionReportMessage> jobExecutionReportBatchQueue,
             TaskLogCacheManager taskLogCacheManager,
-            IAsyncQueue<JobScheduleMessage> jobScheduleAsyncQueue,
+            IAsyncQueue<TaskScheduleMessage> jobScheduleAsyncQueue,
             ILogger<TaskExecutionReportConsumerService> logger,
             TaskSchedulerDictionary jobSchedulerDictionary,
             TaskScheduler jobScheduler
             )
         {
             _dbContextFactory = dbContextFactory;
-            _jobExecutionReportBatchQueue = jobExecutionReportBatchQueue;
-            _jobScheduleAsyncQueue = jobScheduleAsyncQueue;
+            _taskExecutionReportBatchQueue = jobExecutionReportBatchQueue;
+            _taskScheduleAsyncQueue = jobScheduleAsyncQueue;
             _logger = logger;
-            _jobSchedulerDictionary = jobSchedulerDictionary;
-            _jobScheduler = jobScheduler;
+            _taskSchedulerDictionary = jobSchedulerDictionary;
+            _taskScheduler = jobScheduler;
             _taskLogCacheManager = taskLogCacheManager;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _taskLogCacheManager.Load();
-            await foreach (var arrayPoolCollection in _jobExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
+            await foreach (var arrayPoolCollection in _taskExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
             {
                 int count = arrayPoolCollection.CountNotNull();
                 if (count == 0)
@@ -56,7 +57,7 @@ namespace NodeService.WebServer.Services.Tasks
                     stopwatch.Start();
                     await ProcessTaskExecutionReportsAsync(arrayPoolCollection, stoppingToken);
                     stopwatch.Stop();
-                    _logger.LogInformation($"process {count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_jobExecutionReportBatchQueue.AvailableCount}");
+                    _logger.LogInformation($"process {count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
                     stopwatch.Reset();
                 }
                 catch (Exception ex)
@@ -183,9 +184,9 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        private async ValueTask CancelExecutionTimeLimitJob(JobSchedulerKey jobSchedulerKey)
+        private async ValueTask CancelTimeLimitTaskAsync(TaskSchedulerKey jobSchedulerKey)
         {
-            if (!_jobSchedulerDictionary.TryRemove(jobSchedulerKey, out IAsyncDisposable? asyncDisposable))
+            if (!_taskSchedulerDictionary.TryRemove(jobSchedulerKey, out IAsyncDisposable? asyncDisposable))
             {
                 return;
             }
@@ -195,36 +196,41 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        private async Task ScheduleTaskExecutionTimeLimitJob(JobExecutionInstanceModel jobExecutionInstance)
+        private async Task ScheduleTimeLimitTaskAsync(
+            JobExecutionInstanceModel taskExecutionInstance,
+            CancellationToken cancellationToken = default)
         {
-            if (jobExecutionInstance == null)
+            if (taskExecutionInstance == null)
             {
                 return;
             }
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            var jobScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FindAsync(jobExecutionInstance.JobScheduleConfigId);
-            if (jobScheduleConfig == null)
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var taskScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FindAsync(
+                [taskExecutionInstance.JobScheduleConfigId],
+                cancellationToken);
+            if (taskScheduleConfig == null)
             {
                 return;
             }
-            if (jobScheduleConfig.ExecutionLimitTimeSeconds <= 0)
+            if (taskScheduleConfig.ExecutionLimitTimeSeconds <= 0)
             {
                 return;
             }
-            var key = new JobSchedulerKey(
-                 jobExecutionInstance.Id,
-                 JobTriggerSource.Schedule);
-            var asyncDisposable = await _jobScheduler.ScheduleAsync<ExecutionTimeLimitJob>(key,
-                 TriggerBuilderHelper.BuildStartAtTrigger(TimeSpan.FromSeconds(jobScheduleConfig.ExecutionLimitTimeSeconds)),
-                new Dictionary<string, object?>(){
-                    { "JobExecutionInstance",
-                    jobExecutionInstance.JsonClone<JobExecutionInstanceModel>() }
-                });
-            _jobSchedulerDictionary.TryAdd(key, asyncDisposable);
+            var key = new TaskSchedulerKey(
+                     taskExecutionInstance.Id,
+                     TaskTriggerSource.Manual);
+            await _taskScheduler.ScheduleAsync<TaskExecutionTimeLimitJob>(key,
+                  TriggerBuilderHelper.BuildDelayTrigger(TimeSpan.FromSeconds(taskScheduleConfig.ExecutionLimitTimeSeconds)),
+              new Dictionary<string, object?>(){
+                    {
+                            "TaskExecutionInstance",
+                            taskExecutionInstance.JsonClone<JobExecutionInstanceModel>()
+                    }
+              });
         }
 
         private async Task ProcessTaskExecutionReportAsync(
-            JobExecutionInstanceModel jobExecutionInstance,
+            JobExecutionInstanceModel taskExecutionInstance,
             NodeSessionMessage<JobExecutionReport> message,
             CancellationToken stoppingToken = default)
         {
@@ -233,7 +239,7 @@ namespace NodeService.WebServer.Services.Tasks
                 JobExecutionReport report = message.GetMessage();
 
 
-                var jobSchedulerKey = new JobSchedulerKey(jobExecutionInstance.Id, JobTriggerSource.Schedule);
+                var taskSchedulerKey = new TaskSchedulerKey(taskExecutionInstance.Id, TaskTriggerSource.Schedule);
                 switch (report.Status)
                 {
                     case JobExecutionStatus.Unknown:
@@ -243,19 +249,25 @@ namespace NodeService.WebServer.Services.Tasks
                     case JobExecutionStatus.Pendding:
                         break;
                     case JobExecutionStatus.Started:
-                        await ScheduleTaskExecutionTimeLimitJob(jobExecutionInstance);
+                        if (taskExecutionInstance.Status != JobExecutionStatus.Started)
+                        {
+                            await ScheduleTimeLimitTaskAsync(taskExecutionInstance, stoppingToken);
+                        }
                         break;
                     case JobExecutionStatus.Running:
                         break;
                     case JobExecutionStatus.Failed:
-                        await CancelExecutionTimeLimitJob(jobSchedulerKey);
+                        await CancelTimeLimitTaskAsync(taskSchedulerKey);
                         break;
                     case JobExecutionStatus.Finished:
-                        await ScheduleChildTasks(jobExecutionInstance.Id, stoppingToken);
-                        await CancelExecutionTimeLimitJob(jobSchedulerKey);
+                        if (taskExecutionInstance.Status != JobExecutionStatus.Finished)
+                        {
+                            await ScheduleChildTasksAsync(taskExecutionInstance, stoppingToken);
+                            await CancelTimeLimitTaskAsync(taskSchedulerKey);
+                        }
                         break;
                     case JobExecutionStatus.Cancelled:
-                        await CancelExecutionTimeLimitJob(jobSchedulerKey);
+                        await CancelTimeLimitTaskAsync(taskSchedulerKey);
                         break;
                     case JobExecutionStatus.PenddingTimeout:
                         break;
@@ -272,25 +284,29 @@ namespace NodeService.WebServer.Services.Tasks
                     case JobExecutionStatus.Pendding:
                         break;
                     case JobExecutionStatus.Started:
-                        jobExecutionInstance.ExecutionBeginTimeUtc = DateTime.UtcNow;
+                        taskExecutionInstance.ExecutionBeginTimeUtc = DateTime.UtcNow;
                         break;
                     case JobExecutionStatus.Running:
                         break;
                     case JobExecutionStatus.Failed:
                     case JobExecutionStatus.Finished:
                     case JobExecutionStatus.Cancelled:
-                        jobExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
+                        taskExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
                         break;
                     default:
                         break;
                 }
-                if (jobExecutionInstance.Status < report.Status && report.Status != JobExecutionStatus.PenddingTimeout)
+                if (taskExecutionInstance.Status < report.Status && report.Status != JobExecutionStatus.PenddingTimeout)
                 {
-                    jobExecutionInstance.Status = report.Status;
+                    taskExecutionInstance.Status = report.Status;
+                }
+                if (report.Status == JobExecutionStatus.PenddingTimeout)
+                {
+                    taskExecutionInstance.Status = report.Status;
                 }
                 if (!string.IsNullOrEmpty(report.Message))
                 {
-                    jobExecutionInstance.Message = report.Message;
+                    taskExecutionInstance.Message = report.Message;
                 }
             }
             catch (Exception ex)
@@ -302,26 +318,28 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
 
-        private async Task ScheduleChildTasks(
-            string id,
+        private async Task ScheduleChildTasksAsync(
+            JobExecutionInstanceModel parentTaskInstance,
             CancellationToken stoppingToken = default)
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            var jobScheduleConfig = await dbContext
-                .JobScheduleConfigurationDbSet
-                .FindAsync(id);
-            if (jobScheduleConfig == null)
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync(stoppingToken);
+            var taskFireConfig = await dbContext
+                .JobFireConfigurationsDbSet
+                .FindAsync([parentTaskInstance.FireInstanceId], cancellationToken: stoppingToken);
+            if (taskFireConfig == null)
             {
+                _logger.LogError($"Could not found task fire config:{parentTaskInstance.FireInstanceId}");
                 return;
             }
-            foreach (var childJob in jobScheduleConfig.ChildJobs)
+            var taskScheduleConfig = JsonSerializer.Deserialize<JobScheduleConfiguration>(taskFireConfig.JobScheduleConfigJsonString);
+            foreach (var childTaskDefinition in taskScheduleConfig.ChildTaskDefinitions)
             {
-                var childJobScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FindAsync(childJob.Value);
-                if (childJobScheduleConfig == null)
+                var childTaskScheduleDefinition = await dbContext.JobScheduleConfigurationDbSet.FindAsync(childTaskDefinition.Value);
+                if (childTaskScheduleDefinition == null)
                 {
                     continue;
                 }
-                await _jobScheduleAsyncQueue.EnqueueAsync(new(JobTriggerSource.Parent, childJobScheduleConfig.Id));
+                await _taskScheduleAsyncQueue.EnqueueAsync(new(TaskTriggerSource.Parent, childTaskScheduleDefinition.Id, parentTaskInstanceId: parentTaskInstance.Id));
             }
         }
     }

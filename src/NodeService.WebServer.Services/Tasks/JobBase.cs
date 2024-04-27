@@ -11,7 +11,7 @@
         public required IServiceProvider ServiceProvider { get; set; }
 
 
-        public JobTriggerSource TriggerSource { get; set; }
+        public TaskTriggerSource TriggerSource { get; set; }
 
         public required IDictionary<string, object?> Properties { get; set; }
 

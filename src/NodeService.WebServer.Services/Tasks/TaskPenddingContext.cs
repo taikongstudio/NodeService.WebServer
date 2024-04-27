@@ -2,7 +2,7 @@
 {
     public class TaskPenddingContext : IAsyncDisposable
     {
-        private CancellationTokenSource _penddingCancelTokenSource;
+        private CancellationTokenSource _cancelTokenSource;
 
         public TaskPenddingContext(string id)
         {
@@ -19,9 +19,9 @@
 
         public CancellationToken CancellationToken { get; private set; }
 
-        public required JobFireParameters FireParameters { get; init; }
+        public required FireTaskParameters FireParameters { get; init; }
 
-        public async Task<bool> WaitAllJobTerminatedAsync()
+        public async Task<bool> WaitAllTaskTerminatedAsync()
         {
             while (!CancellationToken.IsCancellationRequested)
             {
@@ -30,85 +30,46 @@
                     return false;
                 }
 
-                var jobExecutionInstances = await NodeServerService.QueryJobExecutionInstances(NodeSessionId.NodeId
-                    , new QueryJobExecutionInstancesParameters()
-                    {
-                        Id = FireParameters.JobScheduleConfig.Id,
-                        Status = JobExecutionStatus.Running
-                    }, CancellationToken);
+                var jobExecutionInstances = await GetRunningTasksAsync();
 
                 if (!jobExecutionInstances.Any())
                 {
                     return true;
                 }
-                await Task.Delay(TimeSpan.FromSeconds(10), CancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken);
             }
             return false;
         }
 
-
-
-
-        public async Task<bool> WaitAnyJobTerminatedAsync()
+        public async Task<IEnumerable<JobExecutionInstanceModel>> GetRunningTasksAsync()
         {
-            IEnumerable<JobExecutionInstanceModel> initialInstances = null;
-            IEnumerable<JobExecutionInstanceModel> currentInstances = null;
-            while (!CancellationToken.IsCancellationRequested)
-            {
-                var jobExecutionInstances = await NodeServerService.QueryJobExecutionInstances(NodeSessionId.NodeId
-                    , new QueryJobExecutionInstancesParameters()
-                    {
-                        Id = FireParameters.JobScheduleConfig.Id,
-                        Status = JobExecutionStatus.Running
-                    }, CancellationToken);
-                if (!jobExecutionInstances.Any())
+            var taskExecutionInstances = await NodeServerService.QueryTaskExecutionInstancesAsync(NodeSessionId.NodeId
+                , new QueryTaskExecutionInstancesParameters()
                 {
-                    return true;
-                }
-                if (initialInstances == null)
-                {
-                    initialInstances = jobExecutionInstances;
-                }
-                if (jobExecutionInstances.Any(
-                    x => x.Status != JobExecutionStatus.Running
-                    &&
-                    initialInstances.Any(
-                        y => y.Id == x.Id
-                        )))
-                {
-                    return true;
-                }
-
-                await Task.Delay(TimeSpan.FromSeconds(10), CancellationToken);
-            }
-            return false;
+                    Id = FireParameters.TaskScheduleConfig.Id,
+                    Status = JobExecutionStatus.Running,
+                }, CancellationToken);
+            return taskExecutionInstances;
         }
 
-        public async Task<bool> KillAllJobAsync()
+        public async Task<bool> StopRunningTasksAsync()
         {
             while (!CancellationToken.IsCancellationRequested)
             {
-                var jobExecutionInstances = await NodeServerService.QueryJobExecutionInstances(NodeSessionId.NodeId,
-                     new QueryJobExecutionInstancesParameters()
-                     {
-                         Id = Id,
-                         Status = JobExecutionStatus.Running
-                     },
-                     CancellationToken
-                    );
+                var taskExecutionInstances = await GetRunningTasksAsync();
 
-                int count = jobExecutionInstances.Count();
+                int count = taskExecutionInstances.Count();
 
 
                 if (count == 0)
                 {
                     return true;
                 }
-                foreach (var jobExecutionInstance in jobExecutionInstances)
+                foreach (var taskExecutionInstance in taskExecutionInstances)
                 {
                     await NodeServerService.SendJobExecutionEventAsync(
                         NodeSessionId,
-                        jobExecutionInstance.ToCancelEvent(),
+                        taskExecutionInstance.ToCancelEvent(),
                         CancellationToken);
                 }
                 await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken);
@@ -116,25 +77,42 @@
             return false;
         }
 
-        public ValueTask InitAsync()
+        public ValueTask EnsureInitAsync()
         {
-            _penddingCancelTokenSource = new CancellationTokenSource();
-            _penddingCancelTokenSource.CancelAfter(TimeSpan.FromSeconds(Math.Max(30, FireParameters.JobScheduleConfig.PenddingLimitTimeSeconds)));
-            CancellationToken = _penddingCancelTokenSource.Token;
-            return ValueTask.CompletedTask;
-        }
-
-        public ValueTask CancelAsync()
-        {
-            if (!_penddingCancelTokenSource.IsCancellationRequested)
+            if (_cancelTokenSource == null)
             {
-                return new ValueTask(_penddingCancelTokenSource.CancelAsync());
+                _cancelTokenSource = new CancellationTokenSource();
+                _cancelTokenSource.CancelAfter(TimeSpan.FromSeconds(Math.Max(30, FireParameters.TaskScheduleConfig.PenddingLimitTimeSeconds)));
+                CancellationToken = _cancelTokenSource.Token;
             }
             return ValueTask.CompletedTask;
         }
 
+        public async Task<bool> WaitForRunningTasksAsync()
+        {
+            while (true)
+            {
+                var runningTasks = await this.GetRunningTasksAsync();
+                if (!runningTasks.Any())
+                {
+                    break;
+                }
+                await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken);
+            }
+            return true;
+        }
+
+        public async ValueTask CancelAsync()
+        {
+            if (!_cancelTokenSource.IsCancellationRequested)
+            {
+                await _cancelTokenSource.CancelAsync();
+            }
+        }
+
         public ValueTask DisposeAsync()
         {
+            _cancelTokenSource.Dispose();
             return ValueTask.CompletedTask;
         }
     }

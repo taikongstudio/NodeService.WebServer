@@ -3,19 +3,17 @@ using NodeService.WebServer.Data;
 
 namespace NodeService.WebServer.Services.Tasks
 {
-    public class ExecutionTimeLimitJob : JobBase
+    public class TaskExecutionTimeLimitJob : JobBase
     {
 
         public override async Task Execute(IJobExecutionContext context)
         {
-            var dbContextFactory = ServiceProvider.GetService<IDbContextFactory<ApplicationDbContext>>();
-            using var dbContext = await dbContextFactory.CreateDbContextAsync();
             var nodeSessionService = ServiceProvider.GetService<INodeSessionService>();
-            var jobExecutionInstance = Properties["JobExecutionInstance"] as JobExecutionInstanceModel;
-            var nodeId = new NodeId(jobExecutionInstance.NodeInfoId);
+            var taskExecutionInstance = Properties["TaskExecutionInstance"] as JobExecutionInstanceModel;
+            var nodeId = new NodeId(taskExecutionInstance.NodeInfoId);
             foreach (var nodeSessionId in nodeSessionService.EnumNodeSessions(nodeId))
             {
-                await nodeSessionService.SendJobExecutionEventAsync(nodeSessionId, jobExecutionInstance.ToCancelEvent());
+                await nodeSessionService.SendJobExecutionEventAsync(nodeSessionId, taskExecutionInstance.ToCancelEvent());
             }
             if (AsyncDispoable != null)
             {

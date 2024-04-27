@@ -31,7 +31,7 @@ namespace NodeService.WebServerTools.Services
                 using var streamWriter = new StreamWriter(File.Open("d:\\task.txt", FileMode.OpenOrCreate));
 
                 foreach (var jobExecutionInstance in await dbContext.JobExecutionInstancesDbSet.AsQueryable()
-                    .Where(x => x.Name.Contains("8354021"))
+                    .Where(x => x.Name.Contains("36194379"))
                     .ToArrayAsync())
                 {
 
@@ -42,14 +42,14 @@ namespace NodeService.WebServerTools.Services
 
 
 
-                    var rsp = await _apiService.QueryJobExecutionInstanceLogAsync(jobExecutionInstance.Id,
+                    var rsp = await _apiService.QueryTaskExecutionInstanceLogAsync(jobExecutionInstance.Id,
                         new QueryParameters(pageIndex, pageSize));
 
                     if (!rsp.Result.Any())
                     {
                         continue;
                     }
-                    var ok = rsp.Result.Any(x => x.Value.Contains(""));
+                    var ok = rsp.Result.Any(x => x.Value.Contains("2024-04-12T15:10:37"));
                     if (ok)
                     {
                         continue;

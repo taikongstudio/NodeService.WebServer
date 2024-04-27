@@ -53,13 +53,14 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
         public async Task<IAsyncDisposable> ScheduleAsync<T>(
-            JobSchedulerKey jobSchedulerKey,
+            TaskSchedulerKey jobSchedulerKey,
             IReadOnlyCollection<ITrigger> triggers,
-            IDictionary<string, object?> properties
+            IDictionary<string, object?> properties,
+            CancellationToken cancellationToken = default
             )
             where T : JobBase
         {
-            _scheduler = await _schedulerFactory.GetScheduler();
+            _scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
             AsyncDisposable asyncDisposable = new AsyncDisposable(_scheduler);
             try
             {
@@ -72,7 +73,7 @@ namespace NodeService.WebServer.Services.Tasks
                     {nameof(JobBase.ServiceProvider),_serviceProvider},
                     {nameof(JobBase.TriggerSource),jobSchedulerKey.TriggerSource },
                     {nameof(JobBase.AsyncDispoable),jobSchedulerKey.TriggerSource
-                    == JobTriggerSource.Manual? asyncDisposable:null }
+                    == TaskTriggerSource.Manual? asyncDisposable:null }
                 };
 
                 IJobDetail job = JobBuilder.Create(jobType)
@@ -81,8 +82,7 @@ namespace NodeService.WebServer.Services.Tasks
                 asyncDisposable.SetKey(job.Key);
                 Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>> jobsAndTriggers = [];
                 jobsAndTriggers.Add(job, triggers);
-
-                await _scheduler.ScheduleJobs(jobsAndTriggers, true);
+                await _scheduler.ScheduleJobs(jobsAndTriggers, true, cancellationToken);
             }
             catch (Exception ex)
             {

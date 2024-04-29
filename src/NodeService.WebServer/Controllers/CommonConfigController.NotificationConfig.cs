@@ -23,7 +23,7 @@
         [HttpPost("/api/commonconfig/notification/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] NotificationConfigModel model)
         {
-            return RemoveConfigurationAsync(model);
+            return DeleteConfigurationAsync(model);
         }
 
         [HttpPost("/api/commonconfig/notification/{id}/invoke")]

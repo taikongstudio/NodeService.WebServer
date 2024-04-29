@@ -32,7 +32,8 @@ namespace NodeService.WebServer.Controllers
             {
                 return NotFound();
             }
-            var fileContents = await this._memoryCache.GetOrCreateAsync<byte[]>(model.DownloadUrl, async () =>
+            string packageCacheKey = $"Package:{model.DownloadUrl}";
+            var fileContents = await this._memoryCache.GetOrCreateAsync(packageCacheKey, async () =>
             {
                 using var stream = new MemoryStream();
                 await this._virtualFileSystem.ConnectAsync();
@@ -92,7 +93,8 @@ namespace NodeService.WebServer.Controllers
                     apiResponse.Message = "Invalid package";
                     return apiResponse;
                 }
-                if (!await this._virtualFileSystem.UploadStream(remotePath, package.File.OpenReadStream()))
+                stream.Position = 0;
+                if (!await this._virtualFileSystem.UploadStream(remotePath, stream))
                 {
                     apiResponse.ErrorCode = -1;
                     apiResponse.Message = "Upload stream fail";
@@ -108,7 +110,8 @@ namespace NodeService.WebServer.Controllers
                 }
                 else
                 {
-                    _memoryCache.Remove(model.DownloadUrl);
+                    string packageCacheKey = $"Package:{model.DownloadUrl}";
+                    _memoryCache.Remove(packageCacheKey);
                     if (model.DownloadUrl != null)
                     {
                         await this._virtualFileSystem.DeleteFileAsync(model.DownloadUrl);
@@ -132,7 +135,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/package/remove")]
         public Task<ApiResponse> DeletePackageConfigAsync([FromBody] PackageConfigModel model)
         {
-            return RemoveConfigurationAsync(model);
+            return DeleteConfigurationAsync(model);
         }
 
 

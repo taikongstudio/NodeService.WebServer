@@ -35,7 +35,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/ftpdownload/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] FtpDownloadConfigModel model)
         {
-            return RemoveConfigurationAsync<FtpDownloadConfigModel>(model);
+            return DeleteConfigurationAsync<FtpDownloadConfigModel>(model);
         }
 
 

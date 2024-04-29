@@ -3,6 +3,7 @@ using AntDesign.ProLayout;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.Entities;
@@ -16,6 +17,7 @@ using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.UI.Services;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Threading.RateLimiting;
 using TaskScheduler = NodeService.WebServer.Services.Tasks.TaskScheduler;
 
 public class Program
@@ -201,7 +203,15 @@ public class Program
                     .WithHeaders("Access-Control-Allow-Headers: *", "Access-Control-Allow-Origin: *");
         }));
 
+        var concurrencyPolicy = "Concurrency";
 
+        builder.Services.AddRateLimiter(_ => _
+        .AddConcurrencyLimiter(policyName: concurrencyPolicy, options =>
+        {
+            options.PermitLimit = 5;
+            options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            options.QueueLimit = 100;
+        }));
 
     }
 

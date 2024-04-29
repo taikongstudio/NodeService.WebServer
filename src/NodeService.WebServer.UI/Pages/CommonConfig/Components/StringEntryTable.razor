@@ -60,7 +60,7 @@
         {
             <ActionColumn Fixed="right" Width="100" Title="操作">
                 <Space>
-                    @if (this.IsNameEditable || this.IsValueEditable)
+                    @if (this.IsNameEditable || this.IsValueEditable || this.IsTagEditable)
                     {
                         @if (mappingEntry.IsEditing)
                         {
@@ -95,7 +95,7 @@
     public IEnumerable<StringEntry> DataSource { get; set; }
 
     [Parameter]
-    public IEnumerable<StringEntry> SelectedItems { get; set; }
+    public IEnumerable<StringEntry> SelectedItems { get; set; } = [];
 
 
     [Parameter]
@@ -153,6 +153,7 @@
         {
             this.IsNameEditable = false;
             this.IsValueEditable = false;
+            this.IsTagEditable = false;
         }
         return base.OnParametersSetAsync();
     }

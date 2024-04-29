@@ -37,13 +37,13 @@ namespace NodeService.WebServer.Services.NodeSessions
             }
             while (!stoppingToken.IsCancellationRequested)
             {
-                await CheckNodeHealthy(stoppingToken);
+                await CheckNodeHealthyAsync(stoppingToken);
                 await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
 
         }
 
-        private async Task CheckNodeHealthy(CancellationToken stoppingToken = default)
+        private async Task CheckNodeHealthyAsync(CancellationToken stoppingToken = default)
         {
             try
             {
@@ -144,7 +144,7 @@ namespace NodeService.WebServer.Services.NodeSessions
         private static bool CanSendNotification(NodeHealthyCheckConfiguration configuration, NodeHealthyCounter healthCounter)
         {
             return healthCounter.SentNotificationCount > 0
-                && (DateTime.UtcNow - healthCounter.LastSentNotificationDateTimeUtc) / TimeSpan.FromHours(configuration.NotificationDuration)
+                && (DateTime.UtcNow - healthCounter.LastSentNotificationDateTimeUtc) / TimeSpan.FromMinutes(configuration.NotificationDuration)
                 >
                 (healthCounter.SentNotificationCount + 1);
         }

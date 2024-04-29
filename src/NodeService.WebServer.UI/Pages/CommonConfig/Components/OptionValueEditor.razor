@@ -10,9 +10,7 @@
 {
     var editorBase = kv.Value;
     <FormItem Style="border:1px;border-color:dodgerblue" Label="@(string.Format($"{kv.Key}"))">
-        @if (true)
-        {
-            switch (editorBase.EditorType)
+        @switch (editorBase.EditorType)
             {
                 case OptionValueType.TextValue:
                     var textValueEditor = editorBase as TextValueEditor;
@@ -318,7 +316,6 @@
                 default:
                     break;
             }
-        }
 
     </FormItem>
 }

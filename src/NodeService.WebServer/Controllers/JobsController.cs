@@ -115,26 +115,28 @@ namespace NodeService.WebServer.Controllers
         }
 
         [HttpPost("/api/jobs/instances/{id}/cancel")]
-        public async Task<ApiResponse<JobExecutionInstanceModel>> CancelAsync(string id, [FromBody] object from)
+        public async Task<ApiResponse<JobExecutionInstanceModel>> CancelAsync(
+            string id,
+            [FromBody] TaskCancellationParameters parameters)
         {
             ApiResponse<JobExecutionInstanceModel> apiResponse = new ApiResponse<JobExecutionInstanceModel>();
             try
             {
                 using var dbContext = _dbContextFactory.CreateDbContext();
-                var jobExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(id);
-                if (jobExecutionInstance == null)
+                var taskExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(id);
+                if (taskExecutionInstance == null)
                 {
                     apiResponse.ErrorCode = -1;
-                    apiResponse.Message = "invalid job execution instance id";
+                    apiResponse.Message = "invalid task execution instance id";
                 }
                 else
                 {
-                    jobExecutionInstance.CancelTimes++;
+                    taskExecutionInstance.CancelTimes++;
                     await dbContext.SaveChangesAsync();
-                    await _taskExecutionInstanceInitializer.TryCancelAsync(jobExecutionInstance.Id);
+                    await _taskExecutionInstanceInitializer.TryCancelAsync(taskExecutionInstance.Id);
                     var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
-                        new NodeSessionId(jobExecutionInstance.NodeInfoId),
-                        jobExecutionInstance.ToCancelEvent());
+                        new NodeSessionId(taskExecutionInstance.NodeInfoId),
+                        taskExecutionInstance.ToCancelEvent());
                 }
 
             }

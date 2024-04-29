@@ -96,7 +96,7 @@
             return apiResponse;
         }
 
-        private async Task<ApiResponse> RemoveConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
+        private async Task<ApiResponse> DeleteConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
                              where T : ConfigurationModel
         {
             ApiResponse apiResponse = new ApiResponse();
@@ -107,7 +107,7 @@
                 int changes = await dbContext.SaveChangesAsync();
                 if (changes > 0 && changesFunc != null)
                 {
-                    await changesFunc(model);
+                    await changesFunc.Invoke(model);
                 }
             }
             catch (Exception ex)

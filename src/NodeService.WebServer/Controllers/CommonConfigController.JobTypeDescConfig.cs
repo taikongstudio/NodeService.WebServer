@@ -24,7 +24,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/jobtypedesc/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] JobTypeDescConfigModel model)
         {
-            return RemoveConfigurationAsync(model);
+            return DeleteConfigurationAsync(model);
         }
 
         [HttpGet("/api/commonconfig/jobtypedesc/{id}")]

@@ -26,7 +26,7 @@
         [HttpPost("/api/commonconfig/ftp/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] FtpConfigModel model)
         {
-            return RemoveConfigurationAsync(model);
+            return DeleteConfigurationAsync(model);
         }
 
 

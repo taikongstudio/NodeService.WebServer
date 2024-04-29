@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Controllers
+﻿using Microsoft.AspNetCore.RateLimiting;
+
+namespace NodeService.WebServer.Controllers
 {
     [ApiController]
     [Route("api/[controller]/[action]")]
@@ -18,6 +20,7 @@
         }
 
         [HttpGet("/api/clientupdate/getupdate")]
+        [EnableRateLimiting("Concurrency")]
         public async Task<ApiResponse<ClientUpdateConfigModel>> GetUpdateAsync([FromQuery] string? name)
         {
             ApiResponse<ClientUpdateConfigModel> apiResponse = new ApiResponse<ClientUpdateConfigModel>();

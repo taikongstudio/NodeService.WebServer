@@ -27,7 +27,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/nodeenvvars/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] NodeEnvVarsConfigModel model)
         {
-            return RemoveConfigurationAsync(model);
+            return DeleteConfigurationAsync(model);
         }
 
 

@@ -164,7 +164,7 @@
         }
         else
         {
-            this._editModel = model.ReferenceClone<ClientUpdateConfigModel>();
+            this._editModel = model;
             var packageConfig = this._packageSource.FirstOrDefault(x => x.Id == model.PackageConfigId);
             this._selectedPackageConfigs = packageConfig == null ? [] : [packageConfig];
             this._modalTitle = "新建客户端更新配置";
@@ -176,7 +176,7 @@
     {
         try
         {
-            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel);
+            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel).ConfigureAwait(false);
             if (apiResponse.ErrorCode == 0)
             {
                 this._dataSource = (await this.ApiService.QueryClientUpdatesAsync()).Result;
@@ -243,7 +243,7 @@
             {
                 return;
             }
-            var apiResponse = await this.ApiService.RemoveAsync(model);
+            var apiResponse = await this.ApiService.RemoveAsync(model).ConfigureAwait(false);
             if (apiResponse.ErrorCode == 0)
             {
                 this._dataSource = (await this.ApiService.QueryClientUpdatesAsync()).Result;
@@ -293,6 +293,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await base.OnInitializedAsync();
         this._loading = true;
         await this.QueryConfigurationListAsync();
         this._loading = false;
@@ -302,7 +303,7 @@
     {
         try
         {
-            var apiResponse = await this.ApiService.QueryClientUpdatesAsync().ConfigureAwait(false);
+            var apiResponse = await this.ApiService.QueryClientUpdatesAsync();
             if (apiResponse.ErrorCode == 0)
             {
                 this._dataSource = apiResponse.Result ?? [];
@@ -359,10 +360,7 @@
 
     private void AddDnsFilter()
     {
-        var entry = new StringEntry()
-            {
-                Id = Guid.NewGuid().ToString()
-            };
+        var entry = new StringEntry();
         this._editModel.DnsFilters.Add(entry);
         entry.BeginEdit();
     }

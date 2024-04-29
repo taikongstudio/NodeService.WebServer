@@ -36,7 +36,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/ftpupload/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] FtpUploadConfigModel model)
         {
-            return RemoveConfigurationAsync(model);
+            return DeleteConfigurationAsync(model);
         }
 
 

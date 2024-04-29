@@ -21,7 +21,6 @@ public class AccountController : ControllerBase
         IOptions<JwtSettings> jwtSettings,
         IMemoryCache memoryChache,
         ILogger<AccountController> logger,
-        //IOptions<LdapSetting> ldapSettings,
         UserManager<ApplicationUser> userManager)
     {
         _accessControl = accessControl;
@@ -29,7 +28,6 @@ public class AccountController : ControllerBase
         _refreshTokenExpiration = jwtSettings.Value.RefreshExpirationTime;
         _logger = logger;
         _userManager = userManager;
-        //_ldapSettings = ldapSettings.Value;
     }
 
     [HttpPost("/api/account/refresh")]
@@ -70,7 +68,7 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("/api/account/login")]
-    public async Task<ActionResult<BaseApiResponse<AuthenticationResponse>>> Login([FromBody] LoginInput credential)
+    public async Task<ActionResult<BaseApiResponse<AuthenticationResponse>>> LoginAsync([FromBody] LoginCredential credential)
     {
         var response = new BaseApiResponse<AuthenticationResponse>();
         if (!ModelState.IsValid)
@@ -81,38 +79,38 @@ public class AccountController : ControllerBase
 
         _logger.LogTrace($"Login Request recived for Email: {credential.Email}");
         var user = await _accessControl.GetUserClaimsBy(credential.Email);
-        if (user != null)
+        if (user == null)
         {
-            _logger.LogTrace($"Email: {credential.Email} has access to login");
-            var passwordHasher = new PasswordHasher<ApplicationUser>();
-            var appUser = await _userManager.FindByEmailAsync(credential.Email);
-            var result = string.IsNullOrWhiteSpace(appUser?.PasswordHash) is false && passwordHasher.VerifyHashedPassword(appUser, appUser.PasswordHash, credential.Password) == PasswordVerificationResult.Success;
-            if (result)
-            {
-                var token = _accessControl.GenerateJWTToken(user);
-                var refreshToken = _accessControl.GenerateRefreshToken();
-                var updateSuccessfully = await _accessControl.SetUserRefreshToken(credential.Email, refreshToken,
-                    TimeSpan.FromMinutes(_refreshTokenExpiration));
-                if (!updateSuccessfully)
-                    return Conflict(new BaseApiResponse<AuthenticationResponse>
-                    { Errors = new List<string> { "Cannot update refresh token" } });
+            _logger.LogError($"there is no user with email: {credential.Email} in identity database");
+            return NotFound();
+        }
 
-                return Ok(new BaseApiResponse<AuthenticationResponse>
-                {
-                    Result = new AuthenticationResponse
-                    {
-                        JwtToken = token,
-                        RefreshToken = refreshToken
-                    }
-                });
-            }
-
+        _logger.LogTrace($"Email: {credential.Email} has access to login");
+        var passwordHasher = new PasswordHasher<ApplicationUser>();
+        var appUser = await _userManager.FindByEmailAsync(credential.Email);
+        var result = string.IsNullOrWhiteSpace(appUser?.PasswordHash) is false && passwordHasher.VerifyHashedPassword(appUser, appUser.PasswordHash, credential.Password) == PasswordVerificationResult.Success;
+        if (!result)
+        {
             _logger.LogError($"user with email: {credential.Email} has not access to LDAP");
             return Unauthorized();
         }
 
-        _logger.LogError($"there is no user with email: {credential.Email} in identity database");
-        return NotFound();
+        var token = _accessControl.GenerateJWTToken(user);
+        var refreshToken = _accessControl.GenerateRefreshToken();
+        var updateSuccessfully = await _accessControl.SetUserRefreshToken(credential.Email, refreshToken,
+            TimeSpan.FromMinutes(_refreshTokenExpiration));
+        if (!updateSuccessfully)
+            return Conflict(new BaseApiResponse<AuthenticationResponse>
+            { Errors = new List<string> { "Cannot update refresh token" } });
+
+        return Ok(new BaseApiResponse<AuthenticationResponse>
+        {
+            Result = new AuthenticationResponse
+            {
+                JwtToken = token,
+                RefreshToken = refreshToken
+            }
+        });
     }
 
     [HttpPost("/api/account/register")]

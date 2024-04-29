@@ -337,7 +337,10 @@
     {
         try
         {
-            await this.ApiService.CancelJobAsync(instance.Id);
+            await this.ApiService.CancelJobAsync(instance.Id, new TaskCancellationParameters()
+            {
+
+            });
         }
         catch (Exception ex)
         {

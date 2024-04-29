@@ -28,7 +28,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/restapi/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] RestApiConfigModel model)
         {
-            return RemoveConfigurationAsync(model);
+            return DeleteConfigurationAsync(model);
         }
 
 

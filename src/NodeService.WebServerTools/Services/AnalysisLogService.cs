@@ -31,7 +31,7 @@ namespace NodeService.WebServerTools.Services
                 using var streamWriter = new StreamWriter(File.Open("d:\\task.txt", FileMode.OpenOrCreate));
 
                 foreach (var jobExecutionInstance in await dbContext.JobExecutionInstancesDbSet.AsQueryable()
-                    .Where(x => x.Name.Contains("36194379"))
+                    .Where(x => x.Name.Contains("075404"))
                     .ToArrayAsync())
                 {
 

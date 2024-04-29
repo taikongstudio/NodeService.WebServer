@@ -54,7 +54,7 @@
         [HttpPost("/api/commonconfig/jobschedule/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] JobScheduleConfigModel model)
         {
-            return RemoveConfigurationAsync(model, RemoveJobScheduleConfigAsync);
+            return DeleteConfigurationAsync(model, RemoveJobScheduleConfigAsync);
         }
 
         private async Task RemoveJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)

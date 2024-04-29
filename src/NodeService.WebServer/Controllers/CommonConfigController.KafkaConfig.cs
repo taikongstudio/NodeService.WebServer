@@ -28,7 +28,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/kafka/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] KafkaConfigModel kafkaConfig)
         {
-            return RemoveConfigurationAsync(kafkaConfig);
+            return DeleteConfigurationAsync(kafkaConfig);
         }
     }
 }

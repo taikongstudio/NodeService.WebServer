@@ -27,7 +27,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/mysql/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] MysqlConfigModel model)
         {
-            return RemoveConfigurationAsync(model);
+            return DeleteConfigurationAsync(model);
         }
 
 

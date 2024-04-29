@@ -36,7 +36,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/logupload/remove")]
         public Task<ApiResponse> RemoveAsync([FromBody] LogUploadConfigModel model)
         {
-            return RemoveConfigurationAsync(model);
+            return DeleteConfigurationAsync(model);
         }
 
 

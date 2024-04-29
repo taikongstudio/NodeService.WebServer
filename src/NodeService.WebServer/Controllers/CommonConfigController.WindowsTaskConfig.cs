@@ -21,7 +21,7 @@ namespace NodeService.WebServer.Controllers
         [HttpPost("/api/commonconfig/windowstask/remove")]
         public Task<ApiResponse> RemoveAsync(WindowsTaskConfigModel model)
         {
-            return RemoveConfigurationAsync<WindowsTaskConfigModel>(model);
+            return DeleteConfigurationAsync<WindowsTaskConfigModel>(model);
         }
 
 

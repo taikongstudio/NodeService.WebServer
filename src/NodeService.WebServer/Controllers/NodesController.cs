@@ -17,11 +17,10 @@ namespace NodeService.WebServer.Controllers
 
 
         public NodesController(
+            ILogger<NodesController> logger,
             IMemoryCache memoryCache,
-            IVirtualFileSystem virtualFileSystem,
             IOptionsSnapshot<WebServerOptions> webServerOptions,
             IDbContextFactory<ApplicationDbContext> dbContextFactory,
-            ILogger<NodesController> logger,
             IAsyncQueue<TaskScheduleMessage> jobScheduleServiceMessageQueue,
             INodeSessionService nodeSessionService)
         {
@@ -30,7 +29,6 @@ namespace NodeService.WebServer.Controllers
             _asyncQueue = jobScheduleServiceMessageQueue;
             _nodeSessionService = nodeSessionService;
             _memoryCache = memoryCache;
-            _virtualFileSystem = virtualFileSystem;
             _webServerOptions = webServerOptions.Value;
         }
 
@@ -51,11 +49,6 @@ namespace NodeService.WebServer.Controllers
                     .ThenByDescending(x => x.Profile.ServerUpdateTimeUtc)
                     .ThenBy(x => x.Name)
                     .ToListAsync();
-
-                //apiResponse.Result = apiResponse.Result
-                //    .GroupBy(node => node.Name)
-                //    .Select(nodes => nodes.OrderByDescending(node => node.Profile.ServerUpdateTimeUtc)
-                //                          .FirstOrDefault());
             }
             catch (Exception ex)
             {

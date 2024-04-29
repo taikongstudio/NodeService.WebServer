@@ -30,7 +30,7 @@ namespace NodeService.WebServer.Controllers
                 {
                     return apiResponse;
                 }
-                using var dbContext = this._dbContextFactory.CreateDbContext();
+                using var dbContext = await this._dbContextFactory.CreateDbContextAsync();
                 var clientUpdateConfig = await
                     dbContext
                     .ClientUpdateConfigurationDbSet

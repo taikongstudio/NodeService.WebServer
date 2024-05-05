@@ -6,7 +6,7 @@
             Icon="@IconType.Outline.Reload"
             OnClick="_dataSource.RefreshAsync"
             Type="primary"
-            Style="margin-bottom:4px;margin-left:4px;">
+            Style="margin-left:8px;margin-right:8px">
     </Button>
     <Select DataSource="@_nodeSettings.IpAddressMappings"
             Value="@_dataSource.QueryParameters.AreaTag"
@@ -69,7 +69,9 @@
             <ColumnDefinitions Context="ctx">
                 <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>
                 <PropertyColumn Property="c => c.Id" Title="标志"></PropertyColumn>
-                <PropertyColumn Property="c => c.Name" Title="节点名称"></PropertyColumn>
+                <PropertyColumn Property="c => c.Name" Title="节点名称">
+                    <Badge Status="@(GetStatus(ctx.Status))" Text="@ctx.Name"></Badge>
+                </PropertyColumn>
                 <PropertyColumn Property="c => c.Profile.Usages" Title="用途"></PropertyColumn>
                 <PropertyColumn Property="c => c.Profile.IpAddress" Title="Ip地址"></PropertyColumn>
             </ColumnDefinitions>

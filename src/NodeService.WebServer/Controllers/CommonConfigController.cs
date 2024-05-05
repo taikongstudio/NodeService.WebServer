@@ -39,6 +39,7 @@ public partial class CommonConfigController : Controller
         var apiResponse = new PaginationResponse<T>();
         try
         {
+            _logger.LogInformation($"{typeof(T)}:{queryParameters}");
             using var dbContext = _dbContextFactory.CreateDbContext();
             var name = typeof(T).Name;
             IQueryable<T> queryable = dbContext.GetDbSet<T>();
@@ -54,10 +55,17 @@ public partial class CommonConfigController : Controller
 
 
             var totalCount = await queryable.CountAsync();
-
-            var items = await queryable.Skip(startIndex)
-                .Take(pageSize)
-                .ToListAsync();
+            List<T> items = [];
+            if (pageSize <= 0 && pageIndex <= 0)
+            {
+                items = await queryable.ToListAsync();
+            }
+            else
+            {
+                items = await queryable.Skip(startIndex)
+                                .Take(pageSize)
+                                .ToListAsync();
+            }
 
             var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
             if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;

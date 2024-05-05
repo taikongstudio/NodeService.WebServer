@@ -31,26 +31,24 @@ public class FileRecordsController : Controller
             using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             if (pageIndex == null) pageIndex = 0;
             if (pageSize == null) pageSize = 500;
-            var queryable = dbContext.FileRecordsDbSet.AsQueryable();
-            if (fullName == null)
+            IQueryable<FileRecordModel> queryable = dbContext.FileRecordsDbSet.Where(x => x.Id == nodeId)
+                    .OrderBy(x => x.ModifyDateTime);
+            if (string.IsNullOrEmpty(fullName))
             {
-                var totalCount = await dbContext.FileRecordsDbSet.AsQueryable()
-                    .Where(x => x.Id == nodeId)
-                    .OrderBy(x => x.ModifyDateTime).CountAsync();
-                apiResponse.Result = await dbContext.FileRecordsDbSet.AsQueryable()
-                    .Where(x => x.Id == nodeId)
-                    .OrderBy(x => x.ModifyDateTime)
-                    .Skip(pageSize.Value * pageIndex.Value)
-                    .Take(pageSize.Value)
-                    .ToArrayAsync();
-                apiResponse.PageIndex = pageIndex.Value;
-                apiResponse.PageSize = pageSize.Value;
+                var totalCount = await queryable.CountAsync();
+                apiResponse.Result = await queryable
+                                        .Skip(pageSize.Value * pageIndex.Value)
+                                        .Take(pageSize.Value)
+                                        .ToArrayAsync();
                 apiResponse.TotalCount = totalCount;
             }
             else
             {
                 apiResponse.Result = [await dbContext.FileRecordsDbSet.FindAsync(nodeId, fullName)];
+                apiResponse.TotalCount = apiResponse.Result == null ? 0 : 1;
             }
+            apiResponse.PageIndex = pageIndex.Value;
+            apiResponse.PageSize = pageSize.Value;
         }
         catch (Exception ex)
         {

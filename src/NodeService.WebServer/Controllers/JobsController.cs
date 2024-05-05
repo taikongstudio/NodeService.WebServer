@@ -196,7 +196,9 @@ public class JobsController : Controller
 
 
     [HttpGet("/api/jobs/instances/{taskId}/log")]
-    public async Task<IActionResult> QueryTaskLogAsync(string taskId, PaginationQueryParameters queryParameters)
+    public async Task<IActionResult> QueryTaskLogAsync(
+        string taskId,
+        [FromQuery] PaginationQueryParameters queryParameters)
     {
         var apiResponse = new PaginationResponse<LogEntry>();
         try

@@ -1,60 +1,57 @@
 ﻿using Microsoft.AspNetCore.Http;
 using NodeService.WebServer.Services.NodeSessions;
 
-namespace NodeService.WebServer.Services.MessageHandlers
+namespace NodeService.WebServer.Services.MessageHandlers;
+
+public class HeartBeatResponseHandler : IMessageHandler
 {
+    private readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
+    private readonly ILogger<HeartBeatResponseHandler> _logger;
+    private readonly INodeSessionService _nodeSessionService;
 
-    public class HeartBeatResponseHandler : IMessageHandler
+    public HeartBeatResponseHandler(
+        INodeSessionService nodeSessionService,
+        IMemoryCache memoryCache,
+        ILogger<HeartBeatResponseHandler> logger,
+        BatchQueue<NodeHeartBeatSessionMessage> heartBeatBatchBlock)
     {
-        private readonly INodeSessionService _nodeSessionService;
-        private readonly ILogger<HeartBeatResponseHandler> _logger;
-        private readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
+        _nodeSessionService = nodeSessionService;
+        _logger = logger;
+        _heartBeatBatchQueue = heartBeatBatchBlock;
+        NodeSessionId = NodeSessionId.Empty;
+    }
 
-        public HeartBeatResponseHandler(
-            INodeSessionService nodeSessionService,
-            IMemoryCache memoryCache,
-            ILogger<HeartBeatResponseHandler> logger,
-            BatchQueue<NodeHeartBeatSessionMessage> heartBeatBatchBlock)
+    public NodeSessionId NodeSessionId { get; private set; }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (NodeSessionId != NodeSessionId.Empty)
         {
-            _nodeSessionService = nodeSessionService;
-            _logger = logger;
-            _heartBeatBatchQueue = heartBeatBatchBlock;
-            NodeSessionId = NodeSessionId.Empty;
-        }
-
-        public NodeSessionId NodeSessionId { get; private set; }
-
-        public async ValueTask DisposeAsync()
-        {
-            if (NodeSessionId != NodeSessionId.Empty)
+            _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Offline);
+            await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
             {
-                _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Offline);
-                await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage()
-                {
-                    Message = null,
-                    NodeSessionId = NodeSessionId
-                });
-                _heartBeatBatchQueue.TriggerBatch();
-            }
-        }
-
-        public async ValueTask HandleAsync(NodeSessionId nodeSessionId, HeartBeatResponse heartBeatResponse)
-        {
-            NodeSessionId = nodeSessionId;
-            _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);
-            await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage()
-            {
-                Message = heartBeatResponse,
-                NodeSessionId = nodeSessionId
+                Message = null,
+                NodeSessionId = NodeSessionId
             });
-        }
-
-        public ValueTask HandleAsync(NodeSessionId nodeSessionId, HttpContext httpContext, IMessage message)
-        {
-            var heartBeapResponse = message as HeartBeatResponse;
-            heartBeapResponse.Properties.TryAdd("RemoteIpAddress", httpContext.Connection.RemoteIpAddress.ToString());
-            return HandleAsync(nodeSessionId, heartBeapResponse);
+            _heartBeatBatchQueue.TriggerBatch();
         }
     }
 
+    public ValueTask HandleAsync(NodeSessionId nodeSessionId, HttpContext httpContext, IMessage message)
+    {
+        var heartBeapResponse = message as HeartBeatResponse;
+        heartBeapResponse.Properties.TryAdd("RemoteIpAddress", httpContext.Connection.RemoteIpAddress.ToString());
+        return HandleAsync(nodeSessionId, heartBeapResponse);
+    }
+
+    public async ValueTask HandleAsync(NodeSessionId nodeSessionId, HeartBeatResponse heartBeatResponse)
+    {
+        NodeSessionId = nodeSessionId;
+        _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);
+        await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
+        {
+            Message = heartBeatResponse,
+            NodeSessionId = nodeSessionId
+        });
+    }
 }

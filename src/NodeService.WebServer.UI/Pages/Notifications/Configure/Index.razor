@@ -4,25 +4,27 @@
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject ConfirmService _confirmService
+@inject ConfirmService _confirmService
+@inject NavigationManager NavigationManager
 <GridContent>
     <Modal Width="800"
            Title="@_modalTitle"
            Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
-           OnOk="@HandleEditFormOk" 
+           OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
         <Form Model="@_editModel" Size="@AntSizeLDSType.Default"
-              LabelColSpan="4" 
+              LabelColSpan="4"
               Layout="@FormLayout.Horizontal"
               WrapperColSpan="20"
               OnFinish="OnEditFormFinish"
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
             <FormItem Label="配置名称">
-                <Input @bind-Value="@context.Name"  />
-             </FormItem>
+                <Input @bind-Value="@context.Name"/>
+            </FormItem>
             <FormItem Label="启动">
-                <Switch @bind-Value="@context.IsEnabled" />
+                <Switch @bind-Value="@context.IsEnabled"/>
             </FormItem>
             <FormItem Label="配置类型">
                 <Select DataSource="@_types"
@@ -31,17 +33,15 @@
                         TItemValue="NotificationConfigurationType"
                         ValueChanged="OnSelectedConfigurationTypeChanged"
                         LabelName="@nameof(NotificationConfigurationTypeModel.Name)"
-                        ValueName="@nameof(NotificationConfigurationTypeModel.Type)" />
+                        ValueName="@nameof(NotificationConfigurationTypeModel.Type)"/>
             </FormItem>
             @switch (_editModel.ConfigurationType)
             {
                 case NotificationConfigurationType.Email:
-                    <EmailNotification Configuration="@context.Value.Email"/>
+                    <EmailNotification Configuration="@(context.Value.GetCurrentOptions<EmailNotificationOptions>())"/>
                     break;
                 case NotificationConfigurationType.Lark:
-                    <LarkNotification Configuration="@context.Value.Lark" />
-                    break;
-                default:
+                    <LarkNotification Configuration="@(context.Value.GetCurrentOptions<LarkNotificationOptions>())"/>
                     break;
             }
 
@@ -50,89 +50,75 @@
 
     <Space Style="margin-bottom:16px">
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新建配置</Button>
+            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
         </SpaceItem>
         <SpaceItem>
             <Button Type="@ButtonType.Primary" OnClick="QueryConfigurationListAsync">刷新</Button>
         </SpaceItem>
 
     </Space>
-<Table @ref="@_table" Size="TableSize.Small" 
+    <Table @ref="@_table" Size="TableSize.Small"
            Loading="_loading"
            EnableVirtualization="true"
            TItem="NotificationConfigModel"
            Resizable
            OnChange="OnTableChange"
-           DataSource="@_dataSource.Items" 
-           PageIndex="_dataSource.PageIndex"
-           PageSize="_dataSource.PageSize"
-           OnPageIndexChange="@_dataSource.OnPageSizeChanged"
-           OnPageSizeChange="@_dataSource.OnPageSizeChanged">
+           DataSource="@_dataSource.ItemsSource"
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="4">
                     <Title Level="3">通知设置</Title>
                 </GridCol>
                 <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.ForceRequest"/>
                 </GridCol>
             </GridRow>
         </TitleTemplate>
-    <ColumnDefinitions>
-    <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
-    <PropertyColumn Title="名称" Sortable Property="c=>c.Name"></PropertyColumn>
-    <PropertyColumn Title="创建时间" Sortable="true" Property="c=>c.CreationDateTime"></PropertyColumn>
-    <PropertyColumn Title="修改时间" Sortable="true" Property="c=>c.ModifiedDateTime"></PropertyColumn>
-                <ActionColumn Fixed="right" Width="250" Title="操作">
-                    <CellRender Context="cellData">
-                        <Space>
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<NotificationConfigModel>())"></Button>
-                            </SpaceItem>
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
-                            </SpaceItem>
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
-                         </SpaceItem>
+        <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="创建时间" Sortable="true" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="修改时间" Sortable="true" Property="c => c.ModifiedDateTime"></PropertyColumn>
+            <ActionColumn Fixed="right" Width="250" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Notification" OnClick="()=>TestNotificationAsync(context)"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<NotificationConfigModel>())"></Button>
                         </SpaceItem>
-                         @if (cellData.RowData.Expanded)
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
-                            </SpaceItem>
-                        }
-                        else
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
-                            </SpaceItem>
-                        }
-
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<NotificationConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Notification" OnClick="() => TestNotificationAsync(context)"></Button>
+                        </SpaceItem>
                     </Space>
                 </CellRender>
             </ActionColumn>
-    </ColumnDefinitions>
-    <ExpandTemplate>
-         <Tabs Animated>
+        </ColumnDefinitions>
+        <ExpandTemplate>
+            <Tabs Animated>
                 <TabPane Tab="参数" Key="1">
 
 
                 </TabPane>
             </Tabs>
-    </ExpandTemplate>
-</Table>
+        </ExpandTemplate>
+    </Table>
 </GridContent>
 
 @code {
     ITable _table;
-    string _searchText;
     string _modalTitle;
-    bool _editFormVisible = false;
-    bool _editFormSubmitting = false;
-    bool _editFormConfirmLoading = false;
+    bool _editFormVisible;
+    bool _editFormSubmitting;
+    bool _editFormConfirmLoading;
 
     class NotificationConfigurationTypeModel
     {
@@ -143,51 +129,57 @@
     List<NotificationConfigurationTypeModel> _types = [];
 
     Form<NotificationConfigModel> _editForm;
-    NotificationConfigModel _editModel = new NotificationConfigModel();
+    NotificationConfigModel _editModel = new();
 
     private bool _loading;
-    private PaginationDataSource<NotificationConfigModel> _dataSource;
+    private RoutedPaginationDataSource<NotificationConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new PaginationDataSource<NotificationConfigModel>(ApiService);
-        _dataSource.Filter = FilterModel;
-        _types = new List<NotificationConfigurationTypeModel>()
+        _types = new List<NotificationConfigurationTypeModel>
         {
-            new NotificationConfigurationTypeModel()
+            new()
             {
-                 Type= NotificationConfigurationType.NotSet,
-                 Name= "未设置",
+                Type = NotificationConfigurationType.NotSet,
+                Name = "未设置"
             },
-            new NotificationConfigurationTypeModel()
+            new()
             {
-                Type= NotificationConfigurationType.Email,
-                 Name="邮件"
+                Type = NotificationConfigurationType.Email,
+                Name = "邮件"
             },
-            new NotificationConfigurationTypeModel()
+            new()
             {
-                 Type= NotificationConfigurationType.Lark,
-                  Name="飞书"
+                Type = NotificationConfigurationType.Lark,
+                Name = "飞书"
             }
         };
+
+        _dataSource = new RoutedPaginationDataSource<NotificationConfigModel, PaginationQueryParameters>(
+            NavigationManager,
+            ApiService.QueryNotificationConfigListAsync,
+            StateHasChanged);
+
+        _dataSource.Request();
+
         base.OnInitialized();
     }
 
     private void ShowEditForm(NotificationConfigModel? model = null)
     {
-        this._editFormVisible = true;
+        _editFormVisible = true;
         if (model == null)
         {
-            this._editModel = new  NotificationConfigModel()
-                {
-                    Id = Guid.NewGuid().ToString()
-                };
-            this._modalTitle = "编辑配置";
+            _editModel = new NotificationConfigModel
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+            _modalTitle = "编辑配置";
         }
         else
         {
-            this._editModel = model.ReferenceClone<NotificationConfigModel>();
-            this._modalTitle = "新建配置";
+            _editModel = model;
+            _modalTitle = "新建配置";
         }
     }
 
@@ -195,63 +187,63 @@
     {
         try
         {
-            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel);
+            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
-                this._editFormVisible = false;
+                _editFormVisible = false;
+                await _dataSource.RefreshAsync();
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.Message,
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
         }
         finally
         {
-            this._editFormSubmitting = false;
-            this._editFormConfirmLoading = false;
+            _editFormSubmitting = false;
+            _editFormConfirmLoading = false;
         }
     }
 
     private void OnEditFormFinishFailed(EditContext editContext)
     {
-        this._editFormSubmitting = false;
-        this._editFormConfirmLoading = false;
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
     }
 
 
     private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
-        var options = new ConfirmButtonOptions()
+        var options = new ConfirmButtonOptions
+        {
+            Button1Props = new ButtonProps
             {
-                Button1Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "确定",
-                    Type = ButtonType.Primary,
-                },
-                Button2Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "取消"
-                }
-            };
+                ChildContent = "确定",
+                Type = ButtonType.Primary
+            },
+            Button2Props = new ButtonProps
+            {
+                ChildContent = "取消"
+            }
+        };
         return _confirmService.Show(
-                content,
-                title,
-                ConfirmButtons.OKCancel,
-                ConfirmIcon.Info,
-                options);
+            content,
+            title,
+            ConfirmButtons.OKCancel,
+            ConfirmIcon.Info,
+            options);
     }
 
     private async Task DeleteConfig(NotificationConfigModel model)
@@ -262,93 +254,85 @@
             {
                 return;
             }
-            var apiResponse = await this.ApiService.RemoveAsync(model);
+
+            var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
+                await _dataSource.RefreshAsync();
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = "加载配置失败",
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = "加载配置失败"
+            });
         }
     }
 
 
     private void HandleEditFormCancel(MouseEventArgs e)
     {
-        this._editFormSubmitting = false;
-        this._editFormVisible = false;
+        _editFormSubmitting = false;
+        _editFormVisible = false;
     }
 
 
     private void HandleEditFormOk(MouseEventArgs e)
     {
-        this._editFormSubmitting = true;
-        this._editForm.Submit();
-
-
+        _editFormSubmitting = true;
+        _editForm.Submit();
     }
 
     protected override async Task OnInitializedAsync()
     {
-        this._loading = true;
-        await this.QueryConfigurationListAsync().ConfigureAwait(false);
-        this._loading = false;
+        _loading = true;
+        await QueryConfigurationListAsync();
+        _loading = false;
     }
 
     private async Task QueryConfigurationListAsync()
     {
         try
         {
-            await this._dataSource.UpdateSourceAsync();
+            await _dataSource.RefreshAsync();
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
-
-    }
-
-    private bool FilterModel(NotificationConfigModel model)
-    {
-        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
-        {
-            return true;
-        }
-        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
     }
 
     void OnTableChange(QueryModel<NotificationConfigModel> query)
     {
-        this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
-        this._dataSource.Refresh();
     }
 
     void OnSelectedConfigurationTypeChanged(NotificationConfigurationType configurationType)
     {
-        this._editModel.Value.ConfigurationType = configurationType;
+        _editModel.Value.ConfigurationType = configurationType;
     }
 
     private async Task TestNotificationAsync(NotificationConfigModel model)
     {
-        await ApiService.InvokeNotificationAsync(model.Id, new("test", "test"));
+        await ApiService.InvokeNotificationAsync(model.Id, new InvokeNotificationParameters("test", "test"));
+    }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
     }
 
 }

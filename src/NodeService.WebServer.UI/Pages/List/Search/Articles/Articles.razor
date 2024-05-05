@@ -30,8 +30,9 @@
                     Style="width:inherit"
                     @bind-Value="_model.Owner">
                 <SelectOptions>
-                    @foreach (var owner in _owners) {
-                        <SelectOption TItem="string" TItemValue="string" Value="@owner.Id" Label="@owner.Name" />
+                    @foreach (var owner in _owners)
+                    {
+                        <SelectOption TItem="string" TItemValue="string" Value="@owner.Id" Label="@owner.Name"/>
                     }
                 </SelectOptions>
             </Select>
@@ -49,7 +50,7 @@
                                 Style="max-width: 200px; width: 100%;"
                                 @bind-Value="_model.ActiveUser">
                             <SelectOptions>
-                                <SelectOption TItem="string" TItemValue="string" Value="@("lisa")" Label="Li San" />
+                                <SelectOption TItem="string" TItemValue="string" Value="@("lisa")" Label="Li San"/>
                             </SelectOptions>
                         </Select>
                     </FormItem>
@@ -62,7 +63,7 @@
                                 Style="max-width: 200px; width: 100%;"
                                 @bind-Value="_model.Satisfaction">
                             <SelectOptions>
-                                <SelectOption TItem="string" TItemValue="string" Value="@("good")" Label="Excellent" />
+                                <SelectOption TItem="string" TItemValue="string" Value="@("good")" Label="Excellent"/>
                             </SelectOptions>
                         </Select>
                     </FormItem>
@@ -84,7 +85,7 @@
                     <a href="https://ng.ant.design">@context.Title</a>
                 </TitleTemplate>
             </ListItemMeta>
-            <NodeService.WebServer.UI.Pages.Account.Center.ArticleListContent Data="@context" />
+            <NodeService.WebServer.UI.Pages.Account.Center.ArticleListContent Data="@context"/>
         </ListItem>
     </AntList>
 </Card>

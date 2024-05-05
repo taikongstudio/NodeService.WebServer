@@ -1,32 +1,30 @@
-﻿
+﻿using System.Net.Http.Json;
 using NodeService.WebServer.UI.Models;
-using System.Net.Http.Json;
 
-namespace NodeService.WebServer.UI.Services
+namespace NodeService.WebServer.UI.Services;
+
+public interface IProfileService
 {
-    public interface IProfileService
+    Task<BasicProfileDataType> GetBasicAsync();
+    Task<AdvancedProfileData> GetAdvancedAsync();
+}
+
+public class ProfileService : IProfileService
+{
+    private readonly HttpClient _httpClient;
+
+    public ProfileService(HttpClient httpClient)
     {
-        Task<BasicProfileDataType> GetBasicAsync();
-        Task<AdvancedProfileData> GetAdvancedAsync();
+        _httpClient = httpClient;
     }
 
-    public class ProfileService : IProfileService
+    public async Task<BasicProfileDataType> GetBasicAsync()
     {
-        private readonly HttpClient _httpClient;
+        return await _httpClient.GetFromJsonAsync<BasicProfileDataType>("data/basic.json");
+    }
 
-        public ProfileService(HttpClient httpClient)
-        {
-            _httpClient = httpClient;
-        }
-
-        public async Task<BasicProfileDataType> GetBasicAsync()
-        {
-            return await _httpClient.GetFromJsonAsync<BasicProfileDataType>("data/basic.json");
-        }
-
-        public async Task<AdvancedProfileData> GetAdvancedAsync()
-        {
-            return await _httpClient.GetFromJsonAsync<AdvancedProfileData>("data/advanced.json");
-        }
+    public async Task<AdvancedProfileData> GetAdvancedAsync()
+    {
+        return await _httpClient.GetFromJsonAsync<AdvancedProfileData>("data/advanced.json");
     }
 }

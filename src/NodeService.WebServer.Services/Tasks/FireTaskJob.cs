@@ -1,57 +1,43 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace NodeService.WebServer.Services.Tasks
+namespace NodeService.WebServer.Services.Tasks;
+
+public class FireTaskJob : JobBase
 {
-    public class FireTaskJob : JobBase
+    public override async Task Execute(IJobExecutionContext context)
     {
-
-
-        public FireTaskJob()
+        try
         {
-
+            await ExecuteCoreAsync(context);
         }
-
-
-        public override async Task Execute(IJobExecutionContext context)
+        catch (Exception ex)
         {
-            try
-            {
-                await ExecuteCoreAsync(context);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex.ToString());
-            }
-            finally
-            {
-                if (TriggerSource == TaskTriggerSource.Manual && AsyncDispoable != null)
-                {
-                    await AsyncDispoable.DisposeAsync();
-                }
-            }
+            Logger.LogError(ex.ToString());
         }
-
-        private async Task ExecuteCoreAsync(IJobExecutionContext context)
+        finally
         {
-            Logger.LogInformation($"Task fire instance id:{context.FireInstanceId}");
-
-            string? parentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string;
-            var fireTaskParameters = new FireTaskParameters()
-            {
-                TaskScheduleConfig = Properties[nameof(FireTaskParameters.TaskScheduleConfig)] as JobScheduleConfigModel,
-                FireInstanceId = $"{Guid.NewGuid()}_{parentTaskId}_{context.FireInstanceId}",
-                FireTimeUtc = context.FireTimeUtc,
-                NextFireTimeUtc = context.NextFireTimeUtc,
-                PreviousFireTimeUtc = context.PreviousFireTimeUtc,
-                ScheduledFireTimeUtc = context.ScheduledFireTimeUtc,
-                ParentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string
-            };
-            var initializer = ServiceProvider.GetService<TaskExecutionInstanceInitializer>();
-            await initializer.InitAsync(fireTaskParameters);
-            Logger.LogInformation($"Task fire instance id:{context.FireInstanceId} end init");
+            if (TriggerSource == TaskTriggerSource.Manual && AsyncDispoable != null)
+                await AsyncDispoable.DisposeAsync();
         }
+    }
 
+    private async Task ExecuteCoreAsync(IJobExecutionContext context)
+    {
+        Logger.LogInformation($"Task fire instance id:{context.FireInstanceId}");
 
-
+        var parentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string;
+        var fireTaskParameters = new FireTaskParameters
+        {
+            TaskScheduleConfig = Properties[nameof(FireTaskParameters.TaskScheduleConfig)] as JobScheduleConfigModel,
+            FireInstanceId = $"{Guid.NewGuid()}_{parentTaskId}_{context.FireInstanceId}",
+            FireTimeUtc = context.FireTimeUtc,
+            NextFireTimeUtc = context.NextFireTimeUtc,
+            PreviousFireTimeUtc = context.PreviousFireTimeUtc,
+            ScheduledFireTimeUtc = context.ScheduledFireTimeUtc,
+            ParentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string
+        };
+        var initializer = ServiceProvider.GetService<TaskExecutionInstanceInitializer>();
+        await initializer.InitAsync(fireTaskParameters);
+        Logger.LogInformation($"Task fire instance id:{context.FireInstanceId} end init");
     }
 }

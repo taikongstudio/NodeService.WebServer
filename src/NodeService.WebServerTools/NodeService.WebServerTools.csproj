@@ -1,48 +1,48 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
 
-	<PropertyGroup>
-		<TargetFramework>net8.0-windows</TargetFramework>
-		<Nullable>enable</Nullable>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<OutputType>Exe</OutputType>
-		<Platforms>AnyCPU;x64</Platforms>
-		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-	</PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0-windows</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <OutputType>Exe</OutputType>
+        <Platforms>AnyCPU;x64</Platforms>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    </PropertyGroup>
 
-	<ItemGroup>
-	  <Content Remove="mapping.json" />
-	</ItemGroup>
+    <ItemGroup>
+        <Content Remove="mapping.json"/>
+    </ItemGroup>
 
-	<ItemGroup>
-	  <None Include="mapping.json">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	</ItemGroup>
+    <ItemGroup>
+        <None Include="mapping.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
 
-	<ItemGroup>
-		<PackageReference Include="CommandLineParser" Version="2.9.1" />
-		<PackageReference Include="FluentFTP" Version="48.0.3" />
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0" />
-		<PackageReference Include="NLog" Version="5.2.7" />
-		<PackageReference Include="NLog.Extensions.Logging" Version="5.3.5" />
-		<PackageReference Include="NLog.Web.AspNetCore" Version="5.3.5" />
-		<PackageReference Include="Quartz" Version="3.8.0" />
-		<PackageReference Include="System.DirectoryServices" Version="8.0.0" />
-	</ItemGroup>
-	<ItemGroup>
-	  <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj" />
-	</ItemGroup>
-	<ItemGroup>
-		<None Update="appsettings.Development.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-		<None Update="appsettings.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</None>
-	</ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="CommandLineParser" Version="2.9.1"/>
+        <PackageReference Include="FluentFTP" Version="48.0.3"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0"/>
+        <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.0"/>
+        <PackageReference Include="NLog" Version="5.2.7"/>
+        <PackageReference Include="NLog.Extensions.Logging" Version="5.3.5"/>
+        <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.5"/>
+        <PackageReference Include="Quartz" Version="3.8.0"/>
+        <PackageReference Include="System.DirectoryServices" Version="8.0.0"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <None Update="appsettings.Development.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="appsettings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
 
 
 </Project>

@@ -1,9 +1,8 @@
-﻿namespace NodeService.WebServer.Services.VirtualSystem
+﻿namespace NodeService.WebServer.Services.VirtualSystem;
+
+public enum VirtualFileSystemObjectType
 {
-    public enum VirtualFileSystemObjectType
-    {
-        File,
-        Directory,
-        NotSupported
-    }
+    File,
+    Directory,
+    NotSupported
 }

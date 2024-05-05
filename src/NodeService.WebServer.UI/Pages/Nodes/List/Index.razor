@@ -1,137 +1,135 @@
 @namespace NodeService.WebServer.UI.Pages.Nodes.List
 @page "/nodes"
-@using NodeService.Infrastructure.DataModels
 
 @inject ApiService ApiService;
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
 @inject IMessageService _message
+@inject NavigationManager NavigationManager
+@implements IDisposable
 
 <GridContent>
-    <Drawer Closable="true" Width="320" Visible="nodeInfoDrawerVisible" Title='("–ﬁ∏ƒΩ⁄µ„–≈œ¢")' OnClose="_=>CloseModifyNodeInfoDrawer()">
+    <Drawer Closable="true" Width="320" Visible="nodeInfoDrawerVisible" Title='"‰øÆÊîπËäÇÁÇπ‰ø°ÊÅØ"' OnClose="_ => CloseModifyNodeInfoDrawer()">
         <Template style="height:90%">
-            @if (this._editingNodeInfoModel == null)
+            @if (_editingNodeInfoModel == null)
             {
                 <Row>
                     <AntDesign.Col Span="24">
-                        <Alert>«Î—°‘Ò“ª∏ˆΩ⁄µ„</Alert>
+                        <Alert>ËØ∑ÈÄâÊã©‰∏Ä‰∏™ËäÇÁÇπ</Alert>
                     </AntDesign.Col>
                 </Row>
-                <br />
+                <br/>
                 <Row>
                     <AntDesign.Col Span="6">
-                        <Button Type="default">»°œ˚</Button>
+                        <Button Type="default">ÂèñÊ∂à</Button>
                     </AntDesign.Col>
                     <AntDesign.Col Span="6">
-                        <Button Type="primary" OnClick="CloseModifyNodeInfoDrawer">Ã·Ωª</Button>
+                        <Button Type="primary" OnClick="CloseModifyNodeInfoDrawer">Êèê‰∫§</Button>
                     </AntDesign.Col>
                 </Row>
             }
             else
             {
-                @if (this._modifyErrorMsg != null)
+                @if (_modifyErrorMsg != null)
                 {
                     <Row>
                         <AntDesign.Col Span="24">
-                            <Alert Message="@_modifyErrorMsg" Type="@AlertType.Error" />
+                            <Alert Message="@_modifyErrorMsg" Type="@AlertType.Error"/>
                         </AntDesign.Col>
                     </Row>
                 }
 
                 <Row Gutter="24">
                     <AntDesign.Col Span="24">
-                        <Text>≤‚ ‘∑÷¿‡</Text>
-                        <Input @bind-Value="@_editingNodeInfoModel.TestInfo" Placeholder="«Î ‰»Î≤‚ ‘∑÷¿‡" TValue="string"></Input>
+                        <Text>ÊµãËØïÂàÜÁ±ª</Text>
+                        <Input @bind-Value="@_editingNodeInfoModel.TestInfo" Placeholder="ËØ∑ËæìÂÖ•ÊµãËØïÂàÜÁ±ª" TValue="string"></Input>
                     </AntDesign.Col>
                     <AntDesign.Col Span="24">
-                        <Text> µ—È “«¯”Ú</Text>
-                        <Input @bind-Value="@_editingNodeInfoModel.LabArea" Placeholder="«Î ‰»Î µ—È “«¯”Ú" TValue="string" />
+                        <Text>ÂÆûÈ™åÂÆ§Âå∫Âüü</Text>
+                        <Input @bind-Value="@_editingNodeInfoModel.LabArea" Placeholder="ËØ∑ËæìÂÖ•ÂÆûÈ™åÂÆ§Âå∫Âüü" TValue="string"/>
                     </AntDesign.Col>
                     <AntDesign.Col Span="24">
-                        <Text> µ—È “√˚≥∆</Text>
-                        <Input @bind-Value="@_editingNodeInfoModel.LabName" Placeholder="«Î ‰»Î µ—È “√˚≥∆" TValue="string" />
+                        <Text>ÂÆûÈ™åÂÆ§ÂêçÁß∞</Text>
+                        <Input @bind-Value="@_editingNodeInfoModel.LabName" Placeholder="ËØ∑ËæìÂÖ•ÂÆûÈ™åÂÆ§ÂêçÁß∞" TValue="string"/>
                     </AntDesign.Col>
                 </Row>
-                <br />
+                <br/>
                 <AntDesign.Col Span="24">
-                    <Text>”√Õæ</Text>
-                    <Input @bind-Value="@_editingNodeInfoModel.Usages" Placeholder="«Î ‰»Î”√Õæ" TValue="string" />
+                    <Text>Áî®ÈÄî</Text>
+                    <Input @bind-Value="@_editingNodeInfoModel.Usages" Placeholder="ËØ∑ËæìÂÖ•Áî®ÈÄî" TValue="string"/>
                 </AntDesign.Col>
                 <Row>
                     <AntDesign.Col Span="24">
-                        <Text>±∏◊¢</Text>
-                        <TextArea @bind-Value="@_editingNodeInfoModel.Remarks" Placeholder="«Î ‰»Î±∏◊¢"></TextArea>
+                        <Text>Â§áÊ≥®</Text>
+                        <TextArea @bind-Value="@_editingNodeInfoModel.Remarks" Placeholder="ËØ∑ËæìÂÖ•Â§áÊ≥®"></TextArea>
                     </AntDesign.Col>
                 </Row>
-                <br />
+                <br/>
                 <Row>
                     <AntDesign.Col Span="6">
-                        <Button Type="default" OnClick="CloseModifyNodeInfoDrawer">»°œ˚</Button>
+                        <Button Type="default" OnClick="CloseModifyNodeInfoDrawer">ÂèñÊ∂à</Button>
                     </AntDesign.Col>
                     <AntDesign.Col Span="6">
-                        <Button Type="primary" OnClick="SubmitNodeInfoAsync">Ã·Ωª</Button>
+                        <Button Type="primary" OnClick="SubmitNodeInfoAsync">Êèê‰∫§</Button>
                     </AntDesign.Col>
                 </Row>
             }
 
         </Template>
     </Drawer>
-        <Modal Width="800"
-           Title="Ω⁄µ„≈‰÷√"
+    <Modal Width="800"
+           Title="ËäÇÁÇπÈÖçÁΩÆ"
            Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
-           OnOk="@HandleEditFormOk" 
+           OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
         <Form Model="@_nodeSettings" Size="@AntSizeLDSType.Default"
-              LabelColSpan="4" 
+              LabelColSpan="4"
               Layout="@FormLayout.Horizontal"
               WrapperColSpan="20"
               OnFinish="OnEditFormFinish"
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
-            <FormItem Label="IPµÿ÷∑«¯”Ú”≥…‰">
-                <Space>
-                    <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddIpAddressMapping" Type="primary">
-                        </Button>
-                    </SpaceItem>
-                    <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Danger Icon="@IconType.Outline.Delete" OnClick="RemoveSelectedIpAddressMapping" Type="primary">
-                        </Button>
-                    </SpaceItem>
-                </Space>
-      
-     
-                <StringEntryTable ValueTitle="Ipµÿ÷∑" NameTitle="«¯”Ú" IsTagHidden="false" IsTagEditable="true" TagTitle="¥˙∫≈" SelectedItems="@_selectedIpAddressMappings" DataSource="@context.IpAddressMappings" />
+            <FormItem Label="IPÂú∞ÂùÄÂå∫ÂüüÊò†Â∞Ñ">
+                <StringEntryTable
+                    ValueTitle="IpËåÉÂõ¥"
+                    NameTitle="Âå∫ÂüüÂêçÁß∞"
+                    IsTagHidden="false"
+                    IsTagEditable="true"
+                    TagTitle="‰ª£Á†Å"
+                    ItemsSource="@context.IpAddressMappings"/>
             </FormItem>
-            <FormItem Label="Ω¯≥Ã”√Õæ”≥…‰">
-
-                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddProcessUsageMapping" Type="primary">
-                </Button>
-                <Button Shape="@ButtonShape.Circle" Danger Icon="@IconType.Outline.Delete" OnClick="RemoveSelectedProcessUsageMapping" Type="primary">
-                    
-                </Button>
-                <StringEntryTable ValueTitle="”√Õæ" NameTitle="Ω¯≥Ã√˚≥∆" SelectedItems="@_selectedProcessUsagesMappings" DataSource="@context.ProcessUsagesMapping" />
+            <FormItem Label="ËøõÁ®ãÁî®ÈÄîÊò†Â∞Ñ">
+                <StringEntryTable
+                    ValueTitle="Áî®ÈÄî"
+                    NameTitle="ËøõÁ®ãÂêçÁß∞"
+                    ItemsSource="@context.ProcessUsagesMapping"/>
             </FormItem>
 
         </Form>
     </Modal>
     <GridRow Gutter="(8, 0)">
         <GridCol Span="24">
-             <Table Loading="@_loading" 
-                 @ref="_table" 
-                 Size="TableSize.Small" 
-                 EnableVirtualization="true" 
-                 OnChange="OnTableChange" 
-                 TItem="NodeInfoModel" 
-                 DataSource="@_dataSource" 
-                 OnRowClick="OnRowClick">
-                 <TitleTemplate>
-                     <GridRow>
-                         <GridCol Span="4">
-                             <Title Level="3">Ω⁄µ„¡–±Ì</Title>
-                         </GridCol>
-                         <GridCol Span="20" Offset="0" >
+            <Table Loading="@_dataSource.IsLoading"
+                   @ref="_table"
+                   Size="TableSize.Small"
+                   EnableVirtualization="false"
+                   OnChange="OnNodeTableChanged"
+                   TItem="NodeInfoModel"
+                   PageIndex="@_dataSource.PageIndex"
+                   PageSize="@_dataSource.PageSize"
+                   Total="@_dataSource.TotalCount"
+                   OnPageIndexChange="@_dataSource.OnPaginationEvent"
+                   OnPageSizeChange="@_dataSource.OnPaginationEvent"
+                   DataSource="@_dataSource.ItemsSource"
+
+                   OnRowClick="OnRowClick">
+                <TitleTemplate>
+                    <GridRow>
+                        <GridCol Span="4">
+                            <Title Level="3">ËäÇÁÇπÂàóË°®</Title>
+                        </GridCol>
+                        <GridCol Span="20" Offset="0">
                             <Space>
                                 <SpaceItem>
                                     <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryNodeListAsync"></Button>
@@ -146,29 +144,31 @@
                                             TItem="StringEntry"
                                             Style="width:200px"
                                             TItemValue="string"
+                                            OnSelectedItemChanged="OnSelectedAreaTag"
                                             DefaultActiveFirstOption
                                             LabelName="@nameof(StringEntry.Name)"
-                                            ValueName="@nameof(StringEntry.Tag)" />
+                                            ValueName="@nameof(StringEntry.Tag)"/>
                                 </SpaceItem>
                                 <SpaceItem>
-                                    <RadioGroup @bind-Value="_nodeState" Size="middle">
-                                        <Radio RadioButton Value="@(NodeState.All)">»´≤ø</Radio>
-                                        <Radio RadioButton Value="@(NodeState.Online)">‘⁄œﬂ</Radio>
-                                        <Radio RadioButton Value="@(NodeState.Offline)">¿Îœﬂ</Radio>
+                                    <RadioGroup Value="_nodeStatus" ValueChanged="(NodeStatus nodeStatus) => OnNodeStatusChanged(nodeStatus)" Size="middle">
+                                        <Radio RadioButton Value="@(NodeStatus.All)">ÂÖ®ÈÉ®</Radio>
+                                        <Radio RadioButton Value="@(NodeStatus.Online)">Âú®Á∫ø</Radio>
+                                        <Radio RadioButton Value="@(NodeStatus.Offline)">Á¶ªÁ∫ø</Radio>
                                     </RadioGroup>
                                 </SpaceItem>
                                 <SpaceItem>
-                                    <Search Style="width:200px" Placeholder="À—À˜Ω⁄µ„" @bind-Value="@_keywords" OnSearch="()=>_table?.ReloadData()" />
+                                    <Search Style="width:200px" Placeholder="ÊêúÁ¥¢ËäÇÁÇπ" @bind-Value="@_keywords" OnSearch="OnKeywordsChanged"/>
                                 </SpaceItem>
                             </Space>
-                         </GridCol>
-                     </GridRow>
-                 </TitleTemplate>
-                 <ColumnDefinitions>
-                     <PropertyColumn Title="≥ß«¯" Filters="areaNameFilters" OnFilter="((name,value)=>OnFilterFactoryName(value,name))" Sortable="true" Filterable="true" Property="c=>c.Profile.FactoryName">
-                        <Text>@this._nodeSettings.IpAddressMappings.FirstOrDefault(x=>x.Tag==context.Profile.FactoryName)?.Name</Text>
-                     </PropertyColumn>
-                     <PropertyColumn Title="Ω⁄µ„√˚≥∆" Sortable="true" Property="c=>c.Name">
+                        </GridCol>
+                    </GridRow>
+                </TitleTemplate>
+                <ColumnDefinitions>
+                    <PropertyColumn Title="ÂéÇÂå∫" Filters="areaNameFilters" OnFilter="(name, value) => OnFilterAreaTag(value, name)" Sortable="true" Filterable="true" Property="c => c.Profile.FactoryName">
+                        <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
+                    </PropertyColumn>
+                    <PropertyColumn Title="Áä∂ÊÄÅ" Sortable="true" Hidden SorterMultiple="0" SorterCompare="(a, b) => a - b" Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
+                    <PropertyColumn Title="ËäÇÁÇπÂêçÁß∞" Sortable="true" SorterMultiple="2" SorterCompare="(a, b) => StringComparer.Ordinal.Compare(a, b)" Property="c => c.Name" DefaultSortOrder="SortDirection.Descending">
                         @switch (context.Status)
                         {
                             case NodeStatus.Online:
@@ -181,19 +181,25 @@
                                 <Badge Style="margin-right:10px" Status="@BadgeStatus.Error"></Badge>
                                 break;
                         }
-                         <NavLink href="@("/nodes/"+context.Id)">@context.Name</NavLink>
-                        </PropertyColumn>
-                    <PropertyColumn Title="◊Ó∫Û‘⁄œﬂ ±º‰" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.Profile.ServerUpdateTimeUtc"></PropertyColumn><PropertyColumn Title="≤‚ ‘∑÷¿‡" Sortable="true" Property="c=>c.Profile.TestInfo"></PropertyColumn>
-                    <PropertyColumn Title=" µ—È “«¯”Ú" Sortable="true" Property="c=>c.Profile.LabArea"></PropertyColumn>
-                    <PropertyColumn Title=" µ—È “√˚≥∆" Sortable="true" Property="c=>c.Profile.LabName"></PropertyColumn>
+                        <NavLink href="@("/nodes/" + context.Id)">@context.Name</NavLink>
+                    </PropertyColumn>
+                    <PropertyColumn Title="ÊúÄÂêéÂú®Á∫øÊó∂Èó¥" Sortable="true" SorterMultiple="1" SorterCompare="(a, b) => a.CompareTo(b)" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.Profile.ServerUpdateTimeUtc"></PropertyColumn><PropertyColumn Title="ÊµãËØïÂàÜÁ±ª" Sortable="true" Property="c => c.Profile.TestInfo"></PropertyColumn>
+                    <PropertyColumn Title="ÂÆûÈ™åÂÆ§Âå∫Âüü" Sortable="true" Property="c => c.Profile.LabArea"></PropertyColumn>
+                    <PropertyColumn Title="ÂÆûÈ™åÂÆ§ÂêçÁß∞" Sortable="true" Property="c => c.Profile.LabName"></PropertyColumn>
 
-                    <PropertyColumn Title="”√Õæ" Sortable="true" Property="c=>c.Profile.Usages"><Tag>@(string.IsNullOrEmpty(context.Profile.Usages) ? "£®ø’£©" : context.Profile.Usages)</Tag></PropertyColumn>
-                    <PropertyColumn Title="±∏◊¢" Sortable="true" Property="c=>c.Profile.Remarks"><Tag>@(string.IsNullOrEmpty(context.Profile.Remarks) ? "£®ø’£©" : context.Profile.Remarks)</Tag></PropertyColumn>
-                    <PropertyColumn Title="IPµÿ÷∑" Sortable="true" Property="c=>c.Profile.IpAddress"><Tag>@context.Profile.IpAddress</Tag></PropertyColumn>
-                        <ActionColumn Fixed="right" Title="≤Ÿ◊˜">
-                            <Space Size=@("middle")>
+                    <PropertyColumn Title="Áî®ÈÄî" Sortable="true" Property="c => c.Profile.Usages">
+                        <Tag>@(string.IsNullOrEmpty(context.Profile.Usages) ? "ÔºàÁ©∫Ôºâ" : context.Profile.Usages)</Tag>
+                    </PropertyColumn>
+                    <PropertyColumn Title="Â§áÊ≥®" Sortable="true" Property="c => c.Profile.Remarks">
+                        <Tag>@(string.IsNullOrEmpty(context.Profile.Remarks) ? "ÔºàÁ©∫Ôºâ" : context.Profile.Remarks)</Tag>
+                    </PropertyColumn>
+                    <PropertyColumn Title="IPÂú∞ÂùÄ" Sortable="true" Property="c => c.Profile.IpAddress">
+                        <Tag>@context.Profile.IpAddress</Tag>
+                    </PropertyColumn>
+                    <ActionColumn Fixed="right" Title="Êìç‰Ωú">
+                        <Space Size=@("middle")>
                             <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>OpenModifyNodeInfoDrawer(context)"></Button>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OpenModifyNodeInfoDrawer(context)"></Button>
                             </SpaceItem>
                         </Space>
                     </ActionColumn>
@@ -209,33 +215,25 @@
     ITable _table;
     string? _keywords;
 
-    bool _editFormVisible = false;
-    bool _editFormSubmitting = false;
-    bool _editFormConfirmLoading = false;
+    bool _editFormVisible;
+    bool _editFormSubmitting;
+    bool _editFormConfirmLoading;
 
-    enum NodeState
-    {
-        All,
-        Online,
-        Offline,
-    }
+    NodeStatus _nodeStatus = NodeStatus.All;
+    string _selectedAreaTag = "*";
 
-    NodeState _nodeState;
-    string _selectedAreaTag;
 
-    IEnumerable<NodeInfoModel>? _dataSource = [];
-    IEnumerable<NodeInfoModel>? _nodesDataSource = [];
+    public List<TableFilter<string?>> areaNameFilters = [];
 
-    IEnumerable<StringEntry> _selectedIpAddressMappings = [];
-    IEnumerable<StringEntry> _selectedProcessUsagesMappings = [];
 
-    NodeSettings _nodeSettings = new NodeSettings();
+    RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
+
+
+    NodeSettings _nodeSettings = new();
 
     Form<NodeSettings> _editForm;
 
-    bool _loading;
-
-    bool nodeInfoDrawerVisible = false;
+    bool nodeInfoDrawerVisible;
 
     string? _modifyErrorMsg;
 
@@ -244,118 +242,112 @@
 
     void OpenModifyNodeInfoDrawer(NodeInfoModel nodeInfo)
     {
-        this._editingNodeInfoModel = new UpdateNodeProfileModel()
-            {
-                NodeId = nodeInfo.Id,
-                LabArea = nodeInfo.Profile.LabArea,
-                LabName = nodeInfo.Profile.LabName,
-                Remarks = nodeInfo.Profile.Remarks,
-                TestInfo = nodeInfo.Profile.TestInfo,
-                Usages = nodeInfo.Profile.Usages
-            };
-        this.nodeInfoDrawerVisible = true;
+        _editingNodeInfoModel = new UpdateNodeProfileModel
+        {
+            NodeId = nodeInfo.Id,
+            LabArea = nodeInfo.Profile.LabArea,
+            LabName = nodeInfo.Profile.LabName,
+            Remarks = nodeInfo.Profile.Remarks,
+            TestInfo = nodeInfo.Profile.TestInfo,
+            Usages = nodeInfo.Profile.Usages
+        };
+        nodeInfoDrawerVisible = true;
     }
 
     void CloseModifyNodeInfoDrawer()
     {
-        this._modifyErrorMsg = null;
-        this._editingNodeInfoModel = null;
-        this.nodeInfoDrawerVisible = false;
+        _modifyErrorMsg = null;
+        _editingNodeInfoModel = null;
+        nodeInfoDrawerVisible = false;
     }
 
     async Task ShowNodeSettingsModalAsync()
     {
         _editFormVisible = true;
-        await this.QueryNodeSettingsAsync();
+        await QueryNodeSettingsAsync();
     }
-
 
 
     async Task SubmitNodeInfoAsync()
     {
         try
         {
-            var apiResponse = await this.ApiService.UpdateNodeProfileAsync(this._editingNodeInfoModel).ConfigureAwait(false);
+            var apiResponse = await ApiService.UpdateNodeProfileAsync(_editingNodeInfoModel);
             if (apiResponse.ErrorCode == 0)
             {
-                this._editingNodeInfoModel = null;
-                this.nodeInfoDrawerVisible = false;
-                await this.QueryNodeListAsync();
+                _editingNodeInfoModel = null;
+                nodeInfoDrawerVisible = false;
+                await QueryNodeListAsync();
             }
             else
             {
-                this._modifyErrorMsg = apiResponse.Message;
+                _modifyErrorMsg = apiResponse.Message;
             }
-
         }
         catch (Exception ex)
         {
-            this._modifyErrorMsg = ex.Message;
+            _modifyErrorMsg = ex.Message;
         }
     }
 
-
-    public List<TableFilter<string?>> areaNameFilters = [];
-
     private void HandleEditFormCancel(MouseEventArgs e)
     {
-        this._editFormSubmitting = false;
-        this._editFormVisible = false;
+        _editFormSubmitting = false;
+        _editFormVisible = false;
     }
 
 
     private void HandleEditFormOk(MouseEventArgs e)
     {
-        this._editFormSubmitting = true;
-        this._editForm.Submit();
+        _editFormSubmitting = true;
+        _editForm.Submit();
     }
 
     private async Task QueryNodeSettingsAsync()
     {
         try
         {
-            var apiResponse = await this.ApiService.QueryNodeSettingsAsync().ConfigureAwait(false);
+            var apiResponse = await ApiService.QueryNodeSettingsAsync();
             if (apiResponse.ErrorCode == 0)
             {
-                this._nodeSettings = apiResponse.Result;
-                if (this._nodeSettings.IpAddressMappings != null)
+                _nodeSettings = apiResponse.Result;
+                if (_nodeSettings.IpAddressMappings != null)
                 {
                     areaNameFilters.Clear();
-                    foreach (var item in this._nodeSettings.IpAddressMappings)
+                    foreach (var item in _nodeSettings.IpAddressMappings)
                     {
-                        areaNameFilters.Add(new TableFilter<string?>()
-                            {
-                                Selected = item.Tag == "All",
-                                Text = item.Name,
-                                Value = item.Tag
-                            });
+                        areaNameFilters.Add(new TableFilter<string?>
+                        {
+                            Selected = item.Tag == "*",
+                            Text = item.Name,
+                            Value = item.Tag
+                        });
                     }
-                    this._selectedAreaTag = this._nodeSettings.IpAddressMappings.FirstOrDefault().Tag;
-                    if (this._table!=null)
+
+                    _selectedAreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault().Tag;
+                    if (_table != null)
                     {
-                        await InvokeAsync(this._table.ReloadData);
+                        await InvokeAsync(_table.ReloadData);
                     }
                 }
-
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "¥ÌŒÛÃ· æ",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "ÈîôËØØÊèêÁ§∫",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "¥ÌŒÛÃ· æ",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "ÈîôËØØÊèêÁ§∫",
+                Description = ex.ToString()
+            });
         }
-
     }
 
 
@@ -363,234 +355,142 @@
     {
         try
         {
-            var apiResponse = await this.ApiService.UpdateNodeSettingsAsync(this._nodeSettings).ConfigureAwait(false);
+            var apiResponse = await ApiService.UpdateNodeSettingsAsync(_nodeSettings);
             if (apiResponse.ErrorCode == 0)
             {
-                await this.QueryNodeSettingsAsync();
+                await QueryNodeSettingsAsync();
                 _editFormVisible = false;
-                await _message.Info("∏¸–¬Ω⁄µ„…Ë÷√≥…π¶");
+                await _message.Info("Êõ¥Êñ∞ËäÇÁÇπËÆæÁΩÆÊàêÂäü");
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "¥ÌŒÛÃ· æ",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "ÈîôËØØÊèêÁ§∫",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "¥ÌŒÛÃ· æ",
-                    Description = ex.Message,
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "ÈîôËØØÊèêÁ§∫",
+                Description = ex.Message
+            });
         }
         finally
         {
-            this._editFormSubmitting = false;
-            this._editFormConfirmLoading = false;
+            _editFormSubmitting = false;
+            _editFormConfirmLoading = false;
         }
     }
 
     private void OnEditFormFinishFailed(EditContext editContext)
     {
-        this._editFormSubmitting = false;
-        this._editFormConfirmLoading = false;
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
     }
 
     private void OnNodeNameChanged(MouseEventArgs e)
     {
-
     }
 
     private void OnSelectedFactoryNameChanged(string value)
     {
-
     }
 
-    private bool OnFilterFactoryName(string value, string name)
+    private bool OnFilterAreaTag(string value, string name)
     {
-        if (name == "All")
+        if (name == "*")
         {
             return true;
         }
+
         return name == value;
     }
 
     void OnRowClick(RowData<NodeInfoModel> row)
     {
-
     }
 
     private async Task RefreshAsync()
     {
-        this._loading = true;
-        await this.QueryNodeSettingsAsync();
-        await this.QueryNodeListAsync();
-        this._loading = false;
+        await QueryNodeSettingsAsync();
+        await QueryNodeListAsync();
     }
 
     async Task QueryNodeListAsync()
     {
         try
         {
-            var apiResponse = await this.ApiService.QueryNodeListAsync(QueryParameters.All).ConfigureAwait(false);
-            if (apiResponse.ErrorCode == 0)
-            {
-                this._nodesDataSource = apiResponse.Result ?? [];
-                if (_table != null)
-                {
-                    await InvokeAsync(_table.ReloadData);
-                }
-
-            }
-            else
-            {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "º”‘ÿ ß∞‹",
-                        Description = apiResponse.Message,
-                    });
-            }
+            await _dataSource.RefreshAsync();
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "º”‘ÿ ß∞‹",
-                    Description = ex.Message,
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "Âä†ËΩΩÂ§±Ë¥•",
+                Description = ex.Message
+            });
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        await this.RefreshAsync();
-
+        await RefreshAsync();
     }
 
-    private void OnNodeStatusChanged(NodeState nodeState)
+    private void OnNodeTableChanged(QueryModel<NodeInfoModel> query)
     {
-        this._table?.ReloadData();
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        _dataSource.Request();
     }
 
-    private void OnTableChange(QueryModel<NodeInfoModel> query)
+    private void OnKeywordsChanged(string keywords)
     {
-        this._dataSource = query.ExecuteQuery(this._nodesDataSource.AsQueryable())
-         .Where(FilterNodeInfo);
+        _dataSource.PageIndex = 1;
+        _dataSource.QueryParameters.Keywords = _keywords;
+        _dataSource.Request();
     }
 
-    private bool IsNodeStatusMatched(NodeInfoModel nodeInfo)
+    protected override void OnInitialized()
     {
-        switch (this._nodeState)
-        {
-            case NodeState.All:
-                return true;
-                break;
-            case NodeState.Online:
-                if (nodeInfo.Status == NodeStatus.Online)
-                {
-                    return true;
-                }
-                break;
-            case NodeState.Offline:
-                if (nodeInfo.Status == NodeStatus.Offline)
-                {
-                    return true;
-                }
-                break;
-            default:
-                break;
-        }
-        return false;
+        _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager, ApiService.QueryNodeListAsync, StateHasChanged);
+        _dataSource.QueryParameters.Status = NodeStatus.All;
+        _dataSource.QueryParameters.AreaTag = "*";
+        base.OnInitialized();
     }
 
-    private bool IsNodeInfoFactoryTypeMatched(NodeInfoModel nodeInfo)
+    public void Dispose()
     {
-        if (string.IsNullOrEmpty(this._selectedAreaTag) || this._selectedAreaTag == "All")
-        {
-            return true;
-        }
-        return this._selectedAreaTag == nodeInfo.Profile.FactoryName;
+        _dataSource.Dispose();
     }
 
-    private bool IsKeywordsMatch(NodeInfoModel nodeInfo)
+    private void OnSelectedAreaTag(StringEntry entry)
     {
-        if (string.IsNullOrEmpty(this._keywords))
-        {
-            return true;
-        }
-        if (nodeInfo.Profile.FactoryName != null && nodeInfo.Profile.FactoryName.Contains(this._keywords))
-        {
-            return true;
-        }
-        if (nodeInfo.Name != null && nodeInfo.Name.Contains(this._keywords))
-        {
-            return true;
-        }
-        if (nodeInfo.Profile.IpAddress != null && nodeInfo.Profile.IpAddress.Contains(this._keywords))
-        {
-            return true;
-        }
-        if (nodeInfo.Profile.ClientVersion != null && nodeInfo.Profile.ClientVersion.Contains(this._keywords))
-        {
-            return true;
-        }
-        if (nodeInfo.Profile.Usages != null && nodeInfo.Profile.Usages.Contains(this._keywords))
-        {
-            return true;
-        }
-        if (nodeInfo.Profile.Remarks != null && nodeInfo.Profile.Remarks.Contains(this._keywords))
-        {
-            return true;
-        }
-        return false;
+        _dataSource.PageIndex = 1;
+        _dataSource.QueryParameters.AreaTag = entry.Tag;
+        _dataSource.Request();
     }
 
-    private bool FilterNodeInfo(NodeInfoModel nodeInfo)
+    private void OnNodeStatusChanged(NodeStatus nodeStatus)
     {
-        return this.IsNodeInfoFactoryTypeMatched(nodeInfo) && this.IsNodeStatusMatched(nodeInfo) && this.IsKeywordsMatch(nodeInfo);
-    }
-
-    private void AddIpAddressMapping()
-    {
-        var entry = new StringEntry();
-        this._nodeSettings.IpAddressMappings.Add(entry);
-        entry.BeginEdit();
-    }
-
-    private void RemoveSelectedIpAddressMapping()
-    {
-        if (this._selectedIpAddressMappings == null)
-        {
-            return;
-        }
-        foreach (var item in this._selectedIpAddressMappings)
-        {
-            this._nodeSettings.IpAddressMappings.Remove(item);
-        }
-    }
-
-    private void AddProcessUsageMapping()
-    {
-        var entry = new StringEntry();
-        this._nodeSettings.ProcessUsagesMapping.Add(entry);
-        entry.BeginEdit();
-    }
-
-    private void RemoveSelectedProcessUsageMapping()
-    {
-        if (this._selectedProcessUsagesMappings == null)
-        {
-            return;
-        }
-        foreach (var item in this._selectedProcessUsagesMappings)
-        {
-            this._nodeSettings.ProcessUsagesMapping.Remove(item);
-        }
+        _nodeStatus = nodeStatus;
+        _dataSource.PageIndex = 1;
+        _dataSource.QueryParameters.Status = nodeStatus;
+        _dataSource.Request();
     }
 
 }

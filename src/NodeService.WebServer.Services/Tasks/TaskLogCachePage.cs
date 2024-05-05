@@ -1,168 +1,135 @@
-﻿using NodeService.Infrastructure.Logging;
-using System.Buffers;
-using System.Drawing.Printing;
+﻿using System.Buffers;
+using NodeService.Infrastructure.Logging;
 
-namespace NodeService.WebServer.Services.Tasks
+namespace NodeService.WebServer.Services.Tasks;
+
+public class TaskLogCachePageDump
 {
-    public class TaskLogCachePageDump
+    public string TaskId { get; set; }
+    public int PageSize { get; set; }
+
+    public int PageIndex { get; set; }
+
+    public int FlushedCount { get; set; }
+
+    public int EntriesCount { get; set; }
+}
+
+public struct TaskLogCachePage : IDisposable
+{
+    private LogEntry[]? _entries;
+
+    private long _entriesOffset;
+
+    private long _flushedCount;
+
+    public string TaskId { get; }
+
+    public int EntriesCount => (int)Interlocked.Read(ref _entriesOffset);
+
+    public int PageIndex { get; }
+
+    public int PageSize { get; }
+
+    public int FlushedCount => (int)Interlocked.Read(ref _flushedCount);
+
+    public void IncrementFlushedCount(int value)
     {
-        public string TaskId {  get; set; }
-        public int PageSize { get; set; }
-
-        public int PageIndex { get; set; }
-
-        public int FlushedCount { get; set; }
-
-        public int EntriesCount { get; set; }
+        var newValue = FlushedCount + value;
+        if (newValue < 0 || newValue > PageSize) return;
+        Interlocked.Exchange(ref _flushedCount, newValue);
     }
 
+    public bool IsPersistenced => FlushedCount == EntriesCount;
 
-    public struct TaskLogCachePage : IDisposable
+    public bool IsDisposed { get; private set; }
+
+    public TaskLogCachePage(string taskId, int pageSize, int pageIndex)
     {
-        private LogEntry[]? _entries;
+        TaskId = taskId;
+        PageSize = pageSize;
+        _entries = ArrayPool<LogEntry>.Shared.Rent(pageSize);
+        PageIndex = pageIndex;
+    }
 
-        private long _entriesOffset;
+    public TaskLogCachePage(TaskLogCachePageDump taskLogCachePageDump)
+    {
+        TaskId = taskLogCachePageDump.TaskId;
+        PageSize = taskLogCachePageDump.PageSize;
+        PageIndex = taskLogCachePageDump.PageIndex;
+        _flushedCount = taskLogCachePageDump.FlushedCount < 0 ? 0 : taskLogCachePageDump.FlushedCount;
+        _entriesOffset = taskLogCachePageDump.EntriesCount;
+        if (_entriesOffset < PageSize)
+            _entries = ArrayPool<LogEntry>.Shared.Rent(PageSize);
+        else
+            IsDisposed = true;
+    }
 
-        private long _flushedCount;
-
-        public string TaskId { get; private set; }
-
-        public int EntriesCount { get { return (int)Interlocked.Read(ref this._entriesOffset); } }
-
-        public int PageIndex { get; private set; }
-
-        public int PageSize { get; private set; }
-
-        public int FlushedCount { get { return (int)Interlocked.Read(ref this._flushedCount); } }
-
-        public void IncrementFlushedCount(int value)
+    public void Dispose()
+    {
+        CheckIsDisposed();
+        if (_entries != null)
         {
-            var newValue = this.FlushedCount + value;
-            if (newValue < 0 || newValue > this.PageSize)
-            {
-                return;
-            }
-            Interlocked.Exchange(ref this._flushedCount, newValue);
+            ArrayPool<LogEntry>.Shared.Return(_entries, true);
+            _entries = null;
         }
 
-        public bool IsPersistenced { get { return this.FlushedCount == this.EntriesCount; } }
+        IsDisposed = true;
+    }
 
-        public bool IsDisposed { get; private set; }
+    public void AddEntry(LogEntry entry)
+    {
+        CheckIsDisposed();
+        _entries[_entriesOffset] = entry;
+        _entriesOffset++;
+    }
 
-        public TaskLogCachePage(string taskId, int pageSize, int pageIndex)
+    private readonly void CheckIsDisposed()
+    {
+        if (IsDisposed) throw new ObjectDisposedException(nameof(_entries));
+    }
+
+    public void AddRange(IEnumerable<LogEntry> logEntries)
+    {
+        CheckIsDisposed();
+        lock (_entries)
         {
-            TaskId = taskId;
-            PageSize = pageSize;
-            this._entries = ArrayPool<LogEntry>.Shared.Rent(pageSize);
-            this.PageIndex = pageIndex;
+            foreach (var entry in logEntries) AddEntry(entry);
         }
+    }
 
-        public TaskLogCachePage(TaskLogCachePageDump taskLogCachePageDump)
+    public IEnumerable<LogEntry> GetEntries()
+    {
+        CheckIsDisposed();
+        return GetEntries(0, EntriesCount);
+    }
+
+    public IEnumerable<LogEntry> GetEntries(int offset, int count)
+    {
+        CheckIsDisposed();
+        if (offset < 0 || offset > EntriesCount) throw new ArgumentOutOfRangeException(nameof(offset));
+        if (count < 0) throw new ArgumentOutOfRangeException(nameof(count));
+        var limit = Math.Min(count, EntriesCount);
+        for (var i = offset; i < limit; i++) yield return _entries[i];
+    }
+
+    public void Verify()
+    {
+        if (!Debugger.IsAttached) return;
+        CheckIsDisposed();
+        for (var i = FlushedCount; i < EntriesCount; i++)
         {
-            TaskId = taskLogCachePageDump.TaskId;
-            PageSize = taskLogCachePageDump.PageSize;
-            PageIndex = taskLogCachePageDump.PageIndex;
-            _flushedCount = taskLogCachePageDump.FlushedCount < 0 ? 0 : taskLogCachePageDump.FlushedCount;
-            _entriesOffset = taskLogCachePageDump.EntriesCount;
-            if (_entriesOffset < PageSize)
-            {
-                this._entries = ArrayPool<LogEntry>.Shared.Rent(PageSize);
-            }
-            else
-            {
-                this.IsDisposed = true;
-            }
+            var entry = _entries[i];
+            if (entry.Index % PageSize != i) throw new InvalidOperationException();
         }
+    }
 
-        public void Dispose()
-        {
-            CheckIsDisposed();
-            if (this._entries != null)
-            {
-                ArrayPool<LogEntry>.Shared.Return(this._entries, true);
-                this._entries = null;
-            }
-            this.IsDisposed = true;
-        }
-
-        public void AddEntry(LogEntry entry)
-        {
-            CheckIsDisposed();
-            this._entries[this._entriesOffset] = entry;
-            this._entriesOffset++;
-        }
-
-        private readonly void CheckIsDisposed()
-        {
-            if (this.IsDisposed)
-            {
-                throw new ObjectDisposedException(nameof(this._entries));
-            }
-        }
-
-        public void AddRange(IEnumerable<LogEntry> logEntries)
-        {
-            CheckIsDisposed();
-            lock (this._entries)
-            {
-                foreach (var entry in logEntries)
-                {
-                    this.AddEntry(entry);
-                }
-            }
-        }
-
-        public IEnumerable<LogEntry> GetEntries()
-        {
-            CheckIsDisposed();
-            return GetEntries(0, this.EntriesCount);
-        }
-
-        public IEnumerable<LogEntry> GetEntries(int offset, int count)
-        {
-            CheckIsDisposed();
-            if (offset < 0 || offset > this.EntriesCount)
-            {
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            }
-            if (count < 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(count));
-            }
-            int limit = Math.Min(count, this.EntriesCount);
-            for (int i = offset; i < limit; i++)
-            {
-                yield return this._entries[i];
-            }
-            yield break;
-        }
-
-        public void Verify()
-        {
-            if (!Debugger.IsAttached)
-            {
-                return;
-            }
-            CheckIsDisposed();
-            for (int i = this.FlushedCount; i < this.EntriesCount; i++)
-            {
-                var entry = this._entries[i];
-                if (entry.Index % this.PageSize != i)
-                {
-                    throw new InvalidOperationException();
-                }
-            }
-        }
-
-        public void Dump(TaskLogCachePageDump taskLogCachePageDump)
-        {
-            taskLogCachePageDump.TaskId = this.TaskId;
-            taskLogCachePageDump.EntriesCount = this.EntriesCount;
-            taskLogCachePageDump.PageSize = this.PageSize;
-            taskLogCachePageDump.PageIndex = this.PageIndex;
-            taskLogCachePageDump.FlushedCount = this.FlushedCount;
-        }
-
-
+    public void Dump(TaskLogCachePageDump taskLogCachePageDump)
+    {
+        taskLogCachePageDump.TaskId = TaskId;
+        taskLogCachePageDump.EntriesCount = EntriesCount;
+        taskLogCachePageDump.PageSize = PageSize;
+        taskLogCachePageDump.PageIndex = PageIndex;
+        taskLogCachePageDump.FlushedCount = FlushedCount;
     }
 }

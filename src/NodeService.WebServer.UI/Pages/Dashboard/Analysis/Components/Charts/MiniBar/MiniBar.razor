@@ -1,12 +1,12 @@
-
 @namespace NodeService.WebServer.UI.Pages.Dashboard.Analysis
 @inject IChartService ChartService
-<AntDesign.Charts.Column @ref="_chart" Config="_chartConfig" />
+<AntDesign.Charts.Column @ref="_chart" Config="_chartConfig"/>
 
 @code
 {
     private IChartComponent _chart;
-    private ColumnConfig _chartConfig = new ColumnConfig
+
+    private ColumnConfig _chartConfig = new()
     {
         XField = "x",
         YField = "y",

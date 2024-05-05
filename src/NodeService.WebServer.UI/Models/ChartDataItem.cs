@@ -1,8 +1,7 @@
-﻿namespace NodeService.WebServer.UI.Models
+﻿namespace NodeService.WebServer.UI.Models;
+
+public class ChartDataItem
 {
-    public class ChartDataItem
-    {
-        public string X { get; set; }
-        public int Y { get; set; }
-    }
+    public string X { get; set; }
+    public int Y { get; set; }
 }

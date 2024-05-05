@@ -3,6 +3,9 @@
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
 <style type="text/css">
     .xmlViwer { /* for a specific editor instance */
         height: 500px;
@@ -16,134 +19,124 @@
            Title="@_modalTitle"
            Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
-           OnOk="@HandleEditFormOk" 
+           OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
         <Form Model="@_editModel" Size="@AntSizeLDSType.Default"
-              LabelColSpan="4" 
+              LabelColSpan="4"
               Layout="@FormLayout.Horizontal"
               WrapperColSpan="20"
               OnFinish="OnEditFormFinish"
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
             <FormItem Label="配置名称">
-                <Input @bind-Value="@context.Name"  />
-             </FormItem>
+                <Input @bind-Value="@context.Name"/>
+            </FormItem>
             <FormItem Label="上传文件">
-                <InputFile id="fileInput" OnChange="@OnInputFileChanged" hidden multiple />
+                <InputFile id="fileInput" OnChange="@OnInputFileChanged" hidden multiple/>
                 <Upload Name="files" FileList="_uploadFileItems">
                     <label class="ant-btn" for="fileInput">
-                        <Icon Type="upload" />
+                        <Icon Type="upload"/>
                         上传文件
                     </label>
                 </Upload>
             </FormItem>
-             <FormItem Label="Xml文本">
-                <StandaloneCodeEditor @ref="@_editor" CssClass="xmlViwer" OnDidInit="InitXmlEditorAsync" ConstructionOptions="EditorConstructionOptions" />
-             </FormItem>
+            <FormItem Label="Xml文本">
+                <StandaloneCodeEditor @ref="@_editor" CssClass="xmlViwer" OnDidInit="InitXmlEditorAsync" ConstructionOptions="EditorConstructionOptions"/>
+            </FormItem>
         </Form>
     </Modal>
 
     <Space Style="margin-bottom:16px">
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新建配置</Button>
+            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
         </SpaceItem>
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="QueryConfigurationListAsync">刷新</Button>
+            <Button Type="@ButtonType.Primary" OnClick="_dataSource.Request">刷新</Button>
         </SpaceItem>
 
     </Space>
-<Table @ref="@_table" Size="TableSize.Small" 
-           Loading="_loading"
-           EnableVirtualization="true"
+    <Table @ref="@_table" Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           EnableVirtualization="false"
            TItem="WindowsTaskConfigModel"
            Resizable
            OnChange="OnTableChange"
-           DataSource="@_dataSource.Items" 
-           PageIndex="_dataSource.PageIndex"
-           PageSize="_dataSource.PageSize"
-           OnPageIndexChange="@_dataSource.OnPageSizeChanged"
-           OnPageSizeChange="@_dataSource.OnPageSizeChanged">
+           DataSource="@_dataSource.ItemsSource"
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
                     <Title Level="3">Windows计划任务配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
         </TitleTemplate>
-    <ColumnDefinitions>
-    <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
-    <PropertyColumn Title="名称" Sortable Property="c=>c.Name"></PropertyColumn>
-    <PropertyColumn Title="配置文本" Sortable="true" Ellipsis Property="c=>c.Value.XmlText"></PropertyColumn>
-                <ActionColumn Fixed="right" Width="250" Title="操作">
-                    <CellRender Context="cellData">
-                        <Space>
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<WindowsTaskConfigModel>())"></Button>
-                            </SpaceItem>
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
-                            </SpaceItem>
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
-                         </SpaceItem>
-                         @if (cellData.RowData.Expanded)
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
-                            </SpaceItem>
-                        }
-                        else
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
-                            </SpaceItem>
-                        }
+        <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="配置文本" Sortable="true" Ellipsis Property="c => c.Value.XmlText"></PropertyColumn>
+            <ActionColumn Fixed="right" Width="250" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<WindowsTaskConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<WindowsTaskConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
+                        </SpaceItem>
 
                     </Space>
                 </CellRender>
             </ActionColumn>
-    </ColumnDefinitions>
-    <ExpandTemplate>
-         <Tabs Animated>
+        </ColumnDefinitions>
+        <ExpandTemplate>
+            <Tabs Animated>
                 <TabPane Tab="Xml文本" Key="1">
                     <Text Disabled>@context.Data.Value.XmlText</Text>
 
                 </TabPane>
             </Tabs>
-    </ExpandTemplate>
-</Table>
+        </ExpandTemplate>
+    </Table>
 </GridContent>
 
 @code {
     StandaloneCodeEditor _editor;
     ITable _table;
-    string _searchText;
     string _modalTitle;
-    bool _editFormVisible = false;
-    bool _editFormSubmitting = false;
-    bool _editFormConfirmLoading = false;
+    bool _editFormVisible;
+    bool _editFormSubmitting;
+    bool _editFormConfirmLoading;
     Form<WindowsTaskConfigModel> _editForm;
-    WindowsTaskConfigModel _editModel = new WindowsTaskConfigModel();
-    List<UploadFileItem> _uploadFileItems = new List<UploadFileItem>();
+    WindowsTaskConfigModel _editModel = new();
+    readonly List<UploadFileItem> _uploadFileItems = new();
 
     private bool _loading;
-    private PaginationDataSource<WindowsTaskConfigModel> _dataSource;
+    private RoutedPaginationDataSource<WindowsTaskConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new PaginationDataSource<WindowsTaskConfigModel>(ApiService);
-        _dataSource.Filter = FilterModel;
+        _dataSource = new RoutedPaginationDataSource<WindowsTaskConfigModel, PaginationQueryParameters>(
+            NavigationManager,
+            ApiService.QueryWindowsTaskConfigListAsync,
+            StateHasChanged);
+        _dataSource.Request();
         base.OnInitialized();
     }
 
     private async Task InitXmlEditorAsync()
     {
-        if (this._editModel != null)
+        if (_editModel != null)
         {
-            await this._editor.SetValue(this._editModel.Value.XmlText ?? string.Empty);
+            await _editor.SetValue(_editModel.Value.XmlText ?? string.Empty);
         }
     }
 
@@ -152,39 +145,38 @@
         try
         {
             using var streamReader = new StreamReader(e.File.OpenReadStream(), leaveOpen: false);
-            this._editModel.Value.XmlText = await streamReader.ReadToEndAsync();
-            await this._editor.SetValue(this._editModel.Value.XmlText ?? string.Empty);
+            _editModel.Value.XmlText = await streamReader.ReadToEndAsync();
+            await _editor.SetValue(_editModel.Value.XmlText ?? string.Empty);
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "操作",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "操作",
+                Description = ex.ToString()
+            });
         }
         finally
         {
-            this._loading = false;
+            _loading = false;
         }
-
     }
 
-    private async Task ShowEditForm(WindowsTaskConfigModel? model = null)
+    private void ShowEditForm(WindowsTaskConfigModel? model = null)
     {
-        this._editFormVisible = true;
+        _editFormVisible = true;
         if (model == null)
         {
-            this._editModel = new WindowsTaskConfigModel()
-                {
-                    Id = Guid.NewGuid().ToString()
-                };
-            this._modalTitle = "编辑配置";
+            _editModel = new WindowsTaskConfigModel
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+            _modalTitle = "编辑配置";
         }
         else
         {
-            this._editModel = model.ReferenceClone<WindowsTaskConfigModel>();
-            this._modalTitle = "新建配置";
+            _editModel = model.ReferenceClone<WindowsTaskConfigModel>();
+            _modalTitle = "新建配置";
         }
     }
 
@@ -192,65 +184,65 @@
     {
         try
         {
-            this._editModel.Value.XmlText = await this._editor.GetValue(preserveBOM: false, lineEnding: string.Empty);
-            await this._editor.SetValue(string.Empty);
-            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel);
+            _editModel.Value.XmlText = await _editor.GetValue(false, string.Empty);
+            await _editor.SetValue(string.Empty);
+            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
-                this._editFormVisible = false;
+                await _dataSource.RefreshAsync();
+                _editFormVisible = false;
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.Message,
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
         }
         finally
         {
-            this._editFormSubmitting = false;
-            this._editFormConfirmLoading = false;
+            _editFormSubmitting = false;
+            _editFormConfirmLoading = false;
         }
     }
 
     private void OnEditFormFinishFailed(EditContext editContext)
     {
-        this._editFormSubmitting = false;
-        this._editFormConfirmLoading = false;
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
     }
 
 
     private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
-        var options = new ConfirmButtonOptions()
+        var options = new ConfirmButtonOptions
+        {
+            Button1Props = new ButtonProps
             {
-                Button1Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "确定",
-                    Type = ButtonType.Primary,
-                },
-                Button2Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "取消"
-                }
-            };
+                ChildContent = "确定",
+                Type = ButtonType.Primary
+            },
+            Button2Props = new ButtonProps
+            {
+                ChildContent = "取消"
+            }
+        };
         return _confirmService.Show(
-                content,
-                title,
-                ConfirmButtons.OKCancel,
-                ConfirmIcon.Info,
-                options);
+            content,
+            title,
+            ConfirmButtons.OKCancel,
+            ConfirmIcon.Info,
+            options);
     }
 
     private async Task DeleteConfig(WindowsTaskConfigModel model)
@@ -261,93 +253,62 @@
             {
                 return;
             }
-            var apiResponse = await this.ApiService.RemoveAsync(model);
+
+            var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
+                await _dataSource.RefreshAsync();
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = "加载配置失败",
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = "加载配置失败"
+            });
         }
     }
 
 
     private void HandleEditFormCancel(MouseEventArgs e)
     {
-        this._editFormSubmitting = false;
-        this._editFormVisible = false;
+        _editFormSubmitting = false;
+        _editFormVisible = false;
     }
 
 
     private void HandleEditFormOk(MouseEventArgs e)
     {
-        this._editFormSubmitting = true;
-        this._editForm.Submit();
-
-
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        this._loading = true;
-        await this.QueryConfigurationListAsync().ConfigureAwait(false);
-        this._loading = false;
-    }
-
-    private async Task QueryConfigurationListAsync()
-    {
-        try
-        {
-            await this._dataSource.UpdateSourceAsync();
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
-        }
-
-    }
-
-    private bool FilterModel(WindowsTaskConfigModel model)
-    {
-        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
-        {
-            return true;
-        }
-        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
+        _editFormSubmitting = true;
+        _editForm.Submit();
     }
 
     void OnTableChange(QueryModel<WindowsTaskConfigModel> query)
     {
-        this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
-        this._dataSource.Refresh();
     }
 
     private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
-            {
-                AutomaticLayout = true,
-                Language = "xml",
-                Value = string.Empty
-            };
+        {
+            AutomaticLayout = true,
+            Language = "xml",
+            Value = string.Empty
+        };
+    }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
     }
 
 }

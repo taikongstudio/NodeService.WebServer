@@ -1,27 +1,26 @@
 ﻿using NodeService.WebServer.UI.Models;
 
-namespace NodeService.WebServer.UI.Services
+namespace NodeService.WebServer.UI.Services;
+
+public interface IAccountService
 {
-    public interface IAccountService
+    Task LoginAsync(LoginParamsType model);
+    Task<string> GetCaptchaAsync(string modile);
+}
+
+public class AccountService : IAccountService
+{
+    private readonly Random _random = new();
+
+    public Task LoginAsync(LoginParamsType model)
     {
-        Task LoginAsync(LoginParamsType model);
-        Task<string> GetCaptchaAsync(string modile);
+        // todo: login logic
+        return Task.CompletedTask;
     }
 
-    public class AccountService : IAccountService
+    public Task<string> GetCaptchaAsync(string modile)
     {
-        private readonly Random _random = new Random();
-
-        public Task LoginAsync(LoginParamsType model)
-        {
-            // todo: login logic
-            return Task.CompletedTask;
-        }
-
-        public Task<string> GetCaptchaAsync(string modile)
-        {
-            var captcha = _random.Next(0, 9999).ToString().PadLeft(4, '0');
-            return Task.FromResult(captcha);
-        }
+        var captcha = _random.Next(0, 9999).ToString().PadLeft(4, '0');
+        return Task.FromResult(captcha);
     }
 }

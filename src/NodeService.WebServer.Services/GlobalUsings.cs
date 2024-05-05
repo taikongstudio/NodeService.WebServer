@@ -1,6 +1,4 @@
-﻿
-
-global using FluentFTP;
+﻿global using FluentFTP;
 global using Google.Protobuf;
 global using Google.Protobuf.WellKnownTypes;
 global using Grpc.Core;
@@ -26,4 +24,3 @@ global using System.Threading;
 global using System.Threading.Tasks;
 global using System.Threading.Tasks.Dataflow;
 global using static NodeService.Infrastructure.Models.JobExecutionReport.Types;
-

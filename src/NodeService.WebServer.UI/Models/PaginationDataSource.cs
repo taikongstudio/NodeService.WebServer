@@ -1,69 +1,68 @@
 ﻿using AntDesign;
-using NodeService.Infrastructure;
-using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Models;
 
-namespace NodeService.WebServer.UI.Models
+namespace NodeService.WebServer.UI.Models;
+
+public class PaginationDataSource<TElement, TQueryParameters>
+    where TElement : class, new()
+    where TQueryParameters : PaginationQueryParameters, new()
 {
-    public class PaginationDataSource<T>
-        where T : ModelBase, new()
+    private readonly Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement>>> _queryFunc;
+    private readonly Action _stateChangedAction;
+
+    public PaginationDataSource(
+        Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement>>> queryHandler,
+        Action stateChangedAction)
     {
-        private readonly ApiService _apiService;
-
-        public PaginationDataSource(ApiService apiService)
-        {
-            _apiService = apiService;
-
-        }
-
-        public int PageIndex { get; set; } = 1;
-
-        public int TotalCount { get; set; }
-
-        public int PageSize { get; set; } = 20;
-
-        public IEnumerable<T> Items { get; private set; } = [];
-
-        public IEnumerable<T> ItemsSource { get; private set; } = [];
-
-        public Func<T, bool> Filter { get; set; }
-
-        public void SetItemsSource(IEnumerable<T> itemsSource)
-        {
-            ItemsSource = itemsSource;
-        }
-
-        public void Refresh()
-        {
-            if (this.Filter != null)
-            {
-                this.Items = this.ItemsSource.Where(Filter);
-            }
-            else
-            {
-                this.Items = this.ItemsSource;
-            }
-            this.TotalCount = this.Items.Count();
-        }
-
-        public async Task UpdateSourceAsync(CancellationToken cancellationToken = default)
-        {
-            var pageApiResponse = await _apiService.QueryConfigurationListAsync<T>(
-                QueryParameters.All,
-                cancellationToken);
-            this.SetItemsSource(pageApiResponse.Result);
-            this.Refresh();
-            this.TotalCount = pageApiResponse.TotalCount;
-
-        }
-
-        public async Task OnPageSizeChanged(PaginationEventArgs e)
-        {
-            this.PageIndex = e.Page;
-            this.PageSize = e.PageSize;
-            await this.UpdateSourceAsync();
-        }
-
+        _queryFunc = queryHandler;
+        _stateChangedAction = stateChangedAction;
     }
 
+    public int PageIndex { get; set; } = 1;
+
+    public int TotalCount { get; set; }
+
+    public int PageSize { get; set; } = 10;
+
+    public bool IsLoading { get; set; }
+
+    public Func<TElement, Task> ItemInitializer { get; set; }
+
+    public IEnumerable<TElement> ItemsSource { get; private set; } = [];
+
+    public TQueryParameters QueryParameters { get; } = new();
+
+    public virtual async Task RefreshAsync()
+    {
+        IsLoading = true;
+        RaiseStateChanged();
+        var rsp = await _queryFunc.Invoke(QueryParameters, default);
+        PageSize = rsp.PageSize;
+        PageIndex = rsp.PageIndex;
+        TotalCount = Math.Max(rsp.TotalCount, rsp.PageSize);
+        await InitItemsAsync(rsp.Result);
+        IsLoading = false;
+        RaiseStateChanged();
+    }
+
+    protected void RaiseStateChanged()
+    {
+        _stateChangedAction();
+    }
+
+    private async Task InitItemsAsync(IEnumerable<TElement> itemsSource)
+    {
+        if (itemsSource != null && ItemInitializer != null)
+            foreach (var item in itemsSource)
+                await ItemInitializer.Invoke(item);
+        ItemsSource = itemsSource ?? [];
+    }
+
+
+    public virtual async Task OnPaginationEvent(PaginationEventArgs e)
+    {
+        QueryParameters.PageIndex = e.Page;
+        QueryParameters.PageSize = e.PageSize;
+        await RefreshAsync();
+    }
 }

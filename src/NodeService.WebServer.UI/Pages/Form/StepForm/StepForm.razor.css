@@ -3,70 +3,85 @@
 /* stylelint-disable */
 /* stylelint-disable declaration-bang-space-before,no-duplicate-selectors,string-no-newline */
 .card {
-  margin-bottom: 24px;
+    margin-bottom: 24px;
 }
+
 .heading {
-  margin: 0 0 16px 0;
-  font-size: 14px;
-  line-height: 22px;
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    line-height: 22px;
 }
+
 .steps.ant-steps {
-  max-width: 750px;
-  margin: 16px auto;
+    max-width: 750px;
+    margin: 16px auto;
 }
+
 .errorIcon {
-  margin-right: 24px;
-  color: #ff4d4f;
-  cursor: pointer;
+    margin-right: 24px;
+    color: #ff4d4f;
+    cursor: pointer;
 }
+
 .errorIcon span.anticon {
-  margin-right: 4px;
+    margin-right: 4px;
 }
+
 .errorPopover :global .ant-popover-inner-content {
-  min-width: 256px;
-  max-height: 290px;
-  padding: 0;
-  overflow: auto;
+    min-width: 256px;
+    max-height: 290px;
+    padding: 0;
+    overflow: auto;
 }
+
 .errorListItem {
-  padding: 8px 16px;
-  list-style: none;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: all 0.3s;
+    padding: 8px 16px;
+    list-style: none;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.3s;
 }
+
 .errorListItem:hover {
-  background: #e6f7ff;
+    background: #e6f7ff;
 }
+
 .errorListItem:last-child {
-  border: 0;
+    border: 0;
 }
+
 .errorListItem .errorIcon {
-  float: left;
-  margin-top: 4px;
-  margin-right: 12px;
-  padding-bottom: 22px;
-  color: #ff4d4f;
+    float: left;
+    margin-top: 4px;
+    margin-right: 12px;
+    padding-bottom: 22px;
+    color: #ff4d4f;
 }
+
 .errorListItem .errorField {
-  margin-top: 2px;
-  color: rgba(0, 0, 0, 0.45);
-  font-size: 12px;
+    margin-top: 2px;
+    color: rgba(0, 0, 0, 0.45);
+    font-size: 12px;
 }
+
 .editable td {
-  padding-top: 13px !important;
-  padding-bottom: 12.5px !important;
+    padding-top: 13px !important;
+    padding-bottom: 12.5px !important;
 }
+
 .advancedForm + div {
-  padding-bottom: 64px;
+    padding-bottom: 64px;
 }
+
 .advancedForm :global .ant-form .ant-row:last-child .ant-form-item {
-  margin-bottom: 24px;
+    margin-bottom: 24px;
 }
+
 .advancedForm :global .ant-table td {
-  transition: none !important;
+    transition: none !important;
 }
+
 .optional {
-  color: rgba(0, 0, 0, 0.45);
-  font-style: normal;
+    color: rgba(0, 0, 0, 0.45);
+    font-style: normal;
 }

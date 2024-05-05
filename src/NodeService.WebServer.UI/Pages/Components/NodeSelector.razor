@@ -1,0 +1,163 @@
+﻿@inject ApiService ApiService
+@inject NotificationService _notice
+@inherits Selector<NodeInfoModel>
+<GridRow>
+    <Button Shape="@ButtonShape.Circle"
+            Icon="@IconType.Outline.Reload"
+            OnClick="_dataSource.RefreshAsync"
+            Type="primary"
+            Style="margin-bottom:4px;margin-left:4px;">
+    </Button>
+    <Select DataSource="@_nodeSettings.IpAddressMappings"
+            Value="@_dataSource.QueryParameters.AreaTag"
+            OnSelectedItemChanged="OnSelectedAreaTagChanged"
+            TItem="StringEntry"
+            Style="width:200px"
+            TItemValue="string"
+            DefaultActiveFirstOption
+            LabelName="@nameof(StringEntry.Name)"
+            ValueName="@nameof(StringEntry.Tag)"/>
+    <RadioGroup
+        Style="margin-left:20px"
+        ValueChanged="(NodeStatus status) => OnSelectedStatusChanged(status)"
+        Value="@_dataSource.QueryParameters.Status"
+        Size="middle">
+        <Radio RadioButton Value="@(NodeStatus.All)">全部状态</Radio>
+        <Radio RadioButton Value="@(NodeStatus.Online)">在线</Radio>
+        <Radio RadioButton Value="@(NodeStatus.Offline)">离线</Radio>
+    </RadioGroup>
+
+</GridRow>
+
+<GridRow>
+    <div style="margin:10px 0px;padding:10px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
+        @if (SelectedItems != null)
+        {
+            foreach (var item in SelectedItems)
+            {
+                if (item == null)
+                {
+                    continue;
+                }
+
+                <Tag @key="item.Id" Closable OnClose="() => RemoveSelectedItem(item)">
+                    <Badge Status="@(GetStatus(item.Status))" Text="@item.Name"></Badge>
+                </Tag>
+            }
+        }
+    </div>
+
+</GridRow>
+
+<GridRow>
+
+    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.RefreshAsync"/>
+</GridRow>
+<GridRow>
+    <GridCol Flex=@("auto")>
+        <Table Size="TableSize.Small"
+               OnPageIndexChange="@_dataSource.OnPaginationEvent"
+               OnPageSizeChange="@_dataSource.OnPaginationEvent"
+               PageSize="@_dataSource.PageSize"
+               PageIndex="@_dataSource.PageIndex"
+               Total="@_dataSource.TotalCount"
+               DataSource="@_dataSource.ItemsSource"
+               Loading="@_dataSource.IsLoading"
+               SelectedRows="@SelectedItems"
+               SelectedRowsChanged="@SelectedItemsChanged"
+               RowKey="x => x.Id">
+            <ColumnDefinitions Context="ctx">
+                <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>
+                <PropertyColumn Property="c => c.Id" Title="标志"></PropertyColumn>
+                <PropertyColumn Property="c => c.Name" Title="节点名称"></PropertyColumn>
+                <PropertyColumn Property="c => c.Profile.Usages" Title="用途"></PropertyColumn>
+                <PropertyColumn Property="c => c.Profile.IpAddress" Title="Ip地址"></PropertyColumn>
+            </ColumnDefinitions>
+        </Table>
+    </GridCol>
+
+</GridRow>
+
+
+@code {
+
+    NodeSettings _nodeSettings = new();
+
+
+    private PaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
+
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new PaginationDataSource<NodeInfoModel, QueryNodeListParameters>(ApiService.QueryNodeListAsync, StateHasChanged);
+        _dataSource.QueryParameters.AreaTag = "*";
+        _dataSource.QueryParameters.Status = NodeStatus.All;
+        _dataSource.QueryParameters.PageIndex = 1;
+        _dataSource.QueryParameters.PageSize = 10;
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        await QueryNodeSettingsAsync();
+        _dataSource.QueryParameters.Keywords = null;
+        _dataSource.QueryParameters.PageIndex = 1;
+        await _dataSource.RefreshAsync();
+    }
+
+    private async Task QueryNodeSettingsAsync()
+    {
+        try
+        {
+            var apiResponse = await ApiService.QueryNodeSettingsAsync();
+            if (apiResponse.ErrorCode == 0)
+            {
+                _nodeSettings = apiResponse.Result ?? new NodeSettings();
+                _dataSource.QueryParameters.AreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault()?.Tag;
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
+        }
+    }
+
+    private async Task OnSelectedAreaTagChanged(StringEntry value)
+    {
+        _dataSource.QueryParameters.AreaTag = value?.Tag;
+        await _dataSource.RefreshAsync();
+    }
+
+    private async Task OnSelectedStatusChanged(NodeStatus status)
+    {
+        _dataSource.QueryParameters.Status = status;
+        await _dataSource.RefreshAsync();
+    }
+
+    private string GetStatus(NodeStatus status)
+    {
+        switch (status)
+        {
+            case NodeStatus.Offline:
+                return BadgeStatus.Warning;
+            case NodeStatus.Online:
+                return BadgeStatus.Success;
+            default:
+                return BadgeStatus.Processing;
+        }
+    }
+
+}

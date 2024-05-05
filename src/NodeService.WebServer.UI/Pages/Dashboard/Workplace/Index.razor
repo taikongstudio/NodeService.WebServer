@@ -1,7 +1,6 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Dashboard.Workplace
-@using System.Text.RegularExpressions
-@using NodeService.WebServer.Extensions
 @page "/dashboard/workplace"
+@using System.Text.RegularExpressions
 
 <PageContainer Title="Workplace">
     <Breadcrumb>
@@ -14,7 +13,7 @@
     <Content>
         <div class="pageHeaderContent__b__0">
             <div class="avatar">
-                <Avatar size="large" src="https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png" />
+                <Avatar size="large" src="https://gw.alipayobjects.com/zos/antfincdn/XAosXuNZyF/BiazfanxmamNRoxxVxka.png"/>
             </div>
             <div class="content">
                 <div class="contentTitle">
@@ -29,13 +28,13 @@
     <ExtraContent>
         <div class="extraContent">
             <div class="statItem">
-                <Statistic Title="@("Number of Items")" Value="56" />
+                <Statistic Title="@("Number of Items")" Value="56"/>
             </div>
             <div class="statItem">
-                <Statistic Title="@("Rank within the Team")" Value="8" Suffix="@("/ 24")" />
+                <Statistic Title="@("Rank within the Team")" Value="8" Suffix="@("/ 24")"/>
             </div>
             <div class="statItem">
-                <Statistic Title="@("Project Visit")" Value="2223" />
+                <Statistic Title="@("Project Visit")" Value="2223"/>
             </div>
         </div>
     </ExtraContent>
@@ -50,7 +49,8 @@
                         <a href="/">All items</a>
                     </Extra>
                     <ChildContent>
-                        @foreach (var item in _projectNotice) {
+                        @foreach (var item in _projectNotice)
+                        {
                             <CardGrid Hoverable>
                                 <Card BodyStyle="padding: 0px;" Bordered="false">
                                     <CardMeta>
@@ -69,7 +69,8 @@
                                     </CardMeta>
                                     <div class="projectItemContent">
                                         <a href="@item.MemberLink">@item.Member</a>
-                                        @if (!string.IsNullOrEmpty(item.UpdatedAt)) {
+                                        @if (!string.IsNullOrEmpty(item.UpdatedAt))
+                                        {
                                             <span class="datetime" title="@item.UpdatedAt">
 
                                             </span>
@@ -96,18 +97,22 @@
                                         <a class="username">@context.User.Name</a>
                                         &nbsp;
                                         <span class="event">
-                                            @foreach (var str in Regex.Split(context.Template, @"@\{([^{}]*)\}")) {
-                                                if (str == "group") {
+                                            @foreach (var str in Regex.Split(context.Template, @"@\{([^{}]*)\}"))
+                                            {
+                                                if (str == "group")
+                                                {
                                                     <a href="@context.Group.Link" key="@context.Group.Name">
                                                         @context.Group.Name
                                                     </a>
                                                 }
-                                                else if (str == "project") {
+                                                else if (str == "project")
+                                                {
                                                     <a href="@context.Project.Link" key="@context.Project.Name">
                                                         @context.Project.Name
                                                     </a>
                                                 }
-                                                else {
+                                                else
+                                                {
                                                     @str
                                                 }
                                             }
@@ -123,13 +128,13 @@
                 <Card Style="margin-bottom: 24px;"
                       Title="Quick Start / Quick Navigation"
                       BodyStyle="padding: 0px;">
-                    <EditableLinkGroup Links="_links" />
+                    <EditableLinkGroup Links="_links"/>
                 </Card>
 
                 <Card Style="margin-bottom: 24px;"
                       Title="XX Index">
                     <div class="chart">
-                        <NodeService.WebServer.UI.Pages.Dashboard.Workplace.Radar />
+                        <NodeService.WebServer.UI.Pages.Dashboard.Workplace.Radar/>
                     </div>
                 </Card>
 
@@ -137,10 +142,11 @@
                       Title="Team">
                     <div class="members">
                         <Row Gutter="48">
-                            @foreach (var item in _projectNotice) {
+                            @foreach (var item in _projectNotice)
+                            {
                                 <AntDesign.Col Span="12" Style="padding-left: 24px; padding-right: 24px;">
                                     <a href="@item.Href">
-                                        <Avatar Src="@item.Logo" Size="small" />
+                                        <Avatar Src="@item.Logo" Size="small"/>
                                         <span class="member">@item.Member</span>
                                     </a>
                                 </AntDesign.Col>

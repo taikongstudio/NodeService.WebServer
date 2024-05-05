@@ -4,173 +4,287 @@
 @inject ApiService ApiService
 @inject IMessageService _message
 @inject ConfirmService _confirmService
+@inject NavigationManager NavigationManager
+@implements IDisposable
 
 <GridContent>
     <Modal Width="800"
            Title="@_modalTitle"
            Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
-           OnOk="@HandleEditFormOk" 
+           OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
         <Form Model="@_editModel" Size="@AntSizeLDSType.Default"
-              LabelColSpan="4" 
+              LabelColSpan="4"
               Layout="@FormLayout.Horizontal"
               WrapperColSpan="20"
               OnFinish="OnEditFormFinish"
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
             <FormItem Label="名称">
-                <Input @bind-Value="@context.Name"  />
-             </FormItem>
-             <FormItem Label="描述">
-                <Input @bind-Value="@context.Description" />
-             </FormItem>
-             <FormItem Label="类型">
-                <Input @bind-Value="@context.FullName" />
-             </FormItem>
-             <FormItem Label="选项编辑器器">
-                <Select DataSource="@_optionEditors" 
-                        DefaultValue="@(this._optionEditors.FirstOrDefault())"
+                <Input @bind-Value="@context.Name"/>
+            </FormItem>
+            <FormItem Label="描述">
+                <Input @bind-Value="@context.Description"/>
+            </FormItem>
+            <FormItem Label="类型">
+                <Input @bind-Value="@context.FullName"/>
+            </FormItem>
+            <FormItem Label="选项编辑器器">
+                <Select DataSource="@_optionEditors"
+                        DefaultValue="@(_optionEditors.FirstOrDefault())"
                         @bind-Value="@_selectedEditor"
                         LabelName="@nameof(TypedEditor<OptionValueType>.Name)"
-                        Style="width:200px" />
-                <Button OnClick="AddOptionValueEditor" Disabled="@(this._selectedEditor==null)" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                    添加
-                </Button>
-                <Button OnClick="RemoveSelectedOptionValueEditors" Disabled="@(this._selectedOptionValueEditors.IsNullOrEmpty())" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                    删除
-                </Button>
-                <StringEntryTable DataSource="@context.OptionValueEditors"
+                        Style="width:200px"/>
+                <StringEntryTable ItemsSource="@context.OptionValueEditors"
                                   NameTitle="字段"
                                   ValueTitle="编辑器"
                                   IsValueEditable="false"
-                                  @bind-SelectedItems="@_selectedOptionValueEditors"
-                                  RemoveItemAction="@RemoveSelectedOptionValueEditor" />
-             </FormItem>
+                                  AddingNewItem="OnOptionValueAdding"/>
+            </FormItem>
 
         </Form>
     </Modal>
 
     <Space Style="margin-bottom:16px">
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新建配置</Button>
+            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
         </SpaceItem>
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="QueryConfigurationListAsync">刷新</Button>
+            <Button Type="@ButtonType.Primary" OnClick="_dataSource.ForceRequest">刷新</Button>
         </SpaceItem>
 
     </Space>
-<Table @ref="_table" RowExpandable="c=>true" Size="TableSize.Small" Loading="_loading" EnableVirtualization="true" TItem="JobTypeDescConfigModel"
-           Resizable
-           OnChange="OnTableChange"
-           DataSource="@_dataSource.Items"
-           PageIndex="_dataSource.PageIndex"
-           PageSize="_dataSource.PageSize"
-           OnPageIndexChange="@_dataSource.OnPageSizeChanged"
-           OnPageSizeChange="@_dataSource.OnPageSizeChanged">
+    <Table @ref="_table" 
+        RowExpandable="c => true" 
+        Size="TableSize.Small" 
+        Loading="@_dataSource.IsLoading"
+        EnableVirtualization="false"
+        TItem="JobTypeDescConfigModel"
+        Resizable
+        OnChange="OnTableChange"
+        DataSource="@_dataSource.ItemsSource"
+        PageIndex="_dataSource.PageIndex"
+        PageSize="_dataSource.PageSize"
+        OnPageIndexChange="@_dataSource.OnPaginationEvent"
+        OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="4">
                     <Title Level="3">作业类型描述配置</Title>
                 </GridCol>
                 <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
         </TitleTemplate>
-    <ColumnDefinitions>
-            <Selection Key="@context.Id" Type="checkbox" />
-            <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
-             <PropertyColumn Title="名称" Sortable Property="c=>c.Name"></PropertyColumn>
-             <PropertyColumn Title="类型" Sortable="true" Property="c=>c.FullName"></PropertyColumn>
-             <PropertyColumn Title="描述" Sortable="true" Property="c=>c.Description"></PropertyColumn>
-             <ActionColumn Fixed="right" Width="250" Title="操作">
-                 <CellRender Context="cellData">
-                     <Space>
-                         <SpaceItem>
-                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<JobTypeDescConfigModel>())"></Button>
-                         </SpaceItem>
+        <ColumnDefinitions>
+            <Selection Key="@context.Id" Type="checkbox"/>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="类型" Sortable="true" Property="c => c.FullName"></PropertyColumn>
+            <PropertyColumn Title="描述" Sortable="true" Property="c => c.Description"></PropertyColumn>
+            <ActionColumn Fixed="right" Width="250" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
                         <SpaceItem>
-                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
-                         </SpaceItem>
-                         <SpaceItem>
-                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
-                         </SpaceItem>
-
-                         @if (cellData.RowData.Expanded)
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
-                            </SpaceItem>
-                        }
-                        else
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
-                            </SpaceItem>
-                        }
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<JobTypeDescConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<JobTypeDescConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
+                        </SpaceItem>
 
                     </Space>
                 </CellRender>
             </ActionColumn>
-    </ColumnDefinitions>
-    <ExpandTemplate>
-         <Tabs Animated>
+        </ColumnDefinitions>
+        <ExpandTemplate>
+            <Tabs Animated>
                 <TabPane Tab="选项编辑器" Key="1">
-                    <StringEntryTable DataSource="@context.Data.OptionValueEditors"
+                    <StringEntryTable ItemsSource="@context.Data.OptionValueEditors"
                                       NameTitle="备注"
                                       ValueTitle="编辑器"
-                                      IsEditable="false" />
+                                      IsEditable="false"/>
                 </TabPane>
             </Tabs>
-    </ExpandTemplate>
-</Table>
+        </ExpandTemplate>
+    </Table>
 </GridContent>
 
 @code {
     ITable _table;
-    string _searchText;
     string _modalTitle;
-    bool _editFormVisible = false;
-    bool _editFormSubmitting = false;
-    bool _editFormConfirmLoading = false;
+    bool _editFormVisible;
+    bool _editFormSubmitting;
+    bool _editFormConfirmLoading;
     Form<JobTypeDescConfigModel> _editForm;
-    JobTypeDescConfigModel _editModel = new JobTypeDescConfigModel();
+    JobTypeDescConfigModel _editModel = new();
 
     IEnumerable<StringEntry> _selectedOptionValueEditors;
 
-    List<TypedEditor<OptionValueType>> _optionEditors = new List<TypedEditor<OptionValueType>>();
+    readonly List<TypedEditor<OptionValueType>> _optionEditors = new();
 
     TypedEditor<OptionValueType> _selectedEditor;
 
 
     private bool _loading;
 
-    private PaginationDataSource<JobTypeDescConfigModel> _dataSource;
+    private RoutedPaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new PaginationDataSource<JobTypeDescConfigModel>(ApiService);
-        _dataSource.Filter = FilterModel;
+        _optionEditors.AddRange(new TypedEditor<OptionValueType>[]
+            {
+                new()
+                {
+                    Name = "布尔编辑器",
+                    Value = OptionValueType.BooleanValue
+                },
+                new()
+                {
+                    Name = "文本编辑器",
+                    Value = OptionValueType.TextValue
+                },
+                new()
+                {
+                    Name = "Python代码编辑器",
+                    Value = OptionValueType.PythonCodeValue
+                },
+                new()
+                {
+                    Name = "批处理脚本代码编辑器",
+                    Value = OptionValueType.BatchScriptValue
+                },
+                new()
+                {
+                    Name = "数字编辑器",
+                    Value = OptionValueType.NumberValue
+                },
+                new()
+                {
+                    Name = "文本数组编辑器",
+                    Value = OptionValueType.TextArrayValue
+                },
+                new()
+                {
+                    Name = "Kafka配置选择器",
+                    Value = OptionValueType.KafkaConfigurationValue
+                },
+                new()
+                {
+                    Name = "Mysql配置选择器",
+                    Value = OptionValueType.MysqlConfigurationValue
+                },
+                new()
+                {
+                    Name = "Ftp配置选择器",
+                    Value = OptionValueType.FtpConfigurationValue
+                },
+                new()
+                {
+                    Name = "Kafka列表编辑器",
+                    Value = OptionValueType.KafkaConfigurationListValue
+                },
+                new()
+                {
+                    Name = "Mysql列表编辑器",
+                    Value = OptionValueType.MysqlConfigurationListValue
+                },
+                new()
+                {
+                    Name = "Ftp上传配置选择器",
+                    Value = OptionValueType.FtpUploadConfigurationValue
+                },
+                new()
+                {
+                    Name = "Ftp下载配置选择器",
+                    Value = OptionValueType.FtpDownloadConfigurationValue
+                },
+                new()
+                {
+                    Name = "Ftp列表编辑器",
+                    Value = OptionValueType.FtpConfigurationListValue
+                },
+                new()
+                {
+                    Name = "日志上传编辑器",
+                    Value = OptionValueType.LogUploadConfigurationValue
+                },
+                new()
+                {
+                    Name = "插件编辑器",
+                    Value = OptionValueType.PackageConfigurationValue
+                },
+                new()
+                {
+                    Name = "节点环境变量编辑器",
+                    Value = OptionValueType.NodeEnvVarsConfigurationValue
+                },
+                new()
+                {
+                    Name = "RestApi配置选择器",
+                    Value = OptionValueType.RestApiConfigurationValue
+                },
+                new()
+                {
+                    Name = "Ftp上传列表编辑器",
+                    Value = OptionValueType.FtpUploadConfigurationListValue
+                },
+                new()
+                {
+                    Name = "日志上传列表编辑器",
+                    Value = OptionValueType.LogUploadConfigurationListValue
+                },
+                new()
+                {
+                    Name = "插件列表编辑器",
+                    Value = OptionValueType.PackageConfigurationListValue
+                },
+                new()
+                {
+                    Name = "节点环境变量列表编辑器",
+                    Value = OptionValueType.NodeEnvVarsConfigurationListValue
+                },
+                new()
+                {
+                    Name = "RestApi配置列表编辑器",
+                    Value = OptionValueType.FtpDownloadConfigurationValue
+                },
+                new()
+                {
+                    Name = "Ftp下载配置列表编辑器",
+                    Value = OptionValueType.FtpUploadConfigurationListValue
+                }
+            }
+        );
+
+        _dataSource = new RoutedPaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters>(
+            NavigationManager,
+            ApiService.QueryJobTypeDescConfigurationListAsync,
+            StateHasChanged);
+        _dataSource.Request();
+
         base.OnInitialized();
     }
 
     private void ShowEditForm(JobTypeDescConfigModel? model = null)
     {
-        this._editFormVisible = true;
+        _editFormVisible = true;
         if (model == null)
         {
-            this._editModel = new JobTypeDescConfigModel()
-                {
-                    Id = Guid.NewGuid().ToString()
-                };
-            this._modalTitle = "新建配置";
-
+            _editModel = new JobTypeDescConfigModel
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+            _modalTitle = "新建配置";
         }
         else
         {
-            this._editModel = model.ReferenceClone<JobTypeDescConfigModel>();
-            this._modalTitle = "编辑配置";
+            _editModel = model.ReferenceClone<JobTypeDescConfigModel>();
+            _modalTitle = "编辑配置";
         }
     }
 
@@ -179,63 +293,62 @@
     {
         try
         {
-            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel);
+            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
-                this._editFormVisible = false;
+                await _dataSource.RefreshAsync();
+                _editFormVisible = false;
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.Message,
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
         }
         finally
         {
-            this._editFormSubmitting = false;
-            this._editFormConfirmLoading = false;
+            _editFormSubmitting = false;
+            _editFormConfirmLoading = false;
         }
-
     }
 
     private void OnEditFormFinishFailed(EditContext editContext)
     {
-        this._editFormSubmitting = false;
-        this._editFormConfirmLoading = false;
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
     }
 
     private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
-        var options = new ConfirmButtonOptions()
+        var options = new ConfirmButtonOptions
+        {
+            Button1Props = new ButtonProps
             {
-                Button1Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "确定",
-                    Type = ButtonType.Primary,
-                },
-                Button2Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "取消"
-                }
-            };
+                ChildContent = "确定",
+                Type = ButtonType.Primary
+            },
+            Button2Props = new ButtonProps
+            {
+                ChildContent = "取消"
+            }
+        };
         return _confirmService.Show(
-                content,
-                title,
-                ConfirmButtons.OKCancel,
-                ConfirmIcon.Info,
-                options);
+            content,
+            title,
+            ConfirmButtons.OKCancel,
+            ConfirmIcon.Info,
+            options);
     }
 
     private async Task DeleteConfig(JobTypeDescConfigModel model)
@@ -246,247 +359,70 @@
             {
                 return;
             }
-            var apiResponse = await this.ApiService.RemoveAsync(model);
+
+            var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
+                await _dataSource.RefreshAsync();
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = "加载配置失败",
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = "加载配置失败"
+            });
         }
     }
 
 
     private void HandleEditFormCancel(MouseEventArgs e)
     {
-        this._editFormSubmitting = false;
-        this._editFormVisible = false;
+        _editFormSubmitting = false;
+        _editFormVisible = false;
     }
 
 
     private void HandleEditFormOk(MouseEventArgs e)
     {
-        this._editFormSubmitting = true;
-        this._editForm.Submit();
-
+        _editFormSubmitting = true;
+        _editForm.Submit();
     }
 
-    protected override async Task OnInitializedAsync()
+
+    private void OnOptionValueAdding(AddingNewItemEventArgs e)
     {
-        this._optionEditors.AddRange(new TypedEditor<OptionValueType>[]
-            {
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "布尔编辑器",
-                    Value = OptionValueType.BooleanValue,
-
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "文本编辑器",
-                    Value = OptionValueType.TextValue,
-
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Python代码编辑器",
-                    Value = OptionValueType.PythonCodeValue,
-
-                },
-           new TypedEditor<OptionValueType>()
-                {
-                    Name = "批处理脚本代码编辑器",
-                    Value = OptionValueType.BatchScriptValue,
-
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "数字编辑器",
-                    Value = OptionValueType.NumberValue,
-
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "文本数组编辑器",
-                    Value = OptionValueType.TextArrayValue,
-
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Kafka配置选择器",
-                    Value = OptionValueType.KafkaConfigurationValue,
-
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Mysql配置选择器",
-                    Value = OptionValueType.MysqlConfigurationValue,
-
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Ftp配置选择器",
-                    Value = OptionValueType.FtpConfigurationValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Kafka列表编辑器",
-                    Value = OptionValueType.KafkaConfigurationListValue,
-
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Mysql列表编辑器",
-                    Value = OptionValueType.MysqlConfigurationListValue,
-
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Ftp上传配置选择器",
-                    Value = OptionValueType.FtpUploadConfigurationValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Ftp下载配置选择器",
-                    Value = OptionValueType.FtpDownloadConfigurationValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Ftp列表编辑器",
-                    Value = OptionValueType.FtpConfigurationListValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "日志上传编辑器",
-                    Value = OptionValueType.LogUploadConfigurationValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "插件编辑器",
-                    Value = OptionValueType.PackageConfigurationValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "节点环境变量编辑器",
-                    Value = OptionValueType.NodeEnvVarsConfigurationValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "RestApi配置选择器",
-                    Value = OptionValueType.RestApiConfigurationValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Ftp上传列表编辑器",
-                    Value = OptionValueType.FtpUploadConfigurationListValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "日志上传列表编辑器",
-                    Value = OptionValueType.LogUploadConfigurationListValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "插件列表编辑器",
-                    Value = OptionValueType.PackageConfigurationListValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "节点环境变量列表编辑器",
-                    Value = OptionValueType.NodeEnvVarsConfigurationListValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "RestApi配置列表编辑器",
-                    Value = OptionValueType.FtpDownloadConfigurationValue,
-                },
-            new TypedEditor<OptionValueType>()
-                {
-                    Name = "Ftp下载配置列表编辑器",
-                    Value = OptionValueType.FtpUploadConfigurationListValue,
-                }
-            }
-            );
-        await this.QueryConfigurationListAsync();
-    }
-
-    private async Task QueryConfigurationListAsync()
-    {
-        try
-        {
-            await this._dataSource.UpdateSourceAsync();
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
-        }
-
-    }
-
-    private void RemoveSelectedOptionValueEditor(StringEntry stringEntry)
-    {
-        this._editModel.OptionValueEditors.Remove(stringEntry);
-    }
-
-    private void AddOptionValueEditor()
-    {
-        if (this._selectedEditor == null)
+        if (_selectedEditor == null)
         {
             return;
         }
-        var entry = new StringEntry()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Name = null,
-                Value = this._selectedEditor.Name,
-                Tag = this._selectedEditor.Value.ToString(),
-            };
-        this._editModel.OptionValueEditors.Add(entry);
-        entry.BeginEdit();
+
+        e.DataItem.Name = null;
+        e.DataItem.Value = _selectedEditor.Name;
+        e.DataItem.Tag = _selectedEditor.Value.ToString();
+        e.DataItem.BeginEdit();
     }
 
     private void RemoveSelectedOptionValueEditors()
     {
-        if (this._selectedOptionValueEditors == null)
-        {
-            return;
-        }
-        foreach (var item in this._selectedOptionValueEditors)
-        {
-            this._editModel.OptionValueEditors.Remove(item);
-        }
-    }
-
-    private bool FilterModel(JobTypeDescConfigModel model)
-    {
-        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
-        {
-            return true;
-        }
-        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
     }
 
     void OnTableChange(QueryModel<JobTypeDescConfigModel> query)
     {
-        this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
-        this._dataSource.Refresh();
     }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
+
 }

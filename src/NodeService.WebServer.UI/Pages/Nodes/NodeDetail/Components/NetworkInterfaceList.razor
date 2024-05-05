@@ -1,21 +1,20 @@
 ﻿<Card Bordered="true">
     @if (NetworkInterfaces != null)
     {
-        foreach (var item in this.NetworkInterfaces)
+        foreach (var item in NetworkInterfaces)
         {
             <CardGrid Style="width:25%;text-align:left" Hoverable="true">
                 <p>名称：<Text>@item.Name</Text></p>
-                    <p>网络接口类型：<Text>@item.NetworkInterfaceType</Text></p>
-                    <p>操作状态：<Text>@item.OperationalStatus</Text></p>
-                    <p>Id：<Text>@item.Id</Text></p>
-                    <p>物理地址：<Text>@item.PhysicalAddress</Text></p>
-                    <p>描述：<Text>@item.Description</Text></p>
-                </CardGrid>
+                <p>网络接口类型：<Text>@item.NetworkInterfaceType</Text></p>
+                <p>操作状态：<Text>@item.OperationalStatus</Text></p>
+                <p>Id：<Text>@item.Id</Text></p>
+                <p>物理地址：<Text>@item.PhysicalAddress</Text></p>
+                <p>描述：<Text>@item.Description</Text></p>
+            </CardGrid>
         }
     }
 </Card>
 
 @code {
-    [Parameter]
-    public IEnumerable<NetworkInterfaceModel>? NetworkInterfaces { get; set; }
+    [Parameter] public IEnumerable<NetworkInterfaceModel>? NetworkInterfaces { get; set; }
 }

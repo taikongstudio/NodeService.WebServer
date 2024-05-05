@@ -17,15 +17,15 @@
             </p>
             <div class="contentLink">
                 <a>
-                    <img alt="" src="https://gw.alipayobjects.com/zos/rmsportal/MjEImQtenlyueSmVEfUD.svg" />
+                    <img alt="" src="https://gw.alipayobjects.com/zos/rmsportal/MjEImQtenlyueSmVEfUD.svg"/>
                     Quick start
                 </a>
                 <a>
-                    <img alt="" src="https://gw.alipayobjects.com/zos/rmsportal/NbuDUAuBlIApFuDvWiND.svg" />
+                    <img alt="" src="https://gw.alipayobjects.com/zos/rmsportal/NbuDUAuBlIApFuDvWiND.svg"/>
                     Product Introduction
                 </a>
                 <a>
-                    <img alt="" src="https://gw.alipayobjects.com/zos/rmsportal/ohOEPSYdDTNnyMbGuyLb.svg" />
+                    <img alt="" src="https://gw.alipayobjects.com/zos/rmsportal/ohOEPSYdDTNnyMbGuyLb.svg"/>
                     Product Documentation
                 </a>
             </div>
@@ -34,7 +34,7 @@
     <ExtraContent>
         <div class="extraImg">
             <img alt="This is a title"
-                 src="https://gw.alipayobjects.com/zos/rmsportal/RzwpdLnhmvDJToTdfDPe.png" />
+                 src="https://gw.alipayobjects.com/zos/rmsportal/RzwpdLnhmvDJToTdfDPe.png"/>
         </div>
     </ExtraContent>
     <ChildContent>
@@ -44,16 +44,18 @@
                      ItemLayout="ListItemLayout.Horizontal"
                      Grid="_listGridType">
                 <ListItem NoFlex>
-                    @if (string.IsNullOrEmpty(context.Id)) {
+                    @if (string.IsNullOrEmpty(context.Id))
+                    {
                         <Button Type="dashed" class="newButton">
-                            <Icon Type="plus" Theme="outline" /> Add Product
+                            <Icon Type="plus" Theme="outline"/> Add Product
                         </Button>
                     }
-                    else {
+                    else
+                    {
                         <Card Hoverable Bordered Class="card" Actions="_actions">
                             <CardMeta>
                                 <AvatarTemplate>
-                                    <img alt="" class="cardAvatar" src="@context.Avatar" />
+                                    <img alt="" class="cardAvatar" src="@context.Avatar"/>
                                 </AvatarTemplate>
                                 <TitleTemplate>
                                     <a>@context.Title</a>
@@ -77,9 +79,9 @@
 {
     private static readonly RenderFragment Operate = @<a key="option1">Operation one</a>;
 
-private readonly RenderFragment[] _actions =
-{
+    private readonly RenderFragment[] _actions =
+    {
         Operate,
-@<a key="option2">Operation two</a>,
+        @<a key="option2">Operation two</a>
     };
 }

@@ -21,7 +21,8 @@
                 <Button Shape="@ButtonShape.Circle"
                         Type="@ButtonType.Primary"
                         Icon="@IconType.Outline.CloseCircle"
-                        OnClick="StopAsync"></Button>
+                        OnClick="StopAsync">
+                </Button>
             </SpaceItem>
         }
         else
@@ -31,7 +32,8 @@
                         Type="@ButtonType.Primary"
                         Disabled="@_loadMoreButtonDisabled"
                         Icon="@IconType.Outline.Reload"
-                        OnClick="StartLoadLogsAsync"></Button>
+                        OnClick="StartLoadLogsAsync">
+                </Button>
             </SpaceItem>
         }
 
@@ -43,17 +45,14 @@
         </SpaceItem>
 
     </Space>
-    <StandaloneCodeEditor @ref="@_viewer" CssClass="jobLogViwer" OnDidInit="StartLoadLogsAsync" ConstructionOptions="EditorConstructionOptions" />
+    <StandaloneCodeEditor @ref="@_viewer" CssClass="jobLogViwer" OnDidInit="StartLoadLogsAsync" ConstructionOptions="EditorConstructionOptions"/>
 
 
 </Modal>
 
 
-
-
 @code {
-    [Parameter]
-    public string? LogQueryId { get; set; }
+    [Parameter] public string? LogQueryId { get; set; }
 
 
     StandaloneCodeEditor _viewer = null!;
@@ -68,45 +67,43 @@
 
     async Task StartLoadLogsAsync()
     {
-
         try
         {
             _loadMoreButtonDisabled = true;
             _showStopButton = true;
             InitCancellationTokenSource();
-            await this._viewer.UpdateOptions(new EditorUpdateOptions()
-                {
-                    ReadOnly = true,
-                    LineNumbersMinChars = 10,
-                });
-
-            while (!this._cancellationTokenSource.IsCancellationRequested)
+            await _viewer.UpdateOptions(new EditorUpdateOptions
             {
-                if (!await LoadNextLogPageAsync(this._cancellationTokenSource.Token))
+                ReadOnly = true,
+                LineNumbersMinChars = 10
+            });
+
+            while (!_cancellationTokenSource.IsCancellationRequested)
+            {
+                if (!await LoadNextLogPageAsync(_cancellationTokenSource.Token))
                 {
                     break;
                 }
             }
-
         }
         catch (TaskCanceledException ex)
         {
-            if (ex.CancellationToken != this._cancellationTokenSource.Token)
+            if (ex.CancellationToken != _cancellationTokenSource.Token)
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = ex.ToString(),
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
         finally
         {
@@ -114,20 +111,22 @@
             _showStopButton = false;
             StateHasChanged();
         }
-
     }
 
     async Task<bool> LoadNextLogPageAsync(CancellationToken cancellationToken = default)
     {
-
-        int pageSize = 512;
+        var pageSize = 512;
         var apiResponse = await ApiService.QueryTaskExecutionInstanceLogAsync(LogQueryId,
-         new QueryParameters(_logPageIndex, pageSize),
-         cancellationToken
+            new PaginationQueryParameters
+            {
+                PageIndex = _logPageIndex,
+                PageSize = pageSize
+            },
+            cancellationToken
         );
         if (apiResponse.ErrorCode == 0)
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
 
             foreach (var item in apiResponse.Result)
             {
@@ -137,53 +136,50 @@
             var log = sb.ToString();
 
             IEnumerable<string> allLogPages = [];
-            int lastPageItemsCount = 0;
-            int resultCount = apiResponse.Result.Count();
+            var lastPageItemsCount = 0;
+            var resultCount = apiResponse.Result.Count();
             if (resultCount == apiResponse.PageSize)
             {
-                this._logPages.Add(log);
-                allLogPages = this._logPages;
+                _logPages.Add(log);
+                allLogPages = _logPages;
                 _logPageIndex++;
             }
             else
             {
-                allLogPages = this._logPages.Union([log]);
+                allLogPages = _logPages.Union([log]);
                 lastPageItemsCount = resultCount;
             }
-            StringBuilder stringBuilder = new StringBuilder();
+
+            var stringBuilder = new StringBuilder();
             stringBuilder.AppendJoin(string.Empty, allLogPages);
             var allLogText = stringBuilder.ToString();
-            await this._viewer.SetValue(allLogText);
+            await _viewer.SetValue(allLogText);
             _loadedLogEntriesCount = pageSize * _logPages.Count + lastPageItemsCount;
             _totalLogEntriesCount = apiResponse.TotalCount;
             await InvokeAsync(StateHasChanged);
             return lastPageItemsCount == 0 && _totalLogEntriesCount > 0;
         }
-        else
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = apiResponse.Message,
-                });
 
-        }
+        await _notice.Open(new NotificationConfig
+        {
+            Message = "错误提示",
+            Description = apiResponse.Message
+        });
         return false;
     }
 
     private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
-            {
-                AutomaticLayout = true,
-                Language = "plaintext",
-                Value = string.Empty
-            };
+        {
+            AutomaticLayout = true,
+            Language = "plaintext",
+            Value = string.Empty
+        };
     }
 
     private void OnModalVisibleChanged(bool visible)
     {
-
     }
 
     private void InitCancellationTokenSource()
@@ -209,30 +205,33 @@
 
     public async Task CloseAsync()
     {
-        if (!this._cancellationTokenSource.IsCancellationRequested)
+        if (!_cancellationTokenSource.IsCancellationRequested)
         {
             _cancellationTokenSource.Cancel();
         }
+
         _logModalVisible = false;
         LogQueryId = null;
         _totalLogEntriesCount = 0;
         _loadedLogEntriesCount = 0;
         _logPageIndex = 0;
         _logPages.Clear();
-        if (this._viewer != null)
+        if (_viewer != null)
         {
-            await this._viewer.SetValue(string.Empty);
+            await _viewer.SetValue(string.Empty);
         }
     }
 
     public Task StopAsync()
     {
-        if (!this._cancellationTokenSource.IsCancellationRequested)
+        if (!_cancellationTokenSource.IsCancellationRequested)
         {
-            this._cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Cancel();
         }
+
         _showStopButton = false;
         StateHasChanged();
         return Task.CompletedTask;
     }
+
 }

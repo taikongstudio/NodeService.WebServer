@@ -37,14 +37,14 @@
                                 <Radio RadioButton Value="@("progress")">Processing</Radio>
                                 <Radio RadioButton Value="@("waiting")">Waiting</Radio>
                             </RadioGroup>
-                            <Search Class="extraContentSearch" Placeholder="Please Enter" @bind-Value="_model.SearchKeyword" />
+                            <Search Class="extraContentSearch" Placeholder="Please Enter" @bind-Value="_model.SearchKeyword"/>
                         </div>
                     </Extra>
                     <ChildContent>
                         <Button Type="dashed"
                                 Style="width: 100%; margin-bottom: 8px;"
                                 OnClick="ShowModal">
-                            <Icon Type="plus" Theme="outline" />
+                            <Icon Type="plus" Theme="outline"/>
                             Add
                         </Button>
 
@@ -70,7 +70,7 @@
                                         <AntDesign.Progress Percent="@context.Percent"
                                                             Status="@_pStatus[context.Status]"
                                                             StrokeWidth="6"
-                                                            Style="width: 180px;" />
+                                                            Style="width: 180px;"/>
                                     </div>
                                 </div>
                             </ListItem>
@@ -85,21 +85,23 @@
 @code
 {
     private static readonly RenderFragment Edit = @<a key="edit">
-    Edit
-</a>;
+                                                      Edit
+                                                  </a>;
 
-private readonly RenderFragment[] _actions =
-{
+    private readonly RenderFragment[] _actions =
+    {
         Edit
     };
 
-private RenderFragment Info(string title, string value, bool bordered = false) {
-return @<div class="headerInfo">
-    <span>@title</span>
-    <p>@value</p>
-    @if (bordered) {
-        <em />
+    private RenderFragment Info(string title, string value, bool bordered = false)
+    {
+        return @<div class="headerInfo">
+                   <span>@title</span>
+                   <p>@value</p>
+                   @if (bordered)
+                   {
+                       <em/>
+                   }
+               </div>;
     }
-</div>;
-}
 }

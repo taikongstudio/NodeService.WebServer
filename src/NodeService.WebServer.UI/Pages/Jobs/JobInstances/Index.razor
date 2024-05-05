@@ -1,98 +1,113 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Jobs.JobInstances
 @page "/Jobs/Instances"
-@using NodeService.Infrastructure.Logging
+@using NodeService.WebServer.UI.Pages.Components
 @using NodeService.WebServer.UI.Pages.Jobs.Components
-@using static NodeService.Infrastructure.Models.JobExecutionReport.Types
+@using static Infrastructure.Models.JobExecutionReport.Types
 @inject ApiService ApiService
 @inject NotificationService _notice
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<style type="text/css">
+.site-tag-plus {
+    background: #fff;
+    border-style: dashed;
+}
+</style>
 
 <GridContent>
     <JobExecutionInstanceLogViewer @ref="@_logViewer"/>
-     <Table Size="TableSize.Small"
-     @ref="_table"
-     Loading="_loading" 
-     ScrollX="1500px"
-     Resizable
-     PageSize="20"
-     OnChange="OnTableChange"
-     EnableVirtualization="true" 
-     TItem="JobExecutionInstanceModel"
-     DataSource="@_dataSource">
+
+    <CommonDialog Closed="OnDialogClosed" @ref="_taskDefinitionSelectorDialog">
+        <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="_selectedJobSchduleConfigList" Mode="SelectionMode.Multiple"/>
+    </CommonDialog>
+    <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
+        <NodeSelector @ref="_nodeSelector" @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple"/>
+    </CommonDialog>
+
+    <Table Size="TableSize.Small"
+           @ref="_table"
+           Loading="@_dataSource.IsLoading"
+           ScrollX="1500px"
+           Resizable
+           PageSize="@_dataSource.PageSize"
+           PageIndex="@_dataSource.PageIndex"
+           OnChange="OnTableChange"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           TItem="JobExecutionInstanceModel"
+           DataSource="@_dataSource.ItemsSource">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="4">
                     <Title Level="3">作业执行实例</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="() => _table?.ReloadData()"/>
                 </GridCol>
+            </GridRow>
+            <GridRow Wrap>
+                <Text>节点：</Text>
+
+                @if (_selectedNodeList != null)
+                {
+                    foreach (var item in _selectedNodeList)
+                    {
+                        <Tag @key="item.Id" Style="height:20px" Closable OnClose="() => _nodeSelector.RemoveSelectedItem(item)">@item.Name</Tag>
+                    }
+                }
+
+                <Tag Class="site-tag-plus" OnClick="ShowNodeSelectorDialogAsync">
+                    <Icon Type="@IconType.Outline.FolderOpen"/>
+                </Tag>
+            </GridRow>
+            <GridRow Wrap>
+                <Text>任务调度配置：</Text>
+                @if (_selectedJobSchduleConfigList != null)
+                {
+                    foreach (var item in _selectedJobSchduleConfigList)
+                    {
+                        <Tag @key="item.Id" Style="height:20px;align-self:center" Closable OnClose="() => _taskDefinitionSelector.RemoveSelectedItem(item)">@item.Name</Tag>
+                    }
+                }
+
+                <Tag Class="site-tag-plus" OnClick="ShowTaskDefinitionSelectorDialogAsync">
+                    <Icon Type="@IconType.Outline.FolderOpen"/>
+                </Tag>
             </GridRow>
             <GridRow>
                 <Space Wrap Style="margin-bottom:16px">
                     <SpaceItem>
-                        <RangePicker ValueExpression="()=>DateTimes" Size="small" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged" />
+                        <RangePicker ValueExpression="() => DateTimes" Size="small" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged"/>
                     </SpaceItem>
                     <SpaceItem>
-                           <Select TItem="NodeInfoModel"
-                            TItemValue="string"
-                            DataSource="@_nodeList"
-                            @bind-Value="@_selectedNodeId"
-                            LabelName="@nameof(NodeInfoModel.Name)"
-                            ValueName="@nameof(NodeInfoModel.Id)"
-                            Placeholder="选择节点"
-                            DefaultActiveFirstOption="false"
-                            EnableSearch
-                            AllowClear
-                            Style="width:200px"
-                            OnSelectedItemChanged="OnSelectedNodeChanged"
-                            OnSearch="OnSearchNode">
-                    </Select>
+                        <Select TItem="JobExeuctionStatusModel"
+                                TItemValue="JobExecutionStatus"
+                                DataSource="@_jobExeuctionStatusList"
+                                @bind-Value="@_selectedStatus"
+                                LabelName="@nameof(JobExeuctionStatusModel.Name)"
+                                ValueName="@nameof(JobExeuctionStatusModel.Value)"
+                                Placeholder="选择状态"
+                                DefaultActiveFirstOption="true"
+                                EnableSearch
+                                Style="width:200px"
+                                OnSelectedItemChanged="OnSelectedStatusChanged"
+                                OnSearch="OnSearchStatus">
+                        </Select>
                     </SpaceItem>
                     <SpaceItem>
-                           <Select 
-                            TItem="JobScheduleConfigModel"
-                            TItemValue="string"
-                            DataSource="@_jobScheduleConfigList"
-                            @bind-Value="@_selectedJobScheduleConfigId"
-                            LabelName="@nameof(JobScheduleConfigModel.Name)"
-                            ValueName="@nameof(JobScheduleConfigModel.Id)"
-                            Placeholder="选择配置"
-                            DefaultActiveFirstOption="false"
-                            EnableSearch
-                            AllowClear
-                            Style="width:200px"
-                            OnSelectedItemChanged="OnSelectedJobScheduleConfigChanged"
-                            OnSearch="OnSearchJobScheduleConfig">
-                    </Select>
-                    </SpaceItem>
-                    <SpaceItem>
-                           <Select TItem="JobExeuctionStatusModel"
-                            TItemValue="JobExecutionStatus"
-                            DataSource="@_jobExeuctionStatusList"
-                            @bind-Value="@_selectedStatus"
-                            LabelName="@nameof(JobExeuctionStatusModel.Name)"
-                            ValueName="@nameof(JobExeuctionStatusModel.Value)"
-                            Placeholder="选择状态"
-                            DefaultActiveFirstOption="true"
-                            EnableSearch
-                            Style="width:200px"
-                            OnSelectedItemChanged="OnSelectedStatusChanged"
-                            OnSearch="OnSearchStatus">
-                    </Select>
-                    </SpaceItem>
-                    <SpaceItem>
-                        <Button Type="@ButtonType.Primary" OnClick="QueryTaskListAsync">查询</Button>
+                        <Button Type="@ButtonType.Primary" OnClick="QueryTaskExecutionInstanceListAsync">查询</Button>
                     </SpaceItem>
 
                 </Space>
             </GridRow>
         </TitleTemplate>
-         <ColumnDefinitions>
-            <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox" />
-             <PropertyColumn Title="标志" Ellipsis  Sortable Property="c=>c.Id"></PropertyColumn>
-             <PropertyColumn Title="名称" Ellipsis  Sortable  Property="c=>c.Name"></PropertyColumn>
-             <PropertyColumn Title="触发源头"  Sortable="true" Property="c=>c.TriggerSource">
-                 @switch (context.TriggerSource)
+        <ColumnDefinitions>
+            <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox"/>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="触发源头" Sortable="true" Property="c => c.TriggerSource">
+                @switch (context.TriggerSource)
                 {
                     case TaskTriggerSource.Schedule:
                         <Text>调度触发</Text>
@@ -100,104 +115,88 @@
                     case TaskTriggerSource.Manual:
                         <Text>手动触发</Text>
                         break;
-                    default:
-                        break;
                 }
-             </PropertyColumn>
-                          <PropertyColumn Title="状态" Sortable="true"  Property="c=>c.Status">
+            </PropertyColumn>
+            <PropertyColumn Title="状态" Sortable="true" Property="c => c.Status">
                 @switch (context.Status)
                 {
                     case JobExecutionStatus.Unknown:
                         <Text>未知</Text>
                         break;
                     case JobExecutionStatus.Triggered:
-                             <Text>已触发</Text>
+                        <Text>已触发</Text>
                         break;
                     case JobExecutionStatus.Pendding:
-                             <Text>等待</Text>
+                        <Text>等待</Text>
                         break;
                     case JobExecutionStatus.Started:
-                             <Text>已启动</Text>
+                        <Text>已启动</Text>
                         break;
                     case JobExecutionStatus.Running:
-                             <Text>运行中</Text>
+                        <Text>运行中</Text>
                         break;
                     case JobExecutionStatus.Finished:
-                             <Text>完成</Text>
+                        <Text>完成</Text>
                         break;
                     case JobExecutionStatus.Cancelled:
-                             <Text>已取消</Text>
+                        <Text>已取消</Text>
                         break;
                     case JobExecutionStatus.Failed:
-                             <Text>失败</Text>
+                        <Text>失败</Text>
                         break;
                     case JobExecutionStatus.PenddingTimeout:
-                             <Text>等待超时</Text>
+                        <Text>等待超时</Text>
                         break;
                 }
             </PropertyColumn>
-             <PropertyColumn Title="触发时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.FireTimeUtc"></PropertyColumn>
-             <PropertyColumn Title="开始时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.ExecutionBeginTimeUtc"></PropertyColumn>
-             <PropertyColumn Title="结束时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c=>c.ExecutionEndTimeUtc"></PropertyColumn>
-             <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c=>c.Message"></PropertyColumn>
-             <ActionColumn Fixed="right"  Width="150"  Title="操作">
-                 <CellRender Context="cellData">
-                     <Space>
-                         @switch(context.Status)
+            <PropertyColumn Title="触发时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="开始时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="结束时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.Message"></PropertyColumn>
+            <ActionColumn Fixed="right" Width="150" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
+                        @switch (context.Status)
                         {
                             case JobExecutionStatus.PenddingTimeout:
                                 <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle" OnClick="()=>RevokeJobAsync(context)" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle"></Button>
-                                 </SpaceItem>
+                                    <Button Shape="@ButtonShape.Circle" OnClick="() => RevokeJobAsync(context)" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle"></Button>
+                                </SpaceItem>
                                 break;
                             case JobExecutionStatus.Failed:
                                 <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle"  Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle"></Button>
-                                 </SpaceItem>
+                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle"></Button>
+                                </SpaceItem>
                                 break;
                             case JobExecutionStatus.Running:
                                 <SpaceItem>
-                                    <Button Danger Shape="@ButtonShape.Circle" OnClick="()=>StopJobAsync(context)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
-                                 </SpaceItem>
+                                    <Button Danger Shape="@ButtonShape.Circle" OnClick="() => StopJobAsync(context)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
+                                </SpaceItem>
                                 break;
-     
-                        }
-
-                         @if (cellData.RowData.Expanded)
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
-                            </SpaceItem>
-                        }
-                        else
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
-                            </SpaceItem>
                         }
                         <SpaceItem>
-                         <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="()=>ShowLogMessageModalAsync(context.Id)">
-                                </Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="() => ShowLogMessageModalAsync(context.Id)">
+                            </Button>
                         </SpaceItem>
                         <SpaceItem>
-                  <a href="@($"/api/jobs/instances/{context.Id}/log")" target="_blank">
-                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Download">
-                </Button>
-            </a>
+                            <a href="@($"/api/jobs/instances/{context.Id}/log")" target="_blank">
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Download">
+                                </Button>
+                            </a>
                         </SpaceItem>
                     </Space>
                 </CellRender>
             </ActionColumn>
         </ColumnDefinitions>
         <ExpandTemplate>
-            <Tabs DefaultActiveKey="1"  Animated>
-                <TabPane Tab="子作业"  Key="1">
-                   
+            <Tabs DefaultActiveKey="1" Animated>
+                <TabPane Tab="子作业" Key="1">
+
                 </TabPane>
                 <TabPane Tab="作业日志" Key="2">
 
                 </TabPane>
-    
+
 
             </Tabs>
         </ExpandTemplate>
@@ -205,40 +204,50 @@
 </GridContent>
 
 @code {
+
     private class JobExeuctionStatusModel
     {
-        public JobExecutionStatus Value{ get; set; }
+        public JobExecutionStatus Value { get; set; }
 
         public string Name { get; set; }
     }
 
-    [Parameter]
-    public string NodeId { get; set; }
-
-    [Parameter]
-    public string JobId { get; set; }
-
-
     ITable _table;
     string _searchText;
+    CommonDialog _nodeSelectorDialog;
+    CommonDialog _taskDefinitionSelectorDialog;
+    TaskDefinitionSelector _taskDefinitionSelector;
+    NodeSelector _nodeSelector;
 
     JobExecutionInstanceLogViewer _logViewer;
+    private bool _nodeModalVisible;
 
     private DateTime BeginDateTime;
     private DateTime EndDateTime;
 
-    private DateTime?[] DateTimes = [DateTime.UtcNow.Date, DateTime.UtcNow.Date];
+    private readonly DateTime?[] DateTimes = [DateTime.UtcNow.Date, DateTime.UtcNow.Date];
 
+    private IEnumerable<string> _selectedNodeIdList;
+    private IEnumerable<string> _selectedTaskScheduleConfigIdList;
 
     private bool _loading;
-    private IEnumerable<JobExecutionInstanceModel>? _dataSource = [];
+    private RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters> _dataSource;
 
-    private IEnumerable<NodeInfoModel>? _nodeList = [];
-    private IEnumerable<JobScheduleConfigModel> _jobScheduleConfigList = [];
-    private List<JobExeuctionStatusModel> _jobExeuctionStatusList = [];
-    private string? _selectedNodeId;
-    private string? _selectedJobScheduleConfigId;
+
+    private readonly List<JobExeuctionStatusModel> _jobExeuctionStatusList = [];
+
+    private IEnumerable<NodeInfoModel> _selectedNodeList = [];
+    private IEnumerable<JobScheduleConfigModel> _selectedJobSchduleConfigList = [];
+
     private JobExecutionStatus _selectedStatus;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
+
+
+        base.OnInitialized();
+    }
 
 
     protected override async Task OnInitializedAsync()
@@ -253,219 +262,104 @@
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Finished, Name = "完成" });
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Cancelled, Name = "已取消" });
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.PenddingTimeout, Name = "等待超时" });
-        this.BeginDateTime = DateTime.Today.Date;
-        this.EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
-        this.DateTimes[0] = this.BeginDateTime;
-        this.DateTimes[1] = this.EndDateTime;
-        await this.QueryJobScheduleConfigListAsync().ConfigureAwait(false);
-        await this.QueryNodeInfoListAsync().ConfigureAwait(false);
-        await this.QueryTaskListAsync().ConfigureAwait(false);
+        BeginDateTime = DateTime.Today.Date;
+        EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        DateTimes[0] = BeginDateTime;
+        DateTimes[1] = EndDateTime;
+        await QueryTaskExecutionInstanceListAsync();
     }
 
     private void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
     {
-        this.BeginDateTime = e.Dates[0] ?? DateTime.Today.Date;
-        this.EndDateTime = e.Dates[1] ?? DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        BeginDateTime = e.Dates[0] ?? DateTime.Today.Date;
+        EndDateTime = e.Dates[1] ?? DateTime.Today.AddDays(1).Date.AddSeconds(-1);
     }
 
-    private async Task QueryTaskListAsync()
+    private async Task QueryTaskExecutionInstanceListAsync()
     {
         try
         {
-            this._loading = true;
-            QueryParameters queryParameters = new QueryParameters();
-            queryParameters.Parameters.Add(KeyValuePair.Create("BeginDateTime", this.BeginDateTime.ToString()));
-            queryParameters.Parameters.Add(KeyValuePair.Create("EndDateTime", this.EndDateTime.ToString()));
-            if (this._selectedJobScheduleConfigId != null)
+            _loading = true;
+
+            _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
+            _dataSource.QueryParameters.EndDateTime = EndDateTime;
+
+            if (_selectedStatus != JobExecutionStatus.Unknown)
             {
-                queryParameters.Parameters.Add(KeyValuePair.Create("JobScheduleConfigId", this._selectedJobScheduleConfigId));
+                _dataSource.QueryParameters.Status = _selectedStatus;
             }
 
-            if (this._selectedNodeId!=null)
-            {            
-                queryParameters.Parameters.Add(KeyValuePair.Create("NodeId", this._selectedNodeId));
-            }
-            if (this._selectedStatus != JobExecutionStatus.Unknown)
-            {
-                queryParameters.Parameters.Add(KeyValuePair.Create("Status", this._selectedStatus.ToString()));
-            }
-
-            var apiResponse = await this.ApiService.QueryAllJobExecutionInstancesAsync(queryParameters).ConfigureAwait(false);
-            this._loading = false;
-            if (apiResponse.ErrorCode == 0)
-            {
-                this._dataSource = apiResponse.Result;
-            }
-            else
-            {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
-            }
+            _dataSource.ForceRequest();
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
-
     }
 
     private async Task RevokeJobAsync(JobExecutionInstanceModel instance)
     {
         try
         {
-            await this.ApiService.ReinvokeJobAsync(instance.Id);
+            await ApiService.ReinvokeJobAsync(instance.Id);
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
-
     }
 
     private async Task StopJobAsync(JobExecutionInstanceModel instance)
     {
         try
         {
-            await this.ApiService.CancelJobAsync(instance.Id, new TaskCancellationParameters()
-            {
-
-            });
+            await ApiService.CancelJobAsync(instance.Id, new TaskCancellationParameters());
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
-
     }
 
-    private async Task OnSelectedStatusChanged(JobExeuctionStatusModel  status)
+    private async Task OnSelectedStatusChanged(JobExeuctionStatusModel status)
     {
-
     }
 
     private void OnSearchStatus(string status)
     {
-
     }
 
-    private async Task OnSelectedJobScheduleConfigChanged(JobScheduleConfigModel jobScheduleConfig)
+    private async Task OnSelectedTaskScheduleConfigChanged(JobScheduleConfigModel jobScheduleConfig)
     {
-
     }
 
     private void OnSearchJobScheduleConfig(string nodeId)
     {
-
     }
 
     private async Task OnSelectedNodeChanged(NodeInfoModel node)
     {
-
     }
 
     private void OnSearchNode(string nodeId)
     {
-
     }
 
-
-
-    private async Task QueryNodeInfoListAsync()
-    {
-        try
-        {
-            _loading = true;
-            var apiResponse = await this.ApiService.QueryNodeListAsync(QueryParameters.All).ConfigureAwait(false);
-            _loading = false;
-            if (apiResponse.ErrorCode == 0)
-            {
-                this._nodeList = apiResponse.Result ?? [];
-            }
-            else
-            {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
-            }
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
-        }
-        finally
-        {
-
-        }
-    }
-
-    private async Task QueryJobScheduleConfigListAsync()
-    {
-        try
-        {
-            _loading = true;
-            var apiResponse = await this.ApiService.QueryTaskScheduleConfigurationListAsync(QueryParameters.All).ConfigureAwait(false);
-            _loading = false;
-            if (apiResponse.ErrorCode == 0)
-            {
-                this._jobScheduleConfigList = apiResponse.Result ?? [];
-            }
-            else
-            {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
-            }
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
-        }
-        finally
-        {
-
-        }
-    }
-
-    private bool FilterModel(JobExecutionInstanceModel model)
-    {
-        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
-        {
-            return true;
-        }
-        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
-    }
 
     void OnTableChange(QueryModel<JobExecutionInstanceModel> query)
     {
-        this._dataSource = query.ExecuteQuery(this._dataSource.AsQueryable())
-            .Where(FilterModel);
     }
 
     async Task ShowLogMessageModalAsync(string id)
@@ -473,5 +367,26 @@
         _logViewer.LogQueryId = id;
         await _logViewer.ShowAsync();
     }
-}
 
+    private async Task ShowNodeSelectorDialogAsync()
+    {
+        await _nodeSelectorDialog.ShowAsync();
+    }
+
+    private async Task ShowTaskDefinitionSelectorDialogAsync()
+    {
+        await _taskDefinitionSelectorDialog.ShowAsync();
+    }
+
+    private Task OnDialogClosed()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+
+    public void Dispose()
+    {
+    }
+
+}

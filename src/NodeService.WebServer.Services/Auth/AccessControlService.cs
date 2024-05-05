@@ -1,12 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using NodeService.Infrastructure.Entities;
 using NodeService.Infrastructure.Interfaces;
 using NodeService.Infrastructure.Permissions;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Security.Cryptography;
 
 namespace NodeService.WebServer.Services.Auth;
 
@@ -218,7 +218,8 @@ public class AccessControlService : IAccessControlService
             await _roleManager.UpdateAsync(role);
         }
 
-        var roleClaims = (await _roleManager.GetClaimsAsync(role)).Where(x => x.Type == ClaimConstants.PermissionClaimName);
+        var roleClaims =
+            (await _roleManager.GetClaimsAsync(role)).Where(x => x.Type == ClaimConstants.PermissionClaimName);
         var addedPermissions = roleInput.Permissions.Where(p => p.IsChecked).Select(p => p.Value);
         var removedPermissions = roleInput.Permissions.Where(p => !p.IsChecked).Select(p => p.Value);
         var removedClaims = roleClaims.Where(c => removedPermissions.Contains(c.Value));

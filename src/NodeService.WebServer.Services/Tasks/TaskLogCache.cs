@@ -1,282 +1,237 @@
-﻿using MimeKit.Encodings;
+﻿using System.Text.Json.Serialization;
 using NodeService.Infrastructure.Logging;
-using NodeService.Infrastructure.Models;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Drawing.Printing;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.Tasks
+namespace NodeService.WebServer.Services.Tasks;
+
+public class TaskLogCacheDump
 {
-    public class TaskLogCacheDump
+    public TaskLogCacheDump()
     {
-        public TaskLogCacheDump()
-        {
-            this.PageDumps = new List<TaskLogCachePageDump>();
-        }
-
-        public string TaskId { get; set; }
-        public int PageSize { get; set; }
-
-        public int PageCount { get; set; }
-
-        public bool IsTruncated { get; set; }
-
-        public int Count { get; set; }
-
-        public DateTime CreationDateTimeUtc { get; set; }
-
-        public DateTime LastWriteTimeUtc { get; set; }
-
-        public DateTime LastAccessTimeUtc { get; set; }
-
-        public List<TaskLogCachePageDump> PageDumps { get; set; }
-
+        PageDumps = new List<TaskLogCachePageDump>();
     }
 
-    public class TaskLogCache
+    public string TaskId { get; set; }
+    public int PageSize { get; set; }
+
+    public int PageCount { get; set; }
+
+    public bool IsTruncated { get; set; }
+
+    public int Count { get; set; }
+
+    public DateTime CreationDateTimeUtc { get; set; }
+
+    public DateTime LastWriteTimeUtc { get; set; }
+
+    public DateTime LastAccessTimeUtc { get; set; }
+
+    public List<TaskLogCachePageDump> PageDumps { get; set; }
+}
+
+public class TaskLogCache
+{
+    private readonly LinkedList<TaskLogCachePage> _pages;
+    [JsonIgnore] private long _count;
+
+    public TaskLogCache(string taskId, int pageSize)
     {
-        private LinkedList<TaskLogCachePage> _pages;
+        CreationDateTimeUtc = DateTime.UtcNow;
+        TaskId = taskId;
+        PageSize = pageSize;
+        _pages = new LinkedList<TaskLogCachePage>();
+        LoadedDateTime = DateTime.UtcNow;
+    }
 
-        [JsonIgnore]
-        private long _count;
+    public TaskLogCache(TaskLogCacheDump dump) : this(dump.TaskId, dump.PageSize)
+    {
+        PageCount = dump.PageCount;
+        _count = dump.Count;
+        CreationDateTimeUtc = dump.CreationDateTimeUtc;
+        LastAccessTimeUtc = dump.LastAccessTimeUtc;
+        LastAccessTimeUtc = dump.LastAccessTimeUtc;
+        IsTruncated = dump.IsTruncated;
+        foreach (var pageDump in dump.PageDumps)
+            _pages.AddLast(new LinkedListNode<TaskLogCachePage>(new TaskLogCachePage(pageDump)));
+    }
 
-        public string TaskId { get; private set; }
+    public string TaskId { get; }
 
-        public int PageSize { get; private set; }
+    public int PageSize { get; }
 
-        public int Count { get { return (int)Interlocked.Read(ref this._count); } }
+    public int Count => (int)Interlocked.Read(ref _count);
 
-        public int PageCount { get; private set; }
+    public int PageCount { get; private set; }
 
-        public DateTime CreationDateTimeUtc { get; set; }
+    public DateTime CreationDateTimeUtc { get; set; }
 
-        public DateTime LastWriteTimeUtc { get; set; }
+    public DateTime LastWriteTimeUtc { get; set; }
 
-        public DateTime LastAccessTimeUtc { get; set; }
+    public DateTime LastAccessTimeUtc { get; set; }
 
-        public bool IsTruncated { get; set; }
+    public bool IsTruncated { get; set; }
 
-        [JsonIgnore]
-        public DateTime LoadedDateTime {  get; set; }
+    [JsonIgnore] public DateTime LoadedDateTime { get; set; }
 
-        [JsonIgnore]
-        public TaskLogDatabase Database { get; set; }
+    [JsonIgnore] public TaskLogDatabase Database { get; set; }
 
-        public TaskLogCache(string taskId, int pageSize)
+    public IEnumerable<LogEntry> GetEntries(int pageIndex, int pageSize)
+    {
+        if (IsTruncated) yield break;
+
+        var startIndex = pageIndex * pageSize;
+        var endIndex = Math.Min(Count, (pageIndex + 1) * pageSize);
+        var startPageIndex = EntryIndexToPageIndex(startIndex, PageSize, out var startPageOffset);
+        var endPageIndex = EntryIndexToPageIndex(endIndex, PageSize, out var endPageOffset);
+
+        var currentPageIndex = startPageIndex;
+        lock (_pages)
         {
-            this.CreationDateTimeUtc = DateTime.UtcNow;
-            TaskId = taskId;
-            PageSize = pageSize;
-            this._pages = new LinkedList<TaskLogCachePage>();
-            LoadedDateTime = DateTime.UtcNow;
-        }
-
-        public TaskLogCache(TaskLogCacheDump dump) : this(dump.TaskId, dump.PageSize)
-        {
-            this.PageCount = dump.PageCount;
-            this._count = dump.Count;
-            this.CreationDateTimeUtc = dump.CreationDateTimeUtc;
-            this.LastAccessTimeUtc = dump.LastAccessTimeUtc;
-            this.LastAccessTimeUtc = dump.LastAccessTimeUtc;
-            this.IsTruncated = dump.IsTruncated;
-            foreach (var pageDump in dump.PageDumps)
+            while (true)
             {
-                this._pages.AddLast(new LinkedListNode<TaskLogCachePage>(new TaskLogCachePage(pageDump)));
+                var node = GetNode(currentPageIndex);
+                if (node == null) yield break;
+                foreach (var logEntry in GetPageEntries(ref node.ValueRef))
+                    if (logEntry.Index >= startIndex && logEntry.Index < endIndex)
+                        yield return logEntry;
+                currentPageIndex++;
+                if (currentPageIndex >= endPageIndex) break;
             }
         }
+    }
 
-        public IEnumerable<LogEntry> GetEntries(int pageIndex, int pageSize)
+    private IEnumerable<LogEntry> GetPageEntries(ref TaskLogCachePage taskLogCachePage)
+    {
+        LastAccessTimeUtc = DateTime.UtcNow;
+        if (taskLogCachePage.IsPersistenced)
+            return Database.ReadLogEntries<LogEntry>(TaskId, taskLogCachePage.PageIndex, taskLogCachePage.PageSize);
+        return taskLogCachePage.GetEntries();
+    }
+
+
+    public void AppendEntries(IEnumerable<LogEntry> logEntries)
+    {
+        LastWriteTimeUtc = DateTime.UtcNow;
+        lock (_pages)
         {
-
-            if (this.IsTruncated)
+            if (logEntries == null) return;
+            foreach (var entryGroup in logEntries.Select(CheckLogEntry).GroupBy(CalculateLogEntryPageIndex))
             {
-                yield break;
-            }
-
-            int startIndex = pageIndex * pageSize;
-            int endIndex = Math.Min(this.Count, (pageIndex + 1) * pageSize);
-            int startPageIndex = EntryIndexToPageIndex(startIndex, PageSize, out var startPageOffset);
-            int endPageIndex = EntryIndexToPageIndex(endIndex, PageSize, out var endPageOffset);
-
-            var currentPageIndex = startPageIndex;
-            lock (this._pages)
-            {
-                while (true)
+                var pageIndex = entryGroup.Key;
+                var node = GetNode(pageIndex);
+                if (node == null)
                 {
-                    var node = GetNode(currentPageIndex);
-                    if (node == null) { yield break; }
-                    foreach (var logEntry in GetPageEntries(ref node.ValueRef))
-                    {
-                        if (logEntry.Index >= startIndex && logEntry.Index < endIndex)
-                        {
-                            yield return logEntry;
-
-                        }
-                    }
-                    currentPageIndex++;
-                    if (currentPageIndex >= endPageIndex)
-                    {
-                        break;
-                    }
+                    node = _pages.AddLast(new TaskLogCachePage(TaskId, PageSize, pageIndex));
+                    PageCount++;
                 }
+
+                node.ValueRef.AddRange(entryGroup);
+                node.ValueRef.Verify();
             }
+        }
+    }
 
-            yield break;
+    private LogEntry CheckLogEntry(LogEntry logEntry)
+    {
+        logEntry.Index = Count;
+        Interlocked.Increment(ref _count);
+        return logEntry;
+    }
+
+    private LinkedListNode<TaskLogCachePage>? GetNode(int nodeIndex)
+    {
+        var current = _pages.First;
+        for (var i = 0; i < nodeIndex; i++)
+        {
+            if (current == null) break;
+            current = current.Next;
         }
 
-        private IEnumerable<LogEntry> GetPageEntries(ref TaskLogCachePage taskLogCachePage)
+        return current;
+    }
+
+    private int CalculateLogEntryPageIndex(LogEntry logEntry)
+    {
+        var pageIndex = EntryIndexToPageIndex(logEntry.Index, PageSize, out _);
+        return pageIndex;
+    }
+
+    private int EntryIndexToPageIndex(int entryIndex, int pageSize, out int pageOffset)
+    {
+        return Math.DivRem(entryIndex, pageSize, out pageOffset);
+    }
+
+    public void Flush()
+    {
+        lock (_pages)
         {
-            this.LastAccessTimeUtc = DateTime.UtcNow;
-            if (taskLogCachePage.IsPersistenced)
-            {
-                return this.Database.ReadLogEntries<LogEntry>(this.TaskId, taskLogCachePage.PageIndex, taskLogCachePage.PageSize);
-            }
-            return taskLogCachePage.GetEntries();
-        }
-
-
-        public void AppendEntries(IEnumerable<LogEntry> logEntries)
-        {
-            this.LastWriteTimeUtc = DateTime.UtcNow;
-            lock (this._pages)
-            {
-                if (logEntries == null)
-                {
-                    return;
-                }
-                foreach (var entryGroup in logEntries.Select(CheckLogEntry).GroupBy(CalculateLogEntryPageIndex))
-                {
-                    var pageIndex = entryGroup.Key;
-                    var node = GetNode(pageIndex);
-                    if (node == null)
-                    {
-                        node = this._pages.AddLast(new TaskLogCachePage(TaskId, PageSize, pageIndex));
-                        this.PageCount++;
-                    }
-                    node.ValueRef.AddRange(entryGroup);
-                    node.ValueRef.Verify();
-                }
-            }
-
-        }
-
-        private LogEntry CheckLogEntry(LogEntry logEntry)
-        {
-            logEntry.Index = this.Count;
-            Interlocked.Increment(ref this._count);
-            return logEntry;
-        }
-
-        private LinkedListNode<TaskLogCachePage>? GetNode(int nodeIndex)
-        {
-            var current = this._pages.First;
-            for (int i = 0; i < nodeIndex; i++)
-            {
-                if (current == null)
-                {
-                    break;
-                }
-                current = current.Next;
-            }
-            return current;
-        }
-
-        private int CalculateLogEntryPageIndex(LogEntry logEntry)
-        {
-            int pageIndex = EntryIndexToPageIndex(logEntry.Index, PageSize, out _);
-            return pageIndex;
-        }
-
-        private int EntryIndexToPageIndex(int entryIndex, int pageSize, out int pageOffset)
-        {
-            return Math.DivRem(entryIndex, pageSize, out pageOffset);
-        }
-
-        public void Flush()
-        {
-            lock (this._pages)
-            {
-                var current = this._pages.First;
-                while (current != null)
-                {
-                    if (current.ValueRef.FlushedCount < current.ValueRef.PageSize)
-                    {
-                        int oldCount = Database.GetEntriesCount(this.TaskId);
-                        if (current.ValueRef.PageSize - current.ValueRef.FlushedCount == 0)
-                        {
-                            continue;
-                        }
-                        int newCount = Database.AppendLogEntries(
-                            this.TaskId, current.ValueRef.GetEntries(
-                                current.ValueRef.FlushedCount, current.ValueRef.PageSize));
-                        current.ValueRef.IncrementFlushedCount(newCount - oldCount);
-                        if (current.ValueRef.FlushedCount == current.ValueRef.PageSize)
-                        {
-                            current.ValueRef.Dispose();
-                        }
-                    }
-
-                    current = current.Next;
-                }
-            }
-            Database.WriteTask(BuildTaskKey(TaskId), this.CreateDump());
-        }
-
-        public static string BuildTaskKey(string taskId)
-        {
-            return $"{TaskLogCacheManager.TaskKeyPrefix}{taskId}";
-        }
-
-        private TaskLogCacheDump CreateDump()
-        {
-            TaskLogCacheDump taskLogCacheDump = new TaskLogCacheDump();
-            this.Dump(taskLogCacheDump);
-            return taskLogCacheDump;
-        }
-
-        public void Dump(TaskLogCacheDump taskLogCacheDump)
-        {
-            taskLogCacheDump.TaskId = this.TaskId;
-            taskLogCacheDump.PageCount = this.PageCount;
-            taskLogCacheDump.PageSize = this.PageSize;
-            taskLogCacheDump.Count = this.Count;
-            taskLogCacheDump.IsTruncated = this.IsTruncated;
-            var current = this._pages.First;
+            var current = _pages.First;
             while (current != null)
             {
-                TaskLogCachePageDump pageDump = new TaskLogCachePageDump();
-                current.ValueRef.Dump(pageDump);
-                taskLogCacheDump.PageDumps.Add(pageDump);
+                if (current.ValueRef.FlushedCount < current.ValueRef.PageSize)
+                {
+                    var oldCount = Database.GetEntriesCount(TaskId);
+                    if (current.ValueRef.PageSize - current.ValueRef.FlushedCount == 0) continue;
+                    var newCount = Database.AppendLogEntries(
+                        TaskId, current.ValueRef.GetEntries(
+                            current.ValueRef.FlushedCount, current.ValueRef.PageSize));
+                    current.ValueRef.IncrementFlushedCount(newCount - oldCount);
+                    if (current.ValueRef.FlushedCount == current.ValueRef.PageSize) current.ValueRef.Dispose();
+                }
+
                 current = current.Next;
             }
         }
 
-        public void Clear()
+        Database.WriteTask(BuildTaskKey(TaskId), CreateDump());
+    }
+
+    public static string BuildTaskKey(string taskId)
+    {
+        return $"{TaskLogCacheManager.TaskKeyPrefix}{taskId}";
+    }
+
+    private TaskLogCacheDump CreateDump()
+    {
+        var taskLogCacheDump = new TaskLogCacheDump();
+        Dump(taskLogCacheDump);
+        return taskLogCacheDump;
+    }
+
+    public void Dump(TaskLogCacheDump taskLogCacheDump)
+    {
+        taskLogCacheDump.TaskId = TaskId;
+        taskLogCacheDump.PageCount = PageCount;
+        taskLogCacheDump.PageSize = PageSize;
+        taskLogCacheDump.Count = Count;
+        taskLogCacheDump.IsTruncated = IsTruncated;
+        var current = _pages.First;
+        while (current != null)
         {
-            this._pages.Clear();
+            var pageDump = new TaskLogCachePageDump();
+            current.ValueRef.Dump(pageDump);
+            taskLogCacheDump.PageDumps.Add(pageDump);
+            current = current.Next;
+        }
+    }
+
+    public void Clear()
+    {
+        _pages.Clear();
+    }
+
+    public void Truncate()
+    {
+        lock (_pages)
+        {
+            foreach (var page in _pages) RemovePageEntries(page);
         }
 
-        public void Truncate()
-        {
-            lock (this._pages)
-            {
-                foreach (var page in this._pages)
-                {
-                    RemovePageEntries(page);
-                }
-            }
-            this.IsTruncated = true;
-            Database.WriteTask(BuildTaskKey(TaskId), this.CreateDump());
+        IsTruncated = true;
+        Database.WriteTask(BuildTaskKey(TaskId), CreateDump());
 
-            void RemovePageEntries(TaskLogCachePage page)
-            {
-                Database.ClearLogEntries(this.TaskId, page.PageIndex, page.PageSize);
-            }
+        void RemovePageEntries(TaskLogCachePage page)
+        {
+            Database.ClearLogEntries(TaskId, page.PageIndex, page.PageSize);
         }
     }
 }

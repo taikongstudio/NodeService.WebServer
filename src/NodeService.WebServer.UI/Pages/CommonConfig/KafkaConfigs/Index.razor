@@ -3,7 +3,8 @@
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
-
+@inject NavigationManager NavigationManager
+@implements IDisposable
 
 <GridContent>
     <Modal Width="800"
@@ -20,203 +21,189 @@
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
             <FormItem Label="名称">
-                <Input @bind-Value="@context.Name" />
+                <Input @bind-Value="@context.Name"/>
             </FormItem>
             <FormItem Label="BrokerList">
-                <Input @bind-Value="@context.BrokerList" />
+                <Input @bind-Value="@context.BrokerList"/>
             </FormItem>
             <FormItem Label="主题">
-                <Button OnClick="AddTopic" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                    添加
-                </Button>
-                <Button OnClick="RemoveSelectedTopics" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                    删除
-                </Button>
-                <StringEntryTable DataSource="@context.Topics"
+                <StringEntryTable ItemsSource="@context.Topics"
                                   NameTitle="键"
-                                  ValueTitle="主题"
-                                  @bind-SelectedItems="@_selectedTopics"
-                                  RemoveItemAction="@RemoveSelectedTopic" />
+                                  ValueTitle="主题"/>
             </FormItem>
         </Form>
     </Modal>
 
     <Space Style="margin-bottom:16px">
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新建配置</Button>
+            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
         </SpaceItem>
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="QueryConfigurationListAsync">刷新</Button>
+            <Button Type="@ButtonType.Primary" OnClick="_dataSource.Request">刷新</Button>
         </SpaceItem>
 
     </Space>
-<Table @ref="_table" ScrollX="1000px" Size="TableSize.Small" Loading="_loading" EnableVirtualization="true" TItem="KafkaConfigModel"
+    <Table @ref="_table"
+           ScrollX="1000px"
+           Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           EnableVirtualization="false"
+           TItem="KafkaConfigModel"
            Resizable
            OnChange="OnTableChange"
-           DataSource="@_dataSource.Items"
-           PageIndex="_dataSource.PageIndex"
-           PageSize="_dataSource.PageSize"
-           OnPageIndexChange="@_dataSource.OnPageSizeChanged"
-           OnPageSizeChange="@_dataSource.OnPageSizeChanged">
+           DataSource="@_dataSource.ItemsSource"
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           Total="@_dataSource.TotalCount"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="4">
                     <Title Level="3">Kafka配置</Title>
                 </GridCol>
                 <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
         </TitleTemplate>
-    <ColumnDefinitions>
-            <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
-    <PropertyColumn Title="名称" Sortable Property="c=>c.Name"></PropertyColumn>
-    <PropertyColumn Title="BrokerList" Sortable="true" Property="c=>c.BrokerList"></PropertyColumn>
-             <ActionColumn Fixed="right" Width="250" Title="操作">
-                 <CellRender Context="cellData">
-                     <Space>
-                         <SpaceItem>
-                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<KafkaConfigModel>())"></Button>
-                         </SpaceItem>
-                         <SpaceItem>
-                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
-                         </SpaceItem>
-                         <SpaceItem>
-                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
-                         </SpaceItem>
-                         @if (cellData.RowData.Expanded)
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
-                            </SpaceItem>
-                        }
-                        else
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
-                            </SpaceItem>
-                        }
+        <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="BrokerList" Sortable="true" Property="c => c.BrokerList"></PropertyColumn>
+            <ActionColumn Fixed="right" Width="250" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<KafkaConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<KafkaConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
+                        </SpaceItem>
 
                     </Space>
                 </CellRender>
             </ActionColumn>
-    </ColumnDefinitions>
-    <ExpandTemplate>
-        <Tabs Animated>
-        <TabPane Tab="Topics" Key="1">
-            @foreach (var topic in context.Data.Topics)
-            {
-                <p>@topic.Name => @topic.Value</p>
-            }
-        </TabPane>
-    </Tabs>
-</ExpandTemplate>
-</Table>
+        </ColumnDefinitions>
+        <ExpandTemplate>
+            <Tabs Animated>
+                <TabPane Tab="Topics" Key="1">
+                    @foreach (var topic in context.Data.Topics)
+                    {
+                        <p>@topic.Name => @topic.Value</p>
+                    }
+                </TabPane>
+            </Tabs>
+        </ExpandTemplate>
+    </Table>
 </GridContent>
 
 @code {
     ITable _table;
-    string _searchText;
     string _modalTitle;
-    bool _editFormVisible = false;
-    bool _editFormSubmitting = false;
-    bool _editFormConfirmLoading = false;
+    bool _editFormVisible;
+    bool _editFormSubmitting;
+    bool _editFormConfirmLoading;
     Form<KafkaConfigModel> _editForm;
-    KafkaConfigModel _editModel = new KafkaConfigModel();
-    IEnumerable<StringEntry> _selectedTopics; 
+    KafkaConfigModel _editModel = new();
 
 
     private bool _loading;
 
-    private PaginationDataSource<KafkaConfigModel> _dataSource;
+    private RoutedPaginationDataSource<KafkaConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new PaginationDataSource<KafkaConfigModel>(ApiService);
-        _dataSource.Filter = FilterModel;
+        _dataSource = new RoutedPaginationDataSource<KafkaConfigModel, PaginationQueryParameters>(
+            NavigationManager,
+            ApiService.QueryKafkaConfigurationListAsync,
+            StateHasChanged);
+        _dataSource.Request();
         base.OnInitialized();
     }
 
-    private async Task ShowEditForm(KafkaConfigModel? model = null)
+    private void ShowEditForm(KafkaConfigModel? model = null)
     {
-        this._editFormVisible = true;
+        _editFormVisible = true;
         if (model == null)
         {
-            this._editModel = new KafkaConfigModel()
-                {
-                    Id = Guid.NewGuid().ToString()
-                };
-            this._modalTitle = "新建配置";
+            _editModel = new KafkaConfigModel
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+            _modalTitle = "新建配置";
         }
         else
         {
-            this._editModel = model.ReferenceClone<KafkaConfigModel>();
-            this._modalTitle = "编辑配置";
+            _editModel = model;
+            _modalTitle = "编辑配置";
         }
-
     }
 
     private async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
-            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel);
+            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
-                this._editFormVisible = false;
+                await _dataSource.RefreshAsync();
+                _editFormVisible = false;
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
         finally
         {
-            this._editFormSubmitting = false;
-            this._editFormConfirmLoading = false;
+            _editFormSubmitting = false;
+            _editFormConfirmLoading = false;
         }
     }
 
     private void OnEditFormFinishFailed(EditContext editContext)
     {
-        this._editFormSubmitting = false;
-        this._editFormConfirmLoading = false;
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
     }
 
 
     private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
-        var options = new ConfirmButtonOptions()
+        var options = new ConfirmButtonOptions
+        {
+            Button1Props = new ButtonProps
             {
-                Button1Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "确定",
-                    Type = ButtonType.Primary,
-                },
-                Button2Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "取消"
-                }
-            };
+                ChildContent = "确定",
+                Type = ButtonType.Primary
+            },
+            Button2Props = new ButtonProps
+            {
+                ChildContent = "取消"
+            }
+        };
         return _confirmService.Show(
-                content,
-                title,
-                ConfirmButtons.OKCancel,
-                ConfirmIcon.Info,
-                options);
+            content,
+            title,
+            ConfirmButtons.OKCancel,
+            ConfirmIcon.Info,
+            options);
     }
 
     private async Task DeleteConfig(KafkaConfigModel model)
@@ -227,110 +214,51 @@
             {
                 return;
             }
-            var apiResponse = await this.ApiService.RemoveAsync(model);
+
+            var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
+                await _dataSource.RefreshAsync();
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
-
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = "加载配置失败",
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = "加载配置失败"
+            });
         }
     }
 
 
     private void HandleEditFormCancel(MouseEventArgs e)
     {
-        this._editFormVisible = false;
+        _editFormVisible = false;
     }
 
 
     private void HandleEditFormOk(MouseEventArgs e)
     {
-        this._editFormSubmitting = true;
-        this._editForm.Submit();
-
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        this._loading = true;
-        await this.QueryConfigurationListAsync().ConfigureAwait(false);
-        this._loading = false;
-    }
-
-    private async Task QueryConfigurationListAsync()
-    {
-        try
-        {
-            await this._dataSource.UpdateSourceAsync();
-
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
-        }
-
-    }
-
-
-    private void AddTopic()
-    {
-        var newEntry = new StringEntry()
-            {
-                Id = Guid.NewGuid().ToString()
-            };
-        this._editModel.Topics.Add(newEntry);
-        newEntry.BeginEdit();
-    }
-
-    private void RemoveSelectedTopics()
-    {
-        if (this._selectedTopics == null)
-        {
-            return;
-        }
-        foreach (var item in this._selectedTopics)
-        {
-            this._editModel.Topics.Remove(item);
-        }
-    }
-
-    private void RemoveSelectedTopic(StringEntry stringEntry)
-    {
-        this._editModel.Topics.Remove(stringEntry);
-    }
-
-    private bool FilterModel(KafkaConfigModel model)
-    {
-        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
-        {
-            return true;
-        }
-        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
+        _editFormSubmitting = true;
+        _editForm.Submit();
     }
 
     void OnTableChange(QueryModel<KafkaConfigModel> query)
     {
-        this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
-        this._dataSource.Refresh();
     }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
+
 }

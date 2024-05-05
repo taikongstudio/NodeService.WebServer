@@ -1,4 +1,6 @@
-
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
+using System.Threading.RateLimiting;
 using AntDesign.ProLayout;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -15,33 +17,21 @@ using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.UI.Services;
-using System.IdentityModel.Tokens.Jwt;
-using System.Text;
-using System.Threading.RateLimiting;
 using TaskScheduler = NodeService.WebServer.Services.Tasks.TaskScheduler;
 
 public class Program
 {
-
-
-
     public static async Task Main(string[] args)
     {
-
         await Parser
-              .Default
-              .ParseArguments<CommandLineOptions>(args)
-              .WithParsedAsync((options) =>
-              {
-                  if (string.IsNullOrEmpty(options.env))
-                  {
-                      options.env = Environments.Development;
-                  }
-                  Console.WriteLine(JsonSerializer.Serialize(options));
-                  return RunWithOptions(options, args);
-
-              });
-
+            .Default
+            .ParseArguments<CommandLineOptions>(args)
+            .WithParsedAsync(options =>
+            {
+                if (string.IsNullOrEmpty(options.env)) options.env = Environments.Development;
+                Console.WriteLine(JsonSerializer.Serialize(options));
+                return RunWithOptions(options, args);
+            });
     }
 
     private static async Task RunWithOptions(CommandLineOptions options, string[] args)
@@ -71,7 +61,7 @@ public class Program
         }
     }
 
-    static void Configure(WebApplication app)
+    private static void Configure(WebApplication app)
     {
         if (app.Environment.IsDevelopment())
         {
@@ -81,11 +71,7 @@ public class Program
 
             // Add web UIs to interact with the document
             // Available at: http://localhost:<port>/swagger
-            app.UseSwaggerUi((uiSettings) =>
-            {
-
-
-            });
+            app.UseSwaggerUi(uiSettings => { });
         }
         else
         {
@@ -108,17 +94,15 @@ public class Program
 
         app.UseCors("AllowAll");
 
-        app.UseEndpoints(req =>
-        {
-
-        });
+        app.UseEndpoints(req => { });
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapRazorPages();
         app.MapControllers();
         app.MapBlazorHub(option =>
         {
-            option.CloseOnAuthenticationExpiration = true; //This option is used to enable authentication expiration tracking which will close connections when a token expires  
+            option.CloseOnAuthenticationExpiration =
+                true; //This option is used to enable authentication expiration tracking which will close connections when a token expires  
         });
         app.MapFallbackToPage("/_Host");
 
@@ -131,7 +115,6 @@ public class Program
         using var applicationUserDbContext = scope.ServiceProvider.GetService<ApplicationUserDbContext>();
         //applicationUserDbContext.Database.EnsureDeleted();
         applicationUserDbContext.Database.EnsureCreated();
-
     }
 
     private static void MapGrpcServices(WebApplication app)
@@ -140,9 +123,8 @@ public class Program
         app.MapGrpcService<NodeServiceImpl>().EnableGrpcWeb().RequireCors("AllowAll");
     }
 
-    static void Configure(WebApplicationBuilder builder)
+    private static void Configure(WebApplicationBuilder builder)
     {
-
         builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
         builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
         builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
@@ -153,26 +135,17 @@ public class Program
         {
             options.Conventions.AllowAnonymousToAreaFolder("Identity", "/Account");
         });
-        builder.Services.AddServerSideBlazor(options =>
-        {
-
-        });
+        builder.Services.AddServerSideBlazor(options => { });
         builder.Services.AddAntDesign();
         builder.Services.AddOpenApiDocument();
         builder.Services.AddHttpClient();
         builder.Services.AddMemoryCache();
-        builder.Services.AddDistributedMemoryCache(options =>
-        {
-
-        });
+        builder.Services.AddDistributedMemoryCache(options => { });
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
         ConfigureDbContext(builder);
 
-        builder.Services.Configure<FormOptions>(options =>
-        {
-            options.MultipartBodyLengthLimit = 1024 * 1024 * 1024;
-        });
+        builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 1024 * 1024 * 1024; });
 
 
         builder.Services.AddLogging(logger =>
@@ -190,29 +163,25 @@ public class Program
 
         ConfigureHostedServices(builder);
 
-        builder.Services.AddGrpc(grpcServiceOptions =>
-        {
-
-        });
+        builder.Services.AddGrpc(grpcServiceOptions => { });
         builder.Services.AddCors(o => o.AddPolicy("AllowAll", builder =>
         {
             builder.AllowAnyOrigin()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader()
-                    .WithExposedHeaders("Grpc-Status", "Grpc-Message", "Grpc-Encoding", "Grpc-Accept-Encoding")
-                    .WithHeaders("Access-Control-Allow-Headers: *", "Access-Control-Allow-Origin: *");
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .WithExposedHeaders("Grpc-Status", "Grpc-Message", "Grpc-Encoding", "Grpc-Accept-Encoding")
+                .WithHeaders("Access-Control-Allow-Headers: *", "Access-Control-Allow-Origin: *");
         }));
 
         var concurrencyPolicy = "Concurrency";
 
-        builder.Services.AddRateLimiter(_ => _
-        .AddConcurrencyLimiter(policyName: concurrencyPolicy, options =>
-        {
-            options.PermitLimit = 5;
-            options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-            options.QueueLimit = 100;
-        }));
-
+        builder.Services.AddRateLimiter(options => options
+            .AddConcurrencyLimiter(concurrencyPolicy, options =>
+            {
+                options.PermitLimit = 1;
+                options.QueueProcessingOrder = QueueProcessingOrder.NewestFirst;
+                options.QueueLimit = 10000;
+            }));
     }
 
     private static void ConfigureHostedServices(WebApplicationBuilder builder)
@@ -255,7 +224,7 @@ public class Program
             var handler = new HttpClientHandler();
             handler.ServerCertificateCustomValidationCallback =
                 HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-            var channel = GrpcChannel.ForAddress(requestUri, new GrpcChannelOptions()
+            var channel = GrpcChannel.ForAddress(requestUri, new GrpcChannelOptions
             {
                 HttpHandler = handler,
                 Credentials = ChannelCredentials.SecureSsl
@@ -285,7 +254,7 @@ public class Program
         builder.Services.AddScoped<IProfileService, ProfileService>();
 
 
-        builder.Services.AddScoped<ApiService>((serviceProvider) =>
+        builder.Services.AddScoped<ApiService>(serviceProvider =>
         {
             var httpClient = serviceProvider.GetService<HttpClient>();
             return new ApiService(httpClient);
@@ -294,14 +263,14 @@ public class Program
         builder.Services.AddScoped<HeartBeatResponseHandler>();
         builder.Services.AddScoped<JobExecutionReportHandler>();
         builder.Services.AddScoped<MessageHandlerDictionary>(sp =>
-        {
-            var messageHandlerDictionary = new MessageHandlerDictionary
             {
-                { HeartBeatResponse.Descriptor, sp.GetService<HeartBeatResponseHandler>() },
-                { JobExecutionReport.Descriptor, sp.GetService<JobExecutionReportHandler>() }
-            };
-            return messageHandlerDictionary;
-        }
+                var messageHandlerDictionary = new MessageHandlerDictionary
+                {
+                    { HeartBeatResponse.Descriptor, sp.GetService<HeartBeatResponseHandler>() },
+                    { JobExecutionReport.Descriptor, sp.GetService<JobExecutionReportHandler>() }
+                };
+                return messageHandlerDictionary;
+            }
         );
     }
 
@@ -360,7 +329,8 @@ public class Program
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
         builder.Services.AddSingleton<IAsyncQueue<TaskLogDatabase>>(new AsyncQueue<TaskLogDatabase>());
-        builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>>(new AsyncQueue<JobExecutionEventRequest>());
+        builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>>(
+            new AsyncQueue<JobExecutionEventRequest>());
         builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>>(new AsyncQueue<TaskScheduleMessage>());
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>>(new AsyncQueue<NotificationMessage>());
         builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
@@ -375,58 +345,60 @@ public class Program
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)
     {
-        bool debugProductionMode = builder.Configuration.GetValue<bool>($"{nameof(WebServerOptions)}:{nameof(WebServerOptions.DebugProductionMode)}");
+        var debugProductionMode =
+            builder.Configuration.GetValue<bool>(
+                $"{nameof(WebServerOptions)}:{nameof(WebServerOptions.DebugProductionMode)}");
         if ((builder.Environment.IsDevelopment() || Debugger.IsAttached) && !debugProductionMode)
         {
             builder.Services.AddPooledDbContextFactory<ApplicationDbContext>(options =>
-            options.UseSqlServer(
-                builder.Configuration.GetConnectionString("NodeServiceDbMySQL_debug"), (optionsBuilder) =>
-                {
-                    optionsBuilder.EnableRetryOnFailure();
-                    optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                }));
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("NodeServiceDbMySQL_debug"), optionsBuilder =>
+                    {
+                        optionsBuilder.EnableRetryOnFailure();
+                        optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                    }));
             builder.Services.AddDbContext<ApplicationUserDbContext>(options =>
-            options.UseSqlServer(
-                builder.Configuration.GetConnectionString("NodeServiceUserDbMySQL_debug"), (optionsBuilder) =>
-                {
-                    optionsBuilder.EnableRetryOnFailure();
-                    optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                }));
+                options.UseSqlServer(
+                    builder.Configuration.GetConnectionString("NodeServiceUserDbMySQL_debug"), optionsBuilder =>
+                    {
+                        optionsBuilder.EnableRetryOnFailure();
+                        optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                    }));
             builder.Services.AddDbContext<ApplicationProfileDbContext>(options =>
                 options.UseMySql(builder.Configuration.GetConnectionString("MyProfileSQL"),
-            MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
-            {
-                mySqlOptionBuilder.EnableRetryOnFailure();
-                mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                mySqlOptionBuilder.EnableStringComparisonTranslations();
-            }));
+                    MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
+                    {
+                        mySqlOptionBuilder.EnableRetryOnFailure();
+                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                        mySqlOptionBuilder.EnableStringComparisonTranslations();
+                    }));
         }
         else
         {
             builder.Services.AddPooledDbContextFactory<ApplicationDbContext>(options =>
-            options.UseMySql(builder.Configuration.GetConnectionString("NodeServiceDbMySQL"),
-            MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
-            {
-                mySqlOptionBuilder.EnableRetryOnFailure();
-                mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                mySqlOptionBuilder.EnableStringComparisonTranslations();
-            }));
+                options.UseMySql(builder.Configuration.GetConnectionString("NodeServiceDbMySQL"),
+                    MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
+                    {
+                        mySqlOptionBuilder.EnableRetryOnFailure();
+                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                        mySqlOptionBuilder.EnableStringComparisonTranslations();
+                    }));
             builder.Services.AddDbContext<ApplicationUserDbContext>(options =>
-            options.UseMySql(builder.Configuration.GetConnectionString("NodeServiceUserDbMySQL"),
-            MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
-            {
-                mySqlOptionBuilder.EnableRetryOnFailure();
-                mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                mySqlOptionBuilder.EnableStringComparisonTranslations();
-            }));
+                options.UseMySql(builder.Configuration.GetConnectionString("NodeServiceUserDbMySQL"),
+                    MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
+                    {
+                        mySqlOptionBuilder.EnableRetryOnFailure();
+                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                        mySqlOptionBuilder.EnableStringComparisonTranslations();
+                    }));
             builder.Services.AddDbContext<ApplicationProfileDbContext>(options =>
                 options.UseMySql(builder.Configuration.GetConnectionString("MyProfileSQL"),
-            MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
-            {
-                mySqlOptionBuilder.EnableRetryOnFailure();
-                mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                mySqlOptionBuilder.EnableStringComparisonTranslations();
-            }));
+                    MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
+                    {
+                        mySqlOptionBuilder.EnableRetryOnFailure();
+                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                        mySqlOptionBuilder.EnableStringComparisonTranslations();
+                    }));
         }
     }
 }

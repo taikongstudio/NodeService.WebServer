@@ -1,152 +1,136 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
 
-namespace NodeService.WebServer.Services.NodeSessions
+namespace NodeService.WebServer.Services.NodeSessions;
+
+public class NodeHealthyCheckService : BackgroundService
 {
-    public class NodeHealthyCheckService : BackgroundService
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly NodeHealthyCounterDictionary _healthyCounterDict;
+    private readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
+    private readonly ILogger<NodeHealthyCheckService> _logger;
+
+
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly IAsyncQueue<NotificationMessage> _notificationQueue;
+
+    public NodeHealthyCheckService(
+        ILogger<NodeHealthyCheckService> logger,
+        INodeSessionService nodeSessionService,
+        IAsyncQueue<NotificationMessage> notificationQueue,
+        NodeHealthyCounterDictionary healthyCounterDictionary,
+        IDbContextFactory<ApplicationDbContext> dbContextFactory
+    )
     {
+        _logger = logger;
+        _nodeSessionService = nodeSessionService;
+        _notificationQueue = notificationQueue;
+        _healthyCounterDictionary = healthyCounterDictionary;
+        _dbContextFactory = dbContextFactory;
+    }
 
-
-        private readonly INodeSessionService _nodeSessionService;
-        private readonly IAsyncQueue<NotificationMessage> _notificationQueue;
-        private readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly ILogger<NodeHealthyCheckService> _logger;
-        private readonly NodeHealthyCounterDictionary _healthyCounterDict;
-
-        public NodeHealthyCheckService(
-            ILogger<NodeHealthyCheckService> logger,
-            INodeSessionService nodeSessionService,
-            IAsyncQueue<NotificationMessage> notificationQueue,
-            NodeHealthyCounterDictionary healthyCounterDictionary,
-            IDbContextFactory<ApplicationDbContext> dbContextFactory
-            )
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        if (!Debugger.IsAttached) await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+        while (!stoppingToken.IsCancellationRequested)
         {
-            _logger = logger;
-            _nodeSessionService = nodeSessionService;
-            _notificationQueue = notificationQueue;
-            _healthyCounterDictionary = healthyCounterDictionary;
-            _dbContextFactory = dbContextFactory;
+            await CheckNodeHealthyAsync(stoppingToken);
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
         }
+    }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    private async Task CheckNodeHealthyAsync(CancellationToken stoppingToken = default)
+    {
+        try
         {
-            if (!Debugger.IsAttached)
-            {
-                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
-            }
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                await CheckNodeHealthyAsync(stoppingToken);
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-            }
+            using var dbContext = _dbContextFactory.CreateDbContext();
 
-        }
+            var notificationSourceDictionary =
+                await dbContext.PropertyBagDbSet.FindAsync(NotificationSources.NodeHealthyCheck);
+            NodeHealthyCheckConfiguration? configuration;
+            if (!TryReadConfiguration(notificationSourceDictionary, out configuration) || configuration == null) return;
 
-        private async Task CheckNodeHealthyAsync(CancellationToken stoppingToken = default)
-        {
-            try
+            List<string> offlineNodeList = [];
+            var nodeInfoList = await dbContext.NodeInfoDbSet.ToListAsync();
+            foreach (var nodeInfo in nodeInfoList)
             {
-                using var dbContext = _dbContextFactory.CreateDbContext();
-
-                var notificationSourceDictionary = await dbContext.PropertyBagDbSet.FindAsync(NotificationSources.NodeHealthyCheck);
-                NodeHealthyCheckConfiguration? configuration;
-                if (!TryReadConfiguration(notificationSourceDictionary, out configuration) || configuration == null)
+                if (offlineNodeList.Contains(nodeInfo.Name)) continue;
+                if (nodeInfo.Status == NodeStatus.Offline
+                    &&
+                    DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc >
+                    TimeSpan.FromMinutes(configuration.OfflineMinutes))
                 {
-                    return;
-                }
-
-                List<string> offlineNodeList = [];
-                var nodeInfoList = await dbContext.NodeInfoDbSet.ToListAsync();
-                foreach (var nodeInfo in nodeInfoList)
-                {
-                    if (offlineNodeList.Contains(nodeInfo.Name))
+                    var healthCounter = _healthyCounterDictionary.Ensure(new NodeSessionId(nodeInfo.Id));
+                    if (healthCounter.SentNotificationCount == 0 || CanSendNotification(configuration, healthCounter))
                     {
-                        continue;
-                    }
-                    if (nodeInfo.Status == NodeStatus.Offline
-                        &&
-                        DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc > TimeSpan.FromMinutes(configuration.OfflineMinutes))
-                    {
-
-                        var healthCounter = _healthyCounterDictionary.Ensure(new(nodeInfo.Id));
-                        if (healthCounter.SentNotificationCount == 0 || CanSendNotification(configuration, healthCounter))
-                        {
-                            healthCounter.LastSentNotificationDateTimeUtc = DateTime.UtcNow;
-                            healthCounter.SentNotificationCount++;
-                            offlineNodeList.Add(nodeInfo.Name);
-                        }
+                        healthCounter.LastSentNotificationDateTimeUtc = DateTime.UtcNow;
+                        healthCounter.SentNotificationCount++;
+                        offlineNodeList.Add(nodeInfo.Name);
                     }
                 }
-                if (offlineNodeList.Count <= 0)
-                {
-                    return;
-                }
-                await SendNodeOfflineNotificationAsync(dbContext, configuration, offlineNodeList, stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.ToString());
             }
 
+            if (offlineNodeList.Count <= 0) return;
+            await SendNodeOfflineNotificationAsync(dbContext, configuration, offlineNodeList, stoppingToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+        }
+    }
 
+    private bool TryReadConfiguration(
+        Dictionary<string, object>? notificationSourceDictionary,
+        out NodeHealthyCheckConfiguration? configuration)
+    {
+        configuration = null;
+        try
+        {
+            if (notificationSourceDictionary == null
+                ||
+                !notificationSourceDictionary.TryGetValue("Value", out var value)
+                || value is not string json
+               )
+                return false;
+            configuration = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(json);
+            return configuration != null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
         }
 
-        private bool TryReadConfiguration(
-            Dictionary<string, object>? notificationSourceDictionary,
-            out NodeHealthyCheckConfiguration? configuration)
+        return false;
+    }
+
+    private async Task SendNodeOfflineNotificationAsync(
+        ApplicationDbContext dbContext,
+        NodeHealthyCheckConfiguration configuration,
+        List<string> offlineNodeList,
+        CancellationToken stoppingToken = default)
+    {
+        var offlineNodeNames = string.Join(",", offlineNodeList);
+
+        foreach (var entry in configuration.Configurations)
         {
-            configuration = null;
-            try
-            {
-
-                if (notificationSourceDictionary == null
-                    ||
-                    !notificationSourceDictionary.TryGetValue("Value", out var value)
-                    || value is not string json
-                    )
-                {
-                    return false;
-                }
-                configuration = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(json);
-                return configuration != null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.ToString());
-            }
-            return false;
-        }
-
-        private async Task SendNodeOfflineNotificationAsync(
-            ApplicationDbContext dbContext,
-            NodeHealthyCheckConfiguration configuration,
-            List<string> offlineNodeList,
-            CancellationToken stoppingToken = default)
-        {
-            var offlineNodeNames = string.Join(",", offlineNodeList);
-
-            foreach (var entry in configuration.Configurations)
-            {
-                var notificationConfig = await dbContext.NotificationConfigurationsDbSet.FirstOrDefaultAsync(x => x.Id == entry.Value);
-                if (notificationConfig == null || !notificationConfig.IsEnabled)
-                {
-                    continue;
-                }
-                await _notificationQueue.EnqueueAsync(
-                    new(configuration.Subject,
+            var notificationConfig =
+                await dbContext.NotificationConfigurationsDbSet.FirstOrDefaultAsync(x => x.Id == entry.Value);
+            if (notificationConfig == null || !notificationConfig.IsEnabled) continue;
+            await _notificationQueue.EnqueueAsync(
+                new NotificationMessage(configuration.Subject,
                     string.Format(configuration.ContentFormat, offlineNodeNames),
                     notificationConfig.Value),
-                    stoppingToken);
-            }
+                stoppingToken);
         }
+    }
 
-        private static bool CanSendNotification(NodeHealthyCheckConfiguration configuration, NodeHealthyCounter healthCounter)
-        {
-            return healthCounter.SentNotificationCount > 0
-                && (DateTime.UtcNow - healthCounter.LastSentNotificationDateTimeUtc) / TimeSpan.FromMinutes(configuration.NotificationDuration)
-                >
-                (healthCounter.SentNotificationCount + 1);
-        }
+    private static bool CanSendNotification(NodeHealthyCheckConfiguration configuration,
+        NodeHealthyCounter healthCounter)
+    {
+        return healthCounter.SentNotificationCount > 0
+               && (DateTime.UtcNow - healthCounter.LastSentNotificationDateTimeUtc) /
+               TimeSpan.FromMinutes(configuration.NotificationDuration)
+               >
+               healthCounter.SentNotificationCount + 1;
     }
 }

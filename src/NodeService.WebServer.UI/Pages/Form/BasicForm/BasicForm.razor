@@ -14,15 +14,15 @@
     </Content>
     <ChildContent>
         <Card>
-            <Form 
+            <Form
                 Model="@_model"
                 Style="margin-top: 8px;"
                 OnFinish="HandleSubmit">
                 <FormItem Label="Title" LabelCol="_formItemLayout.LabelCol" WrapperCol="_formItemLayout.WrapperCol">
-                    <Input Placeholder="Give the target a name" @bind-Value="@context.Title" />
+                    <Input Placeholder="Give the target a name" @bind-Value="@context.Title"/>
                 </FormItem>
                 <FormItem Label="Start and end date" LabelCol="_formItemLayout.LabelCol" WrapperCol="_formItemLayout.WrapperCol">
-                    <RangePicker Style="width:100%;" TValue="DateTime?[]" @bind-Value="@context.DateRange" />
+                    <RangePicker Style="width:100%;" TValue="DateTime?[]" @bind-Value="@context.DateRange"/>
                 </FormItem>
                 <FormItem Label="Goal description" LabelCol="_formItemLayout.LabelCol" WrapperCol="_formItemLayout.WrapperCol">
                     <TextArea MinRows="4" @bind-Value="@context.Goal"></TextArea>
@@ -31,13 +31,13 @@
                     <TextArea MinRows="4" @bind-Value="@context.Standard"></TextArea>
                 </FormItem>
                 <FormItem Label="Client" LabelCol="_formItemLayout.LabelCol" WrapperCol="_formItemLayout.WrapperCol">
-                    <Input Placeholder="Please describe your customer service, internal customers directly Name job number" @bind-Value="@context.Client" />
+                    <Input Placeholder="Please describe your customer service, internal customers directly Name job number" @bind-Value="@context.Client"/>
                 </FormItem>
                 <FormItem Label="Inviting critics" LabelCol="_formItemLayout.LabelCol" WrapperCol="_formItemLayout.WrapperCol">
-                    <Input Placeholder="Please describe your customer service, internal customers directly Name job number" @bind-Value="@context.Invites" />
+                    <Input Placeholder="Please describe your customer service, internal customers directly Name job number" @bind-Value="@context.Invites"/>
                 </FormItem>
                 <FormItem Label="Weight" LabelCol="_formItemLayout.LabelCol" WrapperCol="_formItemLayout.WrapperCol">
-                    <AntDesign.InputNumber @bind-Value="@context.Weight" Min="0" Max="100" DefaultValue="0" />
+                    <AntDesign.InputNumber @bind-Value="@context.Weight" Min="0" Max="100" DefaultValue="0"/>
                     <span class="ant-form-text">%</span>
                 </FormItem>
                 <FormItem Label="Target disclosure" LabelCol="_formItemLayout.LabelCol" WrapperCol="_formItemLayout.WrapperCol">

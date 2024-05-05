@@ -2,34 +2,33 @@
 using NodeService.WebServer.UI.Models;
 using NodeService.WebServer.UI.Services;
 
-namespace NodeService.WebServer.UI.Pages.List
+namespace NodeService.WebServer.UI.Pages.List;
+
+public partial class Articles
 {
-    public partial class Articles
+    private readonly string[] _defaultOwners = { "wzj", "wjh" };
+    private readonly ListFormModel _model = new();
+
+    private readonly Owner[] _owners =
     {
-        private readonly string[] _defaultOwners = { "wzj", "wjh" };
-        private readonly ListFormModel _model = new ListFormModel();
+        new() { Id = "wzj", Name = "Myself" },
+        new() { Id = "wjh", Name = "Wu Jiahao" },
+        new() { Id = "zxx", Name = "Zhou Xingxing" },
+        new() { Id = "zly", Name = "Zhao Liying" },
+        new() { Id = "ym", Name = "Yao Ming" }
+    };
 
-        private readonly Owner[] _owners =
-            {
-            new Owner {Id = "wzj", Name = "Myself"},
-            new Owner {Id = "wjh", Name = "Wu Jiahao"},
-            new Owner {Id = "zxx", Name = "Zhou Xingxing"},
-            new Owner {Id = "zly", Name = "Zhao Liying"},
-            new Owner {Id = "ym", Name = "Yao Ming"}
-        };
+    private IList<ListItemDataType> _fakeList = new List<ListItemDataType>();
 
-        private IList<ListItemDataType> _fakeList = new List<ListItemDataType>();
+    [Inject] public IProjectService ProjectService { get; set; }
 
-        [Inject] public IProjectService ProjectService { get; set; }
+    private void SetOwner()
+    {
+    }
 
-        private void SetOwner()
-        {
-        }
-
-        protected override async Task OnInitializedAsync()
-        {
-            await base.OnInitializedAsync();
-            _fakeList = await ProjectService.GetFakeListAsync(8);
-        }
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _fakeList = await ProjectService.GetFakeListAsync(8);
     }
 }

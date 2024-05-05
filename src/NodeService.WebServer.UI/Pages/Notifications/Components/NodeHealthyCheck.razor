@@ -1,4 +1,5 @@
-﻿@inject ApiService ApiService
+﻿@using NodeService.WebServer.UI.Pages.Components
+@inject ApiService ApiService
 @inject NotificationService _notice
 @inject IMessageService _message
 
@@ -11,32 +12,21 @@
       OnFinishFailed="NodeHealthyHandleEditFormFailed"
       @ref="@_editForm">
     <FormItem Label="离线时长（分钟）">
-        <AntDesign.InputNumber @bind-Value="@context.OfflineMinutes" />
+        <AntDesign.InputNumber @bind-Value="@context.OfflineMinutes"/>
     </FormItem>
     <FormItem Label="通知间隔（分钟）">
-        <AntDesign.InputNumber @bind-Value="@context.NotificationDuration" />
+        <AntDesign.InputNumber @bind-Value="@context.NotificationDuration"/>
     </FormItem>
     <FormItem Required Label="主题">
-        <Input @bind-Value="@context.Subject" />
+        <Input @bind-Value="@context.Subject"/>
     </FormItem>
 
     <FormItem Required Label="内容格式">
         <TextArea @bind-Value="@context.ContentFormat" />
     </FormItem>
     <FormItem Label="配置类型">
-        <Select DataSource="@_notificationConfigs"
-                @bind-Value="@_selectedNotificationId"
-                TItem="NotificationConfigModel"
-                TItemValue="string"
-                LabelName="@nameof(NotificationConfigModel.Name)"
-                ValueName="@nameof(NotificationConfigModel.Id)" />
-        <Button Style="margin-top:16px;margin-left:0px;margin-bottom:16px;" OnClick="NodeHealthyAddConfig" Type="primary">
-            添加
-        </Button>
-        <Button Style="margin-top:16px;margin-left:16px;margin-bottom:16px;" OnClick="NodeHealthyRemoveConfig" Type="primary">
-            删除
-        </Button>
-        <StringEntryTable IsEditable="false" ValueTitle="源名称" NameTitle="标志" DataSource="@_editModel.Configurations" @bind-SelectedItems="_selectedNotificationConfigs" />
+
+        <NotificationConfigSelector @bind-SelectedItems="_selectedNotificationConfigs"/>
     </FormItem>
 
     <FormItem WrapperColOffset="4" WrapperColSpan="20">
@@ -54,90 +44,66 @@
 
     protected override async Task OnInitializedAsync()
     {
-        this._loading = true;
-        await QueryNodeHealthyConfigurationAsync();
-        await QueryNotificationConfigListAsync();
-        this._loading = false;
         await base.OnInitializedAsync();
+        _loading = true;
+        await QueryNodeHealthyConfigurationAsync();
+        _loading = false;
     }
 
     Form<NodeHealthyCheckConfiguration> _editForm;
 
     private NodeHealthyCheckConfiguration _editModel = new();
-    IEnumerable<NotificationConfigModel> _notificationConfigs = [];
-    IEnumerable<StringEntry> _selectedNotificationConfigs = [];
+    IEnumerable<NotificationConfigModel> _selectedNotificationConfigs = [];
 
     private async Task QueryNodeHealthyConfigurationAsync()
     {
         try
         {
-            var rsp = await ApiService.QueryNodeHealthyCheckConfigurationAsync().ConfigureAwait(false);
+            var rsp = await ApiService.QueryNodeHealthyCheckConfigurationAsync();
             if (rsp.ErrorCode == 0)
             {
-                this._editModel = rsp.Result;
+                _editModel = rsp.Result;
+                _selectedNotificationConfigs = await InitSelectedNotificationConfigAsync(rsp.Result.Configurations);
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = rsp.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = rsp.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.Message,
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
         }
-        finally
-        {
-
-        }
-
     }
 
-    private async Task QueryNotificationConfigListAsync()
+    private async Task<IEnumerable<NotificationConfigModel>> InitSelectedNotificationConfigAsync(IEnumerable<StringEntry> items)
     {
-        try
+        var list = new List<NotificationConfigModel>();
+        foreach (var item in items)
         {
-            var rsp = await ApiService.QueryNotificationConfigListAsync(QueryParameters.All).ConfigureAwait(false);
+            var rsp = await ApiService.QueryNotificationConfigAsync(item.Value);
             if (rsp.ErrorCode == 0)
             {
-                this._notificationConfigs = rsp.Result;
+                list.Add(rsp.Result);
             }
-            else
-            {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = rsp.Message,
-                    });
-            }
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.Message,
-                });
-        }
-        finally
-        {
 
+            break;
         }
+
+        return list;
     }
-
-
-
 
     private void NodeHealthyHandleEditFormFailed(EditContext editContext)
     {
-        this._editFormSubmitting = false;
+        _editFormSubmitting = false;
     }
 
 
@@ -145,62 +111,42 @@
     {
         try
         {
-            var rsp = await this.ApiService.UpdateNodeHealthyCheckConfigurationAsync(this._editModel);
+            _editModel.Configurations.Clear();
+            _editModel.Configurations.AddRange(
+                _selectedNotificationConfigs.Select(x =>
+                    new StringEntry
+                    {
+                        Name = x.Name,
+                        Value = x.Id
+                    }));
+
+            var rsp = await ApiService.UpdateNodeHealthyCheckConfigurationAsync(_editModel);
             if (rsp.ErrorCode == 0)
             {
                 await _message.Info("保存成功");
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = rsp.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = rsp.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.Message,
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
         }
         finally
         {
-            this._editFormSubmitting = true;
+            _editFormSubmitting = true;
         }
     }
 
-    private void NodeHealthyAddConfig()
-    {
-        if (this._selectedNotificationId == null)
-        {
-            return;
-        }
-        var config = this._notificationConfigs.FirstOrDefault(x => x.Id == this._selectedNotificationId);
-        if (config == null || _editModel.Configurations.Any(x => x.Value == config.Id))
-        {
-            return;
-        }
-        _editModel.Configurations.Add(new StringEntry()
 
-            {
-                Name = config.Name,
-                Value = config.Id
-            });
-    }
-
-    private void NodeHealthyRemoveConfig()
-    {
-        if (this._selectedNotificationConfigs == null)
-        {
-            return;
-        }
-        foreach (var item in _selectedNotificationConfigs)
-        {
-            _editModel.Configurations.Remove(item);
-        }
-    }
 }

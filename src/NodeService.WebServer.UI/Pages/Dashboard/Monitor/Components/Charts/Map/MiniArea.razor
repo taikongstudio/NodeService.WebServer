@@ -1,13 +1,12 @@
 @namespace NodeService.WebServer.UI.Pages.Dashboard.Monitor
-@using NodeService.WebServer.UI.Models
 
-<Area @ref="_chart" Data="Data" Config="_chartConfig" />
+<Area @ref="_chart" Data="Data" Config="_chartConfig"/>
 
 @code
 {
     private IChartComponent _chart;
 
-    private readonly AreaConfig _chartConfig = new AreaConfig
+    private readonly AreaConfig _chartConfig = new()
     {
         XField = "x",
         YField = "y",
@@ -24,6 +23,5 @@
         }
     };
 
-    [Parameter]
-    public ChartDataItem[] Data { get; set; }
+    [Parameter] public ChartDataItem[] Data { get; set; }
 }

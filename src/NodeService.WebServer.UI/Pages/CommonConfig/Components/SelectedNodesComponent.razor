@@ -1,17 +1,15 @@
 ﻿<div style="margin:10px 0px;padding:10px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
 
-@foreach (var item in SelectedNodes)
-{
-    <Tag @key="item" Closable OnClose="()=>RemoveSelectedNode?.Invoke(item)">
-        <Badge Status="@(item.Status== NodeStatus.Online?BadgeStatus.Processing: BadgeStatus.Warning)" Text="@item.Name"></Badge>
-    </Tag>
-}
+    @foreach (var item in SelectedNodes)
+    {
+        <Tag @key="item" Closable OnClose="() => RemoveSelectedNode?.Invoke(item)">
+            <Badge Status="@(item.Status == NodeStatus.Online ? BadgeStatus.Processing : BadgeStatus.Warning)" Text="@item.Name"></Badge>
+        </Tag>
+    }
 </div>
 
 @code {
-    [Parameter]
-    public Action<NodeInfoModel> RemoveSelectedNode{ get; set; }
+    [Parameter] public Action<NodeInfoModel> RemoveSelectedNode { get; set; }
 
-    [Parameter]
-    public IEnumerable<NodeInfoModel> SelectedNodes { get; set; } = [];
+    [Parameter] public IEnumerable<NodeInfoModel> SelectedNodes { get; set; } = [];
 }

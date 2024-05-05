@@ -3,14 +3,15 @@
 /* stylelint-disable */
 /* stylelint-disable declaration-bang-space-before,no-duplicate-selectors,string-no-newline */
 .title__b__1 {
-  position: relative;
-  color: rgba(0, 0, 0, 0.85);
-  font-size: 12px;
-  text-align: center;
+    position: relative;
+    color: rgba(0, 0, 0, 0.85);
+    font-size: 12px;
+    text-align: center;
 }
+
 .head-title {
-  margin-bottom: 20px;
-  color: rgba(0, 0, 0, 0.85);
-  font-weight: 500px;
-  font-size: 16px;
+    margin-bottom: 20px;
+    color: rgba(0, 0, 0, 0.85);
+    font-weight: 500px;
+    font-size: 16px;
 }

@@ -1,95 +1,91 @@
-﻿
+﻿using Microsoft.Extensions.DependencyInjection;
 
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Reactive.Disposables;
+namespace NodeService.WebServer.Services.Tasks;
 
-namespace NodeService.WebServer.Services.Tasks
+public class TaskScheduler
 {
-    public class TaskScheduler
+    private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
+    private readonly ILogger _logger;
+
+
+    private readonly ISchedulerFactory _schedulerFactory;
+    private readonly IServiceProvider _serviceProvider;
+    private IScheduler _scheduler;
+
+    public TaskScheduler(
+        ISchedulerFactory schedulerFactory,
+        ILogger<TaskScheduler> logger,
+        TaskSchedulerDictionary jobSchedulerDictionary,
+        IServiceProvider serviceProvider
+    )
     {
-        private class AsyncDisposable : IAsyncDisposable
+        _schedulerFactory = schedulerFactory;
+        _logger = logger;
+        _jobSchedulerDictionary = jobSchedulerDictionary;
+        _serviceProvider = serviceProvider;
+    }
+
+    public async Task<IAsyncDisposable> ScheduleAsync<T>(
+        TaskSchedulerKey jobSchedulerKey,
+        IReadOnlyCollection<ITrigger> triggers,
+        IDictionary<string, object?> properties,
+        CancellationToken cancellationToken = default
+    )
+        where T : JobBase
+    {
+        _scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
+        var asyncDisposable = new AsyncDisposable(_scheduler);
+        try
         {
-            private JobKey _jobKey;
-            private readonly IScheduler _scheduler;
-
-            public AsyncDisposable(IScheduler scheduler)
+            var jobType = typeof(T);
+            IDictionary<string, object?> props = new Dictionary<string, object?>
             {
-                _scheduler = scheduler;
-            }
-
-            public void SetKey(JobKey jobKey)
-            {
-                _jobKey = jobKey;
-            }
-
-            public async ValueTask DisposeAsync()
-            {
-                if (_jobKey != null)
+                { nameof(JobBase.Logger), _serviceProvider.GetService<ILogger<T>>() },
+                { nameof(JobBase.Properties), properties },
+                { nameof(JobBase.ServiceProvider), _serviceProvider },
+                { nameof(JobBase.TriggerSource), jobSchedulerKey.TriggerSource },
                 {
-                    await _scheduler.DeleteJob(_jobKey);
+                    nameof(JobBase.AsyncDispoable), jobSchedulerKey.TriggerSource
+                                                    == TaskTriggerSource.Manual
+                        ? asyncDisposable
+                        : null
                 }
-            }
+            };
+
+            var job = JobBuilder.Create(jobType)
+                .SetJobData(new JobDataMap(props))
+                .Build();
+            asyncDisposable.SetKey(job.Key);
+            Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>> jobsAndTriggers = [];
+            jobsAndTriggers.Add(job, triggers);
+            await _scheduler.ScheduleJobs(jobsAndTriggers, true, cancellationToken);
         }
-
-
-        private readonly ISchedulerFactory _schedulerFactory;
-        private readonly ILogger _logger;
-        private IScheduler _scheduler;
-        private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
-        private readonly IServiceProvider _serviceProvider;
-
-        public TaskScheduler(
-            ISchedulerFactory schedulerFactory,
-            ILogger<TaskScheduler> logger,
-            TaskSchedulerDictionary jobSchedulerDictionary,
-             IServiceProvider serviceProvider
-            )
+        catch (Exception ex)
         {
-            _schedulerFactory = schedulerFactory;
-            _logger = logger;
-            _jobSchedulerDictionary = jobSchedulerDictionary;
-            _serviceProvider = serviceProvider;
+            _logger.LogError(ex.ToString());
         }
 
-        public async Task<IAsyncDisposable> ScheduleAsync<T>(
-            TaskSchedulerKey jobSchedulerKey,
-            IReadOnlyCollection<ITrigger> triggers,
-            IDictionary<string, object?> properties,
-            CancellationToken cancellationToken = default
-            )
-            where T : JobBase
+        return asyncDisposable;
+    }
+
+    private class AsyncDisposable : IAsyncDisposable
+    {
+        private readonly IScheduler _scheduler;
+        private JobKey _jobKey;
+
+        public AsyncDisposable(IScheduler scheduler)
         {
-            _scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
-            AsyncDisposable asyncDisposable = new AsyncDisposable(_scheduler);
-            try
-            {
-
-                var jobType = typeof(T);
-                IDictionary<string, object?> props = new Dictionary<string, object?>()
-                {
-                    {nameof(JobBase.Logger),_serviceProvider.GetService<ILogger<T>>()},
-                    {nameof(JobBase.Properties),properties},
-                    {nameof(JobBase.ServiceProvider),_serviceProvider},
-                    {nameof(JobBase.TriggerSource),jobSchedulerKey.TriggerSource },
-                    {nameof(JobBase.AsyncDispoable),jobSchedulerKey.TriggerSource
-                    == TaskTriggerSource.Manual? asyncDisposable:null }
-                };
-
-                IJobDetail job = JobBuilder.Create(jobType)
-                    .SetJobData(new JobDataMap(props))
-                    .Build();
-                asyncDisposable.SetKey(job.Key);
-                Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>> jobsAndTriggers = [];
-                jobsAndTriggers.Add(job, triggers);
-                await _scheduler.ScheduleJobs(jobsAndTriggers, true, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.ToString());
-            }
-            return asyncDisposable;
+            _scheduler = scheduler;
         }
 
+        public async ValueTask DisposeAsync()
+        {
+            if (_jobKey != null) await _scheduler.DeleteJob(_jobKey);
+        }
+
+        public void SetKey(JobKey jobKey)
+        {
+            _jobKey = jobKey;
+        }
     }
 }

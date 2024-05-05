@@ -1,8 +1,7 @@
-﻿namespace NodeService.WebServerTools
+﻿namespace NodeService.WebServerTools;
+
+public class ProcessUsageMapping
 {
-    public class ProcessUsageMapping
-    {
-        public string Name { get; set; }
-        public string FileName { get; set; }
-    }
+    public string Name { get; set; }
+    public string FileName { get; set; }
 }

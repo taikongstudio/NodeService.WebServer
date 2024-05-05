@@ -1,11 +1,12 @@
+@using BasicLayout = NodeService.WebServer.UI.Layouts.BasicLayout
 <CascadingAuthenticationState>
-    <Router AppAssembly="@typeof(NodeService.WebServer.UI.Layouts.BasicLayout).Assembly">
+    <Router AppAssembly="@typeof(BasicLayout).Assembly">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(NodeService.WebServer.UI.Layouts.BasicLayout)">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(BasicLayout)">
                 <NotAuthorized>
                     @if (!context.User.Identity.IsAuthenticated)
                     {
-                        <RedirectToLogin />
+                        <RedirectToLogin/>
                     }
                     else
                     {
@@ -13,14 +14,14 @@
                     }
                 </NotAuthorized>
             </AuthorizeRouteView>
-            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+            <FocusOnNavigate RouteData="@routeData" Selector="h1"/>
         </Found>
         <NotFound>
             <PageTitle>Not found</PageTitle>
-            <LayoutView Layout="@typeof(NodeService.WebServer.UI.Layouts.BasicLayout)">
+            <LayoutView Layout="@typeof(BasicLayout)">
                 <p role="alert">Sorry, there's nothing at this address.</p>
             </LayoutView>
         </NotFound>
     </Router>
 </CascadingAuthenticationState>
-<AntContainer />
+<AntContainer/>

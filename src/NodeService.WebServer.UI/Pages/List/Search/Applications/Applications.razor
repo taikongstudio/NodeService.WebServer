@@ -34,7 +34,7 @@
                                     Style="max-width: 200px; width: 100%;"
                                     @bind-Value="_model.ActiveUser">
                                 <SelectOptions>
-                                    <SelectOption TItem="string" TItemValue="string" Value="@("lisa")" Label="Wang Zhaojun" />
+                                    <SelectOption TItem="string" TItemValue="string" Value="@("lisa")" Label="Wang Zhaojun"/>
                                 </SelectOptions>
                             </Select>
                         </FormItem>
@@ -47,8 +47,8 @@
                                     Style="max-width: 200px; width: 100%;"
                                     @bind-Value="_model.Satisfaction">
                                 <SelectOptions>
-                                    <SelectOption TItem="string" TItemValue="string" Value="@("good")" Label="Excellent" />
-                                    <SelectOption TItem="string" TItemValue="string" Value="@("normal")" Label="Normal" />
+                                    <SelectOption TItem="string" TItemValue="string" Value="@("good")" Label="Excellent"/>
+                                    <SelectOption TItem="string" TItemValue="string" Value="@("normal")" Label="Normal"/>
                                 </SelectOptions>
                             </Select>
                         </FormItem>
@@ -57,7 +57,7 @@
             </StandardFormRow>
         </Form>
     </Card>
-    <br />
+    <br/>
     <AntList TItem="ListItemDataType"
              Grid="_listGridType"
              DataSource="_fakeList">
@@ -70,7 +70,7 @@
                         @context.Title
                     </TitleTemplate>
                     <AvatarTemplate>
-                        <Avatar Size="small" Src="@context.Avatar" />
+                        <Avatar Size="small" Src="@context.Avatar"/>
                     </AvatarTemplate>
                 </CardMeta>
                 <div class="cardItemContent">
@@ -92,26 +92,34 @@
 
 @code
 {
-    private static readonly RenderFragment Download =@<AntDesign.Tooltip Title="@("下载")">
-    <Icon Type="download" Theme="outline" />
-</AntDesign.Tooltip>;
+    private static readonly RenderFragment Download = @<AntDesign.Tooltip Title="@("下载")">
+                                                          <Icon Type="download" Theme="outline"/>
+                                                      </AntDesign.Tooltip>;
 
-private static readonly IList<RenderFragment> Actions = new List<RenderFragment>
-{
+    private static readonly IList<RenderFragment> Actions = new List<RenderFragment>
+    {
         Download,
-@<AntDesign.Tooltip Title="@("Edit")"><Icon Type="edit" Theme="outline" /></AntDesign.Tooltip>,
-@<AntDesign.Tooltip Title="@("Share")"><Icon Type="share-alt" Theme="outline" /></AntDesign.Tooltip>,
-@<Dropdown><Icon Type="ellipsis" Theme="outline" /></Dropdown>
+        @<AntDesign.Tooltip Title="@("Edit")">
+            <Icon Type="edit" Theme="outline"/>
+        </AntDesign.Tooltip>,
+        @<AntDesign.Tooltip Title="@("Share")">
+            <Icon Type="share-alt" Theme="outline"/>
+        </AntDesign.Tooltip>,
+        @<Dropdown>
+            <Icon Type="ellipsis" Theme="outline"/>
+        </Dropdown>
     };
 
-        private static RenderFragment FormatWan(int val) {
-            if (val > 10000) {
-                val = (int) Math.Floor((double) val / 10000);
-            }
+    private static RenderFragment FormatWan(int val)
+    {
+        if (val > 10000)
+        {
+            val = (int)Math.Floor((double)val / 10000);
+        }
 
-            return @<span>
-            @val
-            <span style="position: relative; top: -2px; font-size: 14px; font-style: normal; margin-left: 2px;">k</span>
-        </span>;
- }
+        return @<span>
+                   @val
+                   <span style="position: relative; top: -2px; font-size: 14px; font-style: normal; margin-left: 2px;">k</span>
+               </span>;
+    }
 }

@@ -1,21 +1,41 @@
-﻿
+﻿@if (IsEditable)
+{
+    <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddNewItem" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+    <Button Shape="@ButtonShape.Circle" Danger Icon="@IconType.Outline.Delete" OnClick="RemoveSelectedItems" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+}
 
-<Table Context="mappingEntry"
+<Table @ref="_table"
+       Context="mappingEntry"
        TItem="StringEntry"
-       DataSource="@DataSource"
+       DataSource="@ItemsSource"
        Size="TableSize.Small"
-       SelectedRows="@SelectedItems" 
-       SelectedRowsChanged="@SelectedItemsChanged"
-       RowKey="x=>x.Id">
-    <Selection  Key="@mappingEntry.Id" Type="checkbox" />
-    <PropertyColumn Hidden="@this.IsNameHidden" Title="@this.NameTitle" Property="c=>c.Name" Sortable>
-        @if (mappingEntry.IsEditing && this.IsNameEditable)
+       SelectedRows="SelectedItems"
+       SelectedRowsChanged="@OnSelectedItemsChanged"
+       RowKey="x => x.Id">
+    <Selection Key="@mappingEntry.Id" Type="checkbox"/>
+    <PropertyColumn Hidden="@IsNameHidden" Title="@NameTitle" Property="c => c.Name" Sortable>
+        @if (mappingEntry.IsEditing && IsNameEditable)
         {
-            <Input Type="text" @bind-Value="@mappingEntry.Name" AutoFocus="@IsNameEditable" />
+            if (NameList != null && NameList.Any())
+            {
+                <Select DataSource="@NameList"
+                        @bind-value="@mappingEntry.Name"
+                        TItem="StringEntry"
+                        AutoFocus
+                        TItemValue="string"
+                        LabelName="@nameof(StringEntry.Name)"
+                        ValueName="@nameof(StringEntry.Value)" />
+            }
+            else
+            {
+                <Input Type="text" @bind-Value="@mappingEntry.Name" AutoFocus="@IsNameEditable" />
+            }
         }
-        else if(this.IsNameEditable)
+        else if (IsNameEditable)
         {
-            <div class="editable-cell-value-wrap"  style="padding-right:24px"  @onclick="()=>mappingEntry.BeginEdit()">
+            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
                 @mappingEntry.Name
             </div>
         }
@@ -24,14 +44,27 @@
             <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Name</div>
         }
     </PropertyColumn>
-    <PropertyColumn Hidden="@this.IsValueHidden" Title="@this.ValueTitle" Property="c=>c.Value" Sortable>
-        @if (mappingEntry.IsEditing && this.IsValueEditable)
+    <PropertyColumn Hidden="@IsValueHidden" Title="@ValueTitle" Property="c => c.Value" Sortable>
+        @if (mappingEntry.IsEditing && IsValueEditable)
         {
-            <Input Type="text" @bind-Value="@mappingEntry.Value" AutoFocus="@(!IsNameEditable && IsValueEditable)" />
+            if (ValueList != null && ValueList.Any())
+            {
+                <Select DataSource="@ValueList"
+                        @bind-value="@mappingEntry.Name"
+                        TItem="StringEntry"
+                        AutoFocus
+                        TItemValue="string"
+                        LabelName="@nameof(StringEntry.Name)"
+                        ValueName="@nameof(StringEntry.Value)" />
+            }
+            else
+            {
+                <Input Type="text" @bind-Value="@mappingEntry.Value" AutoFocus="@(!IsNameEditable && IsValueEditable)" />
+            }
         }
-        else if (this.IsValueEditable)
+        else if (IsValueEditable)
         {
-            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="()=>mappingEntry.BeginEdit()">
+            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
                 @mappingEntry.Value
             </div>
         }
@@ -40,14 +73,14 @@
             <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Value</div>
         }
     </PropertyColumn>
-    <PropertyColumn Hidden="@this.IsTagHidden" Title="@TagTitle" Property="c=>c.Tag" Sortable>
-        @if (mappingEntry.IsEditing && this.IsTagEditable)
+    <PropertyColumn Hidden="@IsTagHidden" Title="@TagTitle" Property="c => c.Tag" Sortable>
+        @if (mappingEntry.IsEditing && IsTagEditable)
         {
-            <Input Type="text" @bind-Value="@mappingEntry.Tag" AutoFocus="@(!IsNameEditable && IsTagEditable)" />
+            <Input Type="text" @bind-Value="@mappingEntry.Tag" AutoFocus="@(!IsNameEditable && IsTagEditable)"/>
         }
-        else if (this.IsTagEditable)
+        else if (IsTagEditable)
         {
-            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="()=>mappingEntry.BeginEdit()">
+            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
                 @mappingEntry.Tag
             </div>
         }
@@ -56,106 +89,132 @@
             <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Tag</div>
         }
     </PropertyColumn>
-        @if (this.IsEditable)
-        {
-            <ActionColumn Fixed="right" Width="100" Title="操作">
-                <Space>
-                    @if (this.IsNameEditable || this.IsValueEditable || this.IsTagEditable)
+    @if (IsEditable)
+    {
+        <ActionColumn Fixed="right" Width="100" Title="操作">
+            <Space>
+                @if (IsNameEditable || IsValueEditable || IsTagEditable)
+                {
+                    @if (mappingEntry.IsEditing)
                     {
-                        @if (mappingEntry.IsEditing)
-                        {
-                            <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="()=>mappingEntry.EndEdit()"></Button>
-                                </SpaceItem>
-                        }
-                        else
-                        {
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>mappingEntry.BeginEdit()"></Button>
-                            </SpaceItem>
-                        }
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="() => mappingEntry.EndEdit()"></Button>
+                        </SpaceItem>
                     }
+                    else
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => mappingEntry.BeginEdit()"></Button>
+                        </SpaceItem>
+                    }
+                }
 
-                    <SpaceItem>
-                    <Button Shape="@ButtonShape.Circle" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="()=>RemoveSelectedItem(mappingEntry)"></Button>
-                    </SpaceItem>
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="() => RemoveSelectedItem(mappingEntry)"></Button>
+                </SpaceItem>
 
-                 </Space>
-             </ActionColumn>
-        }
+            </Space>
+        </ActionColumn>
+    }
 
- </Table>
-
-
+</Table>
 
 
 @code {
-
-    [Parameter]
-    public IEnumerable<StringEntry> DataSource { get; set; }
-
-    [Parameter]
-    public IEnumerable<StringEntry> SelectedItems { get; set; } = [];
+    private ITable _table;
 
 
-    [Parameter]
-    public EventCallback<IEnumerable<StringEntry>> SelectedItemsChanged { get; set; }
-
-    [Parameter]
-    public Action<StringEntry>? RemoveItemAction { get; set; }
-
-    [Parameter]
-    public string NameTitle { get; set; } = "名称";
-
-    [Parameter]
-    public string ValueTitle { get; set; } = "值";
-
-    [Parameter]
-    public string TagTitle { get; set; } = "标签";
-
-    [Parameter]
-    public bool IsNameEditable { get; set; } = true;
-
-    [Parameter]
-    public bool IsValueEditable { get; set; } = true;
-
-    [Parameter]
-    public bool IsNameHidden { get; set; } = false;
-
-    [Parameter]
-    public bool IsValueHidden { get; set; } = false;
-
-    [Parameter]
-    public bool IsTagHidden { get; set; } = true;
-
-    [Parameter]
-    public bool IsTagEditable { get; set; } = false;
+    [Parameter] public IList<StringEntry> ItemsSource { get; set; }
 
 
-    [Parameter]
-    public bool IsEditable { get; set; } = true;
+    public IEnumerable<StringEntry> SelectedItems { get; private set; } = [];
+
+
+    [Parameter] public EventCallback<IEnumerable<StringEntry>> SelectedItemsChanged { get; set; }
+
+    [Parameter] public EventCallback<AddingNewItemEventArgs> AddingNewItem { get; set; }
+
+    [Parameter] public EventCallback<ValueChangingEventArgs<string>> ValueChanging { get; set; }
+
+    [Parameter] public EventCallback<ValueChangingEventArgs<string>> NameChanging { get; set; }
+
+    [Parameter] public string NameTitle { get; set; } = "名称";
+
+    [Parameter] public string ValueTitle { get; set; } = "值";
+
+    [Parameter] public string TagTitle { get; set; } = "标签";
+
+    [Parameter] public bool IsNameEditable { get; set; } = true;
+
+    [Parameter] public bool IsValueEditable { get; set; } = true;
+
+    [Parameter] public bool IsNameHidden { get; set; } = false;
+
+    [Parameter] public bool IsValueHidden { get; set; } = false;
+
+    [Parameter] public bool IsTagHidden { get; set; } = true;
+
+    [Parameter] public bool IsTagEditable { get; set; } = false;
+
+
+    [Parameter] public bool IsEditable { get; set; } = true;
+
+    [Parameter] public IEnumerable<StringEntry> NameList { get; set; } = [];
+
+    [Parameter] public IEnumerable<StringEntry> ValueList { get; set; } = [];
 
     private void RemoveSelectedItem(StringEntry value)
     {
-        if (this.DataSource is IList<StringEntry> list)
-        {
-            list.Remove(value);
-        }
-        else
-        {
-            this.RemoveItemAction?.Invoke(value);
-        }
+        ItemsSource.Remove(value);
     }
 
     protected override Task OnParametersSetAsync()
     {
-        if (!this.IsEditable)
+        if (!IsEditable)
         {
-            this.IsNameEditable = false;
-            this.IsValueEditable = false;
-            this.IsTagEditable = false;
+            IsNameEditable = false;
+            IsValueEditable = false;
+            IsTagEditable = false;
         }
+
         return base.OnParametersSetAsync();
+    }
+
+    private async Task OnSelectedItemsChanged(IEnumerable<StringEntry> items)
+    {
+        SelectedItems = items;
+        await SelectedItemsChanged.InvokeAsync(items);
+    }
+
+    public void RemoveSelectedItems()
+    {
+        foreach (var item in SelectedItems)
+        {
+            ItemsSource.Remove(item);
+        }
+
+        SelectedItems = [];
+    }
+
+    private async Task AddNewItem()
+    {
+        var entry = new StringEntry();
+        var e = new AddingNewItemEventArgs(entry);
+        await AddingNewItem.InvokeAsync(e);
+        if (e.Handled)
+        {
+            return;
+        }
+
+        ItemsSource.Add(entry);
+        entry.BeginEdit();
+    }
+
+
+    private async Task OnValueChanging(StringEntry stringEntry, string? value)
+    {
+        var e = new ValueChangingEventArgs<string>(stringEntry, value);
+        await ValueChanging.InvokeAsync(e);
     }
 
 

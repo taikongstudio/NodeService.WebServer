@@ -1,70 +1,76 @@
-﻿using MailKit;
-using MailKit.Security;
-using MimeKit;
-using System.Net.Security;
+﻿using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
+using MailKit;
+using MailKit.Net.Smtp;
+using MimeKit;
+using MimeKit.Text;
 
-namespace NodeService.WebServer.Services.Notifications
+namespace NodeService.WebServer.Services.Notifications;
+
+public class EmailNotificationHandler
 {
-    public class EmailNotificationHandler
+    public async Task<NotificationResult> HandleAsync(NotificationMessage notificationMessage)
     {
-        public async Task<NotificationResult> HandleAsync(NotificationMessage notificationMessage)
+        var notificationResult = new NotificationResult();
+        try
         {
-            NotificationResult notificationResult = new NotificationResult();
-            try
+            if (!notificationMessage.Configuration.Options.TryGetValue(
+                    NotificationConfigurationType.Email,
+                    out var emailOptionsValue) || emailOptionsValue is not EmailNotificationOptions options)
             {
-                using var smtp = new MailKit.Net.Smtp.SmtpClient();
-                smtp.MessageSent += MessageSent;
-                smtp.ServerCertificateValidationCallback = ServerCertificateValidationCallback;
-                await smtp.ConnectAsync(
-                    notificationMessage.Configuration.Email.Host,
-                    notificationMessage.Configuration.Email.Port,
-                    SecureSocketOptions.Auto);
-                await smtp.AuthenticateAsync(
-                    notificationMessage.Configuration.Email.UserName,
-                    notificationMessage.Configuration.Email.Password);
-                var message = new MimeMessage
-                {
-                    Sender = new MailboxAddress(notificationMessage.Configuration.Email.Sender, notificationMessage.Configuration.Email.UserName),
-                    Subject = notificationMessage.Subject,
-                    Body = new TextPart(MimeKit.Text.TextFormat.Plain)
-                    {
-                        Text = notificationMessage.Message
-                    }
-                };
-                foreach (var to in notificationMessage.Configuration.Email.To)
-                {
-                    message.To.Add(new MailboxAddress(to.Name, to.Value));
-                }
-
-                foreach (var cc in notificationMessage.Configuration.Email.CC)
-                {
-                    message.Cc.Add(new MailboxAddress(cc.Name, cc.Value));
-                }
-
-                await smtp.SendAsync(MimeKit.FormatOptions.Default, message);
-                await smtp.DisconnectAsync(true);
+                if (emailOptionsValue is JsonElement jsonElement)
+                    options = jsonElement.Deserialize<EmailNotificationOptions>();
+                else
+                    throw new InvalidOperationException("Email notification is not supported");
             }
-            catch (Exception ex)
+
+            using var smtp = new SmtpClient();
+            smtp.MessageSent += MessageSent;
+            smtp.ServerCertificateValidationCallback = ServerCertificateValidationCallback;
+            await smtp.ConnectAsync(
+                options.Host,
+                options.Port);
+            await smtp.AuthenticateAsync(
+                options.UserName,
+                options.Password);
+            var message = new MimeMessage
             {
-                notificationResult.ErrorCode = ex.HResult;
-                notificationResult.Message = ex.Message;
-            }
-            return notificationResult;
-        }
+                Sender = new MailboxAddress(options.Sender,
+                    options.UserName),
+                Subject = notificationMessage.Subject,
+                Body = new TextPart(TextFormat.Plain)
+                {
+                    Text = notificationMessage.Message
+                }
+            };
+            foreach (var to in options.To)
+                message.To.Add(new MailboxAddress(to.Name, to.Value));
 
-        private void MessageSent(object sender, MessageSentEventArgs e)
+            foreach (var cc in options.CC)
+                message.Cc.Add(new MailboxAddress(cc.Name, cc.Value));
+
+            await smtp.SendAsync(FormatOptions.Default, message);
+            await smtp.DisconnectAsync(true);
+        }
+        catch (Exception ex)
         {
-
+            notificationResult.ErrorCode = ex.HResult;
+            notificationResult.Message = ex.Message;
         }
 
-        private bool ServerCertificateValidationCallback(
-            object sender,
-            X509Certificate? certificate,
-            X509Chain? chain,
-            SslPolicyErrors sslPolicyErrors)
-        {
-            return true;
-        }
+        return notificationResult;
+    }
+
+    private void MessageSent(object sender, MessageSentEventArgs e)
+    {
+    }
+
+    private bool ServerCertificateValidationCallback(
+        object sender,
+        X509Certificate? certificate,
+        X509Chain? chain,
+        SslPolicyErrors sslPolicyErrors)
+    {
+        return true;
     }
 }

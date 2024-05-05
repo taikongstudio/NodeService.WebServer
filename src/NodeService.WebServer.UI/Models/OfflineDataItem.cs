@@ -1,8 +1,7 @@
-﻿namespace NodeService.WebServer.UI.Models
+﻿namespace NodeService.WebServer.UI.Models;
+
+public class OfflineDataItem
 {
-    public class OfflineDataItem
-    {
-        public string Name { get; set; }
-        public float Cvr { get; set; }
-    }
+    public string Name { get; set; }
+    public float Cvr { get; set; }
 }

@@ -1,40 +1,26 @@
-﻿
-<FormItem Label="主机名称">
-    <Input @bind-Value="@Configuration.Host" />
+﻿<FormItem Label="主机名称">
+    <Input Type="url" @bind-Value="@Configuration.Host"/>
 </FormItem>
 <FormItem Label="端口">
-    <AntDesign.InputNumber @bind-Value="@Configuration.Port" />
+    <AntDesign.InputNumber @bind-Value="@Configuration.Port"/>
 </FormItem>
 <FormItem Label="发送者">
-    <Input @bind-Value="@Configuration.Sender" />
+    <Input Type="email" @bind-Value="@Configuration.Sender"/>
 </FormItem>
 <FormItem Label="电子邮件">
-    <Input @bind-Value="@Configuration.UserName" />
+    <Input Type="email" @bind-Value="@Configuration.UserName"/>
 </FormItem>
 <FormItem Label="密码">
-    <InputPassword @bind-Value="@Configuration.Password" />
+    <InputPassword @bind-Value="@Configuration.Password"/>
 </FormItem>
 <FormItem Label="发送给">
-    <Input @bind-Value="_to" />
-    <Button Style="margin-top:16px;margin-left:0px;margin-bottom:16px;" OnClick="AddTo"  Type="primary">
-        添加
-    </Button>
-    <Button Style="margin-top:16px;margin-left:16px;margin-bottom:16px;" OnClick="RemoveTo" Type="primary">
-        删除
-    </Button>
-    <StringEntryTable DataSource="@Configuration.To" @bind-SelectedItems="SelectedTo" />
+    <Input Type="email" @bind-Value="_to"/>
+    <StringEntryTable ValueTitle="电子邮箱" NameTitle="备注" ItemsSource="@Configuration.To" AddingNewItem="AddTo"/>
 </FormItem>
 <FormItem Label="抄送给">
-    <Input @bind-Value="_cc" />
-    <Button Style="margin-top:16px;margin-left:0px;margin-bottom:16px;" OnClick="AddCC" Type="primary">
-        添加
-    </Button>
-    <Button Style="margin-top:16px;margin-left:16px;margin-bottom:16px;" OnClick="RemoveCC" Type="primary">
-        删除
-    </Button>
-    <StringEntryTable ValueTitle="电子邮箱" NameTitle="备注" DataSource="@Configuration.CC" @bind-SelectedItems="SelectedCC" />
+    <Input Type="email" @bind-Value="_cc"/>
+    <StringEntryTable ValueTitle="电子邮箱" NameTitle="备注" ItemsSource="@Configuration.CC" AddingNewItem="AddCC"/>
 </FormItem>
-
 
 
 @code {
@@ -43,57 +29,29 @@
     private IEnumerable<StringEntry> SelectedTo = [];
     private IEnumerable<StringEntry> SelectedCC = [];
 
-    [Parameter]
-    public EmailNotificationConfiguration Configuration { get; set; }
+    [Parameter] public EmailNotificationOptions Configuration { get; set; }
 
-    private void AddTo()
+    private void AddTo(AddingNewItemEventArgs e)
     {
-        if (string.IsNullOrEmpty(this._to))
+        if (string.IsNullOrEmpty(_to))
         {
             return;
         }
-        this.Configuration.To.Add(new StringEntry()
-            {
-                Value = this._to
-            });
-        this._to = null;
+
+        e.DataItem.Value = _to;
+        _to = null;
     }
 
-    private void RemoveTo()
-    {
-        if (this.SelectedTo == null)
-        {
-            return;
-        }
-        foreach (var item in this.SelectedTo)
-        {
-            this.Configuration.To.Remove(item);
-        }
-    }
 
-    private void AddCC()
+    private void AddCC(AddingNewItemEventArgs e)
     {
-        if (string.IsNullOrEmpty(this._cc))
+        if (string.IsNullOrEmpty(_cc))
         {
             return;
         }
-        this.Configuration.CC.Add(new StringEntry()
-            {
-                Value = this._cc
-            });
-        this._cc = null;
-    }
 
-    private void RemoveCC()
-    {
-        if (this.SelectedCC == null)
-        {
-            return;
-        }
-        foreach (var item in this.SelectedCC)
-        {
-            this.Configuration.CC.Remove(item);
-        }
+        e.DataItem.Value = _cc;
+        _cc = null;
     }
 
 

@@ -1,6 +1,6 @@
 @namespace NodeService.WebServer.UI.Pages.Dashboard.Analysis
 @page "/"
-@attribute [ReuseTabsPage(Title ="Home", Pin =true, Closable =false, Order =0)]
+@attribute [ReuseTabsPage(Title = "Home", Pin = true, Closable = false, Order = 0)]
 
 <GridContent>
     <Row Type="flex" Gutter="24">
@@ -19,7 +19,7 @@
                     </Trend>
                 </ChildContent>
                 <Footer>
-                    <Field Label="Daily Sale" Value="$12,423" />
+                    <Field Label="Daily Sale" Value="$12,423"/>
                 </Footer>
             </ChartCard>
         </AntDesign.Col>
@@ -28,10 +28,10 @@
                        Total="8846"
                        ContentHeight="46">
                 <ChildContent>
-                    <MiniArea />
+                    <MiniArea/>
                 </ChildContent>
                 <Footer>
-                    <Field Label="Daily Visits" Value="1243" />
+                    <Field Label="Daily Visits" Value="1243"/>
                 </Footer>
             </ChartCard>
         </AntDesign.Col>
@@ -40,10 +40,10 @@
                        Total="6560"
                        ContentHeight="46">
                 <ChildContent>
-                    <MiniBar />
+                    <MiniBar/>
                 </ChildContent>
                 <Footer>
-                    <Field Label="Conversion Rate" Value="60%" />
+                    <Field Label="Conversion Rate" Value="60%"/>
                 </Footer>
             </ChartCard>
         </AntDesign.Col>
@@ -52,18 +52,18 @@
                        Total="78%"
                        ContentHeight="46">
                 <ChildContent>
-                    <MiniProgress 
-                        Percent="78" 
-                        StrokeWidth="8" 
-                        Target="80" 
-                        Color="#13C2C2" />
+                    <MiniProgress
+                        Percent="78"
+                        StrokeWidth="8"
+                        Target="80"
+                        Color="#13C2C2"/>
                 </ChildContent>
                 <Footer>
-                    <Field Label="Conversion Rate" Value="60%" />
+                    <Field Label="Conversion Rate" Value="60%"/>
                 </Footer>
             </ChartCard>
         </AntDesign.Col>
     </Row>
 
-    <SalesCard />
+    <SalesCard/>
 </GridContent>

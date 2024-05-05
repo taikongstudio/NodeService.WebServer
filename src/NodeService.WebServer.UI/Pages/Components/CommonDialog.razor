@@ -1,0 +1,36 @@
+﻿<Modal Width="800"
+       Maximizable
+       @bind-Visible="@IsVisible"
+       Title="@Title"
+       Closable="true"
+       AfterClose="CloseImpl"
+       DestroyOnClose>
+    @ChildContent
+</Modal>
+
+@code {
+    [Parameter] public string Title { get; set; } = "对象浏览器";
+
+    [Parameter] public RenderFragment ChildContent { get; set; }
+
+    [Parameter] public EventCallback Closed { get; set; }
+
+    public bool IsVisible { get; private set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    private async Task CloseImpl()
+    {
+        await Closed.InvokeAsync();
+    }
+
+    public virtual Task ShowAsync()
+    {
+        IsVisible = true;
+        return Task.CompletedTask;
+    }
+
+}

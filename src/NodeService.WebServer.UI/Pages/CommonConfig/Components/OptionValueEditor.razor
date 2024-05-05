@@ -1,4 +1,4 @@
-﻿
+﻿@using NodeService.WebServer.UI.Pages.Components
 <style type="text/css">
     .CodeEditor {
     height:400px;
@@ -6,316 +6,116 @@
     border-width:1px;
     }
 </style>
-@foreach (var kv in this.OptionValueEditors)
+@foreach (var kv in OptionValueEditors)
 {
     var editorBase = kv.Value;
     <FormItem Style="border:1px;border-color:dodgerblue" Label="@(string.Format($"{kv.Key}"))">
         @switch (editorBase.EditorType)
-            {
-                case OptionValueType.TextValue:
-                    var textValueEditor = editorBase as TextValueEditor;
-                    <Input Disabled="@disabled" @bind-Value="@textValueEditor.Value" Type="text"></Input>
-                    break;
-                case OptionValueType.NumberValue:
-                    var numberValueEditor = editorBase as NumberValueEditor;
-                    <Input Disabled="@disabled" @bind-Value="@numberValueEditor.Value" Type="number"></Input>
-                    break;
-                case OptionValueType.BooleanValue:
-                    var booleanValueEditor = editorBase as BooleanValueEditor;
-                    <Switch Disabled="@disabled" @bind-Value="@booleanValueEditor.Value"></Switch>
-                    break;
-                case OptionValueType.TextArrayValue:
-                    var textArrayValueEditor = editorBase as TextArrayValueEditor;
-                    <Button Disabled="@disabled" OnClick="()=>textArrayValueEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@disabled" OnClick="()=>textArrayValueEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <StringEntryTable DataSource="@textArrayValueEditor.Value"
-                                      NameTitle="备注"
-                                      IsNameHidden
-                                      ValueTitle="文本值"
-                                      IsEditable="@IsEditable"
-                    @bind-SelectedItems="@textArrayValueEditor.SelectedItems" />
-                    break;
-                case OptionValueType.PythonCodeValue:
-                    var scriptCodeEditor = editorBase as PythonCodeEditor;
-                    <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_pythonCodeEditor" OnDidInit="InitAsync" CssClass="CodeEditor" ConstructionOptions="BuildPythonCodeEditorConstructionOptions" />
+        {
+            case OptionValueType.TextValue:
+                var textValueEditor = editorBase as TextValueEditor;
+                <Input Disabled="@disabled" @bind-Value="@textValueEditor.Value" Type="text"></Input>
+                break;
+            case OptionValueType.NumberValue:
+                var numberValueEditor = editorBase as NumberValueEditor;
+                <Input Disabled="@disabled" @bind-Value="@numberValueEditor.Value" Type="number"></Input>
+                break;
+            case OptionValueType.BooleanValue:
+                var booleanValueEditor = editorBase as BooleanValueEditor;
+                <Switch Disabled="@disabled" @bind-Value="@booleanValueEditor.Value"></Switch>
+                break;
+            case OptionValueType.TextArrayValue:
+                var textArrayValueEditor = editorBase as TextArrayValueEditor;
+                <Button Disabled="@disabled" OnClick="() => textArrayValueEditor.AddNewItem()" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+                </Button>
+                <Button Disabled="@disabled" Danger OnClick="() => textArrayValueEditor.RemoveSelectedItems()" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+                </Button>
+                <StringEntryTable ItemsSource="@textArrayValueEditor.DataSource"
+                                  NameTitle="备注"
+                                  IsNameHidden
+                                  ValueTitle="文本值"
+                                  IsEditable="@IsEditable"
+                                  @bind-SelectedItems="@textArrayValueEditor.SelectedItems"/>
+                break;
+            case OptionValueType.PythonCodeValue:
+                var scriptCodeEditor = editorBase as PythonCodeEditor;
+                <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_pythonCodeEditor" OnDidInit="InitAsync" CssClass="CodeEditor" ConstructionOptions="BuildPythonCodeEditorConstructionOptions"/>
 
-                    break;
-                case OptionValueType.BatchScriptValue:
-                    var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
-                    <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_batchScriptCodeEditor" OnDidInit="InitAsync" CssClass="CodeEditor" ConstructionOptions="BuildBatchScriptEditorConstructionOptions" />
+                break;
+            case OptionValueType.BatchScriptValue:
+                var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
+                <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_batchScriptCodeEditor" OnDidInit="InitAsync" CssClass="CodeEditor" ConstructionOptions="BuildBatchScriptEditorConstructionOptions"/>
 
-                    break;
-                case OptionValueType.FtpConfigurationListValue:
-                    var ftpConfigurationListEditor = editorBase as FtpConfigurationListEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@ftpConfigurationListEditor.DataSource"
-                            @bind-Value="@ftpConfigurationListEditor.SelectedValue"
-                            TItem="FtpConfigModel"
-                            TItemValue="FtpConfigModel"
-                            LabelName="@nameof(FtpConfigModel.Name)"
-                             />
-                    <Button Disabled="@(this.disabled||ftpConfigurationListEditor.SelectedValue==null)" OnClick="()=>ftpConfigurationListEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@(this.disabled||ftpConfigurationListEditor.SelectedItems.IsNullOrEmpty())" OnClick="()=>ftpConfigurationListEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <ModelTable DataSource="@ftpConfigurationListEditor.Value"
-                                TItem="FtpConfigModel"
-                                IsEditable="@IsEditable"
-                                @bind-SelectedItems="@ftpConfigurationListEditor.SelectedItems" />
-                    break;
-                case OptionValueType.MysqlConfigurationListValue:
-                    var mysqlConfigurationListEditor = editorBase as MysqlConfigurationListEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@mysqlConfigurationListEditor.DataSource"
-                            @bind-Value="@mysqlConfigurationListEditor.SelectedValue"
-                            TItem="MysqlConfigModel"
-                            TItemValue="MysqlConfigModel"
-                            LabelName="@nameof(FtpConfigModel.Name)"
-                             />
-                    <Button Disabled="@(this.disabled||mysqlConfigurationListEditor.SelectedValue==null)" OnClick="()=>mysqlConfigurationListEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@(this.disabled||mysqlConfigurationListEditor.SelectedItems.IsNullOrEmpty())" OnClick="()=>mysqlConfigurationListEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <ModelTable DataSource="@mysqlConfigurationListEditor.Value"
-                                TItem="MysqlConfigModel" IsEditable="@IsEditable"
-                                       @bind-SelectedItems="@mysqlConfigurationListEditor.SelectedItems" />
-                    break;
-                case OptionValueType.KafkaConfigurationListValue:
-                    var kafkaConfigurationListEditor = editorBase as KafkaConfigurationListEditor;
-                    <Select Disabled="@disabled" DataSource="@kafkaConfigurationListEditor.DataSource"
-                            @bind-Value="@kafkaConfigurationListEditor.SelectedValue"
-                            TItem="KafkaConfigModel"
-                            TItemValue="KafkaConfigModel"
-                            LabelName="@nameof(FtpConfigModel.Name)"
-                             />
-                    <Button Disabled="@(this.disabled||kafkaConfigurationListEditor.SelectedValue==null)" OnClick="()=>kafkaConfigurationListEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@(this.disabled||kafkaConfigurationListEditor.SelectedItems.IsNullOrEmpty())" OnClick="()=>kafkaConfigurationListEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <ModelTable DataSource="@kafkaConfigurationListEditor.Value"
-                             TItem="KafkaConfigModel"
-                                       IsEditable="@IsEditable"
-                                       @bind-SelectedItems="@kafkaConfigurationListEditor.SelectedItems" />
-                    break;
-                case OptionValueType.FtpConfigurationValue:
-                    var ftpConfigurationEditor = editorBase as FtpConfigurationEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@FtpConfigurations"
-                            @bind-Value="@ftpConfigurationEditor.Value"
-                            TItem="FtpConfigModel"
-                            TItemValue="FtpConfigModel"
-                            LabelName="@nameof(FtpConfigModel.Name)"
-                             />
-                    break;
-                case OptionValueType.MysqlConfigurationValue:
-                    var mysqlConfigurationEditor = editorBase as MysqlConfigurationEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@MysqlConfigurations"
-                            @bind-Value="@mysqlConfigurationEditor.Value"
-                            TItem="MysqlConfigModel"
-                            TItemValue="MysqlConfigModel"
-                            LabelName="@nameof(MysqlConfigModel.Name)"
-                             />
-                    break;
-                case OptionValueType.KafkaConfigurationValue:
-                    var kafkaConfigurationEditor = editorBase as KafkaConfigurationEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@KafkaConfigurations"
-                            @bind-Value="@kafkaConfigurationEditor.Value"
-                            TItem="KafkaConfigModel"
-                            TItemValue="KafkaConfigModel"
-                            LabelName="@nameof(KafkaConfigModel.Name)"
-                             />
-                    break;
-                case OptionValueType.FtpUploadConfigurationValue:
-                    var ftpUploadConfigurationEditor = editorBase as FtpUploadConfigurationEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@FtpUploadConfigurations"
-                            @bind-Value="@ftpUploadConfigurationEditor.Value"
-                            TItem="FtpUploadConfigModel"
-                            TItemValue="FtpUploadConfigModel"
-                            LabelName="@nameof(FtpUploadConfigModel.Name)"
-                             />
-                    break;
-                case OptionValueType.FtpUploadConfigurationListValue:
-                    var ftpUploadConfigurationListEditor = editorBase as FtpUploadConfigurationListEditor;
-                    <Select Disabled="@disabled" DataSource="@ftpUploadConfigurationListEditor.DataSource"
-                            @bind-Value="@ftpUploadConfigurationListEditor.SelectedValue"
-                            TItem="FtpUploadConfigModel"
-                            TItemValue="FtpUploadConfigModel"
-                            LabelName="@nameof(FtpUploadConfigModel.Name)"
-                             />
-                    <Button Disabled="@(this.disabled||ftpUploadConfigurationListEditor.SelectedValue==null)" OnClick="()=>ftpUploadConfigurationListEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@(this.disabled||ftpUploadConfigurationListEditor.SelectedItems.IsNullOrEmpty())" OnClick="()=>ftpUploadConfigurationListEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <ModelTable DataSource="@ftpUploadConfigurationListEditor.Value"
-                                 TItem="FtpUploadConfigModel"
-                                       IsEditable="@IsEditable"
-                                       @bind-SelectedItems="@ftpUploadConfigurationListEditor.SelectedItems" />
-                    break;
-                case OptionValueType.LogUploadConfigurationValue:
-                    var logUploadConfigurationEditor = editorBase as LogUploadConfigurationEditor;
-                    <Select Disabled="@disabled" DataSource="@LogUploadConfigurations"
-                            @bind-Value="@logUploadConfigurationEditor.Value"
-                            TItem="LogUploadConfigModel"
-                            TItemValue="LogUploadConfigModel"
-                            LabelName="@nameof(LogUploadConfigModel.Name)"
-                             />
-                    break;
-                case OptionValueType.LogUploadConfigurationListValue:
-                    var logUploadConfigurationListEditor = editorBase as LogUploadConfigurationListEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@logUploadConfigurationListEditor.DataSource"
-                            @bind-Value="@logUploadConfigurationListEditor.SelectedValue"
-                            TItem="LogUploadConfigModel"
-                            TItemValue="LogUploadConfigModel"
-                            LabelName="@nameof(LogUploadConfigModel.Name)"
-                             />
-                    <Button Disabled="@(this.disabled||logUploadConfigurationListEditor.SelectedValue==null)" OnClick="()=>logUploadConfigurationListEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@(this.disabled||logUploadConfigurationListEditor.SelectedItems.IsNullOrEmpty())" OnClick="()=>logUploadConfigurationListEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <ModelTable DataSource="@logUploadConfigurationListEditor.Value"
-                                TItem="LogUploadConfigModel"
-                                       IsEditable="@IsEditable"
-                                       @bind-SelectedItems="@logUploadConfigurationListEditor.SelectedItems" />
-                    break;
-                case OptionValueType.NodeEnvVarsConfigurationValue:
-                    var nodeEnvironmentVariablesConfigurationEditor = editorBase as NodeEnvVarsConfigurationListEditor;
-                    <Select Disabled="@disabled" DataSource="@NodeEnvVarsConfigurations"
-                            @bind-Value="@nodeEnvironmentVariablesConfigurationEditor.SelectedValue"
-                            TItem="NodeEnvVarsConfigModel"
-                            TItemValue="NodeEnvVarsConfigModel"
-                            LabelName="@nameof(NodeEnvVarsConfigModel.Name)" />
-                    break;
-                case OptionValueType.NodeEnvVarsConfigurationListValue:
-                    var nodeEnvironmentVariablesConfigurationListEditor = editorBase as NodeEnvVarsConfigurationListEditor;
-                    <Select Disabled="@disabled" DataSource="@nodeEnvironmentVariablesConfigurationListEditor.DataSource"
-                            @bind-Value="@nodeEnvironmentVariablesConfigurationListEditor.SelectedValue"
-                            TItem="NodeEnvVarsConfigModel"
-                            TItemValue="NodeEnvVarsConfigModel"
-                            LabelName="@nameof(NodeEnvVarsConfigModel.Name)" />
-                    <Button Disabled="@(this.disabled||nodeEnvironmentVariablesConfigurationListEditor.SelectedValue==null)" OnClick="()=>nodeEnvironmentVariablesConfigurationListEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@(this.disabled||nodeEnvironmentVariablesConfigurationListEditor.SelectedItems.IsNullOrEmpty())" OnClick="()=>nodeEnvironmentVariablesConfigurationListEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <ModelTable DataSource="@nodeEnvironmentVariablesConfigurationListEditor.Value"
-                      
-                                    TItem="NodeEnvVarsConfigModel"
-                                       IsEditable="@IsEditable"
-                                       @bind-SelectedItems="@nodeEnvironmentVariablesConfigurationListEditor.SelectedItems" />
-                    break;
-                case OptionValueType.PackageConfigurationValue:
-                    var packageConfigurationEditor = editorBase as PackageConfigurationEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@PackageConfigurations"
-                            @bind-Value="@packageConfigurationEditor.Value"
-                            TItem="PackageConfigModel"
-                            TItemValue="PackageConfigModel"
-                            LabelName="@nameof(PackageConfigModel.Name)"
-                             />
-                    break;
-                case OptionValueType.PackageConfigurationListValue:
-                    var packageConfigurationListEditor = editorBase as PackageConfigurationListEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@packageConfigurationListEditor.DataSource"
-                            @bind-Value="@packageConfigurationListEditor.SelectedValue"
-                            TItem="PackageConfigModel"
-                            TItemValue="PackageConfigModel"
-                            LabelName="@nameof(PackageConfigModel.Name)"
-                             />
-                    <Button Disabled="@(this.disabled||packageConfigurationListEditor.SelectedValue==null)" OnClick="()=>packageConfigurationListEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@(this.disabled||packageConfigurationListEditor.SelectedItems.IsNullOrEmpty())" OnClick="()=>packageConfigurationListEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <ModelTable DataSource="@packageConfigurationListEditor.Value"
-                                
-                                      TItem="PackageConfigModel"
-                             
-                                       IsEditable="@IsEditable"
-                                
-                                       @bind-SelectedItems="@packageConfigurationListEditor.SelectedItems" />
-                    break;
-                case OptionValueType.RestApiConfigurationValue:
-                    var restApiConfigurationEditor = editorBase as RestApiConfigurationEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@RestApiConfigurations"
-                            @bind-Value="@restApiConfigurationEditor.Value"
-                            TItem="RestApiConfigModel"
-                            TItemValue="RestApiConfigModel"
-                            LabelName="@nameof(RestApiConfigModel.Name)"
-                     />
-                    break;
-                case OptionValueType.RestApiConfigurationListValue:
-                    var restApiConfigurationListEditor = editorBase as RestApiConfigurationListEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@restApiConfigurationListEditor.DataSource"
-                            @bind-Value="@restApiConfigurationListEditor.SelectedValue"
-                            TItem="RestApiConfigModel"
-                            TItemValue="RestApiConfigModel"
-                            LabelName="@nameof(RestApiConfigModel.Name)"
-                             />
-                    <Button Disabled="@(this.disabled||restApiConfigurationListEditor.SelectedValue==null)" OnClick="()=>restApiConfigurationListEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@(this.disabled||restApiConfigurationListEditor.SelectedItems.IsNullOrEmpty())" OnClick="()=>restApiConfigurationListEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <ModelTable DataSource="@restApiConfigurationListEditor.Value"
-                                TItem="RestApiConfigModel"
-                                IsEditable="@IsEditable"
-                                @bind-SelectedItems="@restApiConfigurationListEditor.SelectedItems" />
-                    break;
-                case OptionValueType.FtpDownloadConfigurationValue:
-                    var ftpDownloadConfigurationEditor = editorBase as FtpDownloadConfigurationEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@FtpDownloadConfigurations"
-                            @bind-Value="@ftpDownloadConfigurationEditor.Value"
-                            TItem="FtpDownloadConfigModel"
-                            TItemValue="FtpDownloadConfigModel"
-                            LabelName="@nameof(FtpDownloadConfigModel.Name)" />
-                    break;
-                case OptionValueType.FtpDownloadConfigurationListValue:
-                    var ftpDownloadConfigurationListEditor = editorBase as FtpDownloadConfigurationListEditor;
-                    <Select Disabled="@disabled"
-                            DataSource="@ftpDownloadConfigurationListEditor.DataSource"
-                            @bind-Value="@ftpDownloadConfigurationListEditor.SelectedValue"
-                            TItem="FtpDownloadConfigModel"
-                            TItemValue="FtpDownloadConfigModel"
-                            LabelName="@nameof(FtpDownloadConfigModel.Name)" />
-                    <Button Disabled="@(this.disabled||ftpDownloadConfigurationListEditor.SelectedValue==null)" OnClick="()=>ftpDownloadConfigurationListEditor.AddNewItem()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        添加
-                    </Button>
-                    <Button Disabled="@(this.disabled||ftpDownloadConfigurationListEditor.SelectedItems.IsNullOrEmpty())" OnClick="()=>ftpDownloadConfigurationListEditor.RemoveSelectedItems()" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                        删除
-                    </Button>
-                    <ModelTable DataSource="@ftpDownloadConfigurationListEditor.Value"
-                                TItem="FtpDownloadConfigModel"
-                                IsEditable="@IsEditable"
-                                @bind-SelectedItems="@ftpDownloadConfigurationListEditor.SelectedItems" />
-                    break;
-                default:
-                    break;
-            }
+                break;
+            case OptionValueType.FtpConfigurationListValue:
+                var ftpConfigurationListEditor = editorBase as FtpConfigurationListEditor;
+                <FtpConfigSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="ftpConfigurationListEditor.SelectedItems"/>
+                break;
+            case OptionValueType.MysqlConfigurationListValue:
+                var mysqlConfigurationListEditor = editorBase as MysqlConfigurationListEditor;
+                <MysqlConfigSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="mysqlConfigurationListEditor.SelectedItems"/>
+                break;
+            case OptionValueType.KafkaConfigurationListValue:
+                var kafkaConfigurationListEditor = editorBase as KafkaConfigurationListEditor;
+                <KafkaConfigSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="kafkaConfigurationListEditor.SelectedItems"/>
+                break;
+            case OptionValueType.FtpConfigurationValue:
+                var ftpConfigurationEditor = editorBase as FtpConfigurationEditor;
+                <FtpConfigSelector Mode="SelectionMode.Single" @bind-SelectedItems="ftpConfigurationEditor.SelectedItems"/>
+                break;
+            case OptionValueType.MysqlConfigurationValue:
+                var mysqlConfigurationEditor = editorBase as MysqlConfigurationEditor;
+                <MysqlConfigSelector Mode="SelectionMode.Single" @bind-SelectedItems="mysqlConfigurationEditor.SelectedItems"/>
+                break;
+            case OptionValueType.KafkaConfigurationValue:
+                var kafkaConfigurationEditor = editorBase as KafkaConfigurationEditor;
+                <KafkaConfigSelector Mode="SelectionMode.Single" @bind-SelectedItems="kafkaConfigurationEditor.SelectedItems"/>
+                break;
+            case OptionValueType.FtpUploadConfigurationValue:
+                var ftpUploadConfigurationEditor = editorBase as FtpUploadConfigurationEditor;
+                <FtpUploadConfigSelector Mode="SelectionMode.Single" @bind-SelectedItems="ftpUploadConfigurationEditor.SelectedItems"/>
+                break;
+            case OptionValueType.FtpUploadConfigurationListValue:
+                var ftpUploadConfigurationListEditor = editorBase as FtpUploadConfigurationListEditor;
+                <FtpUploadConfigSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="ftpUploadConfigurationListEditor.SelectedItems"/>
+                break;
+            case OptionValueType.LogUploadConfigurationValue:
+                break;
+            case OptionValueType.LogUploadConfigurationListValue:
+                break;
+            case OptionValueType.NodeEnvVarsConfigurationValue:
+                var nodeEnvironmentVariablesConfigurationEditor = editorBase as NodeEnvVarsConfigurationEditor;
+                <NodeEnvVarSelector Mode="SelectionMode.Single" @bind-SelectedItems="nodeEnvironmentVariablesConfigurationEditor.SelectedItems"/>
+                break;
+            case OptionValueType.NodeEnvVarsConfigurationListValue:
+                var nodeEnvironmentVariablesConfigurationListEditor = editorBase as NodeEnvVarsConfigurationListEditor;
+                <NodeEnvVarSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="nodeEnvironmentVariablesConfigurationListEditor.SelectedItems"/>
+                break;
+            case OptionValueType.PackageConfigurationValue:
+                var packageConfigurationEditor = editorBase as PackageConfigurationEditor;
+                <PackageSelector Mode="SelectionMode.Single" @bind-SelectedItems="packageConfigurationEditor.SelectedItems"/>
+                break;
+            case OptionValueType.PackageConfigurationListValue:
+                var packageConfigurationListEditor = editorBase as PackageConfigurationListEditor;
+                <PackageSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="packageConfigurationListEditor.SelectedItems"/>
+                break;
+            case OptionValueType.RestApiConfigurationValue:
+                var restApiConfigurationEditor = editorBase as RestApiConfigurationEditor;
+                <RestApiSelector Mode="SelectionMode.Single" @bind-SelectedItems="restApiConfigurationEditor.SelectedItems"/>
+                break;
+            case OptionValueType.RestApiConfigurationListValue:
+                var restApiConfigurationListEditor = editorBase as RestApiConfigurationListEditor;
+                <RestApiSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="restApiConfigurationListEditor.SelectedItems"/>
+                break;
+            case OptionValueType.FtpDownloadConfigurationValue:
+                var ftpDownloadConfigurationEditor = editorBase as FtpDownloadConfigurationEditor;
+                <FtpDownloadConfigSelector Mode="SelectionMode.Single" @bind-SelectedItems="ftpDownloadConfigurationEditor.SelectedItems"/>
+                break;
+            case OptionValueType.FtpDownloadConfigurationListValue:
+                var ftpDownloadConfigurationListEditor = editorBase as FtpDownloadConfigurationListEditor;
+                <FtpDownloadConfigSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="ftpDownloadConfigurationListEditor.SelectedItems"/>
+                break;
+        }
 
     </FormItem>
 }
@@ -324,104 +124,77 @@
 
     StandaloneCodeEditor _batchScriptCodeEditor;
     StandaloneCodeEditor _pythonCodeEditor;
-    int _changes;
 
-    [Parameter]
-    public Dictionary<string, EditorBase> OptionValueEditors { get; set; } = [];
+    [Parameter] public IEnumerable<KeyValuePair<string, EditorBase>> OptionValueEditors { get; set; } = [];
 
-    [Parameter]
-    public bool IsEditable { get; set; } = true;
+    [Parameter] public bool IsEditable { get; set; } = true;
 
     private bool disabled = false;
 
-    [Parameter]
-    public IEnumerable<FtpUploadConfigModel> FtpUploadConfigurations { get; set; } = [];
-
-    [Parameter]
-    public IEnumerable<FtpConfigModel> FtpConfigurations { get; set; } = [];
-
-    [Parameter]
-    public IEnumerable<MysqlConfigModel> MysqlConfigurations { get; set; } = [];
-
-    [Parameter]
-    public IEnumerable<LogUploadConfigModel> LogUploadConfigurations { get; set; } = [];
-
-    [Parameter]
-    public IEnumerable<PackageConfigModel> PackageConfigurations { get; set; } = [];
-
-    [Parameter]
-    public IEnumerable<NodeEnvVarsConfigModel> NodeEnvVarsConfigurations { get; set; } = [];
-
-    [Parameter]
-    public IEnumerable<RestApiConfigModel> RestApiConfigurations { get; set; } = [];
-
-    [Parameter]
-    public IEnumerable<FtpDownloadConfigModel> FtpDownloadConfigurations { get; set; } = [];
-
-    [Parameter]
-    public IEnumerable<KafkaConfigModel> KafkaConfigurations { get; set; } = [];
-
-
-    protected override Task OnParametersSetAsync()
+    protected override void OnInitialized()
     {
-        if (this.IsEditable)
+        if (IsEditable)
         {
-            this.disabled = false;
-        }else
-        {
-            this.disabled = true;
+            disabled = false;
         }
-        return base.OnParametersSetAsync();
+        else
+        {
+            disabled = true;
+        }
+
+        base.OnInitialized();
     }
 
     private StandaloneEditorConstructionOptions BuildPythonCodeEditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
-            {
-                AutomaticLayout = true,
-                Language = "python",
-                Value = "#loading"
-            };
+        {
+            AutomaticLayout = true,
+            Language = "python",
+            Value = "#loading"
+        };
     }
 
     private StandaloneEditorConstructionOptions BuildBatchScriptEditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
-            {
-                AutomaticLayout = true,
-                Language = "bat",
-                Value = "rem loading"
-            };
+        {
+            AutomaticLayout = true,
+            Language = "bat",
+            Value = "rem loading"
+        };
     }
 
-    public async Task InitAsync()
+    private async Task InitAsync()
     {
-        foreach (var kv in this.OptionValueEditors)
+        foreach (var kv in OptionValueEditors)
         {
             var editorBase = kv.Value;
             switch (editorBase.EditorType)
             {
                 case OptionValueType.PythonCodeValue:
                     var pythonCodeEditor = editorBase as PythonCodeEditor;
-                    await this._pythonCodeEditor.SetValue(pythonCodeEditor.Value ?? string.Empty);
-                    if (!this.IsEditable)
+                    await _pythonCodeEditor.SetValue(pythonCodeEditor.Value ?? string.Empty);
+                    if (!IsEditable)
                     {
-                        await this._pythonCodeEditor.UpdateOptions(new EditorUpdateOptions()
-                            {
-                                ReadOnly = true,
-                            });
+                        await _pythonCodeEditor.UpdateOptions(new EditorUpdateOptions
+                        {
+                            ReadOnly = true
+                        });
                     }
+
                     break;
                 case OptionValueType.BatchScriptValue:
                     var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
-                    await this._batchScriptCodeEditor.SetValue(batchScriptCodeEditor.Value ?? string.Empty);
-                    if (!this.IsEditable)
+                    await _batchScriptCodeEditor.SetValue(batchScriptCodeEditor.Value ?? string.Empty);
+                    if (!IsEditable)
                     {
-                        await this._batchScriptCodeEditor.UpdateOptions(new EditorUpdateOptions()
-                            {
-                                ReadOnly = true,
-                            });
+                        await _batchScriptCodeEditor.UpdateOptions(new EditorUpdateOptions
+                        {
+                            ReadOnly = true
+                        });
                     }
+
                     break;
             }
         }
@@ -430,18 +203,18 @@
 
     public async Task CommitAsync()
     {
-        foreach (var kv in this.OptionValueEditors)
+        foreach (var kv in OptionValueEditors)
         {
             var editorBase = kv.Value;
             switch (editorBase.EditorType)
             {
                 case OptionValueType.PythonCodeValue:
                     var scriptCodeEditor = editorBase as PythonCodeEditor;
-                    scriptCodeEditor.Value = await this._pythonCodeEditor.GetValue();
+                    scriptCodeEditor.Value = await _pythonCodeEditor.GetValue();
                     break;
                 case OptionValueType.BatchScriptValue:
                     var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
-                    batchScriptCodeEditor.Value = await this._batchScriptCodeEditor.GetValue();
+                    batchScriptCodeEditor.Value = await _batchScriptCodeEditor.GetValue();
                     break;
             }
         }

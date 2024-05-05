@@ -1,18 +1,19 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.ClientConfig.ClientUpdates
 @page "/ClientConfig/ClientUpdates"
-@using NodeService.Infrastructure
+@using NodeService.WebServer.UI.Pages.Components
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
+@inject NavigationManager NavigationManager
 <GridContent>
     <Modal Width="800"
            Title="@_modalTitle"
            Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
-           OnOk="@HandleEditFormOk" 
+           OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
         <Form Model="@_editModel" Size="@AntSizeLDSType.Default"
-              LabelColSpan="4" 
+              LabelColSpan="4"
               Layout="@FormLayout.Horizontal"
               WrapperColSpan="20"
               OnFinish="OnEditFormFinish"
@@ -20,34 +21,26 @@
               @ref="@_editForm">
 
             <FormItem Label="名称">
-                <Input @bind-Value="@context.Name" />
+                <Input @bind-Value="@context.Name"/>
             </FormItem>
             <FormItem Label="版本">
-                <Input @bind-Value="@context.Version"  />
-             </FormItem>
+                <Input @bind-Value="@context.Version"/>
+            </FormItem>
             <FormItem Label="公开">
                 <RadioGroup @bind-Value="@context.Status" TValue="ClientUpdateStatus">
                     @foreach (var clientUpdateStatus in Enum.GetValues<ClientUpdateStatus>())
                     {
-                        <Radio RadioButton Value="@clientUpdateStatus">@(Enum.GetName<ClientUpdateStatus>(clientUpdateStatus))</Radio>
+                        <Radio
+                            RadioButton
+                            Value="@clientUpdateStatus">
+                            @(Enum.GetName(clientUpdateStatus))
+                        </Radio>
                     }
                 </RadioGroup>
             </FormItem>
-             <FormItem Label="包">
-                <Table Context="mappingEntry"
-                       TItem="PackageConfigModel" 
-                       @bind-SelectedRows="@_selectedPackageConfigs"
-                       DataSource="@_packageSource"
-                       Size="TableSize.Small">
-                    <Selection Key="@mappingEntry.Id" Type="radio" />
-                    <PropertyColumn Title="标志" Property="c=>c.Id"
-                                    Sortable></PropertyColumn>
-                    <PropertyColumn Title="名称" Property="c=>c.Name"
-                                    Sortable></PropertyColumn>
-                    <PropertyColumn Title="版本" Property="c=>c.Version"
-                                    Sortable></PropertyColumn>
-                </Table>
-             </FormItem>
+            <FormItem Label="包">
+                <PackageSelector Mode="SelectionMode.Single" @bind-SelectedItems="_selectedPackageConfigs"/>
+            </FormItem>
             <FormItem Label="Dns过滤类型">
                 <RadioGroup @bind-Value="@context.DnsFilterType">
                     <Radio RadioButton Value="@("include")">包含</Radio>
@@ -55,184 +48,174 @@
                 </RadioGroup>
             </FormItem>
             <FormItem Label="Dns过滤">
-                <Button OnClick="AddDnsFilter" Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                    添加
-                </Button>
-                <Button OnClick="RemoveSelectedDnsFilters"  Type="primary" Style="margin-bottom:16px;margin-left:16px;">
-                    删除
-                </Button>
-                <StringEntryTable DataSource="@context.DnsFilters"
+                <StringEntryTable @ref="_nodesTable"
                                   NameTitle="备注"
                                   ValueTitle="节点名称"
-                                  @bind-SelectedItems="@_selectedNodeFilters"
-                                  RemoveItemAction="@RemoveSelectedNodeFilter" />
+                                  ItemsSource="@context.DnsFilters"/>
             </FormItem>
         </Form>
     </Modal>
 
     <Space Style="margin-bottom:16px">
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">新建配置</Button>
+            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
         </SpaceItem>
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="@QueryConfigurationListAsync">刷新</Button>
+            <Button Type="@ButtonType.Primary" OnClick="@_dataSource.RefreshAsync">刷新</Button>
         </SpaceItem>
 
     </Space>
-<Table 
-    Size="TableSize.Small" 
-    Loading="_loading"
-    EnableVirtualization="true" 
-    TItem="ClientUpdateConfigModel" 
-    DataSource="@_dataSource" 
->
-    <ColumnDefinitions>
-            <PropertyColumn Title="标志" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
-            <PropertyColumn Title="名称" Sortable Property="c=>c.Name"></PropertyColumn>
-            <PropertyColumn Title="版本" Sortable="true" Property="c=>c.Version"></PropertyColumn>
-            <PropertyColumn Title="状态" Sortable="true" Property="c=>c.Status"></PropertyColumn>
+    <Table
+        Size="TableSize.Small"
+        Loading="_loading"
+        EnableVirtualization="true"
+        TItem="ClientUpdateConfigModel"
+        DataSource="@_dataSource.ItemsSource">
+        <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="版本" Sortable="true" Property="c => c.Version"></PropertyColumn>
+            <PropertyColumn Title="状态" Sortable="true" Property="c => c.Status"></PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<ClientUpdateConfigModel>())"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<ClientUpdateConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context)"></Button>
                         </SpaceItem>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
                         @if (cellData.RowData.Expanded)
-                    {
-                        <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
-                        </SpaceItem>
-                    }
-                    else
-                    {
-                        <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
-                        </SpaceItem>
-                    }
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="() => cellData.RowData.Expanded = false"></Button>
+                            </SpaceItem>
+                        }
+                        else
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="() => cellData.RowData.Expanded = true"></Button>
+                            </SpaceItem>
+                        }
 
-                </Space>
-            </CellRender>
-        </ActionColumn>
-    </ColumnDefinitions>
-    <ExpandTemplate>
-         <Tabs Animated>
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+        </ColumnDefinitions>
+        <ExpandTemplate>
+            <Tabs Animated>
                 <TabPane Tab="@($"Dns{ConvertFilterType(context.Data.DnsFilterType)}列表")" Key="1">
-                    <StringEntryTable DataSource="@context.Data.DnsFilters"
+                    <StringEntryTable ItemsSource="@context.Data.DnsFilters"
                                       NameTitle="备注"
                                       ValueTitle="Dns"
-                                      IsEditable="false" />
+                                      IsEditable="false"/>
                 </TabPane>
             </Tabs>
-    </ExpandTemplate>
-</Table>
+        </ExpandTemplate>
+    </Table>
 </GridContent>
 
 @code {
+    StringEntryTable _nodesTable;
     string _modalTitle;
-    bool _editFormVisible = false;
-    bool _editFormSubmitting = false;
-    bool _editFormConfirmLoading = false;
+    bool _editFormVisible;
+    bool _editFormSubmitting;
+    bool _editFormConfirmLoading;
     Form<ClientUpdateConfigModel> _editForm;
-    ClientUpdateConfigModel _editModel = new ClientUpdateConfigModel();
-    IEnumerable<StringEntry> _selectedNodeFilters = [];
-    IEnumerable<PackageConfigModel> _packageSource;
+    ClientUpdateConfigModel _editModel = new();
     IEnumerable<PackageConfigModel> _selectedPackageConfigs;
 
     private bool _loading;
-    private IEnumerable<ClientUpdateConfigModel> _dataSource;
+    RoutedPaginationDataSource<ClientUpdateConfigModel, PaginationQueryParameters> _dataSource;
 
 
     private async Task ShowEditForm(ClientUpdateConfigModel? model = null)
     {
-        this._editFormVisible = true;
-        this._loading = true;
-        await this.QueryPackageConfigurationListAsync().ConfigureAwait(false);
-        this._loading = false;
+        _editFormVisible = true;
+        _loading = true;
         if (model == null)
         {
-            this._editModel = new ClientUpdateConfigModel()
-                {
-                    Id = Guid.NewGuid().ToString()
-                };
-            this._modalTitle = "编辑配置";
+            _editModel = new ClientUpdateConfigModel
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+            _modalTitle = "编辑配置";
         }
         else
         {
-            this._editModel = model;
-            var packageConfig = this._packageSource.FirstOrDefault(x => x.Id == model.PackageConfigId);
-            this._selectedPackageConfigs = packageConfig == null ? [] : [packageConfig];
-            this._modalTitle = "新建客户端更新配置";
+            _editModel = model;
+            var packageConfig = await ApiService.GetPackageConfigAsync(model.PackageConfigId);
+            _selectedPackageConfigs = packageConfig == null ? [] : [packageConfig];
+            _modalTitle = "新建客户端更新配置";
         }
 
+        _loading = false;
     }
 
     private async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
-            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel).ConfigureAwait(false);
+            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                this._dataSource = (await this.ApiService.QueryClientUpdatesAsync()).Result;
-                this._editFormVisible = false;
+                await _dataSource.RefreshAsync();
+                _editFormVisible = false;
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.Message,
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
         }
         finally
         {
-            this._editFormSubmitting = false;
-            this._editFormConfirmLoading = false;
+            _editFormSubmitting = false;
+            _editFormConfirmLoading = false;
         }
     }
 
     private void OnEditFormFinishFailed(EditContext editContext)
     {
-        this._editFormSubmitting = false;
-        this._editFormConfirmLoading = false;
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
     }
 
 
     private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
-        var options = new ConfirmButtonOptions()
+        var options = new ConfirmButtonOptions
+        {
+            Button1Props = new ButtonProps
             {
-                Button1Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "确定",
-                    Type = ButtonType.Primary,
-                },
-                Button2Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "取消"
-                }
-            };
+                ChildContent = "确定",
+                Type = ButtonType.Primary
+            },
+            Button2Props = new ButtonProps
+            {
+                ChildContent = "取消"
+            }
+        };
         return _confirmService.Show(
-                content,
-                title,
-                ConfirmButtons.OKCancel,
-                ConfirmIcon.Info,
-                options);
+            content,
+            title,
+            ConfirmButtons.OKCancel,
+            ConfirmIcon.Info,
+            options);
     }
 
     private async Task DeleteConfig(ClientUpdateConfigModel model)
@@ -243,145 +226,67 @@
             {
                 return;
             }
-            var apiResponse = await this.ApiService.RemoveAsync(model).ConfigureAwait(false);
+
+            var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                this._dataSource = (await this.ApiService.QueryClientUpdatesAsync()).Result;
+                await _dataSource.RefreshAsync();
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = "加载配置失败",
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = "加载配置失败"
+            });
         }
     }
 
 
     private void HandleEditFormCancel(MouseEventArgs e)
     {
-        this._editFormSubmitting = false;
-        this._editFormVisible = false;
+        _editFormSubmitting = false;
+        _editFormVisible = false;
     }
 
 
     private async Task HandleEditFormOk(MouseEventArgs e)
     {
-        if (this._selectedPackageConfigs.IsNullOrEmpty())
+        if (_selectedPackageConfigs.IsNullOrEmpty())
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = "请选择包",
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = "请选择包"
+            });
             return;
         }
-        this._editModel.PackageConfigId = this._selectedPackageConfigs.FirstOrDefault()?.Id;
-        this._editFormSubmitting = true;
-        this._editForm.Submit();
+
+        _editModel.PackageConfigId = _selectedPackageConfigs.FirstOrDefault()?.Id;
+        _editFormSubmitting = true;
+        _editForm.Submit();
     }
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        this._loading = true;
-        await this.QueryConfigurationListAsync();
-        this._loading = false;
     }
 
-    private async Task QueryConfigurationListAsync()
+    protected override void OnInitialized()
     {
-        try
-        {
-            var apiResponse = await this.ApiService.QueryClientUpdatesAsync();
-            if (apiResponse.ErrorCode == 0)
-            {
-                this._dataSource = apiResponse.Result ?? [];
-            }
-            else
-            {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message,
-                    });
-            }
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
-        }
-
+        base.OnInitialized();
+        _dataSource = new RoutedPaginationDataSource<ClientUpdateConfigModel, PaginationQueryParameters>(NavigationManager, ApiService.QueryClientUpdateListAsync, StateHasChanged);
+        _dataSource.Request();
     }
-
-    private async Task QueryPackageConfigurationListAsync()
-    {
-        try
-        {
-            var rsp = await this.ApiService.QueryPackageConfigurationListAsync(QueryParameters.All).ConfigureAwait(false);
-            if (rsp.ErrorCode == 0)
-            {
-                _packageSource = rsp.Result ?? [];
-            }
-            else
-            {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = rsp.Message,
-                    });
-            }
-
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString(),
-                });
-        }
-
-    }
-
-    private void AddDnsFilter()
-    {
-        var entry = new StringEntry();
-        this._editModel.DnsFilters.Add(entry);
-        entry.BeginEdit();
-    }
-
-    private void RemoveSelectedDnsFilters()
-    {
-        if (this._selectedNodeFilters == null)
-        {
-            return;
-        }
-
-        foreach (var item in this._selectedNodeFilters)
-        {
-            this._editModel.DnsFilters.Remove(item);
-        }
-    }
-    private void RemoveSelectedNodeFilter(StringEntry filter)
-    {
-        this._editModel.DnsFilters.Remove(filter);
-    }
-
 
     private string ConvertFilterType(string filerType)
     {

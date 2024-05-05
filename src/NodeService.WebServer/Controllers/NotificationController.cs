@@ -1,36 +1,37 @@
-﻿namespace NodeService.WebServer.Controllers
+﻿namespace NodeService.WebServer.Controllers;
+
+[ApiController]
+[Route("api/[controller]/[action]")]
+public class NotificationController : Controller
 {
-    [ApiController]
-    [Route("api/[controller]/[action]")]
-    public class NotificationController : Controller
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ILogger<NotificationController> _logger;
+
+    public NotificationController(
+        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        ILogger<NotificationController> logger)
     {
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly ILogger<NotificationController> _logger;
+        _dbContextFactory = dbContextFactory;
+        _logger = logger;
+    }
 
-        public NotificationController(
-            IDbContextFactory<ApplicationDbContext> dbContextFactory,
-            ILogger<NotificationController> logger)
+    [HttpGet("/api/notification/record/list")]
+    public async Task<PaginationResponse<NotificationRecordModel>> QueryNotificationRecordListAsync(
+        [FromQuery] QueryParameters queryParameters)
+    {
+        var rsp = new PaginationResponse<NotificationRecordModel>();
+        try
         {
-            _dbContextFactory = dbContextFactory;
-            _logger = logger;
+            using var dbContext = _dbContextFactory.CreateDbContext();
+            rsp.Result = await dbContext.NotificationRecordsDbSet.OrderByDescending(x => x.CreationDateTime)
+                .ToArrayAsync();
+        }
+        catch (Exception ex)
+        {
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.ToString();
         }
 
-        [HttpGet("/api/notification/record/list")]
-        public async Task<PaginationResponse<NotificationRecordModel>> QueryNotificationRecordListAsync([FromQuery] QueryParameters queryParameters)
-        {
-            PaginationResponse<NotificationRecordModel> rsp = new PaginationResponse<NotificationRecordModel>();
-            try
-            {
-                using var dbContext = _dbContextFactory.CreateDbContext();
-                rsp.Result = await dbContext.NotificationRecordsDbSet.OrderByDescending(x => x.CreationDateTime)
-                                                                     .ToArrayAsync();
-            }
-            catch (Exception ex)
-            {
-                rsp.ErrorCode = ex.HResult;
-                rsp.Message = ex.ToString();
-            }
-            return rsp;
-        }
+        return rsp;
     }
 }

@@ -6,7 +6,7 @@
     {
         <Tag Checkable Checked="_checkedAll" CheckedChanged="HandleCheckedChange">@SelectAllText</Tag>
     }
-    
+
     <CascadingValue Value="this">
         @ChildContent
     </CascadingValue>
@@ -16,11 +16,13 @@
         <a class="trigger" @onclick="HandleExpand">
             @if (_expand)
             {
-                @CollapseText <Icon Type="Up" Theme="outline" />
+                @CollapseText
+                <Icon Type="Up" Theme="outline"/>
             }
             else
             {
-                @ExpandText <Icon Type="Down" Theme="outline" />
+                @ExpandText
+                <Icon Type="Down" Theme="outline"/>
             }
         </a>
     }

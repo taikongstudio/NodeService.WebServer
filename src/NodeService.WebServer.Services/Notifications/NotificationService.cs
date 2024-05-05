@@ -1,58 +1,52 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
 
-namespace NodeService.WebServer.Services.Notifications
+namespace NodeService.WebServer.Services.Notifications;
+
+public class NotificationService : BackgroundService
 {
-    public class NotificationService : BackgroundService
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ILogger<NotificationService> _logger;
+    private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
+
+    public NotificationService(
+        ILogger<NotificationService> logger,
+        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        IAsyncQueue<NotificationMessage> notificationMessageQueue)
     {
-        private readonly ILogger<NotificationService> _logger;
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
+        _logger = logger;
+        _dbContextFactory = dbContextFactory;
+        _notificationMessageQueue = notificationMessageQueue;
+    }
 
-        public NotificationService(
-            ILogger<NotificationService> logger,
-            IDbContextFactory<ApplicationDbContext> dbContextFactory,
-            IAsyncQueue<NotificationMessage> notificationMessageQueue)
-        {
-            _logger = logger;
-            _dbContextFactory = dbContextFactory;
-            _notificationMessageQueue = notificationMessageQueue;
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            while (!stoppingToken.IsCancellationRequested)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+            try
             {
-
-                try
+                var notificationMessage = await _notificationMessageQueue.DeuqueAsync(stoppingToken);
+                switch (notificationMessage.Configuration.ConfigurationType)
                 {
-                    var notificationMessage = await this._notificationMessageQueue.DeuqueAsync(stoppingToken);
-                    switch (notificationMessage.Configuration.ConfigurationType)
-                    {
-                        case NotificationConfigurationType.Email:
-                            EmailNotificationHandler emailNotificationMessageHandler = new EmailNotificationHandler();
-                            await emailNotificationMessageHandler.HandleAsync(notificationMessage);
-                            break;
-                        default:
-                            break;
-                    }
-                    using var dbContext = _dbContextFactory.CreateDbContext();
-                    dbContext.NotificationRecordsDbSet.Add(new NotificationRecordModel()
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        CreationDateTime = DateTime.UtcNow,
-                        Name = notificationMessage.Subject ?? string.Empty,
-                        Value = notificationMessage.Message,
-                    });
-                    await dbContext.SaveChangesAsync();
+                    case NotificationConfigurationType.Email:
+                        var emailNotificationMessageHandler = new EmailNotificationHandler();
+                        await emailNotificationMessageHandler.HandleAsync(notificationMessage);
+                        break;
                 }
 
-                catch (Exception ex)
+                using var dbContext = _dbContextFactory.CreateDbContext();
+                dbContext.NotificationRecordsDbSet.Add(new NotificationRecordModel
                 {
-                    _logger.LogError(ex.ToString());
-                }
-
+                    Id = Guid.NewGuid().ToString(),
+                    CreationDateTime = DateTime.UtcNow,
+                    Name = notificationMessage.Subject ?? string.Empty,
+                    Value = notificationMessage.Message
+                });
+                await dbContext.SaveChangesAsync();
             }
-        }
+
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+            }
     }
 }

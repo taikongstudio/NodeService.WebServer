@@ -1,10 +1,10 @@
+using System.Security.Claims;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using NodeService.Infrastructure.Entities;
 using NodeService.Infrastructure.Interfaces;
-using System.Security.Claims;
-using System.Security.Cryptography;
 
 namespace NodeService.WebServer.Services.Auth;
 
@@ -12,18 +12,18 @@ public class LoginService
 {
     private const string AccessToken = nameof(AccessToken);
     private const string RefreshToken = nameof(RefreshToken);
+    private readonly IBackendApiHttpClient _backendApiHttpClient;
+    private readonly IConfiguration _configuration;
 
     private readonly ProtectedLocalStorage _localStorage;
     private readonly NavigationManager _navigation;
-    private readonly IConfiguration _configuration;
-    private readonly IBackendApiHttpClient _backendApiHttpClient;
     private readonly SignInManager<IdentityUser> _signInManager;
 
     public LoginService(ProtectedLocalStorage localStorage,
         NavigationManager navigation,
         IConfiguration configuration,
         IBackendApiHttpClient backendApiHttpClient
-        )
+    )
     {
         _localStorage = localStorage;
         _navigation = navigation;
@@ -78,15 +78,14 @@ public class LoginService
                 claims = JwtTokenHelper.ValidateDecodeToken(response.Result.JwtToken, _configuration);
                 return claims;
             }
-            else
-            {
-                await LogoutAsync();
-            }
+
+            await LogoutAsync();
         }
         else
         {
             await LogoutAsync();
         }
+
         return claims;
     }
 
@@ -100,6 +99,5 @@ public class LoginService
     {
         await _localStorage.DeleteAsync(AccessToken);
         await _localStorage.DeleteAsync(RefreshToken);
-
     }
 }

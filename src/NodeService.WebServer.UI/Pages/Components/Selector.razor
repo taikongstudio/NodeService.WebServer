@@ -1,0 +1,37 @@
+﻿@typeparam TItem
+
+
+
+@code {
+    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public SelectionMode Mode { get; set; }
+    [Parameter] public IEnumerable<TItem> SelectedItems { get; set; }
+    [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
+
+    public void RemoveSelectedItem(TItem value)
+    {
+        if (SelectedItems is IList<TItem> list && !list.IsReadOnly)
+        {
+            list.Remove(value);
+        }
+        else
+        {
+            SelectedItems = SelectedItems.Except([value]);
+        }
+    }
+
+
+    protected string GetSelectionType()
+    {
+        switch (Mode)
+        {
+            case SelectionMode.Single:
+                return "radio";
+            case SelectionMode.Multiple:
+                return "checkbox";
+            default:
+                return "checkbox";
+        }
+    }
+
+}

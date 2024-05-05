@@ -15,20 +15,21 @@
     <ChildContent>
         <Card>
             <Steps Current="@_current" Class="steps">
-                <Step Title="@("Fill in the transfer information")" />
-                <Step Title="@("Confirm transfer information")" />
-                <Step Title="@("Proceed")" />
+                <Step Title="@("Fill in the transfer information")"/>
+                <Step Title="@("Confirm transfer information")"/>
+                <Step Title="@("Proceed")"/>
             </Steps>
             <CascadingValue Value="this">
-                @switch (_current) {
+                @switch (_current)
+                {
                     case 0:
-                        <Step1 />
+                        <Step1/>
                         break;
                     case 1:
-                        <Step2 />
+                        <Step2/>
                         break;
                     case 2:
-                        <Step3 />
+                        <Step3/>
                         break;
                 }
             </CascadingValue>

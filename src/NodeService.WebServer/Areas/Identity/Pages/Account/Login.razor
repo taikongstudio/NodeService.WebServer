@@ -6,7 +6,6 @@
 @inject NotificationService _notice
 
 
-
 <GridRow Wrap="false">
     <GridCol Flex=@("auto")/>
     <GridCol Flex=@("300px")>
@@ -16,10 +15,10 @@
               OnFinish="OnFinish"
               OnFinishFailed="OnFinishFailed">
             <FormItem Label="用户名">
-                <Input @bind-Value="@context.Email" />
+                <Input @bind-Value="@context.Email"/>
             </FormItem>
             <FormItem Label="密码">
-                <InputPassword @bind-Value="@context.Password" />
+                <InputPassword @bind-Value="@context.Password"/>
             </FormItem>
             <FormItem WrapperColOffset="8" WrapperColSpan="16">
                 <Button Type="@ButtonType.Primary" HtmlType="submit">
@@ -28,22 +27,19 @@
             </FormItem>
         </Form>
     </GridCol>
-    <GridCol Flex=@("auto") />
+    <GridCol Flex=@("auto")/>
 </GridRow>
-
-
 
 
 @code {
 
     Form<LoginModel> _form;
-    private bool _loading = false;
+    private readonly bool _loading = false;
     private readonly LoginModel _model = new();
     private bool _loginFailed;
 
     protected override void OnInitialized()
     {
-
     }
 
 
@@ -52,13 +48,13 @@
         try
         {
             string returnUrl = null;
-            var uri = this.NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
+            var uri = NavigationManager.ToAbsoluteUri(NavigationManager.Uri);
             if (QueryHelpers.ParseQuery(uri.Query).TryGetValue("ReturnUrl", out var value))
             {
                 returnUrl = value.FirstOrDefault();
             }
 
-            if (await this.LoginService.LoginAsync(this._model))
+            if (await LoginService.LoginAsync(_model))
             {
                 if (string.IsNullOrEmpty(returnUrl))
                 {
@@ -71,26 +67,25 @@
             }
             else
             {
-                await _notice.Open(new NotificationConfig()
-                    {
-                        Message = "错误提示",
-                        Description = "用户名或密码错误。"
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = "用户名或密码错误。"
+                });
             }
         }
         catch (Exception ex)
         {
-            await _notice.Open(new NotificationConfig()
-                {
-                    Message = "错误提示",
-                    Description = ex.Message
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
         }
-
     }
 
     private void OnFinishFailed(EditContext editContext)
     {
-
     }
+
 }

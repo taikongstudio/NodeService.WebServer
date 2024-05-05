@@ -34,7 +34,7 @@
                                     Style="max-width: 200px; width: 100%;"
                                     @bind-Value="_model.ActiveUser">
                                 <SelectOptions>
-                                    <SelectOption TItem="string" TItemValue="string" Value="@("lisa")" Label="Wang Zhaojun" />
+                                    <SelectOption TItem="string" TItemValue="string" Value="@("lisa")" Label="Wang Zhaojun"/>
                                 </SelectOptions>
                             </Select>
                         </FormItem>
@@ -47,8 +47,8 @@
                                     Style="max-width: 200px; width: 100%;"
                                     @bind-Value="_model.Satisfaction">
                                 <SelectOptions>
-                                    <SelectOption TItem="string" TItemValue="string" Value="@("good")" Label="Excellent" />
-                                    <SelectOption TItem="string" TItemValue="string" Value="@("normal")" Label="Normal" />
+                                    <SelectOption TItem="string" TItemValue="string" Value="@("good")" Label="Excellent"/>
+                                    <SelectOption TItem="string" TItemValue="string" Value="@("normal")" Label="Normal"/>
                                 </SelectOptions>
                             </Select>
                         </FormItem>
@@ -64,21 +64,24 @@
             <ListItem NoFlex>
                 <Card Class="card" Hoverable Bordered>
                     <Cover>
-                        <img alt="@context.Title" src="@context.Cover" />
+                        <img alt="@context.Title" src="@context.Cover"/>
                     </Cover>
                     <ChildContent>
                         <CardMeta>
                             <DescriptionTemplate>@context.SubDescription</DescriptionTemplate>
-                            <TitleTemplate><a>@context.Title</a></TitleTemplate>
+                            <TitleTemplate>
+                                <a>@context.Title</a>
+                            </TitleTemplate>
                         </CardMeta>
                         <div class="cardItemContent">
                             <span>@context.UpdatedAt.ToFriendlyDisplay()</span>
                             <div class="avatarList">
                                 <NodeService.WebServer.UI.Pages.Account.Center.AvatarList>
-                                    @foreach (var member in context.Members) {
+                                    @foreach (var member in context.Members)
+                                    {
                                         <NodeService.WebServer.UI.Pages.Account.Center.AvatarListItem Size="small"
-                                                                                                    Src="@member.Avatar"
-                                                                                                    Tips="@member.Name" />
+                                                                                                      Src="@member.Avatar"
+                                                                                                      Tips="@member.Name"/>
                                     }
                                 </NodeService.WebServer.UI.Pages.Account.Center.AvatarList>
                             </div>

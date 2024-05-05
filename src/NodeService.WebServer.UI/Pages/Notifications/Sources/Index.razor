@@ -3,7 +3,6 @@
 @using NodeService.WebServer.UI.Pages.Notifications.Components
 
 
-
 <Tabs @bind-ActiveKey="@activeKey" OnChange="OnTabChange" Animated>
     <TabPane Tab="节点健康检查" Key="1">
         <NodeHealthyCheck/>
@@ -15,11 +14,12 @@
         Content of Tab Pane 3
     </TabPane>
 </Tabs>
+
 @code {
 
 
-
     string activeKey { get; set; }
+
     async void OnTabChange(string key)
     {
         Console.WriteLine($"tab change:{key}");
@@ -28,11 +28,8 @@
             case "1":
 
                 break;
-            default:
-                break;
         }
     }
-
 
 
 }

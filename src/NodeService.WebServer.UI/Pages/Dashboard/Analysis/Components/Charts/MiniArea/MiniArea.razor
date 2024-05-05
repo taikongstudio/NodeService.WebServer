@@ -1,15 +1,14 @@
-
 @namespace NodeService.WebServer.UI.Pages.Dashboard.Analysis
 
 @inject IChartService ChartService
 
-<Area @ref="_visitChart" Config="_visitChartConfig" />
+<Area @ref="_visitChart" Config="_visitChartConfig"/>
 
 @code
 {
     private IChartComponent _visitChart;
 
-    private readonly AreaConfig _visitChartConfig = new AreaConfig
+    private readonly AreaConfig _visitChartConfig = new()
     {
         XField = "x",
         YField = "y",

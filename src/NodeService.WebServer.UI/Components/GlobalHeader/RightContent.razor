@@ -6,13 +6,13 @@
         <HeaderSearch Class="action search"
                       Placeholder="Site Search"
                       DefaultValue="umi ui"
-                      Options="DefaultOptions" />
+                      Options="DefaultOptions"/>
     </SpaceItem>
     <SpaceItem>
         <AntDesign.Tooltip Title="@("Help")" Placement="@Placement.Bottom">
             <Unbound>
                 <span @ref="@context.Current" class="action">
-                    <Icon Type="question-circle" Theme="outline" />
+                    <Icon Type="question-circle" Theme="outline"/>
                 </span>
             </Unbound>
         </AntDesign.Tooltip>
@@ -27,30 +27,30 @@
                         Title="Notifications"
                         EmptyText="You have viewed all notifications"
                         ShowViewMore
-                        Data="_notifications" />
+                        Data="_notifications"/>
             <NoticeList TabKey="message"
                         Title="Messages"
                         EmptyText="You have read all messages"
                         ShowViewMore
-                        Data="_messages" />
+                        Data="_messages"/>
             <NoticeList TabKey="event"
                         Title="Upcoming"
                         EmptyText="You have completed all to do"
                         ShowViewMore
-                        Data="_events" />
+                        Data="_events"/>
         </NoticeIcon>
     </SpaceItem>
     <SpaceItem>
         <AvatarDropdown Name="@_currentUser.Name"
                         Avatar="@_currentUser.Avatar"
                         MenuItems="@AvatarMenuItems"
-                        OnItemSelected="HandleSelectUser" />
+                        OnItemSelected="HandleSelectUser"/>
     </SpaceItem>
     <SpaceItem>
-        <SelectLang OnItemSelected="HandleSelectLang" />
+        <SelectLang OnItemSelected="HandleSelectLang"/>
     </SpaceItem>
 </Space>
 
 @code{
-[CascadingParameter] protected Task<AuthenticationState> AuthState { get; set; }
+    [CascadingParameter] protected Task<AuthenticationState> AuthState { get; set; }
 }

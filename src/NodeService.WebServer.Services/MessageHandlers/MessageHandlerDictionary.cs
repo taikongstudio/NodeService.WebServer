@@ -1,13 +1,7 @@
 ﻿using Google.Protobuf.Reflection;
 
-namespace NodeService.WebServer.Services.MessageHandlers
+namespace NodeService.WebServer.Services.MessageHandlers;
+
+public class MessageHandlerDictionary : Dictionary<MessageDescriptor, IMessageHandler>
 {
-    public class MessageHandlerDictionary : Dictionary<MessageDescriptor, IMessageHandler>
-    {
-        public MessageHandlerDictionary()
-        {
-
-        }
-
-    }
 }

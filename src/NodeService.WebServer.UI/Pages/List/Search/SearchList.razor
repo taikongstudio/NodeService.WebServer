@@ -1,6 +1,7 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.List
+@using BasicLayout = NodeService.WebServer.UI.Layouts.BasicLayout
 @inherits LayoutComponentBase
-@layout NodeService.WebServer.UI.Layouts.BasicLayout
+@layout BasicLayout
 
 <PageContainer Title="Search"
                TabList="_tabList"
@@ -18,7 +19,7 @@
             <Search Placeholder="Please Enter"
                     EnterButton="@("Search For")"
                     Size="large"
-                    Style="max-width: 522px; width: 100%;" />
+                    Style="max-width: 522px; width: 100%;"/>
         </div>
     </Content>
     <ChildContent>

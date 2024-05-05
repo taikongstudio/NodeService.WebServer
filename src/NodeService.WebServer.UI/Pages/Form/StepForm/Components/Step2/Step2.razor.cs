@@ -2,30 +2,30 @@ using AntDesign;
 using Microsoft.AspNetCore.Components;
 using NodeService.WebServer.UI.Models;
 
-namespace NodeService.WebServer.UI.Pages.Form
+namespace NodeService.WebServer.UI.Pages.Form;
+
+public partial class Step2
 {
-    public partial class Step2
+    private readonly FormItemLayout _formLayout = new()
     {
-        private readonly StepFormModel _model = new StepFormModel();
-        private readonly FormItemLayout _formLayout = new FormItemLayout
+        WrapperCol = new ColLayoutParam
         {
-            WrapperCol = new ColLayoutParam
-            {
-                Xs = new EmbeddedProperty { Span = 24, Offset = 0 },
-                Sm = new EmbeddedProperty { Span = 19, Offset = 5 },
-            }
-        };
-
-        [CascadingParameter] public StepForm StepForm { get; set; }
-
-        public void OnValidateForm()
-        {
-            StepForm.Next();
+            Xs = new EmbeddedProperty { Span = 24, Offset = 0 },
+            Sm = new EmbeddedProperty { Span = 19, Offset = 5 }
         }
+    };
 
-        public void Preview()
-        {
-            StepForm.Prev();
-        }
+    private readonly StepFormModel _model = new();
+
+    [CascadingParameter] public StepForm StepForm { get; set; }
+
+    public void OnValidateForm()
+    {
+        StepForm.Next();
+    }
+
+    public void Preview()
+    {
+        StepForm.Prev();
     }
 }

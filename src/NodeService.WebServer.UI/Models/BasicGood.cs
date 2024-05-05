@@ -1,12 +1,11 @@
-﻿namespace NodeService.WebServer.UI.Models
+﻿namespace NodeService.WebServer.UI.Models;
+
+public class BasicGood
 {
-    public class BasicGood
-    {
-        public string Id { get; set; }
-        public string Name { get; set; }
-        public string Barcode { get; set; }
-        public string Price { get; set; }
-        public string Num { get; set; }
-        public string Amount { get; set; }
-    }
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string Barcode { get; set; }
+    public string Price { get; set; }
+    public string Num { get; set; }
+    public string Amount { get; set; }
 }

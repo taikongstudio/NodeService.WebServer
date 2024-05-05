@@ -1,12 +1,7 @@
-﻿@using AntDesign
-@using Microsoft.AspNetCore.Components.Authorization
-@using Microsoft.AspNetCore.Components.Forms
-@using Microsoft.AspNetCore.Components.Routing
-@using NodeService.Infrastructure.Entities
-
+﻿@using Microsoft.AspNetCore.Components.Routing
 <Router AppAssembly="@typeof(Program).Assembly">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(PublicLayout)" />
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(PublicLayout)"/>
     </Found>
     <NotFound>
         <LayoutView Layout="@typeof(PublicLayout)">
@@ -14,4 +9,4 @@
         </LayoutView>
     </NotFound>
 </Router>
-<AntContainer />
+<AntContainer/>

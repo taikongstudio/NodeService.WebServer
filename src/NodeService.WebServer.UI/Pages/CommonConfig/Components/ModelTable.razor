@@ -5,72 +5,61 @@
        TItem="TItem"
        DataSource="@DataSource"
        Size="TableSize.Small"
-       SelectedRows="@SelectedItems" 
+       SelectedRows="@SelectedItems"
        SelectedRowsChanged="@SelectedItemsChanged"
-       RowKey="x=>x.Id">
-    <Selection Key="@item.Id" Type="checkbox" />
-    <PropertyColumn Hidden="@this.IsIdHidden" Title="@this.IdTitle" Property="c=>c.Id" Sortable>
+       RowKey="x => x.Id">
+    <Selection Key="@item.Id" Type="checkbox"/>
+    <PropertyColumn Hidden="@IsIdHidden" Title="@IdTitle" Property="c => c.Id" Sortable>
     </PropertyColumn>
-    <PropertyColumn Hidden="@this.IsNameHidden" Title="@this.ValueTitle" Property="c=>c.Name" Sortable>
+    <PropertyColumn Hidden="@IsNameHidden" Title="@ValueTitle" Property="c => c.Name" Sortable>
     </PropertyColumn>
-        @if (this.IsEditable)
-        {
-            <ActionColumn Fixed="right" Width="100" Title="操作">
-                <Space>
-                    <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="()=>RemoveSelectedItem(item)">
+    @if (IsEditable)
+    {
+        <ActionColumn Fixed="right" Width="100" Title="操作">
+            <Space>
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="() => RemoveSelectedItem(item)">
 
-                        </Button>
-                    </SpaceItem>
-                 </Space>
-             </ActionColumn>
-        }
+                    </Button>
+                </SpaceItem>
+            </Space>
+        </ActionColumn>
+    }
 
- </Table>
-
-
+</Table>
 
 
 @code {
 
-    [Parameter]
-    public IEnumerable<TItem> DataSource { get; set; }
+    [Parameter] public IEnumerable<TItem> DataSource { get; set; }
 
-    [Parameter]
-    public IEnumerable<TItem> SelectedItems { get; set; }
+    [Parameter] public IEnumerable<TItem> SelectedItems { get; set; }
 
 
-    [Parameter]
-    public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
+    [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
 
-    [Parameter]
-    public Action<TItem>? RemoveItemAction { get; set; }
+    [Parameter] public Action<TItem>? RemoveItemAction { get; set; }
 
-    [Parameter]
-    public string IdTitle { get; set; } = "标志";
+    [Parameter] public string IdTitle { get; set; } = "标志";
 
-    [Parameter]
-    public string ValueTitle { get; set; } = "名称";
+    [Parameter] public string ValueTitle { get; set; } = "名称";
 
-    [Parameter]
-    public bool IsIdHidden { get; set; } = false;
+    [Parameter] public bool IsIdHidden { get; set; }
 
-    [Parameter]
-    public bool IsNameHidden { get; set; } = false;
+    [Parameter] public bool IsNameHidden { get; set; }
 
 
-    [Parameter]
-    public bool IsEditable { get; set; } = true;
+    [Parameter] public bool IsEditable { get; set; } = true;
 
     private void RemoveSelectedItem(TItem value)
     {
-        if (this.DataSource is IList<TItem> list)
+        if (DataSource is IList<TItem> list)
         {
             list.Remove(value);
         }
         else
         {
-            this.RemoveItemAction?.Invoke(value);
+            RemoveItemAction?.Invoke(value);
         }
     }
 

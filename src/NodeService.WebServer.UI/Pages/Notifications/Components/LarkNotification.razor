@@ -1,8 +1,9 @@
-﻿<h3>MailNotificationSettings</h3>
+﻿<FormItem Label="Url">
+    <TextArea @bind-Value="@Configuration.Url" />
+</FormItem>
 
 @code {
 
-    [Parameter]
-    public LarkNotificationConfiguration Configuration { get; set; }
+    [Parameter] public LarkNotificationOptions Configuration { get; set; }
 
 }

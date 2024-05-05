@@ -3,168 +3,163 @@
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
+@inject NavigationManager NavigationManager
+@using System.Security.Cryptography
+@implements IDisposable
 
 
 <GridContent>
-    <Drawer Closable="true" Width="320" Visible="@_packageConfigDrawerVisible" Title='("≤Èø¥ƒ⁄»›")' OnClose="ClosePackageConfigJsonStringDrawer">
+    <Drawer Closable="true" Width="320" Visible="@_packageConfigDrawerVisible" Title='"Êü•ÁúãÂÜÖÂÆπ"' OnClose="ClosePackageConfigJsonStringDrawer">
         <Template style="height:90%">
             <TextArea Style="height:500px" ReadOnly Value="@pluginString" />
         </Template>
     </Drawer>
-     <Modal
-           Width="800"
-           Title="@_modalTitle"
-           Visible="@_editFormVisible"
-           ConfirmLoading="@_editFormConfirmLoading"
-           OnOk="@HandleEditOk" 
-           OnCancel="@HandleCancel">
-        <Form Model="@_editModel" 
-              LabelColSpan="4" 
+    <Modal
+        Width="800"
+        Title="@_modalTitle"
+        Visible="@_editFormVisible"
+        ConfirmLoading="@_editFormConfirmLoading"
+        OnOk="@HandleEditOk"
+        OnCancel="@HandleCancel">
+        <Form Model="@_editModel"
+              LabelColSpan="4"
               Loading="_loading"
               WrapperColSpan="20"
               OnFinish="OnEditFormFinish"
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
-            <FormItem Label="√˚≥∆">
-                <Input @bind-Value="@context.Name" />
+            <FormItem Label="ÂêçÁß∞">
+                <Input @bind-Value="@context.Name"/>
             </FormItem>
-            <FormItem Label="∆ΩÃ®">
+            <FormItem Label="Âπ≥Âè∞">
                 <RadioGroup @bind-Value="@context.Platform">
                     @foreach (var platform in platforms)
                     {
                         <Radio RadioButton Value="@platform">@platform</Radio>
                     }
-                 </RadioGroup>
-             </FormItem>
-            <FormItem Label="∞Ê±æ">
-                <Input @bind-Value="@context.Version" />
+                </RadioGroup>
             </FormItem>
-            <FormItem Label="Œƒº˛">
-                <InputFile id="fileInput" OnChange="@OnInputFileChanged" hidden multiple />
+            <FormItem Label="ÁâàÊú¨">
+                <Input @bind-Value="@context.Version"/>
+            </FormItem>
+            <FormItem Label="Êñá‰ª∂">
+                <InputFile id="fileInput" OnChange="@OnInputFileChanged" hidden multiple/>
                 <Upload Name="files" FileList="_uploadFileItems">
                     <label class="ant-btn" for="fileInput">
-                        <Icon Type="upload" />
-                       …œ¥´Œƒº˛
+                        <Icon Type="upload"/>
+                        ‰∏ä‰º†Êñá‰ª∂
                     </label>
                 </Upload>
                 @if (!string.IsNullOrEmpty(_fileError))
                 {
                     <Alert Type="@AlertType.Error"
-                           Message="¥ÌŒÛ"
+                           Message="ÈîôËØØ"
                            Description="@_fileError"
-                           ShowIcon="true" />
+                           ShowIcon="true"/>
                 }
             </FormItem>
-            <FormItem Label="π˛œ£">
-                <Input Disabled @bind-Value="@context.Hash" />
+            <FormItem Label="ÂìàÂ∏å">
+                <Input Disabled @bind-Value="@context.Hash"/>
             </FormItem>
-            <FormItem Label="»Îø⁄µ„">
+            <FormItem Label="ÂÖ•Âè£ÁÇπ">
                 <AutoComplete @bind-Value="@context.EntryPoint"
-                Options="@_entryPoints" 
-                OnSelectionChange="OnSelectionChange" 
-                OnActiveChange="OnActiveChange" 
-                Placeholder="input here"/>
-      
+                              Options="@_entryPoints"
+                              OnSelectionChange="OnSelectionChange"
+                              OnActiveChange="OnActiveChange"
+                              Placeholder="input here"/>
+
             </FormItem>
-            <FormItem Label="≤Œ ˝">
+            <FormItem Label="ÂèÇÊï∞">
                 <TextArea @bind-Value="@context.Arguments" />
             </FormItem>
-            <FormItem Label="∆Ù∂Ø">
-                <Switch @bind-Checked="@context.Launch" />
+            <FormItem Label="ÂêØÂä®">
+                <Switch @bind-Checked="@context.Launch"/>
             </FormItem>
         </Form>
     </Modal>
 
     <Space Style="margin-bottom:16px">
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="()=>ShowEditForm()">–¬‘ˆ≈‰÷√</Button>
+            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">Êñ∞Â¢ûÈÖçÁΩÆ</Button>
         </SpaceItem>
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="OnRefreshClick">À¢–¬</Button>
+            <Button Type="@ButtonType.Primary" OnClick="_dataSource.Request">Âà∑Êñ∞</Button>
         </SpaceItem>
 
     </Space>
-    <Table @ref="_table" Size="TableSize.Small" Loading="_loading" EnableVirtualization="true" TItem="PackageConfigModel"
-           DataSource="@_dataSource.Items"
+    <Table @ref="_table"
+           Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           EnableVirtualization="false"
+           TItem="PackageConfigModel"
+           DataSource="@_dataSource.ItemsSource"
            Resizable
            OnChange="OnTableChange"
            PageIndex="@_dataSource.PageIndex"
            PageSize="@_dataSource.PageSize"
            Total="@_dataSource.TotalCount"
-           OnPageIndexChange="@_dataSource.OnPageSizeChanged"
-           OnPageSizeChange="@_dataSource.OnPageSizeChanged">
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="4">
-                    <Title Level="3">∞¸≈‰÷√</Title>
+                    <Title Level="3">ÂåÖÈÖçÁΩÆ</Title>
                 </GridCol>
                 <GridCol Span="4" Offset="20">
-                    <Search Placeholder="À—À˜" @bind-Value="@_searchText" OnSearch="()=>_table?.ReloadData()" />
+                    <Search Placeholder="ÊêúÁ¥¢" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
-            <PropertyColumn Title="±Í÷æ" Ellipsis Sortable Property="c=>c.Id"></PropertyColumn>
-         <PropertyColumn Title="√˚≥∆" Sortable Property="c=>c.Name"></PropertyColumn>
-        <PropertyColumn Title="∆ΩÃ®" Property="c=>c.Platform"></PropertyColumn>
-        <PropertyColumn Title="∞Ê±æ" Sortable="true" Property="c=>c.Version"></PropertyColumn>
-             <ActionColumn Fixed="right" Width="250" Title="≤Ÿ◊˜">
-                 <CellRender Context="cellData">
-                     <Space>
-                         <SpaceItem>
-                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="()=>ShowEditForm(context.CopyClone<PackageConfigModel>())"></Button>
-                         </SpaceItem>
-                         <SpaceItem>
-                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="()=>ShowEditForm(context)"></Button>
-                         </SpaceItem>
-                         <SpaceItem>
-                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfig(context)"></Button>
-                         </SpaceItem>
-                         @if (cellData.RowData.Expanded)
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="()=>cellData.RowData.Expanded=false"></Button>
-                            </SpaceItem>
-                        }
-                        else
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="()=>cellData.RowData.Expanded=true"></Button>
-                            </SpaceItem>
-                        }
+            <PropertyColumn Title="Ê†áÂøó" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="ÂêçÁß∞" Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="Âπ≥Âè∞" Property="c => c.Platform"></PropertyColumn>
+            <PropertyColumn Title="ÁâàÊú¨" Sortable="true" Property="c => c.Version"></PropertyColumn>
+            <ActionColumn Fixed="right" Width="250" Title="Êìç‰Ωú">
+                <CellRender Context="cellData">
+                    <Space>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<PackageConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<PackageConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
+                        </SpaceItem>
 
                     </Space>
                 </CellRender>
             </ActionColumn>
         </ColumnDefinitions>
-    <ExpandTemplate>
-         <Tabs Animated>
-                <TabPane Tab="≤Âº˛ Ù–‘" Key="1">
+        <ExpandTemplate>
+            <Tabs Animated>
+                <TabPane Tab="Êèí‰ª∂Â±ûÊÄß" Key="1">
                     <Space Size=@("small")>
                         <SpaceItem>
-                            <a target="_blank" href="@("/api/commonconfig/package/download/"+context.Data.Id)">œ¬‘ÿ≤Âº˛</a>
+                            <a target="_blank" href="@("/api/commonconfig/package/download/" + context.Data.Id)">‰∏ãËΩΩÊèí‰ª∂</a>
                         </SpaceItem>
                         <SpaceItem>
-                            <Button Type="@ButtonType.Link" OnClick="()=>OpenPackageConfigJsonStringDrawer(context.Data)">≤Èø¥</Button>
+                            <Button Type="@ButtonType.Link" OnClick="() => OpenPackageConfigJsonStringDrawer(context.Data)">Êü•Áúã</Button>
                         </SpaceItem>
                     </Space>
 
                     @if (true)
                     {
                         var data = new List<StringEntry>([
-                            new StringEntry("»Îø⁄µ„", context.Data.EntryPoint),
-                            new StringEntry("≤Œ ˝", context.Data.Arguments),
-                            new StringEntry("π˛œ£", context.Data.Hash),
-                            new StringEntry("∆Ù∂Ø", context.Data.Launch.ToString()),
+                            new StringEntry("ÂÖ•Âè£ÁÇπ", context.Data.EntryPoint),
+                            new StringEntry("ÂèÇÊï∞", context.Data.Arguments),
+                            new StringEntry("ÂìàÂ∏å", context.Data.Hash),
+                            new StringEntry("ÂêØÂä®", context.Data.Launch.ToString())
                         ]);
-                        <StringEntryTable DataSource="@data"
-                                          NameTitle="±∏◊¢"
-                                          ValueTitle="÷µ"
-                                          IsEditable="false" />
+                        <StringEntryTable ItemsSource="@data"
+                                          NameTitle="Â§áÊ≥®"
+                                          ValueTitle="ÂÄº"
+                                          IsEditable="false"/>
                     }
                 </TabPane>
             </Tabs>
-    </ExpandTemplate>
+        </ExpandTemplate>
     </Table>
 
 
@@ -173,26 +168,27 @@
 
 @code{
     ITable _table;
-    string[] platforms = new string[]
-            {
-            "X64",
-            "X86",
-            "Unknown"
-            };
+
+    readonly string[] platforms =
+    {
+        "X64",
+        "X86",
+        "Unknown"
+    };
+
     string _modalTitle;
-    string _searchText;
     string? pluginString;
-    bool _packageConfigDrawerVisible = false;
-    bool _editFormVisible = false;
-    bool _editFormSubmitting = false;
-    bool _editFormConfirmLoading = false;
+    bool _packageConfigDrawerVisible;
+    bool _editFormVisible;
+    bool _editFormSubmitting;
+    bool _editFormConfirmLoading;
     bool _loading;
     string _fileError = string.Empty;
     Form<PackageConfigModel> _editForm;
-    PackageConfigModel _editModel = new PackageConfigModel();
-    List<UploadFileItem> _uploadFileItems = new List<UploadFileItem>();
+    PackageConfigModel _editModel = new();
+    readonly List<UploadFileItem> _uploadFileItems = new();
 
-    List<string> _entryPoints = new List<string>();
+    List<string> _entryPoints = new();
 
     private AutoCompleteOption selectItem;
     private AutoCompleteOption activeItem;
@@ -209,12 +205,15 @@
     }
 
 
-    private PaginationDataSource<PackageConfigModel> _dataSource;
+    private RoutedPaginationDataSource<PackageConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new PaginationDataSource<PackageConfigModel>(ApiService);
-        _dataSource.Filter = FilterModel;
+        _dataSource = new RoutedPaginationDataSource<PackageConfigModel, PaginationQueryParameters>(
+            NavigationManager,
+            ApiService.QueryPackageConfigurationListAsync,
+            StateHasChanged);
+        _dataSource.Request();
         base.OnInitialized();
     }
 
@@ -222,171 +221,138 @@
 
     private void ShowEditForm(PackageConfigModel? model = null)
     {
-        this._editFormVisible = true;
+        _editFormVisible = true;
         if (model == null)
         {
-            this._editModel = new PackageConfigModel()
-                {
-                    Id = Guid.NewGuid().ToString()
-                };
-            this._modalTitle = "–¬Ω®≈‰÷√";
+            _editModel = new PackageConfigModel
+            {
+                Id = Guid.NewGuid().ToString()
+            };
+            _modalTitle = "Êñ∞Âª∫ÈÖçÁΩÆ";
         }
         else
         {
-            this._editModel = model.ReferenceClone<PackageConfigModel>();
-            this._modalTitle = "±‡º≠≈‰÷√";
+            _editModel = model.ReferenceClone<PackageConfigModel>();
+            _modalTitle = "ÁºñËæëÈÖçÁΩÆ";
         }
     }
 
     private void OpenPackageConfigJsonStringDrawer(PackageConfigModel model)
     {
-        this.pluginString = JsonSerializer.Serialize(model);
-        this._packageConfigDrawerVisible = true;
+        pluginString = JsonSerializer.Serialize(model);
+        _packageConfigDrawerVisible = true;
     }
 
     private void ClosePackageConfigJsonStringDrawer()
     {
-        this.pluginString = null;
-        this._packageConfigDrawerVisible = false;
+        pluginString = null;
+        _packageConfigDrawerVisible = false;
     }
 
 
     private void HandleEditOk(MouseEventArgs e)
     {
-        if (this._fileError != null)
+        if (_fileError != null)
         {
             return;
         }
-        this._editFormSubmitting = true;
-        this._editForm.Submit();
 
+        _editFormSubmitting = true;
+        _editForm.Submit();
     }
 
     private void HandleCancel(MouseEventArgs e)
     {
-        this._editFormVisible = false;
+        _editFormVisible = false;
     }
 
     private async Task OnEditFormFinish(EditContext editContext)
     {
-
         try
         {
-            this._editFormConfirmLoading = true;
-            this._loading = true;
-            var apiResponse = await this.ApiService.AddOrUpdateAsync(this._editModel, this._file.OpenReadStream(1024 * 1024 * 200)).ConfigureAwait(false);
+            _editFormConfirmLoading = true;
+            _loading = true;
+            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel, _file.OpenReadStream(1024 * 1024 * 200));
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
-                this._editFormVisible = false;
-                this._loading = false;
+                await _dataSource.RefreshAsync();
+                _editFormVisible = false;
+                _loading = false;
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "…œ¥´ ß∞‹",
-                        Description = $"…œ¥´ ß∞‹,¥ÌŒÛ¥˙¬Î:{apiResponse.ErrorCode},¥ÌŒÛœ˚œ¢:{apiResponse.Message}",
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "‰∏ä‰º†Â§±Ë¥•",
+                    Description = $"‰∏ä‰º†Â§±Ë¥•,ÈîôËØØ‰ª£Á†Å:{apiResponse.ErrorCode},ÈîôËØØÊ∂àÊÅØ:{apiResponse.Message}"
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "…œ¥´ ß∞‹",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "‰∏ä‰º†Â§±Ë¥•",
+                Description = ex.ToString()
+            });
         }
         finally
         {
-            this._editFormSubmitting = false;
-            this._editFormConfirmLoading = false;
+            _editFormSubmitting = false;
+            _editFormConfirmLoading = false;
         }
     }
 
     private void OnEditFormFinishFailed(EditContext editContext)
     {
-        this._editFormSubmitting = false;
-        this._editFormConfirmLoading = false;
-    }
-
-    private async void OnRefreshClick()
-    {
-        await this.QueryPackageConfigurationListAsync();
-    }
-
-    async Task QueryPackageConfigurationListAsync()
-    {
-        try
-        {
-            this._loading = true;
-            await this._dataSource.UpdateSourceAsync();
-        }
-        catch (Exception ex)
-        {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "º”‘ÿ ß∞‹",
-                    Description = ex.ToString(),
-                });
-        }
-        finally
-        {
-            this._loading = false;
-        }
-    }
-
-    protected override async Task OnInitializedAsync(){
-
-        this._loading = true;
-        await this.QueryPackageConfigurationListAsync().ConfigureAwait(false);
-        this._loading = false;
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
     }
 
     private async Task OnInputFileChanged(InputFileChangeEventArgs e)
     {
         try
         {
-            this._file = e.File;
-            this._loading = true;
-            this._entryPoints = [];
-            this._editModel.Hash = null;
+            _file = e.File;
+            _loading = true;
+            _entryPoints = [];
+            _editModel.Hash = null;
             var readStream = e.File.OpenReadStream(1024 * 1024 * 200);
             using var memoryStream = new MemoryStream();
-            await readStream.CopyToAsync(memoryStream).ConfigureAwait(false);
+            await readStream.CopyToAsync(memoryStream);
             memoryStream.Position = 0;
 
             if (!ZipArchiveHelper.TryUpdate(memoryStream, out var zipArchive))
             {
-                this._fileError = "not a zip package";
+                _fileError = "not a zip package";
                 return;
             }
+
             if (!zipArchive.Entries.Any(ZipArchiveHelper.HasPackageKey))
             {
-                this._fileError = "Invalid package";
+                _fileError = "Invalid package";
                 return;
             }
-            this._entryPoints = zipArchive.Entries.Where(IsEntryPoint).Select(static x => x.FullName).ToList();
+
+            _entryPoints = zipArchive.Entries.Where(IsEntryPoint).Select(static x => x.FullName).ToList();
             memoryStream.Position = 0;
-            var hash = await System.Security.Cryptography.SHA256.HashDataAsync(memoryStream).ConfigureAwait(false);
-            this._editModel.Hash = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            var hash = await SHA256.HashDataAsync(memoryStream);
+            _editModel.Hash = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             memoryStream.Position = 0;
-            this._fileError = null;
+            _fileError = null;
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "≤Ÿ◊˜",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "Êìç‰Ωú",
+                Description = ex.ToString()
+            });
         }
         finally
         {
-            this._loading = false;
+            _loading = false;
         }
-
     }
 
 
@@ -397,74 +363,66 @@
 
     private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
-        var options = new ConfirmButtonOptions()
+        var options = new ConfirmButtonOptions
+        {
+            Button1Props = new ButtonProps
             {
-                Button1Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "»∑∂®",
-                    Type = ButtonType.Primary,
-                },
-                Button2Props = new AntDesign.ButtonProps()
-                {
-                    ChildContent = "»°œ˚"
-                }
-            };
+                ChildContent = "Á°ÆÂÆö",
+                Type = ButtonType.Primary
+            },
+            Button2Props = new ButtonProps
+            {
+                ChildContent = "ÂèñÊ∂à"
+            }
+        };
         return _confirmService.Show(
-                content,
-                title,
-                ConfirmButtons.OKCancel,
-                ConfirmIcon.Info,
-                options);
+            content,
+            title,
+            ConfirmButtons.OKCancel,
+            ConfirmIcon.Info,
+            options);
     }
 
-    private async Task DeleteConfig(PackageConfigModel model){
+    private async Task DeleteConfig(PackageConfigModel model)
+    {
         try
         {
-            if (await ShowConfirmDialogAsync("…æ≥˝»∑»œ", "»∑∂®“™…æ≥˝¬£ø") != ConfirmResult.OK)
+            if (await ShowConfirmDialogAsync("Âà†Èô§Á°ÆËÆ§", "Á°ÆÂÆöË¶ÅÂà†Èô§ÂêóÔºü") != ConfirmResult.OK)
             {
                 return;
             }
-            var apiResponse = await this.ApiService.RemoveAsync(model);
+
+            var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                await this._dataSource.UpdateSourceAsync();
+                await _dataSource.RefreshAsync();
             }
             else
             {
-                await this._notice.Open(new NotificationConfig()
-                    {
-                        Message = "≤Ÿ◊˜",
-                        Description = apiResponse.Message,
-                    });
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "Êìç‰Ωú",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
-            await this._notice.Open(new NotificationConfig()
-                {
-                    Message = "º”‘ÿ ß∞‹",
-                    Description = ex.ToString(),
-                });
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "Âä†ËΩΩÂ§±Ë¥•",
+                Description = ex.ToString()
+            });
         }
-        finally
-        {
-
-        }
-
-    }
-
-    private bool FilterModel(PackageConfigModel model)
-    {
-        if (string.IsNullOrEmpty(model.Name) || string.IsNullOrEmpty(_searchText))
-        {
-            return true;
-        }
-        return model.Name.Contains(this._searchText, StringComparison.OrdinalIgnoreCase);
     }
 
     void OnTableChange(QueryModel<PackageConfigModel> query)
     {
-        this._dataSource.SetItemsSource(query.ExecuteQuery(this._dataSource.ItemsSource.AsQueryable()));
-        this._dataSource.Refresh();
     }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
+
 }

@@ -1,26 +1,24 @@
-﻿
+﻿using System.Net.Http.Json;
 using NodeService.WebServer.UI.Models;
-using System.Net.Http.Json;
 
-namespace NodeService.WebServer.UI.Services
+namespace NodeService.WebServer.UI.Services;
+
+public interface IUserService
 {
-    public interface IUserService
+    Task<CurrentUser> GetCurrentUserAsync();
+}
+
+public class UserService : IUserService
+{
+    private readonly HttpClient _httpClient;
+
+    public UserService(HttpClient httpClient)
     {
-        Task<CurrentUser> GetCurrentUserAsync();
+        _httpClient = httpClient;
     }
 
-    public class UserService : IUserService
+    public async Task<CurrentUser> GetCurrentUserAsync()
     {
-        private readonly HttpClient _httpClient;
-
-        public UserService(HttpClient httpClient)
-        {
-            _httpClient = httpClient;
-        }
-
-        public async Task<CurrentUser> GetCurrentUserAsync()
-        {
-            return await _httpClient.GetFromJsonAsync<CurrentUser>("data/current_user.json");
-        }
+        return await _httpClient.GetFromJsonAsync<CurrentUser>("data/current_user.json");
     }
 }

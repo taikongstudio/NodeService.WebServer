@@ -1,13 +1,12 @@
 using NodeService.WebServer.UI.Models;
 
-namespace NodeService.WebServer.UI.Pages.Form
-{
-    public partial class Step3
-    {
-        private readonly StepFormModel _model = new StepFormModel();
+namespace NodeService.WebServer.UI.Pages.Form;
 
-        public void OnFinish()
-        {
-        }
+public partial class Step3
+{
+    private readonly StepFormModel _model = new();
+
+    public void OnFinish()
+    {
     }
 }

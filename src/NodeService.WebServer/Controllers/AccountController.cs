@@ -1,4 +1,3 @@
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using NodeService.Infrastructure.Entities;
@@ -13,9 +12,9 @@ public class AccountController : ControllerBase
     private readonly IAccessControlService _accessControl;
 
     private readonly ILogger<AccountController> _logger;
-    private readonly UserManager<ApplicationUser> _userManager;
     private readonly IMemoryCache _memoryCache;
     private readonly int _refreshTokenExpiration;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public AccountController(IAccessControlService accessControl,
         IOptions<JwtSettings> jwtSettings,
@@ -55,7 +54,7 @@ public class AccountController : ControllerBase
             TimeSpan.FromMinutes(_refreshTokenExpiration));
         if (!updateSuccessfully)
             return Conflict(new BaseApiResponse<AuthenticationResponse>
-            { Errors = new List<string> { "Cannot update refresh token" } });
+                { Errors = new List<string> { "Cannot update refresh token" } });
 
         return Ok(new BaseApiResponse<AuthenticationResponse>
         {
@@ -68,7 +67,8 @@ public class AccountController : ControllerBase
     }
 
     [HttpPost("/api/account/login")]
-    public async Task<ActionResult<BaseApiResponse<AuthenticationResponse>>> LoginAsync([FromBody] LoginCredential credential)
+    public async Task<ActionResult<BaseApiResponse<AuthenticationResponse>>> LoginAsync(
+        [FromBody] LoginCredential credential)
     {
         var response = new BaseApiResponse<AuthenticationResponse>();
         if (!ModelState.IsValid)
@@ -88,7 +88,9 @@ public class AccountController : ControllerBase
         _logger.LogTrace($"Email: {credential.Email} has access to login");
         var passwordHasher = new PasswordHasher<ApplicationUser>();
         var appUser = await _userManager.FindByEmailAsync(credential.Email);
-        var result = string.IsNullOrWhiteSpace(appUser?.PasswordHash) is false && passwordHasher.VerifyHashedPassword(appUser, appUser.PasswordHash, credential.Password) == PasswordVerificationResult.Success;
+        var result = string.IsNullOrWhiteSpace(appUser?.PasswordHash) is false &&
+                     passwordHasher.VerifyHashedPassword(appUser, appUser.PasswordHash, credential.Password) ==
+                     PasswordVerificationResult.Success;
         if (!result)
         {
             _logger.LogError($"user with email: {credential.Email} has not access to LDAP");
@@ -101,7 +103,7 @@ public class AccountController : ControllerBase
             TimeSpan.FromMinutes(_refreshTokenExpiration));
         if (!updateSuccessfully)
             return Conflict(new BaseApiResponse<AuthenticationResponse>
-            { Errors = new List<string> { "Cannot update refresh token" } });
+                { Errors = new List<string> { "Cannot update refresh token" } });
 
         return Ok(new BaseApiResponse<AuthenticationResponse>
         {

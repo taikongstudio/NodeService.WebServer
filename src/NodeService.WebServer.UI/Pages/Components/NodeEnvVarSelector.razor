@@ -1,0 +1,65 @@
+﻿@inject ApiService ApiService
+@inherits Selector<NodeEnvVarsConfigModel>
+
+<GridRow>
+    <div style="margin:10px 0px;padding:10px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
+        @if (SelectedItems != null)
+        {
+            foreach (var item in SelectedItems)
+            {
+                <Tag @key="item.Id" Closable OnClose="() => RemoveSelectedItem(item)">@item.Name</Tag>
+            }
+        }
+    </div>
+
+
+</GridRow>
+<GridRow>
+    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.RefreshAsync"/>
+</GridRow>
+<GridRow>
+    <GridCol Flex=@("auto")>
+        <Table Size="TableSize.Small"
+               OnPageIndexChange="@_dataSource.OnPaginationEvent"
+               OnPageSizeChange="@_dataSource.OnPaginationEvent"
+               PageSize="@_dataSource.PageSize"
+               PageIndex="@_dataSource.PageIndex"
+               Total="@_dataSource.TotalCount"
+               Loading="@_dataSource.IsLoading"
+               DataSource="@_dataSource.ItemsSource"
+               SelectedRows="@SelectedItems"
+               SelectedRowsChanged="@SelectedItemsChanged"
+               RowKey="x => x.Id">
+            <ColumnDefinitions Context="ctx">
+                <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>
+                <PropertyColumn Property="c => c.Id" Title="标志"></PropertyColumn>
+                <PropertyColumn Property="c => c.Name" Title="配置名称"></PropertyColumn>
+            </ColumnDefinitions>
+        </Table>
+    </GridCol>
+</GridRow>
+
+
+@code {
+
+    private PaginationDataSource<NodeEnvVarsConfigModel, PaginationQueryParameters> _dataSource;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new PaginationDataSource<NodeEnvVarsConfigModel, PaginationQueryParameters>(ApiService.QueryNodeEnvVarsConfigurationListAsync, StateHasChanged);
+        _dataSource.QueryParameters.PageIndex = 1;
+        _dataSource.QueryParameters.PageSize = 10;
+
+        base.OnInitialized();
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _dataSource.QueryParameters.Keywords = null;
+        _dataSource.QueryParameters.PageIndex = 1;
+        await _dataSource.RefreshAsync();
+    }
+
+}

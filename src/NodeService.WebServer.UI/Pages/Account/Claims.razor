@@ -17,10 +17,11 @@ else
 }
 
 @code{
-    private List<Claim> _claims = null;
+    private List<Claim> _claims;
 
     protected override async Task OnInitializedAsync()
     {
         _claims = await LoginService.GetLoginInfoAsync();
     }
+
 }

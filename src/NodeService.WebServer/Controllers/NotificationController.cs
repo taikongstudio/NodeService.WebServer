@@ -1,4 +1,7 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using NodeService.Infrastructure.Models;
+using System.Linq;
+
+namespace NodeService.WebServer.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]
@@ -17,21 +20,37 @@ public class NotificationController : Controller
 
     [HttpGet("/api/notification/record/list")]
     public async Task<PaginationResponse<NotificationRecordModel>> QueryNotificationRecordListAsync(
-        [FromQuery] QueryParameters queryParameters)
+        [FromQuery] PaginationQueryParameters queryParameters)
     {
-        var rsp = new PaginationResponse<NotificationRecordModel>();
+        var apiResponse = new PaginationResponse<NotificationRecordModel>();
         try
         {
             using var dbContext = _dbContextFactory.CreateDbContext();
-            rsp.Result = await dbContext.NotificationRecordsDbSet.OrderByDescending(x => x.CreationDateTime)
-                .ToArrayAsync();
+
+            IQueryable<NotificationRecordModel> queryable = dbContext.NotificationRecordsDbSet;
+            var pageIndex = queryParameters.PageIndex - 1;
+            var pageSize = queryParameters.PageSize;
+            var startIndex = pageIndex * pageSize;
+
+            var totalCount = await queryable.CountAsync();
+
+            var items = await queryable.Skip(startIndex)
+                                       .Take(pageSize)
+                                       .ToArrayAsync();
+
+            var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
+            if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
+            apiResponse.PageIndex = queryParameters.PageIndex;
+            apiResponse.PageSize = queryParameters.PageSize;
+            apiResponse.TotalCount = totalCount;
+            apiResponse.Result = items;
         }
         catch (Exception ex)
         {
-            rsp.ErrorCode = ex.HResult;
-            rsp.Message = ex.ToString();
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.ToString();
         }
 
-        return rsp;
+        return apiResponse;
     }
 }

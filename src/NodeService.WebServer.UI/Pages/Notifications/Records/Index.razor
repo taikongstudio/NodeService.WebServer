@@ -13,8 +13,8 @@
 
     </Space>
     <Table @ref="@_table" Size="TableSize.Small"
-           Loading="_loading"
-           EnableVirtualization="true"
+           Loading="@_dataSource.IsLoading"
+           EnableVirtualization="false"
            TItem="NotificationRecordModel"
            Resizable
            OnChange="OnTableChange"

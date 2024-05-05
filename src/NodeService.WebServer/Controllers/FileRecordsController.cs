@@ -23,9 +23,11 @@ public class FileRecordsController : Controller
         [FromQuery] string? fullName = null)
     {
         var apiResponse = new PaginationResponse<FileRecordModel>();
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         try
         {
+            apiResponse.Result = [];
+            return apiResponse;
+            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             if (pageIndex == null) pageIndex = 0;
             if (pageSize == null) pageSize = 500;
             var queryable = dbContext.FileRecordsDbSet.AsQueryable();

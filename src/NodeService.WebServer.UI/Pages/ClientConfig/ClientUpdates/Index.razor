@@ -68,7 +68,12 @@
     <Table
         Size="TableSize.Small"
         Loading="_loading"
-        EnableVirtualization="true"
+        EnableVirtualization="false"
+        PageIndex="@_dataSource.PageIndex"
+        PageSize="@_dataSource.PageSize"
+        Total="@_dataSource.TotalCount"
+        OnPageIndexChange="@_dataSource.OnPaginationEvent"
+        OnPageSizeChange="@_dataSource.OnPaginationEvent"
         TItem="ClientUpdateConfigModel"
         DataSource="@_dataSource.ItemsSource">
         <ColumnDefinitions>

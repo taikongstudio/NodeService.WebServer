@@ -101,8 +101,6 @@ public class JobsController : Controller
 
             var totalCount = await queryable.CountAsync();
 
-            apiResponse.TotalCount = totalCount;
-
             var items = await queryable
                 .Skip(pageIndex * pageSize)
                 .Take(pageSize)
@@ -112,8 +110,7 @@ public class JobsController : Controller
             if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
             apiResponse.PageIndex = queryParameters.PageIndex;
             apiResponse.PageSize = queryParameters.PageSize;
-            apiResponse.Result = items;
-
+            apiResponse.TotalCount = totalCount;
             apiResponse.Result = items;
         }
         catch (Exception ex)

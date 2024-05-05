@@ -137,10 +137,11 @@
            Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            RowExpandable="c => true"
-           EnableVirtualization="true"
+           EnableVirtualization="false"
            TItem="JobScheduleConfigModel"
            DataSource="@_dataSource.ItemsSource"
            Resizable
+           Total="@_dataSource.TotalCount"
            OnChange="OnTableChange"
            PageIndex="@_dataSource.PageIndex"
            PageSize="@_dataSource.PageSize"
@@ -335,11 +336,13 @@
         {
             pageIndex++;
             var rsp = await ApiService.QueryNodeListAsync(new QueryNodeListParameters
-            {
-                IdList = _editModel.Value.NodeList.Select(x => x.Value).ToList(),
-                PageIndex = pageIndex,
-                PageSize = pageSize
-            });
+                {
+                    AreaTag = "*",
+                    Status = NodeStatus.All,
+                    IdList = _editModel.Value.NodeList.Select(x => x.Value).ToList(),
+                    PageIndex = pageIndex,
+                    PageSize = pageSize
+                });
 
             if (rsp.ErrorCode == 0 && rsp.Result != null)
             {

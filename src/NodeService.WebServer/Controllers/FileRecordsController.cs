@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using Microsoft.AspNetCore.RateLimiting;
+
+namespace NodeService.WebServer.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]
@@ -15,6 +17,7 @@ public class FileRecordsController : Controller
         _logger = logger;
     }
 
+    [EnableRateLimiting("Concurrency")]
     [HttpGet("/api/filerecords/{nodeId}/list")]
     public async Task<PaginationResponse<FileRecordModel>> QueryNodeFileListAsync(
         string nodeId,
@@ -25,8 +28,6 @@ public class FileRecordsController : Controller
         var apiResponse = new PaginationResponse<FileRecordModel>();
         try
         {
-            apiResponse.Result = [];
-            return apiResponse;
             using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             if (pageIndex == null) pageIndex = 0;
             if (pageSize == null) pageSize = 500;

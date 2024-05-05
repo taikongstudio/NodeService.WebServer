@@ -30,7 +30,7 @@
                Loading="@_dataSource.IsLoading"
                DataSource="@_dataSource.ItemsSource"
                SelectedRows="@SelectedItems"
-               SelectedRowsChanged="@SelectedItemsChanged"
+               SelectedRowsChanged="(IEnumerable<JobScheduleConfigModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
                 <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>

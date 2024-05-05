@@ -20,6 +20,16 @@
         }
     }
 
+    protected void OnSelectedItemsChanged(IEnumerable<TItem> items)
+    {
+        if (SelectedItems == items)
+        {
+            return;
+        }
+
+        SelectedItemsChanged.InvokeAsync(items);
+    }
+
 
     protected string GetSelectionType()
     {

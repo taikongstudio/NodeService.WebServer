@@ -64,7 +64,7 @@
                DataSource="@_dataSource.ItemsSource"
                Loading="@_dataSource.IsLoading"
                SelectedRows="@SelectedItems"
-               SelectedRowsChanged="@SelectedItemsChanged"
+               SelectedRowsChanged="(IEnumerable<NodeInfoModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
                 <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>

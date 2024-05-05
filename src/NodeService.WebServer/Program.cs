@@ -131,6 +131,12 @@ public class Program
 
         builder.Services.AddControllersWithViews();
         builder.Services.AddControllers();
+
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.Limits.MaxRequestLineSize = 8192 * 10;
+        });
+
         builder.Services.AddRazorPages(options =>
         {
             options.Conventions.AllowAnonymousToAreaFolder("Identity", "/Account");
@@ -164,19 +170,19 @@ public class Program
         ConfigureHostedServices(builder);
 
         builder.Services.AddGrpc(grpcServiceOptions => { });
-        builder.Services.AddCors(o => o.AddPolicy("AllowAll", builder =>
+        builder.Services.AddCors(o => o.AddPolicy("AllowAll", corPolicyBuilder =>
         {
-            builder.AllowAnyOrigin()
+            corPolicyBuilder.AllowAnyOrigin()
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .WithExposedHeaders("Grpc-Status", "Grpc-Message", "Grpc-Encoding", "Grpc-Accept-Encoding")
                 .WithHeaders("Access-Control-Allow-Headers: *", "Access-Control-Allow-Origin: *");
         }));
 
-        var concurrencyPolicy = "Concurrency";
+        var concurrencyRateLimitPolicy = "Concurrency";
 
         builder.Services.AddRateLimiter(options => options
-            .AddConcurrencyLimiter(concurrencyPolicy, options =>
+            .AddConcurrencyLimiter(concurrencyRateLimitPolicy, options =>
             {
                 options.PermitLimit = 1;
                 options.QueueProcessingOrder = QueueProcessingOrder.NewestFirst;

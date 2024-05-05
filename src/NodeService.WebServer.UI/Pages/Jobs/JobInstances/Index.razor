@@ -55,8 +55,12 @@
                 {
                     foreach (var item in _selectedNodeList)
                     {
-                        <Tag @key="item.Id" Style="height:20px" Closable OnClose="() => _nodeSelector.RemoveSelectedItem(item)">@item.Name</Tag>
+                        <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
                     }
+                }
+                else
+                {
+                    <Text>全部</text>   
                 }
 
                 <Tag Class="site-tag-plus" OnClick="ShowNodeSelectorDialogAsync">
@@ -69,8 +73,12 @@
                 {
                     foreach (var item in _selectedJobSchduleConfigList)
                     {
-                        <Tag @key="item.Id" Style="height:20px;align-self:center" Closable OnClose="() => _taskDefinitionSelector.RemoveSelectedItem(item)">@item.Name</Tag>
+                        <Tag @key="item.Id" Style="height:20px;">@item.Name</Tag>
                     }
+                }
+                else
+                {
+                    <Text>全部</text>   
                 }
 
                 <Tag Class="site-tag-plus" OnClick="ShowTaskDefinitionSelectorDialogAsync">

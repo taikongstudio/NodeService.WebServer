@@ -21,7 +21,7 @@
            OnCancel="@HandleEditFormCancel">
         <CommonDialog @ref="_taskTypeDescSelectorDialog" Closed="OnTaskTypeDescSelectorDialogClosed">
             <TaskTypeDescSelector @ref="_taskTypeDescSelector"
-                                  @bind-SelectedItems="@_selectedJobSchduleConfigList"
+                                  @bind-SelectedItems="@_selectedTaskTypeDescConfigList"
                                   Mode="SelectionMode.Single"/>
         </CommonDialog>
         <Form Model="@_editModel"
@@ -109,17 +109,9 @@
 
             </FormItem>
             <FormItem Label="后续任务">
-                <Select DataSource="@_dataSource.ItemsSource"
-                        @bind-Value="@_selectedTaskScheduleDefinitionId"
-                        LabelName="@nameof(ModelBase.Name)"
-                        ValueName="@nameof(ModelBase.Id)"/>
-                <StringEntryTable ItemsSource="@context.ChildTaskDefinitions"
-                                  NameTitle="任务名称"
-                                  ValueTitle="标志"
-                                  IsNameEditable="false"
-                                  IsValueEditable="false"
-                                  AddingNewItem="AddChildTaskDefinition"/>
-
+                <TaskDefinitionSelector 
+                    Mode="SelectionMode.Multiple"
+                    @bind-SelectedItems="@_selectedTaskScheduleConfigList" />
             </FormItem>
 
         </Form>
@@ -242,7 +234,8 @@
 
 
     IEnumerable<NodeInfoModel> _selectedNodes = [];
-    IEnumerable<JobTypeDescConfigModel> _selectedJobSchduleConfigList = [];
+    IEnumerable<JobTypeDescConfigModel> _selectedTaskTypeDescConfigList = [];
+    IEnumerable<JobScheduleConfigModel> _selectedTaskScheduleConfigList = [];
 
     private string? _selectedNodeInfoId;
 
@@ -330,30 +323,49 @@
     private async Task<IEnumerable<NodeInfoModel>> InitSelectedNodeInfoListAsync()
     {
         var nodeList = new List<NodeInfoModel>();
-        var pageIndex = 0;
-        var pageSize = 10;
+        var queryPageIndex = 0;
+        var queryPageSize = 50;
         while (true)
         {
-            pageIndex++;
-            var rsp = await ApiService.QueryNodeListAsync(new QueryNodeListParameters
-                {
-                    AreaTag = "*",
-                    Status = NodeStatus.All,
-                    IdList = _editModel.Value.NodeList.Select(x => x.Value).ToList(),
-                    PageIndex = pageIndex,
-                    PageSize = pageSize
-                });
-
-            if (rsp.ErrorCode == 0 && rsp.Result != null)
-            {
-                nodeList.AddRange(rsp.Result);
-            }
-
-            if (rsp.TotalCount == nodeList.Count)
+            var idList = _editModel.Value.NodeList
+                .Skip(queryPageIndex * queryPageSize)
+                .Take(queryPageSize)
+                .Select(x => x.Value)
+                .ToList();
+            if (idList.Count == 0)
             {
                 break;
             }
+            queryPageIndex++;
+            var pageIndex = 0;
+            var pageSize = 50;
+            var count = 0;
+            while (true)
+            {
+                pageIndex++;
+                var rsp = await ApiService.QueryNodeListAsync(new QueryNodeListParameters
+                    {
+                        AreaTag = "*",
+                        Status = NodeStatus.All,
+                        IdList = idList,
+                        PageIndex = pageIndex,
+                        PageSize = pageSize
+                    });
+
+                if (rsp.ErrorCode == 0 && rsp.Result != null)
+                {
+                    nodeList.AddRange(rsp.Result);
+                    count += rsp.Result.Count();
+                }
+
+                if (rsp.TotalCount == count)
+                {
+                    break;
+                }
+            }
         }
+
+
 
         return nodeList;
     }
@@ -371,13 +383,19 @@
     {
         try
         {
+            _editModel.Value.ChildTaskDefinitions.Clear();
+            _editModel.Value.ChildTaskDefinitions.AddRange(_selectedTaskScheduleConfigList.Select(x => new StringEntry()
+                {
+                    Name = x.Name,
+                    Value = x.Id,
+                }));
             _editModel.NodeList.Clear();
             _editModel.NodeList.AddRange(
                 _selectedNodes
                     .DistinctBy(x => x.Id)
                     .Select(x => new StringEntry
                     {
-                        Name = _editModel.Id,
+                        Name = x.Name,
                         Value = x.Id
                     }));
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
@@ -674,7 +692,7 @@
 
     private async Task OnTaskTypeDescSelectorDialogClosed()
     {
-        await OnSelectedTaskTypeDescChanged(_selectedJobSchduleConfigList);
+        await OnSelectedTaskTypeDescChanged(_selectedTaskTypeDescConfigList);
     }
 
 
@@ -893,6 +911,14 @@
         catch (Exception ex)
         {
             e.DataItem.Tag = $"解析失败:{ex.Message}";
+        }
+    }
+
+    void OnSelectedChildTaskDefinitionChanged(IEnumerable<JobScheduleConfigModel> items)
+    {
+        if (this._selectedTaskScheduleConfigList != items)
+        {
+            this._selectedTaskScheduleConfigList = items;
         }
     }
 

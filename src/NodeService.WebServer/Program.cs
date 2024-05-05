@@ -356,7 +356,7 @@ public class Program
                     {
                         optionsBuilder.EnableRetryOnFailure();
                         optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                    }));
+                    }), 2048);
             builder.Services.AddDbContext<ApplicationUserDbContext>(options =>
                 options.UseSqlServer(
                     builder.Configuration.GetConnectionString("NodeServiceUserDbMySQL_debug"), optionsBuilder =>
@@ -382,7 +382,7 @@ public class Program
                         mySqlOptionBuilder.EnableRetryOnFailure();
                         mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                         mySqlOptionBuilder.EnableStringComparisonTranslations();
-                    }));
+                    }), 2048);
             builder.Services.AddDbContext<ApplicationUserDbContext>(options =>
                 options.UseMySql(builder.Configuration.GetConnectionString("NodeServiceUserDbMySQL"),
                     MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>

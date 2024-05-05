@@ -23,7 +23,7 @@ public class FileRecordsController : Controller
         [FromQuery] string? fullName = null)
     {
         var apiResponse = new PaginationResponse<FileRecordModel>();
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         try
         {
             if (pageIndex == null) pageIndex = 0;

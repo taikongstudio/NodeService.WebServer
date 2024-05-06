@@ -31,11 +31,10 @@
                     <Input @bind-Value="@context.Name"/>
                 </FormItem>
                 <FormItem Label="Ftp配置">
-                    @if (_ftpConfigSelector != null)
+                    @if (_selectedFtpConfigs != null)
                     {
-                        foreach (var item in _ftpConfigSelector.SelectedItems)
+                        foreach (var item in _selectedFtpConfigs)
                         {
-                            _editModel.Value.FtpConfigId = item.Id;
                             <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
                             break;
                         }
@@ -44,7 +43,7 @@
                         <Icon Type="@IconType.Outline.FolderOpen"/>
                     </Tag>
                     <CommonDialog @ref="_ftpConfigDialog" Closed="OnSelectFtpConfigDialogClosed">
-                        <FtpConfigSelector @ref="_ftpConfigSelector" Mode="SelectionMode.Single"/>
+                        <FtpConfigSelector @ref="_ftpConfigSelector" @bind-SelectedItems="_selectedFtpConfigs" Mode="SelectionMode.Single" />
                     </CommonDialog>
                 </FormItem>
                 <FormItem Label="远程目录">
@@ -185,6 +184,7 @@
 
     CommonDialog _ftpConfigDialog;
     FtpConfigSelector _ftpConfigSelector;
+    IEnumerable<FtpConfigModel> _selectedFtpConfigs;
 
     private RoutedPaginationDataSource<FtpDownloadConfigModel, PaginationQueryParameters> _dataSource;
 
@@ -215,25 +215,36 @@
 
     private Task OnSelectFtpConfigDialogClosed()
     {
+        this._editModel.Value.FtpConfigId = this._selectedFtpConfigs.FirstOrDefault()?.Id;
         StateHasChanged();
         return Task.CompletedTask;
     }
 
-    private void ShowEditForm(FtpDownloadConfigModel? model = null)
+    private async void ShowEditForm(FtpDownloadConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
         {
             _editModel = new FtpDownloadConfigModel
-            {
-                Id = Guid.NewGuid().ToString()
-            };
+                {
+                    Id = Guid.NewGuid().ToString()
+                };
             _modalTitle = "新建配置";
         }
         else
         {
             _modalTitle = "编辑配置";
             _editModel = model;
+            await InitSelectedFtpConfigAsync();
+        }
+    }
+
+    private async Task InitSelectedFtpConfigAsync()
+    {
+        var ftpConfig = await ApiService.GetFtpConfigAsync(_editModel.Value.FtpConfigId);
+        if (ftpConfig != null)
+        {
+            this._selectedFtpConfigs = [ftpConfig];
         }
     }
 

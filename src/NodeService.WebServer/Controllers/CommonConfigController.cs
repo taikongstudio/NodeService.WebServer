@@ -51,17 +51,27 @@ public partial class CommonConfigController : Controller
             }
             else if (queryParameters.QueryStrategy == QueryStrategy.CachePreferred)
             {
-                _logger.LogInformation("");
+                _logger.LogInformation($"{queryParameters}");
                 var key = $"{typeof(T).FullName}:{queryParameters}";
-                if (!_memoryCache.TryGetValue<PaginationResponse<T>>(key, out var cacheValue) || cacheValue == null)
+                PaginationResponse<T>? cacheValue = null;
+                if (!_memoryCache.TryGetValue(key, out cacheValue) || cacheValue == null)
                 {
-                    cacheValue = await QueryAsync<T>(queryParameters);
-                    if (cacheValue != null)
+                    await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 5000)));
+                    if (!_memoryCache.TryGetValue(key, out cacheValue) || cacheValue == null)
                     {
-                        apiResponse = cacheValue;
-                        _memoryCache.Set(key, cacheValue, TimeSpan.FromSeconds(30));
+                        await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 5000)));
+                        cacheValue = await QueryAsync<T>(queryParameters);
+                        if (cacheValue != null)
+                        {
+                            _memoryCache.Set(key, cacheValue, TimeSpan.FromMinutes(1));
+                        }
                     }
                 }
+                if (cacheValue != null)
+                {
+                    apiResponse = cacheValue;
+                }
+
             }
         }
         catch (Exception ex)
@@ -79,10 +89,11 @@ public partial class CommonConfigController : Controller
         var apiResponse = new PaginationResponse<T>();
         var dbContext = await _dbContextFactory.CreateDbContextAsync();
         var name = typeof(T).Name;
-        IQueryable<T> queryable = dbContext.GetDbSet<T>();
         var pageSize = queryParameters.PageSize;
         var pageIndex = queryParameters.PageIndex - 1;
         var startIndex = pageSize * pageIndex;
+
+        IQueryable<T> queryable = dbContext.GetDbSet<T>();
 
         if (!string.IsNullOrEmpty(queryParameters.Keywords))
             queryable = queryable.Where(x =>

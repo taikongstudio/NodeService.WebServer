@@ -41,7 +41,7 @@ public partial class CommonConfigController : Controller
         try
         {
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
-            if (queryParameters.QueryStrategy == QueryStrategy.CachePreferred)
+            if (queryParameters.QueryStrategy == QueryStrategy.QueryPreferred)
             {
                 apiResponse = await QueryAsync<T>(queryParameters);
             }

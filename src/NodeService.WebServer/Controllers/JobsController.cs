@@ -51,6 +51,13 @@ public class JobsController : Controller
             var beginTime = queryParameters.BeginDateTime.Value;
             var endTime = queryParameters.EndDateTime.Value;
             IQueryable<JobExecutionInstanceModel> queryable = dbContext.JobExecutionInstancesDbSet;
+
+
+            if (!string.IsNullOrEmpty(queryParameters.Keywords))
+            {
+                queryable = queryable.Where(x => x.Name.Contains(queryParameters.Keywords));
+            }
+
             if (queryParameters.NodeIdList.Any())
                 queryable = queryable.Where(x => queryParameters.NodeIdList.Contains(x.NodeInfoId));
 

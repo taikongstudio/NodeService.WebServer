@@ -145,7 +145,10 @@ public class Program
         builder.Services.AddAntDesign();
         builder.Services.AddOpenApiDocument();
         builder.Services.AddHttpClient();
-        builder.Services.AddMemoryCache();
+        builder.Services.AddMemoryCache(options =>
+        {
+            options.TrackStatistics = true;
+        });
         builder.Services.AddDistributedMemoryCache(options => { });
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 

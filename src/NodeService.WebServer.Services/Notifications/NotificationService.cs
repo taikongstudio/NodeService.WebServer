@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.Notifications;
 
@@ -8,8 +9,10 @@ public class NotificationService : BackgroundService
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly ILogger<NotificationService> _logger;
     private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
+    private readonly ExceptionCounter _exceptionCounter;
 
     public NotificationService(
+        ExceptionCounter exceptionCounter,
         ILogger<NotificationService> logger,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
         IAsyncQueue<NotificationMessage> notificationMessageQueue)
@@ -17,6 +20,7 @@ public class NotificationService : BackgroundService
         _logger = logger;
         _dbContextFactory = dbContextFactory;
         _notificationMessageQueue = notificationMessageQueue;
+        _exceptionCounter = exceptionCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -46,6 +50,7 @@ public class NotificationService : BackgroundService
 
             catch (Exception ex)
             {
+                _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
     }

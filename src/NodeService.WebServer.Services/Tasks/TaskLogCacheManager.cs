@@ -63,6 +63,7 @@ public class TaskLogCacheManager
             {
                 var taskLogCache = new TaskLogCache(taskLogCacheDump);
                 taskLogCache.Database = _taskLogDatabase;
+                if (taskLogCache.IsTruncated) continue;
                 TryTruncateCache(taskLogCache);
                 if (taskLogCache.IsTruncated) continue;
                 _taskLogCaches.TryAdd(taskLogCacheDump.TaskId, taskLogCache);
@@ -114,13 +115,15 @@ public class TaskLogCacheManager
                 taskLogCacheList.Add(item.Value);
         foreach (var taskLogCache in taskLogCacheList)
         {
-            _taskLogCaches.TryRemove(taskLogCache.TaskId, out _);
-            TryTruncateCache(taskLogCache);
-            taskLogCache.Clear();
-            _logger.LogInformation($"remove task log cache:{taskLogCache.TaskId}");
-            _logger.LogInformation($"Remove {taskLogCache.TaskId},LastWriteTimeUtc:{taskLogCache.LastWriteTimeUtc}");
-        }
+            if (_taskLogCaches.TryRemove(taskLogCache.TaskId, out _))
+            {
+                TryTruncateCache(taskLogCache);
+                taskLogCache.Clear();
+                _logger.LogInformation($"remove task log cache:{taskLogCache.TaskId}");
+                _logger.LogInformation($"Remove {taskLogCache.TaskId},LastWriteTimeUtc:{taskLogCache.LastWriteTimeUtc}");
 
+            }
+        }
         _logger.LogInformation($"remove task log caches:{taskLogCacheList.Count}");
     }
 }

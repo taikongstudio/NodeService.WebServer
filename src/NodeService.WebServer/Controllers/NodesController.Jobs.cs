@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using Microsoft.IdentityModel.Tokens;
+
+namespace NodeService.WebServer.Controllers;
 
 public partial class NodesController
 {
@@ -17,7 +19,7 @@ public partial class NodesController
             }
             else
             {
-                apiResponse.Result = [];
+                apiResponse.SetResult([]);
             }
         }
         catch (Exception ex)
@@ -34,7 +36,7 @@ public partial class NodesController
 
     [HttpGet("/api/nodes/{id}/jobs/instances/list")]
     public async Task<ApiResponse<IEnumerable<JobExecutionInstanceModel>>> GetNodeJobInstancesAsync(string id,
-        [FromQuery] string jobScheduleConfigId)
+       [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters)
     {
         var apiResponse = new ApiResponse<IEnumerable<JobExecutionInstanceModel>>();
         try
@@ -50,9 +52,11 @@ public partial class NodesController
             {
                 var queryable = dbContext.JobExecutionInstancesDbSet.AsQueryable()
                     .Where(x => x.NodeInfoId == nodeInfo.Id);
-                if (!string.IsNullOrEmpty(jobScheduleConfigId))
-                    queryable = queryable.Where(x => x.JobScheduleConfigId == jobScheduleConfigId);
-                apiResponse.Result = await queryable.ToListAsync();
+                if (queryParameters.JobScheduleConfigIdList != null && queryParameters.JobScheduleConfigIdList.Any())
+                    queryable = queryable.Where(x => queryParameters.JobScheduleConfigIdList.Contains(x.JobScheduleConfigId));
+                if (!string.IsNullOrEmpty(queryParameters.Keywords))
+                    queryable = queryable.Where(x => x.Name.Contains(queryParameters.Keywords));
+                apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
             }
         }
         catch (Exception ex)

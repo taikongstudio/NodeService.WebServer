@@ -1,4 +1,5 @@
-﻿using NodeService.Infrastructure.DataModels;
+﻿using Microsoft.EntityFrameworkCore;
+using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Models;
 using System.Linq.Expressions;
 
@@ -6,6 +7,32 @@ namespace NodeService.WebServer.Extensions;
 
 public static class QueryableExtensions
 {
+    public static async Task<PaginationResponse<T>> QueryPageItemsAsync<T>(this IQueryable<T> queryable, PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
+    {
+        PaginationResponse<T> apiResponse = new PaginationResponse<T>();
+        var totalCount = await queryable.CountAsync();
+        var pageIndex = queryParameters.PageIndex - 1;
+        var pageSize = queryParameters.PageSize;
+        var startIndex = pageIndex * pageSize;
+        var skipCount = totalCount > startIndex ? startIndex : 0;
+        var takeCount = pageSize;
+        if (pageSize <= 0 && pageIndex <= 0)
+        {
+            skipCount = 0;
+            takeCount = totalCount;
+        }
+        var items = await queryable
+            .Skip(skipCount)
+            .Take(takeCount)
+            .ToArrayAsync();
+        var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
+        if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
+        apiResponse.SetTotalCount(totalCount);
+        apiResponse.SetPageIndex(queryParameters.PageIndex);
+        apiResponse.SetPageSize(queryParameters.PageSize);
+        apiResponse.SetResult(items);
+        return apiResponse;
+    }
 
     public static IQueryable<T> OrderBy<T>(
        this IQueryable<T> queryable, IEnumerable<SortDescription> sortDescriptions, Func<string, string>? mappingPathFunc = null)

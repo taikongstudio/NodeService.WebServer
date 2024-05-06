@@ -4,9 +4,9 @@
 <AuthorizeView>
     <Authorized>
         <AntDesign.ProLayout.BasicLayout Logo="@("/assets/nodes.svg")"
-                                         MenuData="_menuData">
+                                         MenuData="_menuItems"  >
             <RightContentRender>
-                <RightContent Style="background-color:black"/>
+                <RightContent/>
             </RightContentRender>
             <ChildContent>
                 @Body
@@ -25,14 +25,22 @@
 
 @code
 {
-    private MenuDataItem[] _menuData = { };
+    private MenuDataItem[] _menuItems = { };
 
     [Inject] public HttpClient HttpClient { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         await base.OnInitializedAsync();
-        _menuData = await HttpClient.GetFromJsonAsync<MenuDataItem[]>("data/menu.json");
+        _menuItems = await HttpClient.GetFromJsonAsync<MenuDataItem[]>("data/menu.json");
+        foreach (var menuItem in _menuItems)
+        {
+            menuItem.Match = NavLinkMatch.Prefix;
+            foreach (var item in menuItem.Children)
+            {
+                item.Match = NavLinkMatch.Prefix;
+            }
+        }
     }
 
 

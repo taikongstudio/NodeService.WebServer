@@ -15,7 +15,7 @@ public partial class NodesController
             {
                 apiResponse.ErrorCode = -1;
                 apiResponse.Message = "invalid node id";
-                apiResponse.Result = false;
+                apiResponse.SetResult(false);
             }
             else
             {
@@ -25,7 +25,7 @@ public partial class NodesController
                 nodeInfo.Profile.Usages = value.Usages;
                 nodeInfo.Profile.Remarks = value.Remarks;
                 var changes = await dbContext.SaveChangesAsync();
-                apiResponse.Result = true;
+                apiResponse.SetResult(true);
             }
         }
         catch (Exception ex)

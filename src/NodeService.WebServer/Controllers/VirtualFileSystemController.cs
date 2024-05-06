@@ -46,10 +46,8 @@ public class VirtualFileSystemController : Controller
     [HttpPost("/api/virtualfilesystem/upload/{nodeName}")]
     public async Task<IActionResult> OnPostUploadAsync(string nodeName, List<IFormFile> files)
     {
-        var uploadFileResult = new ApiResponse<UploadFileResult>
-        {
-            Result = new UploadFileResult()
-        };
+        var uploadFileResult = new ApiResponse<UploadFileResult>();
+        uploadFileResult.SetResult(new UploadFileResult());
         try
         {
             uploadFileResult.Result.UploadedFiles = new List<UploadedFile>();

@@ -26,7 +26,7 @@ public partial class CommonConfigController
                 result = JsonSerializer.Deserialize<NodeSettings>(notificationSourceDictionary["Value"] as string);
             }
 
-            rsp.Result = result;
+            rsp.SetResult(result);
         }
         catch (Exception ex)
         {

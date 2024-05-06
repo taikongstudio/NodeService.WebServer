@@ -45,7 +45,7 @@ public class ManagementController : Controller
         }
 
         var changesCount = await dbContext.SaveChangesAsync();
-        apiResponse.Result = changesCount;
+        apiResponse.SetResult(changesCount);
         return apiResponse;
     }
 
@@ -61,7 +61,7 @@ public class ManagementController : Controller
         }
 
         var changesCount = await dbContext.SaveChangesAsync();
-        apiResponse.Result = changesCount;
+        apiResponse.SetResult(changesCount);
         return apiResponse;
     }
 
@@ -71,7 +71,8 @@ public class ManagementController : Controller
         var apiResponse = new ApiResponse<int>();
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         dbContext.JobScheduleConfigurationDbSet.RemoveRange(dbContext.JobScheduleConfigurationDbSet.ToArray());
-        apiResponse.Result = await dbContext.SaveChangesAsync();
+        var changesCount = await dbContext.SaveChangesAsync();
+        apiResponse.SetResult(changesCount);
         return apiResponse;
     }
 
@@ -261,7 +262,7 @@ public class ManagementController : Controller
 
 
         var changesCount = await dbContext.SaveChangesAsync();
-        apiResponse.Result = changesCount;
+        apiResponse.SetResult(changesCount);
         return apiResponse;
     }
 }

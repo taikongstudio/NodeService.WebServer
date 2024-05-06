@@ -72,7 +72,7 @@ public partial class CommonConfigController
                     notificationSourceDictionary["Value"] as string);
             }
 
-            rsp.Result = result;
+            rsp.SetResult(result);
         }
         catch (Exception ex)
         {

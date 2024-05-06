@@ -29,7 +29,7 @@ public partial class NodesController
                 if (model.NodeProperties == null || !model.NodeProperties.Any())
                     model = await dbContext.NodePropertiesSnapshotsDbSet.FindAsync(nodeInfo.LastNodePropertySnapshotId);
 
-                apiResponse.Result = model;
+                apiResponse.SetResult(model);
             }
         }
         catch (Exception ex)

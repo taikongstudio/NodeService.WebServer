@@ -60,7 +60,7 @@ public partial class ClientUpdateController : Controller
                         if (nodeInfo == null) continue;
                         if (nodeInfo.Profile.IpAddress == ipAddress)
                         {
-                            apiResponse.Result = clientUpdateConfig;
+                            apiResponse.SetResult(clientUpdateConfig);
                             break;
                         }
                     }
@@ -71,14 +71,14 @@ public partial class ClientUpdateController : Controller
                         if (nodeInfo == null) continue;
                         if (nodeInfo.Profile.IpAddress == ipAddress)
                         {
-                            apiResponse.Result = null;
+                            apiResponse.SetResult(null);
                             break;
                         }
                     }
             }
             else
             {
-                apiResponse.Result = clientUpdateConfig;
+                apiResponse.SetResult(clientUpdateConfig);
             }
         }
         catch (Exception ex)
@@ -149,24 +149,7 @@ public partial class ClientUpdateController : Controller
 
             queryable = queryable.Include(x => x.PackageConfig).AsSplitQuery();
 
-            var totalCount = await queryable.CountAsync();
-
-            var startIndex = pageIndex * pageSize;
-
-            var skipCount = totalCount > startIndex ? startIndex : 0;
-
-
-            var items = await queryable
-                .Skip(skipCount)
-                .Take(pageSize)
-                .ToArrayAsync();
-
-            var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
-            if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
-            apiResponse.TotalCount = totalCount;
-            apiResponse.PageIndex = queryParameters.PageIndex;
-            apiResponse.PageSize = queryParameters.PageSize;
-            apiResponse.Result = items;
+            apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
         }
         catch (Exception ex)
         {

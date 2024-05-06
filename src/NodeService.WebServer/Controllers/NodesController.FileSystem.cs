@@ -34,7 +34,7 @@ public partial class NodesController
 
                 apiResponse.ErrorCode = rsp.ErrorCode;
                 apiResponse.Message = rsp.Message;
-                apiResponse.Result = rsp.FileSystemObjects.Select(x => new FileSystemEntry
+                apiResponse.SetResult(rsp.FileSystemObjects.Select(x => new FileSystemEntry
                 {
                     CreationTime = x.CreationTime.ToDateTime(),
                     FullName = x.FullName,
@@ -42,7 +42,7 @@ public partial class NodesController
                     Length = x.Length,
                     Name = x.Name,
                     Type = x.Type
-                });
+                }));
             }
         }
         catch (Exception ex)

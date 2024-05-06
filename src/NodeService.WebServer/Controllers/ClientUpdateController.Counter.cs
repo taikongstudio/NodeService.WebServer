@@ -44,7 +44,7 @@ public partial class ClientUpdateController
             counter.Counters = newCounterList;
 
             await dbContext.SaveChangesAsync();
-            apiResponse.Result = true;
+            apiResponse.SetResult(true);
         }
         catch (Exception ex)
         {

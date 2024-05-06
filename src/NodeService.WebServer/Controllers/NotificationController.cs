@@ -32,24 +32,10 @@ public class NotificationController : Controller
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
             IQueryable<NotificationRecordModel> queryable = dbContext.NotificationRecordsDbSet;
-            var pageIndex = queryParameters.PageIndex - 1;
-            var pageSize = queryParameters.PageSize;
-            var startIndex = pageIndex * pageSize;
 
             queryable = queryable.OrderBy(queryParameters.SortDescriptions);
 
-            var totalCount = await queryable.CountAsync();
-
-            var items = await queryable.Skip(startIndex)
-                                       .Take(pageSize)
-                                       .ToArrayAsync();
-
-            var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
-            if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
-            apiResponse.PageIndex = queryParameters.PageIndex;
-            apiResponse.PageSize = queryParameters.PageSize;
-            apiResponse.TotalCount = totalCount;
-            apiResponse.Result = items;
+            apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
         }
         catch (Exception ex)
         {

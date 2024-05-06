@@ -49,39 +49,24 @@ public class FileRecordsController : Controller
     private async Task<PaginationResponse<FileRecordModel>> QueryInternal(string nodeId, PaginationQueryParameters queryParameters)
     {
         var apiResponse = new PaginationResponse<FileRecordModel>();
-        var pageSize = queryParameters.PageSize;
-        var pageIndex = queryParameters.PageIndex - 1;
-        var totalCount = 0;
-
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         if (string.IsNullOrEmpty(queryParameters.Keywords))
         {
             var key = $"{nameof(FileRecordModel)}:{nodeId}";
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+
             IQueryable<FileRecordModel> queryable = dbContext.FileRecordsDbSet.Where(x => x.Id == nodeId)
                 .OrderBy(x => x.ModifyDateTime);
 
-            var startIndex = pageSize * pageIndex;
-
-            totalCount = await queryable.CountAsync();
-            apiResponse.Result = await queryable
-                                    .Skip(pageSize * pageIndex)
-                                    .Take(pageSize)
-                                    .ToArrayAsync();
-            apiResponse.TotalCount = totalCount;
+            apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
         }
         else
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            apiResponse.Result = [await dbContext.FileRecordsDbSet.FindAsync(nodeId, queryParameters.Keywords)];
-            totalCount = 1;
+            apiResponse.SetResult([await dbContext.FileRecordsDbSet.FindAsync(nodeId, queryParameters.Keywords)]);
+            apiResponse.SetTotalCount(1);
+            apiResponse.SetPageIndex(queryParameters.PageIndex);
+            apiResponse.SetPageSize(queryParameters.PageSize);
+
         }
-
-        var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
-        if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
-
-        apiResponse.TotalCount = totalCount;
-        apiResponse.PageIndex = queryParameters.PageIndex;
-        apiResponse.PageSize = queryParameters.PageSize;
         return apiResponse;
     }
 

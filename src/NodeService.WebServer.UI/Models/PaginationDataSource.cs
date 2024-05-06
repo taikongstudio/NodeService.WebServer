@@ -35,13 +35,13 @@ public class PaginationDataSource<TElement, TQueryParameters>
     public virtual async Task RefreshAsync()
     {
         IsLoading = true;
-        RaiseStateChanged();
         QueryParameters.QueryStrategy = QueryStrategy.QueryPreferred;
         var rsp = await _queryFunc.Invoke(QueryParameters, default);
         PageSize = rsp.PageSize;
         PageIndex = rsp.PageIndex;
         TotalCount = Math.Max(rsp.TotalCount, rsp.PageSize);
-        await InitItemsAsync(rsp.Result);
+        await CallInitializerAsync(rsp.Result);
+        RaiseStateChanged();
         IsLoading = false;
         RaiseStateChanged();
     }
@@ -51,7 +51,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
         _stateChangedAction();
     }
 
-    private async Task InitItemsAsync(IEnumerable<TElement> itemsSource)
+    private async Task CallInitializerAsync(IEnumerable<TElement>? itemsSource)
     {
         if (itemsSource != null && ItemInitializer != null)
             foreach (var item in itemsSource)

@@ -44,12 +44,13 @@ public class JobsController : Controller
         try
         {
             if (queryParameters.BeginDateTime == null)
-                queryParameters.BeginDateTime = DateTime.UtcNow.ToUniversalTime().Date;
+                queryParameters.BeginDateTime = DateTime.UtcNow.Date;
             if (queryParameters.EndDateTime == null)
-                queryParameters.EndDateTime = DateTime.UtcNow.ToUniversalTime().Date.AddDays(1).AddSeconds(-1);
+                queryParameters.EndDateTime = DateTime.UtcNow.Date.AddDays(1).AddSeconds(-1);
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var beginTime = queryParameters.BeginDateTime.Value;
             var endTime = queryParameters.EndDateTime.Value;
+
             IQueryable<JobExecutionInstanceModel> queryable = dbContext.JobExecutionInstancesDbSet;
 
 
@@ -70,27 +71,12 @@ public class JobsController : Controller
 
             queryable = queryable
                 .Where(x => x.FireTimeUtc >= beginTime && x.FireTimeUtc < endTime)
-                .OrderBy(x => x.FireTimeUtc)
+                .OrderByDescending(x => x.FireTimeUtc)
                 .AsSplitQuery();
 
             queryable = queryable.OrderBy(queryParameters.SortDescriptions);
 
-                        var pageIndex = queryParameters.PageIndex - 1;
-            var pageSize = queryParameters.PageSize;
-
-            var totalCount = await queryable.CountAsync();
-
-            var items = await queryable
-                .Skip(pageIndex * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
-            if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
-            apiResponse.PageIndex = queryParameters.PageIndex;
-            apiResponse.PageSize = queryParameters.PageSize;
-            apiResponse.TotalCount = totalCount;
-            apiResponse.Result = items;
+            apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
         }
         catch (Exception ex)
         {
@@ -185,7 +171,7 @@ public class JobsController : Controller
         var apiResponse = new PaginationResponse<LogEntry>();
         try
         {
-            apiResponse.TotalCount = _taskLogCacheManager.GetCache(taskId).Count;
+            apiResponse.SetTotalCount(_taskLogCacheManager.GetCache(taskId).Count);
             if (queryParameters.PageSize == 0)
             {
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
@@ -209,13 +195,13 @@ public class JobsController : Controller
                 return File(memoryStream, "text/plain", fileName);
             }
 
-            apiResponse.Result = _taskLogCacheManager.GetCache(taskId).GetEntries(
+            apiResponse.SetResult(_taskLogCacheManager.GetCache(taskId).GetEntries(
                     queryParameters.PageIndex,
                     queryParameters.PageSize)
-                .OrderBy(static x => x.Index);
+                .OrderBy(static x => x.Index));
 
-            apiResponse.PageIndex = queryParameters.PageIndex;
-            apiResponse.PageSize = queryParameters.PageSize;
+            apiResponse.SetPageIndex(queryParameters.PageIndex);
+            apiResponse.SetPageSize(queryParameters.PageSize);
         }
         catch (Exception ex)
         {

@@ -86,7 +86,6 @@ public partial class CommonConfigController : Controller
 
     private async Task<PaginationResponse<T>> QueryAsync<T>(PaginationQueryParameters queryParameters) where T : ConfigurationModel, new()
     {
-        var apiResponse = new PaginationResponse<T>();
         var dbContext = await _dbContextFactory.CreateDbContextAsync();
         var name = typeof(T).Name;
         var pageSize = queryParameters.PageSize;
@@ -102,28 +101,7 @@ public partial class CommonConfigController : Controller
         queryable = queryable.OrderByDescending(x => x.ModifiedDateTime);
 
         queryable = queryable.OrderBy(queryParameters.SortDescriptions);
-
-        var totalCount = await queryable.CountAsync();
-        List<T> items = [];
-        if (pageSize <= 0 && pageIndex <= 0)
-        {
-            items = await queryable.ToListAsync();
-        }
-        else
-        {
-            items = await queryable.Skip(startIndex)
-                            .Take(pageSize)
-                            .ToListAsync();
-        }
-
-        var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
-        if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
-
-
-        apiResponse.TotalCount = totalCount;
-        apiResponse.Result = items;
-        apiResponse.PageIndex = queryParameters.PageIndex;
-        apiResponse.PageSize = queryParameters.PageSize;
+        var apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
         return apiResponse;
     }
 
@@ -134,7 +112,7 @@ public partial class CommonConfigController : Controller
         try
         {
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            apiResponse.Result = await dbContext.GetDbSet<T>().AsQueryable().FirstOrDefaultAsync(x => x.Id == id);
+            apiResponse.SetResult(await dbContext.GetDbSet<T>().AsQueryable().FirstOrDefaultAsync(x => x.Id == id));
             if (apiResponse.Result != null && func != null) await func.Invoke(apiResponse.Result);
         }
         catch (Exception ex)

@@ -102,11 +102,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
         await QueryNodeSettingsAsync();
         _dataSource.QueryParameters.Keywords = null;
         _dataSource.QueryParameters.PageIndex = 1;
         await _dataSource.RefreshAsync();
+        await base.OnInitializedAsync();
     }
 
     private async Task QueryNodeSettingsAsync()

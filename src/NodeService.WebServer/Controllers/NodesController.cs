@@ -36,14 +36,13 @@ public partial class NodesController : Controller
 
     [HttpGet("/api/nodes/list")]
     public async Task<PaginationResponse<NodeInfoModel>> QueryNodeListAsync(
-        [FromQuery] QueryNodeListParameters queryParameters)
+        [FromQuery] QueryNodeListParameters queryParameters,
+        CancellationToken cancellationToken = default)
     {
         var apiResponse = new PaginationResponse<NodeInfoModel>();
         try
         {
             await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var pageIndex = queryParameters.PageIndex - 1;
-            var pageSize = queryParameters.PageSize;
 
             var queryable = dbContext.NodeInfoDbSet.AsQueryable();
 
@@ -84,23 +83,10 @@ public partial class NodesController : Controller
                     _ => $"{nameof(NodeInfoModel.Profile)}.{name}",
                 };
             });
-            var totalCount = await queryable.CountAsync();
 
-            var startIndex = pageIndex * pageSize;
-
-            var skipCount = totalCount > startIndex ? startIndex : 0;
-
-
-            var items = await queryable
-                .Skip(skipCount)
-                .Take(pageSize)
-                .ToArrayAsync();
-            var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
-            if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
-            apiResponse.TotalCount = totalCount;
-            apiResponse.PageIndex = queryParameters.PageIndex;
-            apiResponse.PageSize = queryParameters.PageSize;
-            apiResponse.Result = items;
+            apiResponse= await queryable.QueryPageItemsAsync(
+                queryParameters,
+                cancellationToken);
         }
         catch (Exception ex)
         {
@@ -113,6 +99,8 @@ public partial class NodesController : Controller
         return apiResponse;
     }
 
+
+
     [HttpGet("/api/nodes/{id}")]
     public async Task<ApiResponse<NodeInfoModel>> QueryNodeInfoAsync(string id)
     {
@@ -124,7 +112,7 @@ public partial class NodesController : Controller
                 await dbContext
                     .NodeInfoDbSet
                     .FindAsync(id);
-            apiResponse.Result = nodeInfo;
+            apiResponse.SetResult(nodeInfo);
         }
         catch (Exception ex)
         {

@@ -36,45 +36,28 @@ public partial class CommonConfigController : Controller
     private async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(PaginationQueryParameters queryParameters)
         where T : ConfigurationModel, new()
     {
-        var apiResponse = new PaginationResponse<T>();
+        PaginationResponse<T> apiResponse = new PaginationResponse<T>();
+
         try
         {
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
-            using var dbContext = _dbContextFactory.CreateDbContext();
-            var name = typeof(T).Name;
-            IQueryable<T> queryable = dbContext.GetDbSet<T>();
-            var pageSize = queryParameters.PageSize;
-            var pageIndex = queryParameters.PageIndex - 1;
-            var startIndex = pageSize * pageIndex;
-
-            if (!string.IsNullOrEmpty(queryParameters.Keywords))
-                queryable = queryable.Where(x =>
-                    x.Name == queryParameters.Keywords || x.Name.Contains(queryParameters.Keywords));
-
-            queryable = queryable.OrderByDescending(x => x.ModifiedDateTime);
-
-
-            var totalCount = await queryable.CountAsync();
-            List<T> items = [];
-            if (pageSize <= 0 && pageIndex <= 0)
+            if (queryParameters.QueryStrategy == QueryStrategy.Query)
             {
-                items = await queryable.ToListAsync();
+                apiResponse = await QueryAsync<T>(queryParameters);
             }
-            else
+            else if (queryParameters.QueryStrategy == QueryStrategy.PreferCache)
             {
-                items = await queryable.Skip(startIndex)
-                                .Take(pageSize)
-                                .ToListAsync();
+                var key = $"{typeof(T).FullName}:{queryParameters}";
+                if (!_memoryCache.TryGetValue<PaginationResponse<T>>(key, out var cacheValue) || cacheValue == null)
+                {
+                    cacheValue = await QueryAsync<T>(queryParameters);
+                    if (cacheValue != null)
+                    {
+                        apiResponse = cacheValue;
+                        _memoryCache.Set(key, cacheValue, TimeSpan.FromSeconds(10));
+                    }
+                }
             }
-
-            var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
-            if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
-
-
-            apiResponse.TotalCount = totalCount;
-            apiResponse.Result = items;
-            apiResponse.PageIndex = queryParameters.PageIndex;
-            apiResponse.PageSize = queryParameters.PageSize;
         }
         catch (Exception ex)
         {
@@ -82,7 +65,47 @@ public partial class CommonConfigController : Controller
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
         }
+        return apiResponse;
+    }
 
+    private async Task<PaginationResponse<T>> QueryAsync<T>(PaginationQueryParameters queryParameters) where T : ConfigurationModel, new()
+    {
+        var apiResponse = new PaginationResponse<T>();
+        var dbContext = _dbContextFactory.CreateDbContext();
+        var name = typeof(T).Name;
+        IQueryable<T> queryable = dbContext.GetDbSet<T>();
+        var pageSize = queryParameters.PageSize;
+        var pageIndex = queryParameters.PageIndex - 1;
+        var startIndex = pageSize * pageIndex;
+
+        if (!string.IsNullOrEmpty(queryParameters.Keywords))
+            queryable = queryable.Where(x =>
+                x.Name == queryParameters.Keywords || x.Name.Contains(queryParameters.Keywords));
+
+        queryable = queryable.OrderByDescending(x => x.ModifiedDateTime);
+
+
+        var totalCount = await queryable.CountAsync();
+        List<T> items = [];
+        if (pageSize <= 0 && pageIndex <= 0)
+        {
+            items = await queryable.ToListAsync();
+        }
+        else
+        {
+            items = await queryable.Skip(startIndex)
+                            .Take(pageSize)
+                            .ToListAsync();
+        }
+
+        var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
+        if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
+
+
+        apiResponse.TotalCount = totalCount;
+        apiResponse.Result = items;
+        apiResponse.PageIndex = queryParameters.PageIndex;
+        apiResponse.PageSize = queryParameters.PageSize;
         return apiResponse;
     }
 

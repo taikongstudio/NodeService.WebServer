@@ -8,12 +8,15 @@ public class FileRecordsController : Controller
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly ILogger<FileRecordsController> _logger;
+    private readonly IMemoryCache _memoryCache;
 
     public FileRecordsController(
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        IMemoryCache  memoryCache,
         ILogger<FileRecordsController> logger)
     {
         _dbContextFactory = dbContextFactory;
+        _memoryCache = memoryCache;
         _logger = logger;
     }
 
@@ -28,27 +31,7 @@ public class FileRecordsController : Controller
         var apiResponse = new PaginationResponse<FileRecordModel>();
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            if (pageIndex == null) pageIndex = 0;
-            if (pageSize == null) pageSize = 500;
-            IQueryable<FileRecordModel> queryable = dbContext.FileRecordsDbSet.Where(x => x.Id == nodeId)
-                    .OrderBy(x => x.ModifyDateTime);
-            if (string.IsNullOrEmpty(fullName))
-            {
-                var totalCount = await queryable.CountAsync();
-                apiResponse.Result = await queryable
-                                        .Skip(pageSize.Value * pageIndex.Value)
-                                        .Take(pageSize.Value)
-                                        .ToArrayAsync();
-                apiResponse.TotalCount = totalCount;
-            }
-            else
-            {
-                apiResponse.Result = [await dbContext.FileRecordsDbSet.FindAsync(nodeId, fullName)];
-                apiResponse.TotalCount = apiResponse.Result == null ? 0 : 1;
-            }
-            apiResponse.PageIndex = pageIndex.Value;
-            apiResponse.PageSize = pageSize.Value;
+            await QueryInternal(nodeId, pageIndex, pageSize, fullName);
         }
         catch (Exception ex)
         {
@@ -57,6 +40,33 @@ public class FileRecordsController : Controller
             apiResponse.Message = ex.ToString();
         }
 
+        return apiResponse;
+    }
+
+    private async Task<PaginationResponse<FileRecordModel>> QueryInternal(string nodeId, int? pageIndex, int? pageSize, string? fullName)
+    {
+        var apiResponse = new PaginationResponse<FileRecordModel>();
+        using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+        if (pageIndex == null) pageIndex = 0;
+        if (pageSize == null) pageSize = 500;
+        IQueryable<FileRecordModel> queryable = dbContext.FileRecordsDbSet.Where(x => x.Id == nodeId)
+                .OrderBy(x => x.ModifyDateTime);
+        if (string.IsNullOrEmpty(fullName))
+        {
+            var totalCount = await queryable.CountAsync();
+            apiResponse.Result = await queryable
+                                    .Skip(pageSize.Value * pageIndex.Value)
+                                    .Take(pageSize.Value)
+                                    .ToArrayAsync();
+            apiResponse.TotalCount = totalCount;
+        }
+        else
+        {
+            apiResponse.Result = [await dbContext.FileRecordsDbSet.FindAsync(nodeId, fullName)];
+            apiResponse.TotalCount = apiResponse.Result == null ? 0 : 1;
+        }
+        apiResponse.PageIndex = pageIndex.Value;
+        apiResponse.PageSize = pageSize.Value;
         return apiResponse;
     }
 

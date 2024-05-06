@@ -63,44 +63,12 @@ public class JobsController : Controller
 
             queryable = queryable
                 .Where(x => x.FireTimeUtc >= beginTime && x.FireTimeUtc < endTime)
+                .OrderBy(x => x.FireTimeUtc)
                 .AsSplitQuery();
 
-            var isFirstOrder = true;
-            IOrderedQueryable<JobExecutionInstanceModel> orderedQueryable = null;
-            foreach (var sortDescription in queryParameters.SortDescriptions)
-            {
-                var path = sortDescription.Name;
-                switch (sortDescription.Name)
-                {
-                    case nameof(NodeInfoModel.Name):
-                    case nameof(NodeInfoModel.Status):
-                        break;
-                    default:
-                        path = $"{nameof(NodeInfoModel.Profile)}.{sortDescription.Name}";
-                        break;
-                }
+            queryable = queryable.OrderBy(queryParameters.SortDescriptions);
 
-                if (sortDescription.Direction == "ascend" || string.IsNullOrEmpty(sortDescription.Direction))
-                {
-                    if (isFirstOrder)
-                        orderedQueryable = queryable.OrderByColumnUsing(path, sortDescription.Direction);
-                    else
-                        orderedQueryable = orderedQueryable.ThenByColumnUsing(path, sortDescription.Direction);
-                }
-                else if (sortDescription.Direction == "descend")
-                {
-                    if (isFirstOrder)
-                        orderedQueryable = queryable.OrderByColumnUsing(path, sortDescription.Direction);
-                    else
-                        orderedQueryable = orderedQueryable.ThenByColumnUsing(path, sortDescription.Direction);
-                }
-
-                isFirstOrder = false;
-            }
-
-            if (orderedQueryable != null) queryable = orderedQueryable;
-
-            var pageIndex = queryParameters.PageIndex - 1;
+                        var pageIndex = queryParameters.PageIndex - 1;
             var pageSize = queryParameters.PageSize;
 
             var totalCount = await queryable.CountAsync();

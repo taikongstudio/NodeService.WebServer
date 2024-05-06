@@ -127,7 +127,7 @@
                         break;
                 }
             </PropertyColumn>
-            <PropertyColumn Title="状态" Sortable="true" Property="c => c.Status">
+            <PropertyColumn Title="状态" SorterMultiple="3" SorterCompare="(a, b) => a-b" Sortable="true" Property="c => c.Status">
                 @switch (context.Status)
                 {
                     case JobExecutionStatus.Unknown:
@@ -159,9 +159,9 @@
                         break;
                 }
             </PropertyColumn>
-            <PropertyColumn Title="触发时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
-            <PropertyColumn Title="开始时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
-            <PropertyColumn Title="结束时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="触发时间" SorterMultiple="0" SorterCompare="(a, b) => DateTime.Compare(a,b)" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="开始时间" SorterMultiple="1"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="结束时间" SorterMultiple="2"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
             <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.Message"></PropertyColumn>
             <ActionColumn Fixed="right" Width="150" Title="操作">
                 <CellRender Context="cellData">
@@ -378,7 +378,19 @@
 
 
     void OnTableChange(QueryModel<JobExecutionInstanceModel> query)
-    {
+    {   
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        _dataSource.Request();
     }
 
     async Task ShowLogMessageModalAsync(string id)

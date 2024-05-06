@@ -101,6 +101,7 @@ public partial class CommonConfigController : Controller
 
         queryable = queryable.OrderByDescending(x => x.ModifiedDateTime);
 
+        queryable = queryable.OrderBy(queryParameters.SortDescriptions);
 
         var totalCount = await queryable.CountAsync();
         List<T> items = [];

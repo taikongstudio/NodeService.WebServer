@@ -1,4 +1,7 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using NodeService.Infrastructure.Models;
+using System.IO;
+
+namespace NodeService.WebServer.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]
@@ -70,43 +73,17 @@ public partial class NodesController : Controller
                                                  x.Profile.Remarks.Contains(queryParameters.Keywords));
 
             queryable = queryable
-                .Include(x => x.Profile)
+            .Include(x => x.Profile)
                 .AsSplitQuery();
 
-            var isFirstOrder = true;
-            IOrderedQueryable<NodeInfoModel> orderedQueryable = null;
-            foreach (var sortDescription in queryParameters.SortDescriptions)
+            queryable = queryable.OrderBy(queryParameters.SortDescriptions, static (name) =>
             {
-                var path = sortDescription.Name;
-                switch (sortDescription.Name)
+                return name switch
                 {
-                    case nameof(NodeInfoModel.Name):
-                    case nameof(NodeInfoModel.Status):
-                        break;
-                    default:
-                        path = $"{nameof(NodeInfoModel.Profile)}.{sortDescription.Name}";
-                        break;
-                }
-
-                if (sortDescription.Direction == "ascend" || string.IsNullOrEmpty(sortDescription.Direction))
-                {
-                    if (isFirstOrder)
-                        orderedQueryable = queryable.OrderByColumnUsing(path, sortDescription.Direction);
-                    else
-                        orderedQueryable = orderedQueryable.ThenByColumnUsing(path, sortDescription.Direction);
-                }
-                else if (sortDescription.Direction == "descend")
-                {
-                    if (isFirstOrder)
-                        orderedQueryable = queryable.OrderByColumnUsing(path, sortDescription.Direction);
-                    else
-                        orderedQueryable = orderedQueryable.ThenByColumnUsing(path, sortDescription.Direction);
-                }
-
-                isFirstOrder = false;
-            }
-
-            if (orderedQueryable != null) queryable = orderedQueryable;
+                    nameof(NodeInfoModel.Name) or nameof(NodeInfoModel.Status) => name,
+                    _ => $"{nameof(NodeInfoModel.Profile)}.{name}",
+                };
+            });
             var totalCount = await queryable.CountAsync();
 
             var startIndex = pageIndex * pageSize;

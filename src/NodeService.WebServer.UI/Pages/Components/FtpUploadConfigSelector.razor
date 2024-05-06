@@ -21,6 +21,7 @@
 <GridRow>
     <GridCol Flex=@("auto")>
         <Table Size="TableSize.Small"
+               OnChange="(QueryModel<FtpUploadConfigModel> query)=>OnTableChanged(query)"
                OnPageIndexChange="@_dataSource.OnPaginationEvent"
                OnPageSizeChange="@_dataSource.OnPaginationEvent"
                PageSize="@_dataSource.PageSize"
@@ -33,8 +34,8 @@
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
                 <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>
-                <PropertyColumn Property="c => c.Id" Title="标志"></PropertyColumn>
-                <PropertyColumn Property="c => c.Name" Title="配置名称"></PropertyColumn>
+                <PropertyColumn Property="c => c.Id" Sortable Title="标志"></PropertyColumn>
+                <PropertyColumn Property="c => c.Name" Sortable Title="配置名称"></PropertyColumn>
             </ColumnDefinitions>
         </Table>
     </GridCol>
@@ -62,4 +63,19 @@
         await base.OnInitializedAsync();
     }
 
+    private async Task OnTableChanged(QueryModel<FtpUploadConfigModel> query)
+    {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        await _dataSource.RefreshAsync();
+    }
 }

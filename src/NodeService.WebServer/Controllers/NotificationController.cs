@@ -36,6 +36,8 @@ public class NotificationController : Controller
             var pageSize = queryParameters.PageSize;
             var startIndex = pageIndex * pageSize;
 
+            queryable = queryable.OrderBy(queryParameters.SortDescriptions);
+
             var totalCount = await queryable.CountAsync();
 
             var items = await queryable.Skip(startIndex)

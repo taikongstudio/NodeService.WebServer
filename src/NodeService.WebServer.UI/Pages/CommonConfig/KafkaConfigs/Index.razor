@@ -254,6 +254,18 @@
 
     void OnTableChange(QueryModel<KafkaConfigModel> query)
     {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        _dataSource.Request();
     }
 
     public void Dispose()

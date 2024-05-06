@@ -24,7 +24,7 @@ public class AnalysisLogService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         await dbContext.Database.EnsureCreatedAsync();
         try
         {
@@ -42,7 +42,7 @@ public class AnalysisLogService : BackgroundService
 
 
                 var rsp = await _apiService.QueryTaskExecutionInstanceLogAsync(jobExecutionInstance.Id,
-                    new QueryParameters(pageIndex, pageSize));
+                    new PaginationQueryParameters());
 
                 if (!rsp.Result.Any()) continue;
                 var ok = rsp.Result.Any(x => x.Value.Contains("2024-04-12T15:10:37"));

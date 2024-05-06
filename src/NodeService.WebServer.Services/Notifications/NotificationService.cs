@@ -33,7 +33,7 @@ public class NotificationService : BackgroundService
                         break;
                 }
 
-                using var dbContext = _dbContextFactory.CreateDbContext();
+                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 dbContext.NotificationRecordsDbSet.Add(new NotificationRecordModel
                 {
                     Id = Guid.NewGuid().ToString(),

@@ -12,6 +12,7 @@ public class NodeServiceImpl : NodeServiceBase
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly ILogger<NodeServiceImpl> _logger;
+    private readonly ExceptionCounter _exceptionCounter;
     private readonly INodeSessionService _nodeSessionService;
     private readonly IOptionsMonitor<WebServerOptions> _optionMonitor;
     private readonly IServiceProvider _serviceProvider;
@@ -22,7 +23,8 @@ public class NodeServiceImpl : NodeServiceBase
         IServiceProvider serviceProvider,
         INodeSessionService nodeService,
         ILogger<NodeServiceImpl> logger,
-        IOptionsMonitor<WebServerOptions> optionsMonitor
+        IOptionsMonitor<WebServerOptions> optionsMonitor,
+        ExceptionCounter exceptionCounter
     )
     {
         _optionMonitor = optionsMonitor;
@@ -30,6 +32,7 @@ public class NodeServiceImpl : NodeServiceBase
         _dbContextFactory = dbContextFactory;
         _nodeSessionService = nodeService;
         _logger = logger;
+        _exceptionCounter = exceptionCounter;
     }
 
     public override async Task Subscribe(SubscribeRequest subscribeRequest,
@@ -59,6 +62,7 @@ public class NodeServiceImpl : NodeServiceBase
                 }
                 catch (Exception ex)
                 {
+                    _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
                 }
             }, context.CancellationToken);
@@ -67,6 +71,7 @@ public class NodeServiceImpl : NodeServiceBase
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
     }
@@ -155,7 +160,7 @@ public class NodeServiceImpl : NodeServiceBase
 
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var configName = request.Parameters["ConfigName"];
             var nodeId = nodeSessionId.NodeId.Value;
             var nodeInfo = await dbContext.NodeInfoDbSet.AsQueryable().FirstOrDefaultAsync(x => x.Id == nodeId);
@@ -173,6 +178,7 @@ public class NodeServiceImpl : NodeServiceBase
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex, ToString());
             queryConfigurationRsp.ErrorCode = ex.HResult;
             queryConfigurationRsp.Message = ex.Message;
@@ -210,11 +216,13 @@ public class NodeServiceImpl : NodeServiceBase
                 }
                 catch (Exception ex)
                 {
+                    _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
                 }
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
 

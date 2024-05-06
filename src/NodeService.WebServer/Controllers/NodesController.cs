@@ -11,9 +11,10 @@ public partial class NodesController : Controller
     private readonly INodeSessionService _nodeSessionService;
     private readonly IVirtualFileSystem _virtualFileSystem;
     private readonly WebServerOptions _webServerOptions;
-
+    private readonly ExceptionCounter _exceptionCounter;
 
     public NodesController(
+        ExceptionCounter exceptionCounter,
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
         IOptionsSnapshot<WebServerOptions> webServerOptions,
@@ -27,6 +28,7 @@ public partial class NodesController : Controller
         _nodeSessionService = nodeSessionService;
         _memoryCache = memoryCache;
         _webServerOptions = webServerOptions.Value;
+        _exceptionCounter = exceptionCounter;
     }
 
     [HttpGet("/api/nodes/list")]
@@ -36,7 +38,7 @@ public partial class NodesController : Controller
         var apiResponse = new PaginationResponse<NodeInfoModel>();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var pageIndex = queryParameters.PageIndex - 1;
             var pageSize = queryParameters.PageSize;
 
@@ -125,6 +127,7 @@ public partial class NodesController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.ToString();
@@ -139,7 +142,7 @@ public partial class NodesController : Controller
         var apiResponse = new ApiResponse<NodeInfoModel>();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var nodeInfo =
                 await dbContext
                     .NodeInfoDbSet
@@ -148,6 +151,7 @@ public partial class NodesController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.ToString();

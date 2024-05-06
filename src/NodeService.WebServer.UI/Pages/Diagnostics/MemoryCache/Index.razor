@@ -1,0 +1,50 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Diagnostics.MemoryCache
+@page "/Diagnostics/MemoryCache"
+@using Microsoft.Extensions.Caching.Memory
+@inject IMemoryCache MemoryCache
+
+<Space Style="margin-bottom:16px">
+    <SpaceItem>
+        <Button Type="@ButtonType.Primary" OnClick="@Refresh">刷新</Button>
+    </SpaceItem>
+
+</Space>
+<Descriptions Column="5" Layout="@DescriptionsLayout.Vertical" Title="内存缓存信息" Bordered>
+    <DescriptionsItem Title="当前项个数">@CurrentEntryCount</DescriptionsItem>
+    <DescriptionsItem Title="未命中次数">@TotalMisses</DescriptionsItem>
+    <DescriptionsItem Title="命中次数">@TotalHits</DescriptionsItem>
+    <DescriptionsItem Title="当前估算大小">@CurrentEstimatedSize</DescriptionsItem>
+</Descriptions>
+
+
+@code {
+    long CurrentEntryCount;
+    long TotalMisses;
+    long? CurrentEstimatedSize;
+    long TotalHits;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        this.Refresh();
+    }
+
+    private void Refresh()
+    {
+        var currentStatistics = MemoryCache.GetCurrentStatistics();
+        if (currentStatistics != null)
+        {
+            CurrentEntryCount = currentStatistics.CurrentEntryCount;
+            TotalMisses = currentStatistics.TotalMisses;
+            CurrentEstimatedSize = currentStatistics.CurrentEstimatedSize;
+            TotalHits = currentStatistics.TotalHits;
+        }
+        else
+        {
+            CurrentEntryCount = 0;
+            TotalMisses = 0;
+            CurrentEstimatedSize = 0;
+            TotalHits = 0;
+        }
+    }
+}

@@ -15,8 +15,10 @@ public class AccountController : ControllerBase
     private readonly IMemoryCache _memoryCache;
     private readonly int _refreshTokenExpiration;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ExceptionCounter _exceptionCounter;
 
     public AccountController(IAccessControlService accessControl,
+        ExceptionCounter  exceptionCounter,
         IOptions<JwtSettings> jwtSettings,
         IMemoryCache memoryChache,
         ILogger<AccountController> logger,
@@ -27,6 +29,7 @@ public class AccountController : ControllerBase
         _refreshTokenExpiration = jwtSettings.Value.RefreshExpirationTime;
         _logger = logger;
         _userManager = userManager;
+        _exceptionCounter = exceptionCounter;
     }
 
     [HttpPost("/api/account/refresh")]

@@ -9,7 +9,7 @@ public partial class ClientUpdateController
         var apiResponse = new ApiResponse<bool>();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var counter =
                 await dbContext.ClientUpdateCountersDbSet.FindAsync(model.ClientUpdateConfigId, model.NodeName);
             if (counter == null)
@@ -48,6 +48,8 @@ public partial class ClientUpdateController
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
         }

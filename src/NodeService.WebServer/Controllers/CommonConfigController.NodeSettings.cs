@@ -9,7 +9,7 @@ public partial class CommonConfigController
         try
         {
             NodeSettings? result = null;
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var notificationSourceDictionary = await dbContext.PropertyBagDbSet.FindAsync("NodeSettings");
             if (notificationSourceDictionary == null)
             {
@@ -43,7 +43,7 @@ public partial class CommonConfigController
         var rsp = new ApiResponse();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var dictionary = await dbContext.PropertyBagDbSet.FindAsync("NodeSettings");
 
             dictionary["Value"] = JsonSerializer.Serialize(model);

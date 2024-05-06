@@ -1,11 +1,13 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
 public class NodeHealthyCheckService : BackgroundService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ExceptionCounter _exceptionCounter;
     private readonly NodeHealthyCounterDictionary _healthyCounterDict;
     private readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
     private readonly ILogger<NodeHealthyCheckService> _logger;
@@ -19,7 +21,8 @@ public class NodeHealthyCheckService : BackgroundService
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationQueue,
         NodeHealthyCounterDictionary healthyCounterDictionary,
-        IDbContextFactory<ApplicationDbContext> dbContextFactory
+        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        ExceptionCounter exceptionCounter
     )
     {
         _logger = logger;
@@ -27,6 +30,7 @@ public class NodeHealthyCheckService : BackgroundService
         _notificationQueue = notificationQueue;
         _healthyCounterDictionary = healthyCounterDictionary;
         _dbContextFactory = dbContextFactory;
+        _exceptionCounter = exceptionCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -43,7 +47,7 @@ public class NodeHealthyCheckService : BackgroundService
     {
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
             var notificationSourceDictionary =
                 await dbContext.PropertyBagDbSet.FindAsync(NotificationSources.NodeHealthyCheck);
@@ -75,6 +79,7 @@ public class NodeHealthyCheckService : BackgroundService
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
     }
@@ -93,14 +98,14 @@ public class NodeHealthyCheckService : BackgroundService
                )
                 return false;
             configuration = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(json);
-            return configuration != null;
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
 
-        return false;
+        return configuration != null;
     }
 
     private async Task SendNodeOfflineNotificationAsync(

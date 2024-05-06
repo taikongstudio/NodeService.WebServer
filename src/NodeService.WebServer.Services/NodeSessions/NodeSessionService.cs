@@ -79,7 +79,7 @@ public class NodeSessionService : INodeSessionService
         CancellationToken cancellationToken = default)
     {
         JobExecutionInstanceModel[] result = [];
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         var queryable =
             dbContext
                 .JobExecutionInstancesDbSet
@@ -180,7 +180,7 @@ public class NodeSessionService : INodeSessionService
         string nodeName,
         CancellationToken cancellationToken = default)
     {
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         var nodeId = nodeSessionId.NodeId.Value;
         var nodeInfo = await dbContext.NodeInfoDbSet.AsQueryable()
             .FirstOrDefaultAsync(x => x.Id == nodeId);
@@ -234,7 +234,7 @@ public class NodeSessionService : INodeSessionService
         FireTaskParameters parameters,
         CancellationToken cancellationToken = default)
     {
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         var nodeName = GetNodeName(nodeSessionId);
         var taskExecutionInstance = new JobExecutionInstanceModel
         {

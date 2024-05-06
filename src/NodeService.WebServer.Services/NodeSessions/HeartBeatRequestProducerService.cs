@@ -14,8 +14,10 @@ public class HeartBeatRequestProducerService : BackgroundService
     private readonly IOptionsMonitor<WebServerOptions> _optionsMonitor;
     private readonly IDisposable? _token;
     private WebServerOptions _options;
+    private readonly ExceptionCounter _exceptionCounter;
 
     public HeartBeatRequestProducerService(
+        ExceptionCounter exceptionCounter,
         INodeSessionService nodeSessionService,
         ILogger<HeartBeatRequestProducerService> logger,
         IOptionsMonitor<WebServerOptions> optionsMonitor
@@ -26,6 +28,7 @@ public class HeartBeatRequestProducerService : BackgroundService
         _optionsMonitor = optionsMonitor;
         _token = _optionsMonitor.OnChange(OnOptionsChange);
         _options = _optionsMonitor.CurrentValue;
+        _exceptionCounter = exceptionCounter;
     }
 
     private void OnOptionsChange(WebServerOptions options, string value)
@@ -48,6 +51,7 @@ public class HeartBeatRequestProducerService : BackgroundService
             }
             catch (Exception ex)
             {
+                _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
     }

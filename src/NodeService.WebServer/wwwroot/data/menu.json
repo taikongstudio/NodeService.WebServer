@@ -146,5 +146,23 @@
         "key": "Notifications.Records"
       }
     ]
+  },
+  {
+    "path": "/Diagnostics",
+    "name": "诊断",
+    "key": "Diagnostics",
+    "icon": "bug",
+    "children": [
+      {
+        "path": "/Diagnostics/MemoryCache",
+        "name": "内存缓存",
+        "key": "Diagnostics.MemoryCache"
+      },
+      {
+        "path": "/Diagnostics/ExceptionCounter",
+        "name": "异常计数器",
+        "key": "Diagnostics.ExceptionCounter"
+      }
+    ]
   }
 ]

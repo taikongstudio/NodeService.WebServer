@@ -6,15 +6,21 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class ClientUpdateController : Controller
 {
+    private readonly ILogger<ClientUpdateController> _logger;
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly IMemoryCache _memoryCache;
+    private readonly ExceptionCounter _exceptionCounter;
 
     public ClientUpdateController(
+        ILogger<ClientUpdateController> logger,
+        ExceptionCounter exceptionCounter,
         IDbContextFactory<ApplicationDbContext> dbContext,
         IMemoryCache memoryCache)
     {
+        _logger = logger;
         _dbContextFactory = dbContext;
         _memoryCache = memoryCache;
+        _exceptionCounter = exceptionCounter;
     }
 
     [HttpGet("/api/clientupdate/getupdate")]
@@ -28,7 +34,7 @@ public partial class ClientUpdateController : Controller
             var key = $"ClientUpdateConfig:{name}";
             if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var clientUpdateConfig))
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 clientUpdateConfig = await
                     dbContext
                         .ClientUpdateConfigurationDbSet
@@ -43,7 +49,7 @@ public partial class ClientUpdateController : Controller
             if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null &&
                 clientUpdateConfig.DnsFilters.Any())
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
 
 
@@ -77,6 +83,8 @@ public partial class ClientUpdateController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
         }
@@ -90,7 +98,7 @@ public partial class ClientUpdateController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var modelFromDb = await dbContext.ClientUpdateConfigurationDbSet.FindAsync(model.Id);
             if (modelFromDb == null)
             {
@@ -115,6 +123,8 @@ public partial class ClientUpdateController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogInformation(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
         }
@@ -130,7 +140,7 @@ public partial class ClientUpdateController : Controller
         var apiResponse = new PaginationResponse<ClientUpdateConfigModel>();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
             var pageIndex = queryParameters.PageIndex - 1;
             var pageSize = queryParameters.PageSize;
@@ -160,6 +170,8 @@ public partial class ClientUpdateController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogInformation(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
         }
@@ -173,7 +185,7 @@ public partial class ClientUpdateController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             dbContext.ClientUpdateConfigurationDbSet.Remove(model);
             await dbContext.SaveChangesAsync();
             var key = $"ClientUpdateConfig:{model.Name}";
@@ -181,6 +193,8 @@ public partial class ClientUpdateController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
         }

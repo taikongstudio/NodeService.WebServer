@@ -51,7 +51,7 @@ public class Program
             using var app = builder.Build();
 
             // Configure the HTTP request pipeline.
-            Configure(app);
+            await Configure(app);
 
             await app.RunAsync();
         }
@@ -61,7 +61,7 @@ public class Program
         }
     }
 
-    private static void Configure(WebApplication app)
+    private static async Task Configure(WebApplication app)
     {
         if (app.Environment.IsDevelopment())
         {
@@ -107,7 +107,7 @@ public class Program
         app.MapFallbackToPage("/_Host");
 
         var factory = app.Services.GetService<IDbContextFactory<ApplicationDbContext>>();
-        using var dbContext = factory.CreateDbContext();
+        await using var dbContext = await factory.CreateDbContextAsync();
         //dbContext.Database.EnsureDeleted();
         dbContext.Database.EnsureCreated();
 
@@ -331,7 +331,6 @@ public class Program
 
     private static void ConfigureSingleton(WebApplicationBuilder builder)
     {
-        builder.Services.AddSingleton<IApplicationDbRepository, ApplicationDbRepository>();
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
         builder.Services.AddSingleton<IAsyncQueue<TaskLogDatabase>>(new AsyncQueue<TaskLogDatabase>());
@@ -347,6 +346,7 @@ public class Program
         builder.Services.AddSingleton<TaskScheduler>();
         builder.Services.AddSingleton<TaskLogCacheManager>();
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
+        builder.Services.AddSingleton<ExceptionCounter>();
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

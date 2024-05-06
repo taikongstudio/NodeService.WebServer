@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -10,19 +11,22 @@ public class TaskScheduler
 
     private readonly ISchedulerFactory _schedulerFactory;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ExceptionCounter _exceptionCounter;
     private IScheduler _scheduler;
 
     public TaskScheduler(
         ISchedulerFactory schedulerFactory,
         ILogger<TaskScheduler> logger,
         TaskSchedulerDictionary jobSchedulerDictionary,
-        IServiceProvider serviceProvider
+        IServiceProvider serviceProvider,
+        ExceptionCounter exceptionCounter
     )
     {
         _schedulerFactory = schedulerFactory;
         _logger = logger;
         _jobSchedulerDictionary = jobSchedulerDictionary;
         _serviceProvider = serviceProvider;
+        _exceptionCounter = exceptionCounter;
     }
 
     public async Task<IAsyncDisposable> ScheduleAsync<T>(
@@ -62,6 +66,7 @@ public class TaskScheduler
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
 

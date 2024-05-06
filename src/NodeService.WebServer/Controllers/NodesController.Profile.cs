@@ -9,7 +9,7 @@ public partial class NodesController
         try
         {
             ArgumentNullException.ThrowIfNull(value, nameof(value));
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var nodeInfo = await dbContext.NodeInfoDbSet.FindAsync(id);
             if (nodeInfo == null)
             {
@@ -30,6 +30,7 @@ public partial class NodesController
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;

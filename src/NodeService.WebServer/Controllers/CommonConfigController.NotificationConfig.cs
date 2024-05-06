@@ -53,7 +53,7 @@ public partial class CommonConfigController
         try
         {
             NodeHealthyCheckConfiguration? result = null;
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var notificationSourceDictionary =
                 await dbContext.PropertyBagDbSet.FindAsync(nameof(NotificationSources.NodeHealthyCheck));
             if (notificationSourceDictionary == null)
@@ -90,7 +90,7 @@ public partial class CommonConfigController
         var rsp = new ApiResponse();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var notificationSourceDictionary =
                 await dbContext.PropertyBagDbSet.FindAsync(nameof(NotificationSources.NodeHealthyCheck));
 

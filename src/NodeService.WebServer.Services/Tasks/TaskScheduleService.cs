@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -13,6 +14,7 @@ public class TaskScheduleService : BackgroundService
     private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
 
     private readonly IAsyncQueue<TaskScheduleMessage> _taskSchedulerMessageQueue;
+    private readonly ExceptionCounter _exceptionCounter;
     private IScheduler Scheduler;
 
     public TaskScheduleService(
@@ -21,7 +23,8 @@ public class TaskScheduleService : BackgroundService
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
         ISchedulerFactory schedulerFactory,
         TaskSchedulerDictionary taskSchedulerDictionary,
-        ILogger<TaskScheduleService> logger)
+        ILogger<TaskScheduleService> logger,
+        ExceptionCounter exceptionCounter)
     {
         _serviceProvider = serviceProvider;
         _dbContextFactory = dbContextFactory;
@@ -29,6 +32,7 @@ public class TaskScheduleService : BackgroundService
         _schedulerFactory = schedulerFactory;
         _taskSchedulerDictionary = taskSchedulerDictionary;
         _taskSchedulerMessageQueue = taskScheduleMessageQueue;
+        _exceptionCounter = exceptionCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -46,6 +50,7 @@ public class TaskScheduleService : BackgroundService
             }
             catch (Exception ex)
             {
+                _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
         }
@@ -56,7 +61,7 @@ public class TaskScheduleService : BackgroundService
         CancellationToken cancellationToken = default)
     {
         if (taskScheduleMessage.TaskScheduleConfigId == null) return;
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         var taskScheduleConfig = await dbContext
             .JobScheduleConfigurationDbSet
             .AsQueryable()
@@ -111,7 +116,7 @@ public class TaskScheduleService : BackgroundService
     {
         try
         {
-            using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
             var taskScheduleConfigs = await dbContext.JobScheduleConfigurationDbSet
                 .AsAsyncEnumerable()
                 .Where(x => x.IsEnabled && x.TriggerType == JobScheduleTriggerType.Schedule)

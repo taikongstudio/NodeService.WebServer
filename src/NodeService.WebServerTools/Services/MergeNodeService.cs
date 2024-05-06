@@ -18,7 +18,7 @@ public class MergeNodeService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         var nodes = await dbContext.NodeInfoDbSet.ToListAsync();
         foreach (var group in nodes.GroupBy(x => x.Name))
         {

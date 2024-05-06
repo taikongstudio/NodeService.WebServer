@@ -1,0 +1,34 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Diagnostics.ExceptionCounter
+@page "/Diagnostics/ExceptionCounter"
+@inject NodeService.WebServer.Models.ExceptionCounter ExceptionCounter 
+
+<Space Style="margin-bottom:16px">
+    <SpaceItem>
+        <Button Type="@ButtonType.Primary" OnClick="@Refresh">刷新</Button>
+    </SpaceItem>
+
+</Space>
+<Table Size="TableSize.Small"
+       DataSource="@Statistics"
+      >
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Exception" Title="异常"></PropertyColumn>
+        <PropertyColumn Property="c => c.Count" Title="计数"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+
+@code {
+    IEnumerable<(string Exception, int Count)> Statistics = [];
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        this.Refresh();
+    }
+
+    private void Refresh()
+    {
+        this.Statistics = ExceptionCounter.GetStatistics();
+    }
+}

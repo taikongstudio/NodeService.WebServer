@@ -23,7 +23,7 @@ public class ManagementController : Controller
         using var scope = _serviceProvider.CreateScope();
         using var profileDbContext = _serviceProvider.GetService<ApplicationProfileDbContext>();
         var machineInfoList = profileDbContext.MachineInfoDbSet.ToArray();
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         var nodesList = dbContext.NodeInfoDbSet.Include(x => x.Profile).AsSplitQuery().ToList();
 
         foreach (var machineInfo in machineInfoList)
@@ -53,7 +53,7 @@ public class ManagementController : Controller
     public async Task<ApiResponse<int>> TestAsync()
     {
         var apiResponse = new ApiResponse<int>();
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         for (var i = 0; i < 3000; i++)
         {
             var nodeInfo = NodeInfoModel.Create(Guid.NewGuid().ToString(), i.ToString());
@@ -69,7 +69,7 @@ public class ManagementController : Controller
     public async Task<ApiResponse<int>> ClearJobTypeDescAsync()
     {
         var apiResponse = new ApiResponse<int>();
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         dbContext.JobScheduleConfigurationDbSet.RemoveRange(dbContext.JobScheduleConfigurationDbSet.ToArray());
         apiResponse.Result = await dbContext.SaveChangesAsync();
         return apiResponse;
@@ -80,7 +80,7 @@ public class ManagementController : Controller
     {
         var apiResponse = new ApiResponse<int>();
 
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
         var serviceOptionsTypes = typeof(JobOptionsBase)
             .Assembly

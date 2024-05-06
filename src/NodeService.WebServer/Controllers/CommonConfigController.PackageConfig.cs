@@ -20,7 +20,7 @@ public partial class CommonConfigController
     public async Task<IActionResult> DownloadPackageAsync(string packageId)
     {
         ArgumentException.ThrowIfNullOrEmpty(packageId);
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         var model = await dbContext.GetDbSet<PackageConfigModel>().FindAsync(packageId);
         if (model == null) return NotFound();
         if (model.DownloadUrl == null) return NotFound();
@@ -84,7 +84,7 @@ public partial class CommonConfigController
                 return apiResponse;
             }
 
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var model = await dbContext.GetDbSet<PackageConfigModel>().FindAsync(package.Id);
             if (model == null)
             {

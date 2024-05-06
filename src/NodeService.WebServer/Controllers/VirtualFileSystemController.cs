@@ -1,14 +1,20 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using NodeService.WebServer.Models;
+
+namespace NodeService.WebServer.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]
 public class VirtualFileSystemController : Controller
 {
     private readonly IConfiguration _configuration;
+    private readonly ILogger<VirtualFileSystemController> _logger;
+    private readonly ExceptionCounter _exceptionCounter;
     private readonly IVirtualFileSystem _virtualFileSystem;
     private readonly WebServerOptions _webServerOptions;
 
     public VirtualFileSystemController(
+        ILogger<VirtualFileSystemController> logger,
+        ExceptionCounter exceptionCounter,
         IVirtualFileSystem virtualFileSystem,
         WebServerOptions webServerOptions,
         IConfiguration configuration)
@@ -16,6 +22,8 @@ public class VirtualFileSystemController : Controller
         _virtualFileSystem = virtualFileSystem;
         _webServerOptions = webServerOptions;
         _configuration = configuration;
+        _logger = logger;
+        _exceptionCounter = exceptionCounter;
     }
 
     [HttpGet("/api/virtualfilesystem/{**path}")]
@@ -64,6 +72,8 @@ public class VirtualFileSystemController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
             uploadFileResult.ErrorCode = ex.HResult;
             uploadFileResult.Message = ex.Message;
         }

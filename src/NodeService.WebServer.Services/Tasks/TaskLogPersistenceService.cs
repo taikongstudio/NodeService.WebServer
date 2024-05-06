@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -6,14 +7,17 @@ public class TaskLogPersistenceService : BackgroundService
 {
     private readonly ILogger<TaskLogPersistenceService> _logger;
     private readonly TaskLogCacheManager _taskLogCacheManager;
+    private readonly ExceptionCounter _exceptionCounter;
 
     public TaskLogPersistenceService(
         ILogger<TaskLogPersistenceService> logger,
-        TaskLogCacheManager taskLogCacheManager
+        TaskLogCacheManager taskLogCacheManager,
+        ExceptionCounter exceptionCounter
     )
     {
         _logger = logger;
         _taskLogCacheManager = taskLogCacheManager;
+        _exceptionCounter = exceptionCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -26,6 +30,7 @@ public class TaskLogPersistenceService : BackgroundService
             }
             catch (Exception ex)
             {
+                _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
 

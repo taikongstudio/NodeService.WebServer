@@ -21,7 +21,7 @@ public class ImportFromDbService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         foreach (var item in Directory.GetDirectories("D:\\configs"))
         {
             var fullName = Path.GetFileName(item);

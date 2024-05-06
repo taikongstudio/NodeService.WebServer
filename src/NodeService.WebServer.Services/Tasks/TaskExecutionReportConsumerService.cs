@@ -89,7 +89,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         ArrayPoolCollection<JobExecutionReportMessage?> arrayPoolCollection,
         CancellationToken stoppingToken = default)
     {
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         var stopwatchSave = new Stopwatch();
         var timeSpan = TimeSpan.Zero;
         try
@@ -162,7 +162,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         CancellationToken cancellationToken = default)
     {
         if (taskExecutionInstance == null) return;
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         var taskScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FindAsync(
             [taskExecutionInstance.JobScheduleConfigId],
             cancellationToken);
@@ -261,7 +261,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         JobExecutionInstanceModel parentTaskInstance,
         CancellationToken stoppingToken = default)
     {
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(stoppingToken);
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(stoppingToken);
         var taskFireConfig = await dbContext
             .JobFireConfigurationsDbSet
             .FindAsync([parentTaskInstance.FireInstanceId], stoppingToken);

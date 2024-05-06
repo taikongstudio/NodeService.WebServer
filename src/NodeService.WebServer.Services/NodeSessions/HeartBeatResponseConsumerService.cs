@@ -16,8 +16,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
     private readonly INodeSessionService _nodeSessionService;
     private readonly WebServerOptions _webServerOptions;
     private NodeSettings _nodeSettings;
+    private readonly ExceptionCounter _exceptionCounter;
 
     public HeartBeatResponseConsumerService(
+        ExceptionCounter exceptionCounter,
         ILogger<HeartBeatResponseConsumerService> logger,
         INodeSessionService nodeSessionService,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
@@ -33,6 +35,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         _memoryCache = memoryCache;
         _webServerOptions = optionsMonitor.CurrentValue;
         _nodeSettings = new NodeSettings();
+        _exceptionCounter = exceptionCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -56,6 +59,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             }
             catch (Exception ex)
             {
+                _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
             finally
@@ -70,7 +74,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     private async Task InvalidateAllNodeStatusAsync(CancellationToken stoppingToken)
     {
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         try
         {
             foreach (var item in dbContext.NodeInfoDbSet.AsQueryable().Where(x => x.Status == NodeStatus.Online))
@@ -79,6 +83,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
     }
@@ -86,7 +91,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
     private async Task ProcessHeartBeatMessagesAsync(
         ArrayPoolCollection<NodeHeartBeatSessionMessage> arrayPoolCollection)
     {
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         var stopwatch = new Stopwatch();
         try
         {
@@ -108,6 +113,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
         finally
@@ -221,6 +227,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError($"{ex}");
         }
     }

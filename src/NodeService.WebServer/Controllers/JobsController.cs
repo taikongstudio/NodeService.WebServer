@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using NodeService.Infrastructure.Logging;
+using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Controllers;
@@ -13,9 +14,11 @@ public class JobsController : Controller
     private readonly IMemoryCache _memoryCache;
     private readonly INodeSessionService _nodeSessionService;
     private readonly TaskExecutionInstanceInitializer _taskExecutionInstanceInitializer;
+    private readonly ExceptionCounter _exceptionCounter;
     private readonly TaskLogCacheManager _taskLogCacheManager;
 
     public JobsController(
+        ExceptionCounter exceptionCounter,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
         INodeSessionService nodeSessionService,
         ILogger<NodesController> logger,
@@ -29,6 +32,7 @@ public class JobsController : Controller
         _memoryCache = memoryCache;
         _taskLogCacheManager = taskLogCacheManager;
         _taskExecutionInstanceInitializer = taskExecutionInstanceInitializer;
+        _exceptionCounter = exceptionCounter;
     }
 
     [HttpGet("/api/jobs/instances/list")]
@@ -43,7 +47,7 @@ public class JobsController : Controller
                 queryParameters.BeginDateTime = DateTime.UtcNow.ToUniversalTime().Date;
             if (queryParameters.EndDateTime == null)
                 queryParameters.EndDateTime = DateTime.UtcNow.ToUniversalTime().Date.AddDays(1).AddSeconds(-1);
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var beginTime = queryParameters.BeginDateTime.Value;
             var endTime = queryParameters.EndDateTime.Value;
             IQueryable<JobExecutionInstanceModel> queryable = dbContext.JobExecutionInstancesDbSet;
@@ -115,6 +119,7 @@ public class JobsController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
@@ -129,7 +134,7 @@ public class JobsController : Controller
         var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var jobExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(id);
             if (jobExecutionInstance == null)
             {
@@ -151,6 +156,7 @@ public class JobsController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
@@ -167,7 +173,7 @@ public class JobsController : Controller
         var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var taskExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(id);
             if (taskExecutionInstance == null)
             {
@@ -186,6 +192,7 @@ public class JobsController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
@@ -206,7 +213,7 @@ public class JobsController : Controller
             apiResponse.TotalCount = _taskLogCacheManager.GetCache(taskId).Count;
             if (queryParameters.PageSize == 0)
             {
-                using var dbContext = _dbContextFactory.CreateDbContext();
+                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
                 var instance = await dbContext.JobExecutionInstancesDbSet.FirstOrDefaultAsync(x => x.Id == taskId);
                 var fileName = "x.log";
                 if (instance == null)
@@ -237,6 +244,7 @@ public class JobsController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;

@@ -1,10 +1,13 @@
-﻿namespace NodeService.WebServer.Services.Tasks;
+﻿using NodeService.WebServer.Models;
+
+namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskLogCacheManager
 {
     public const string TaskKeyPrefix = "Task_";
     private readonly ILogger<TaskLogCacheManager> _logger;
     private readonly ConcurrentDictionary<string, TaskLogCache> _taskLogCaches;
+    private readonly ExceptionCounter _exceptionCounter;
     private readonly TaskLogDatabase _taskLogDatabase;
     private long _initialized;
     private JsonSerializerOptions _jsonSerializerOptions;
@@ -12,6 +15,7 @@ public class TaskLogCacheManager
     public TaskLogCacheManager(
         ILogger<TaskLogCacheManager> logger,
         TaskLogDatabase taskLogDatabase,
+        ExceptionCounter  exceptionCounter,
         int pageSize = 512)
     {
         _logger = logger;
@@ -23,6 +27,7 @@ public class TaskLogCacheManager
         if (Debugger.IsAttached) _taskLogDatabase.Reset();
         PageSize = pageSize;
         _taskLogCaches = new ConcurrentDictionary<string, TaskLogCache>();
+        _exceptionCounter = exceptionCounter;
     }
 
     public int PageSize { get; }
@@ -66,6 +71,7 @@ public class TaskLogCacheManager
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
         finally

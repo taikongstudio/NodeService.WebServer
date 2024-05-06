@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.RateLimiting;
+using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -7,15 +8,18 @@ namespace NodeService.WebServer.Controllers;
 public class FileRecordsController : Controller
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ExceptionCounter _exceptionCounter;
     private readonly ILogger<FileRecordsController> _logger;
     private readonly IMemoryCache _memoryCache;
 
     public FileRecordsController(
+        ILogger<FileRecordsController> logger,
+        ExceptionCounter exceptionCounter,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
-        IMemoryCache  memoryCache,
-        ILogger<FileRecordsController> logger)
+        IMemoryCache  memoryCache)
     {
         _dbContextFactory = dbContextFactory;
+        _exceptionCounter = exceptionCounter;
         _memoryCache = memoryCache;
         _logger = logger;
     }
@@ -35,6 +39,7 @@ public class FileRecordsController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.ToString();
@@ -46,7 +51,7 @@ public class FileRecordsController : Controller
     private async Task<PaginationResponse<FileRecordModel>> QueryInternal(string nodeId, int? pageIndex, int? pageSize, string? fullName)
     {
         var apiResponse = new PaginationResponse<FileRecordModel>();
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         if (pageIndex == null) pageIndex = 0;
         if (pageSize == null) pageSize = 500;
         IQueryable<FileRecordModel> queryable = dbContext.FileRecordsDbSet.Where(x => x.Id == nodeId)
@@ -74,7 +79,7 @@ public class FileRecordsController : Controller
     public async Task<ApiResponse> AddOrUpdateAsync([FromBody] FileRecordModel model)
     {
         var apiResponse = new ApiResponse();
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         try
         {
             var fileRecordFromDb = await dbContext.FileRecordsDbSet.FindAsync(model.Id, model.Name);
@@ -99,6 +104,7 @@ public class FileRecordsController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.ToString();
@@ -111,7 +117,7 @@ public class FileRecordsController : Controller
     public async Task<PaginationResponse<FileRecordModel>> RemoveAsync([FromBody] FileRecordModel fileRecord)
     {
         var apiResponse = new PaginationResponse<FileRecordModel>();
-        using var dbContext = _dbContextFactory.CreateDbContext();
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         try
         {
             dbContext.Remove(fileRecord);
@@ -119,6 +125,7 @@ public class FileRecordsController : Controller
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.ToString();

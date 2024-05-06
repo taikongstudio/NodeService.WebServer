@@ -8,7 +8,7 @@ public partial class NodesController
         var apiResponse = new ApiResponse<NodePropertySnapshotModel>();
         try
         {
-            using var dbContext = _dbContextFactory.CreateDbContext();
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
             var nodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Id == id);
             if (nodeInfo == null)
             {
@@ -34,6 +34,7 @@ public partial class NodesController
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.ToString();

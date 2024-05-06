@@ -105,7 +105,7 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
         if (PageSize <= 0) PageSize = 10;
         QueryParameters.PageIndex = PageIndex;
         QueryParameters.PageSize = PageSize;
-        QueryParameters.QueryStrategy = QueryStrategy.Query;
+        QueryParameters.QueryStrategy = QueryStrategy.QueryPreferred;
         var uri = new Uri(_navigationManager.Uri);
         var uriBuilder = new UriBuilder(uri);
         var oldQuery = uriBuilder.Query;

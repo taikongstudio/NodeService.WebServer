@@ -36,7 +36,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
     {
         IsLoading = true;
         RaiseStateChanged();
-        QueryParameters.QueryStrategy = QueryStrategy.Query;
+        QueryParameters.QueryStrategy = QueryStrategy.QueryPreferred;
         var rsp = await _queryFunc.Invoke(QueryParameters, default);
         PageSize = rsp.PageSize;
         PageIndex = rsp.PageIndex;

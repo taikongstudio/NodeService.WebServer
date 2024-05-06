@@ -41,11 +41,11 @@ public partial class CommonConfigController : Controller
         try
         {
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
-            if (queryParameters.QueryStrategy == QueryStrategy.Query)
+            if (queryParameters.QueryStrategy == QueryStrategy.CachePreferred)
             {
                 apiResponse = await QueryAsync<T>(queryParameters);
             }
-            else if (queryParameters.QueryStrategy == QueryStrategy.PreferCache)
+            else if (queryParameters.QueryStrategy == QueryStrategy.CachePreferred)
             {
                 var key = $"{typeof(T).FullName}:{queryParameters}";
                 if (!_memoryCache.TryGetValue<PaginationResponse<T>>(key, out var cacheValue) || cacheValue == null)

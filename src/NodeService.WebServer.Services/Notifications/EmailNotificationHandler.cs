@@ -19,7 +19,14 @@ public class EmailNotificationHandler
             if (emailOptionsValue is JsonElement jsonElement)
                 options = jsonElement.Deserialize<EmailNotificationOptions>();
             else
+            {
+                if (Debugger.IsAttached)
+                {
+                    return notificationResult;
+                }
                 throw new InvalidOperationException("Email notification is not supported");
+            }
+
         }
 
         using var smtp = new SmtpClient();

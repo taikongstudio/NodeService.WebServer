@@ -8,26 +8,26 @@
 
 
     <ItemGroup>
-        <PackageReference Include="CronExpressionDescriptor" Version="2.33.0"/>
-        <PackageReference Include="MailKit" Version="4.4.0"/>
-        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0"/>
-        <PackageReference Include="Quartz" Version="3.8.1"/>
-        <PackageReference Include="FluentFTP" Version="49.0.2"/>
-        <PackageReference Include="NLog" Version="5.2.8"/>
-        <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8"/>
-        <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.8"/>
-        <PackageReference Include="Grpc.AspNetCore.Server" Version="2.61.0"/>
-        <PackageReference Include="Grpc.AspNetCore" Version="2.61.0"/>
-        <PackageReference Include="Grpc.AspNetCore.Web" Version="2.61.0"/>
-        <PackageReference Include="System.Reactive" Version="6.0.1-preview.1"/>
+        <PackageReference Include="CronExpressionDescriptor" Version="2.33.0" />
+        <PackageReference Include="MailKit" Version="4.4.0" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
+        <PackageReference Include="Quartz" Version="3.8.1" />
+        <PackageReference Include="FluentFTP" Version="49.0.2" />
+        <PackageReference Include="NLog" Version="5.2.8" />
+        <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
+        <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.8" />
+        <PackageReference Include="Grpc.AspNetCore.Server" Version="2.61.0" />
+        <PackageReference Include="Grpc.AspNetCore" Version="2.61.0" />
+        <PackageReference Include="Grpc.AspNetCore.Web" Version="2.61.0" />
+        <PackageReference Include="System.Reactive" Version="6.0.1-preview.1" />
     </ItemGroup>
 
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\NodeService.Infrastructure\src\NodeService.Infrastructure\NodeService.Infrastructure.csproj"/>
-        <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj"/>
-        <ProjectReference Include="..\NodeService.WebServer.Extensions\NodeService.WebServer.Extensions.csproj"/>
-        <ProjectReference Include="..\NodeService.WebServer.Models\NodeService.WebServer.Models.csproj"/>
+        <ProjectReference Include="..\..\..\NodeService.Infrastructure\src\NodeService.Infrastructure\NodeService.Infrastructure.csproj" />
+        <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj" />
+        <ProjectReference Include="..\NodeService.WebServer.Extensions\NodeService.WebServer.Extensions.csproj" />
+        <ProjectReference Include="..\NodeService.WebServer.Models\NodeService.WebServer.Models.csproj" />
     </ItemGroup>
 
 </Project>

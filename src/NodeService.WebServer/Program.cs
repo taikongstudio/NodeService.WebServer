@@ -7,11 +7,13 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.Entities;
 using NodeService.Infrastructure.Services;
 using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Services.Auth;
+using NodeService.WebServer.Services.FileRecords;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
@@ -224,6 +226,7 @@ public class Program
         builder.Services.AddHostedService<TaskLogPersistenceService>();
         builder.Services.AddHostedService<NotificationService>();
         builder.Services.AddHostedService<NodeHealthyCheckService>();
+        builder.Services.AddHostedService<FileRecordService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -365,6 +368,9 @@ public class Program
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>>(new AsyncQueue<NotificationMessage>());
         builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
+        builder.Services.AddKeyedSingleton(nameof(FileRecordService), new BatchQueue<BatchQueueOperation<object, object>>(
+            1024 * 2,
+            TimeSpan.FromSeconds(10)));
         builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
         builder.Services.AddSingleton<TaskExecutionInstanceInitializer>();
         builder.Services.AddSingleton<TaskLogDatabase>();

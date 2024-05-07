@@ -1,5 +1,8 @@
 ﻿using Microsoft.AspNetCore.RateLimiting;
+using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.Messages;
 using NodeService.WebServer.Models;
+using NodeService.WebServer.Services.FileRecords;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -10,11 +13,13 @@ public class FileRecordsController : Controller
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly ExceptionCounter _exceptionCounter;
     private readonly ILogger<FileRecordsController> _logger;
+    private readonly BatchQueue<BatchQueueOperation<object, object>> _fileRecordBatchQueue;
     private readonly IMemoryCache _memoryCache;
 
     public FileRecordsController(
         ILogger<FileRecordsController> logger,
         ExceptionCounter exceptionCounter,
+        [FromKeyedServices(nameof(FileRecordService))]BatchQueue<BatchQueueOperation<object, object>> fileRecordBatchQueue,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
         IMemoryCache  memoryCache)
     {
@@ -22,6 +27,7 @@ public class FileRecordsController : Controller
         _exceptionCounter = exceptionCounter;
         _memoryCache = memoryCache;
         _logger = logger;
+        _fileRecordBatchQueue = fileRecordBatchQueue;
     }
 
     [EnableRateLimiting("Concurrency")]
@@ -33,7 +39,15 @@ public class FileRecordsController : Controller
         var apiResponse = new PaginationResponse<FileRecordModel>();
         try
         {
-            apiResponse = await QueryInternal(nodeId, queryParameters);
+            var fileRecordOperation = new BatchQueueOperation<object, object>(
+                Tuple.Create(nodeId, queryParameters),
+                BatchQueueOperationKind.Query);
+            await _fileRecordBatchQueue.SendAsync(fileRecordOperation);
+            PaginationResponse<FileRecordModel>? value = await fileRecordOperation.WaitAsync() as PaginationResponse<FileRecordModel>;
+            if (value != null)
+            {
+                apiResponse = value;
+            }
         }
         catch (Exception ex)
         {
@@ -46,56 +60,17 @@ public class FileRecordsController : Controller
         return apiResponse;
     }
 
-    private async Task<PaginationResponse<FileRecordModel>> QueryInternal(string nodeId, PaginationQueryParameters queryParameters)
-    {
-        var apiResponse = new PaginationResponse<FileRecordModel>();
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-        if (string.IsNullOrEmpty(queryParameters.Keywords))
-        {
-            var key = $"{nameof(FileRecordModel)}:{nodeId}";
-
-            IQueryable<FileRecordModel> queryable = dbContext.FileRecordsDbSet.Where(x => x.Id == nodeId)
-                .OrderBy(x => x.ModifyDateTime);
-
-            apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
-        }
-        else
-        {
-            apiResponse.SetResult([await dbContext.FileRecordsDbSet.FindAsync(nodeId, queryParameters.Keywords)]);
-            apiResponse.SetTotalCount(1);
-            apiResponse.SetPageIndex(queryParameters.PageIndex);
-            apiResponse.SetPageSize(queryParameters.PageSize);
-
-        }
-        return apiResponse;
-    }
-
     [HttpPost("/api/filerecords/{nodeId}/addorupdate")]
-    public async Task<ApiResponse> AddOrUpdateAsync([FromBody] FileRecordModel model)
+    public async Task<ApiResponse> AddOrUpdateAsync(
+        [FromBody] FileRecordModel model,
+        CancellationToken cancellationToken = default)
     {
         var apiResponse = new ApiResponse();
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         try
         {
-            var fileRecordFromDb = await dbContext.FileRecordsDbSet.FindAsync(model.Id, model.Name);
-            if (fileRecordFromDb == null)
-            {
-                await dbContext.FileRecordsDbSet.AddAsync(model);
-            }
-            else
-            {
-                fileRecordFromDb.ModifyDateTime = model.ModifyDateTime;
-                if (model.Properties != null) fileRecordFromDb.Properties = model.Properties;
-                if (model.FileHashValue != null) fileRecordFromDb.FileHashValue = model.FileHashValue;
-                if (model.Size > 0) fileRecordFromDb.Size = model.Size;
-                if (model.OriginalFileName != null) fileRecordFromDb.OriginalFileName = model.OriginalFileName;
-                if (model.State != FileRecordState.None) fileRecordFromDb.State = model.State;
-                if (model.CompressedSize > 0) fileRecordFromDb.CompressedSize = model.CompressedSize;
-                if (model.CompressedFileHashValue != null)
-                    fileRecordFromDb.CompressedFileHashValue = model.CompressedFileHashValue;
-            }
-
-            await dbContext.SaveChangesAsync();
+            var fileRecordOperation = new BatchQueueOperation<object, object>(model, BatchQueueOperationKind.InsertOrUpdate);
+            await _fileRecordBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
+            await fileRecordOperation.WaitAsync(cancellationToken);
         }
         catch (Exception ex)
         {

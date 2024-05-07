@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data;
@@ -12,6 +13,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     private readonly ILogger<TaskExecutionReportConsumerService> _logger;
     private readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
     private readonly TaskLogCacheManager _taskLogCacheManager;
+    private readonly IMemoryCache _memoryCache;
     private readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
     private readonly TaskScheduler _taskScheduler;
     private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
@@ -23,7 +25,8 @@ public class TaskExecutionReportConsumerService : BackgroundService
         IAsyncQueue<TaskScheduleMessage> jobScheduleAsyncQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
         TaskSchedulerDictionary jobSchedulerDictionary,
-        TaskScheduler jobScheduler
+        TaskScheduler jobScheduler,
+        IMemoryCache memoryCache
     )
     {
         _dbContextFactory = dbContextFactory;
@@ -33,6 +36,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         _taskSchedulerDictionary = jobSchedulerDictionary;
         _taskScheduler = jobScheduler;
         _taskLogCacheManager = taskLogCacheManager;
+        _memoryCache = memoryCache;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -123,11 +127,15 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 foreach (var messageStatusGroup in taskReportGroup.GroupBy(static x => x.GetMessage().Status))
                 {
                     stopwatchProcessMessage.Start();
-
+                    var key = messageStatusGroup.Key;
                     foreach (var reportMessage in messageStatusGroup)
                     {
                         if (reportMessage == null) continue;
-                        await ProcessTaskExecutionReportAsync(taskInstance, reportMessage, stoppingToken);
+                        await ProcessTaskExecutionReportAsync(
+                            dbContext,
+                            taskInstance,
+                            reportMessage,
+                            stoppingToken);
                     }
 
                     stopwatchProcessMessage.Stop();
@@ -158,14 +166,19 @@ public class TaskExecutionReportConsumerService : BackgroundService
     }
 
     private async Task ScheduleTimeLimitTaskAsync(
+        ApplicationDbContext dbContext,
         JobExecutionInstanceModel taskExecutionInstance,
         CancellationToken cancellationToken = default)
     {
         if (taskExecutionInstance == null) return;
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var taskScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FindAsync(
-            [taskExecutionInstance.JobScheduleConfigId],
-            cancellationToken);
+        var cacheKey = $"{nameof(JobScheduleConfigModel)}:{taskExecutionInstance.JobScheduleConfigId}";
+        if (!_memoryCache.TryGetValue<JobScheduleConfigModel>(cacheKey, out var taskScheduleConfig))
+        {
+            taskScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FirstOrDefaultAsync(
+                        x => x.Id == taskExecutionInstance.JobScheduleConfigId,
+                        cancellationToken);
+            _memoryCache.Set(cacheKey, taskScheduleConfig, TimeSpan.FromMinutes(30));
+        }
         if (taskScheduleConfig == null) return;
         if (taskScheduleConfig.ExecutionLimitTimeSeconds <= 0) return;
         var key = new TaskSchedulerKey(
@@ -183,6 +196,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     }
 
     private async Task ProcessTaskExecutionReportAsync(
+        ApplicationDbContext dbContext,
         JobExecutionInstanceModel taskExecutionInstance,
         NodeSessionMessage<JobExecutionReport> message,
         CancellationToken stoppingToken = default)
@@ -203,7 +217,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     break;
                 case JobExecutionStatus.Started:
                     if (taskExecutionInstance.Status != JobExecutionStatus.Started)
-                        await ScheduleTimeLimitTaskAsync(taskExecutionInstance, stoppingToken);
+                        await ScheduleTimeLimitTaskAsync(dbContext, taskExecutionInstance, stoppingToken);
                     break;
                 case JobExecutionStatus.Running:
                     break;
@@ -213,7 +227,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 case JobExecutionStatus.Finished:
                     if (taskExecutionInstance.Status != JobExecutionStatus.Finished)
                     {
-                        await ScheduleChildTasksAsync(taskExecutionInstance, stoppingToken);
+                        await ScheduleChildTasksAsync(dbContext, taskExecutionInstance, stoppingToken);
                         await CancelTimeLimitTaskAsync(taskSchedulerKey);
                     }
 
@@ -258,13 +272,19 @@ public class TaskExecutionReportConsumerService : BackgroundService
 
 
     private async Task ScheduleChildTasksAsync(
+        ApplicationDbContext dbContext,
         JobExecutionInstanceModel parentTaskInstance,
         CancellationToken stoppingToken = default)
     {
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(stoppingToken);
-        var taskFireConfig = await dbContext
+        var key = $"{nameof(JobFireConfigurationModel)}:{parentTaskInstance.FireInstanceId}";
+        if (!_memoryCache.TryGetValue<JobFireConfigurationModel>(key, out var taskFireConfig))
+        {
+            taskFireConfig = await dbContext
             .JobFireConfigurationsDbSet
-            .FindAsync([parentTaskInstance.FireInstanceId], stoppingToken);
+            .FirstOrDefaultAsync(x => x.Id == parentTaskInstance.FireInstanceId, stoppingToken);
+            _memoryCache.Set(key, taskFireConfig, TimeSpan.FromMinutes(30));
+        }
+
         if (taskFireConfig == null)
         {
             _logger.LogError($"Could not found task fire config:{parentTaskInstance.FireInstanceId}");

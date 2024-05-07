@@ -87,11 +87,6 @@ public partial class CommonConfigController : Controller
     private async Task<PaginationResponse<T>> QueryAsync<T>(PaginationQueryParameters queryParameters) where T : ConfigurationModel, new()
     {
         var dbContext = await _dbContextFactory.CreateDbContextAsync();
-        var name = typeof(T).Name;
-        var pageSize = queryParameters.PageSize;
-        var pageIndex = queryParameters.PageIndex - 1;
-        var startIndex = pageSize * pageIndex;
-
         IQueryable<T> queryable = dbContext.GetDbSet<T>();
 
         if (!string.IsNullOrEmpty(queryParameters.Keywords))

@@ -10,23 +10,35 @@ public static class QueryableExtensions
     public static async Task<PaginationResponse<T>> QueryPageItemsAsync<T>(this IQueryable<T> queryable, PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
     {
         PaginationResponse<T> apiResponse = new PaginationResponse<T>();
-        var totalCount = await queryable.CountAsync();
-        var pageIndex = queryParameters.PageIndex - 1;
-        var pageSize = queryParameters.PageSize;
-        var startIndex = pageIndex * pageSize;
-        var skipCount = totalCount > startIndex ? startIndex : 0;
-        var takeCount = pageSize;
-        if (pageSize <= 0 && pageIndex <= 0)
+
+        T[] items = [];
+        var totalCount = 0;
+
+        if (queryParameters.PageIndex <= 0 && queryParameters.PageSize <= 0)
         {
-            skipCount = 0;
-            takeCount = totalCount;
+            items = await queryable.ToArrayAsync();
+            totalCount = items.Length;
         }
-        var items = await queryable
-            .Skip(skipCount)
-            .Take(takeCount)
-            .ToArrayAsync();
-        var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
-        if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
+        else
+        {
+            totalCount = await queryable.CountAsync();
+            var pageIndex = queryParameters.PageIndex - 1;
+            var pageSize = queryParameters.PageSize;
+            var startIndex = pageIndex * pageSize;
+            var skipCount = totalCount > startIndex ? startIndex : 0;
+            items = await queryable
+                            .Skip(skipCount)
+                            .Take(pageSize)
+                            .ToArrayAsync();
+            var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
+            if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
+            if (totalCount < pageSize && pageCount == 1)
+            {
+                queryParameters.PageIndex = 1;
+                queryParameters.PageSize = pageSize;
+            }
+        }
+
         apiResponse.SetTotalCount(totalCount);
         apiResponse.SetPageIndex(queryParameters.PageIndex);
         apiResponse.SetPageSize(queryParameters.PageSize);

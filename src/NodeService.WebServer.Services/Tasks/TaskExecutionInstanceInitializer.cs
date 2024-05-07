@@ -193,6 +193,7 @@ public class TaskExecutionInstanceInitializer
                 }
                 catch (Exception ex)
                 {
+                    _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
                 }
 
@@ -201,6 +202,7 @@ public class TaskExecutionInstanceInitializer
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
         }
 
     }

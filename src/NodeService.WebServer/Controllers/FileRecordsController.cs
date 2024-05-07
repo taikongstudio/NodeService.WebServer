@@ -30,7 +30,6 @@ public class FileRecordsController : Controller
         _fileRecordBatchQueue = fileRecordBatchQueue;
     }
 
-    [EnableRateLimiting("Concurrency")]
     [HttpGet("/api/filerecords/{nodeId}/list")]
     public async Task<PaginationResponse<FileRecordModel>> QueryNodeFileListAsync(
         string nodeId,

@@ -370,7 +370,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddKeyedSingleton(nameof(FileRecordService), new BatchQueue<BatchQueueOperation<object, object>>(
             1024 * 2,
-            TimeSpan.FromSeconds(10)));
+            TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
         builder.Services.AddSingleton<TaskExecutionInstanceInitializer>();
         builder.Services.AddSingleton<TaskLogDatabase>();

@@ -114,6 +114,7 @@ namespace NodeService.WebServer.Services.FileRecords
             try
             {
                 var parameters = operation.Argument as Tuple<string, PaginationQueryParameters>;
+                _logger.LogInformation($"{parameters.Item1}:{parameters.Item2}");
                 string nodeId = parameters.Item1;
                 if (string.IsNullOrEmpty(parameters.Item2.Keywords))
                 {

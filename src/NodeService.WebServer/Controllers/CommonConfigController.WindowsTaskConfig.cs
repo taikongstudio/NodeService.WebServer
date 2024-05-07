@@ -5,7 +5,6 @@ namespace NodeService.WebServer.Controllers;
 public partial class CommonConfigController
 {
     [HttpGet("/api/commonconfig/windowstask/list")]
-    [EnableRateLimiting("Concurrency")]
     public Task<PaginationResponse<WindowsTaskConfigModel>> QueryWindowsTasksListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {

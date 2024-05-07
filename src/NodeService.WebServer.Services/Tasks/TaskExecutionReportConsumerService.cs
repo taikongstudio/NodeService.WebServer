@@ -142,10 +142,10 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     _logger.LogInformation(
                         $"process:{messageStatusGroup.Count()},spent:{stopwatchProcessMessage.Elapsed}");
                     stopwatchProcessMessage.Reset();
-                    stopwatchSave.Start();
-                    await dbContext.SaveChangesAsync(stoppingToken);
-                    stopwatchSave.Stop();
                 }
+                stopwatchSave.Start();
+                await dbContext.SaveChangesAsync(stoppingToken);
+                stopwatchSave.Stop();
             }
         }
         catch (Exception ex)

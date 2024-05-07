@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.RateLimiting;
+using NodeService.Infrastructure.Models;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -24,25 +25,39 @@ public partial class ClientUpdateController : Controller
     }
 
     [HttpGet("/api/clientupdate/getupdate")]
-    [EnableRateLimiting("Concurrency")]
     public async Task<ApiResponse<ClientUpdateConfigModel>> GetUpdateAsync([FromQuery] string? name)
     {
         var apiResponse = new ApiResponse<ClientUpdateConfigModel>();
         try
         {
+            ClientUpdateConfigModel? clientUpdateConfig = null;
             if (string.IsNullOrEmpty(name)) return apiResponse;
             var key = $"ClientUpdateConfig:{name}";
-            if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var clientUpdateConfig))
+            await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(1000, 5000)));
+            if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue)||cacheValue==null)
             {
-                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                clientUpdateConfig = await
-                    dbContext
-                        .ClientUpdateConfigurationDbSet
-                        .Where(x => x.Status == ClientUpdateStatus.Public)
-                        .Where(x => x.Name == name)
-                        .OrderByDescending(static x => x.Version)
-                        .FirstOrDefaultAsync();
-                _memoryCache.Set(key, clientUpdateConfig, TimeSpan.FromMinutes(1));
+                await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 5000)));
+                if (!_memoryCache.TryGetValue(key, out cacheValue) || cacheValue == null)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 5000)));
+                    await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                    cacheValue = await
+                        dbContext
+                            .ClientUpdateConfigurationDbSet
+                            .Where(x => x.Status == ClientUpdateStatus.Public)
+                            .Where(x => x.Name == name)
+                            .OrderByDescending(static x => x.Version)
+                            .FirstOrDefaultAsync();
+                    if (cacheValue != null)
+                    {
+                        _memoryCache.Set(key, cacheValue, TimeSpan.FromMinutes(1));
+                    }
+                }
+            }
+
+            if (cacheValue != null)
+            {
+                clientUpdateConfig = cacheValue;
             }
 
 

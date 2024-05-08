@@ -140,11 +140,6 @@ public partial class ApplicationDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        if (Debugger.IsAttached)
-        {
-            //optionsBuilder.EnableSensitiveDataLogging();
-        }
-
         if (!optionsBuilder.IsConfigured)
             if (Debugger.IsAttached)
                 optionsBuilder.UseLoggerFactory(DebugLoggerFactory);

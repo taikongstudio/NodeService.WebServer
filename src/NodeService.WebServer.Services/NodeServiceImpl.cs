@@ -13,6 +13,7 @@ public class NodeServiceImpl : NodeServiceBase
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly ILogger<NodeServiceImpl> _logger;
     private readonly ExceptionCounter _exceptionCounter;
+    private readonly WebServerCounter _webServerCounter;
     private readonly INodeSessionService _nodeSessionService;
     private readonly IOptionsMonitor<WebServerOptions> _optionMonitor;
     private readonly IServiceProvider _serviceProvider;
@@ -24,7 +25,8 @@ public class NodeServiceImpl : NodeServiceBase
         INodeSessionService nodeService,
         ILogger<NodeServiceImpl> logger,
         IOptionsMonitor<WebServerOptions> optionsMonitor,
-        ExceptionCounter exceptionCounter
+        ExceptionCounter exceptionCounter,
+        WebServerCounter webServerCounter
     )
     {
         _optionMonitor = optionsMonitor;
@@ -33,6 +35,7 @@ public class NodeServiceImpl : NodeServiceBase
         _nodeSessionService = nodeService;
         _logger = logger;
         _exceptionCounter = exceptionCounter;
+        _webServerCounter = webServerCounter;
     }
 
     public override async Task Subscribe(SubscribeRequest subscribeRequest,
@@ -56,6 +59,7 @@ public class NodeServiceImpl : NodeServiceBase
                 {
                     await foreach (var message in inputQueue.ReadAllAsync(context.CancellationToken))
                     {
+                        _webServerCounter.NodeServiceInputMessagesCount++;
                         if (!messageHandlerDictionary.TryGetValue(message.Descriptor, out var messageHandler)) continue;
                         await messageHandler.HandleAsync(nodeSessionId, httpContext, message);
                     }
@@ -84,14 +88,19 @@ public class NodeServiceImpl : NodeServiceBase
 
         await foreach (var message in outputQueue.ReadAllAsync(context.CancellationToken))
         {
-            if (message is not INodeMessage nodeMessage || nodeMessage.IsExpired) continue;
+            if (message is not INodeMessage nodeMessage || nodeMessage.IsExpired)
+            {
+                _webServerCounter.NodeServiceExpiredMessagesCount++;
+                continue;
+            }
+
             if (message.Descriptor == SubscribeEvent.Descriptor)
             {
-                var subscribeEvent = message as SubscribeEvent;
-                if (subscribeEvent == null) continue;
+                if (message is not SubscribeEvent subscribeEvent) continue;
                 subscribeEvent.Properties.TryAdd("DateTime",
                     nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
                 await responseStream.WriteAsync(subscribeEvent);
+                _webServerCounter.NodeServiceOutputMessagesCount++;
             }
         }
     }

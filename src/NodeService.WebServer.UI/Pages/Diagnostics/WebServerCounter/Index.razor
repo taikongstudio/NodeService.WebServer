@@ -1,0 +1,54 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Diagnostics.WebServerCounter
+@page "/Diagnostics/WebServerCounter"
+@inject NodeService.WebServer.Models.WebServerCounter WebServerCounter
+
+<Space Style="margin-bottom:16px">
+    <SpaceItem>
+        <Button Type="@ButtonType.Primary" OnClick="@Refresh">刷新</Button>
+    </SpaceItem>
+
+</Space>
+<Table Size="TableSize.Small"
+       DataSource="@Statistics"
+      >
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
+        <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+
+@code {
+    IEnumerable<(string Desc, string Value)> Statistics = [];
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        this.Refresh();
+    }
+
+    private void Refresh()
+    {
+        this.Statistics = GetStatistics();
+    }
+
+    private IEnumerable<(string Desc, string Value)> GetStatistics()
+    {
+        yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesCount), WebServerCounter.TaskExecutionReportProcessLogEntriesCount.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan), WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportAvailableCount), WebServerCounter.TaskExecutionReportAvailableCount.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportProcessTimeSpan), WebServerCounter.TaskExecutionReportProcessTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportQueryTimeSpan), WebServerCounter.TaskExecutionReportQueryTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportSaveTimeSpan), WebServerCounter.TaskExecutionReportSaveTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportTotalTimeSpan), WebServerCounter.TaskExecutionReportTotalTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportSaveChangesCount), WebServerCounter.TaskExecutionReportSaveChangesCount.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportConsumeCount), WebServerCounter.TaskExecutionReportConsumeCount.ToString());
+        yield return (nameof(WebServerCounter.HeartBeatAvailableCount), WebServerCounter.HeartBeatAvailableCount.ToString());
+        yield return (nameof(WebServerCounter.HeartBeatConsumeCount), WebServerCounter.HeartBeatConsumeCount.ToString());
+        yield return (nameof(WebServerCounter.HeartBeatTotalProcessTimeSpan), WebServerCounter.HeartBeatTotalProcessTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.NodeServiceInputMessagesCount), WebServerCounter.NodeServiceInputMessagesCount.ToString());
+        yield return (nameof(WebServerCounter.NodeServiceOutputMessagesCount), WebServerCounter.NodeServiceOutputMessagesCount.ToString());
+        yield return (nameof(WebServerCounter.NodeServiceExpiredMessagesCount), WebServerCounter.NodeServiceExpiredMessagesCount.ToString());
+        yield break;
+    }
+}

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.NodeSessions;
 
 namespace NodeService.WebServer.Services.Tasks;
@@ -14,6 +15,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     private readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
     private readonly TaskLogCacheManager _taskLogCacheManager;
     private readonly IMemoryCache _memoryCache;
+    private readonly WebServerCounter _webServerCounter;
     private readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
     private readonly TaskScheduler _taskScheduler;
     private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
@@ -26,7 +28,8 @@ public class TaskExecutionReportConsumerService : BackgroundService
         ILogger<TaskExecutionReportConsumerService> logger,
         TaskSchedulerDictionary jobSchedulerDictionary,
         TaskScheduler jobScheduler,
-        IMemoryCache memoryCache
+        IMemoryCache memoryCache,
+        WebServerCounter webServerCounter
     )
     {
         _dbContextFactory = dbContextFactory;
@@ -37,6 +40,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         _taskScheduler = jobScheduler;
         _taskLogCacheManager = taskLogCacheManager;
         _memoryCache = memoryCache;
+        _webServerCounter = webServerCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -56,6 +60,9 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 stopwatch.Stop();
                 _logger.LogInformation(
                     $"process {count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
+                _webServerCounter.TaskExecutionReportAvailableCount = (uint)_taskExecutionReportBatchQueue.AvailableCount;
+                _webServerCounter.TaskExecutionReportTotalTimeSpan += stopwatch.Elapsed;
+                _webServerCounter.TaskExecutionReportConsumeCount += (uint)count;
                 stopwatch.Reset();
             }
             catch (Exception ex)
@@ -105,22 +112,47 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 if (taskReportGroup.Key == null) continue;
                 var stopwatchQuery = Stopwatch.StartNew();
                 var taskId = taskReportGroup.Key;
-                var taskInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(taskId);
-                if (taskInstance == null) continue;
-                await dbContext.Entry(taskInstance).ReloadAsync();
+                var cacheKey = $"{nameof(TaskExecutionReportConsumerService)}:{nameof(JobExecutionInstanceModel)}:{taskId}";
+                if (!_memoryCache.TryGetValue<JobExecutionInstanceModel>(cacheKey, out var taskInstance)
+                    ||
+                    taskInstance == null)
+                {
+                    taskInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(taskId);
+                    if (taskInstance == null)
+                    {
+                        return;
+                    }
+                    _memoryCache.Set(cacheKey, taskInstance, TimeSpan.FromHours(1));
+                }
+                else
+                {
+                    await dbContext.Update(taskInstance).ReloadAsync(stoppingToken);
+                }
                 stopwatchQuery.Stop();
                 _logger.LogInformation($"{taskId}:Query:{stopwatchQuery.Elapsed}");
+                _webServerCounter.TaskExecutionReportQueryTimeSpan += stopwatchQuery.Elapsed;
+
 
                 if (taskInstance == null) continue;
 
 
+                Stopwatch stopwatchProcessLogEntries = Stopwatch.StartNew();
                 foreach (var reportMessage in taskReportGroup)
                 {
                     if (reportMessage == null) continue;
                     var report = reportMessage.GetMessage();
                     if (report.LogEntries.Count > 0)
+                    {
+                        var taskLogCache = _taskLogCacheManager.GetCache(taskId);
+                        var count1 = taskLogCache.Count;
                         _taskLogCacheManager.GetCache(taskId).AppendEntries(report.LogEntries.Select(Convert));
+                        var count2 = taskLogCache.Count;
+                        _webServerCounter.TaskExecutionReportProcessLogEntriesCount += (uint)(count2 - count1);
+                    }
                 }
+                stopwatchProcessLogEntries.Stop();
+                _webServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan += stopwatchProcessLogEntries.Elapsed;
+
 
 
                 var stopwatchProcessMessage = new Stopwatch();
@@ -141,11 +173,14 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     stopwatchProcessMessage.Stop();
                     _logger.LogInformation(
                         $"process:{messageStatusGroup.Count()},spent:{stopwatchProcessMessage.Elapsed}");
+                    _webServerCounter.TaskExecutionReportProcessTimeSpan += stopwatchProcessLogEntries.Elapsed;
                     stopwatchProcessMessage.Reset();
                 }
                 stopwatchSave.Start();
-                await dbContext.SaveChangesAsync(stoppingToken);
+                int changesCount = await dbContext.SaveChangesAsync(stoppingToken);
                 stopwatchSave.Stop();
+                _webServerCounter.TaskExecutionReportSaveTimeSpan += stopwatchProcessLogEntries.Elapsed;
+                _webServerCounter.TaskExecutionReportSaveChangesCount += (uint)changesCount;
             }
         }
         catch (Exception ex)

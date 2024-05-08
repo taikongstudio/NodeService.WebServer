@@ -17,6 +17,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
     private readonly WebServerOptions _webServerOptions;
     private NodeSettings _nodeSettings;
     private readonly ExceptionCounter _exceptionCounter;
+    private readonly WebServerCounter _webServerCounter;
 
     public HeartBeatResponseConsumerService(
         ExceptionCounter exceptionCounter,
@@ -25,7 +26,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
         BatchQueue<NodeHeartBeatSessionMessage> heartBeatMessageBatchBlock,
         IMemoryCache memoryCache,
-        IOptionsMonitor<WebServerOptions> optionsMonitor
+        IOptionsMonitor<WebServerOptions> optionsMonitor,
+        WebServerCounter webServerCounter
     )
     {
         _logger = logger;
@@ -36,6 +38,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         _webServerOptions = optionsMonitor.CurrentValue;
         _nodeSettings = new NodeSettings();
         _exceptionCounter = exceptionCounter;
+        _webServerCounter = webServerCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -55,6 +58,9 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 await ProcessHeartBeatMessagesAsync(arrayPoolCollection);
                 _logger.LogInformation(
                     $"process {arrayPoolCollection.CountNotNull()} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
+                _webServerCounter.HeartBeatAvailableCount = (uint)_hearBeatMessageBatchQueue.AvailableCount;
+                _webServerCounter.HeartBeatTotalProcessTimeSpan += stopwatch.Elapsed;
+                _webServerCounter.HeartBeatConsumeCount += (uint)count;
                 stopwatch.Reset();
             }
             catch (Exception ex)

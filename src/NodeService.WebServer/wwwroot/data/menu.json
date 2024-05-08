@@ -162,6 +162,11 @@
         "path": "/Diagnostics/ExceptionCounter",
         "name": "异常计数器",
         "key": "Diagnostics.ExceptionCounter"
+      },
+      {
+        "path": "/Diagnostics/WebServerCounter",
+        "name": "网站计数器",
+        "key": "Diagnostics.WebServerCounter"
       }
     ]
   }

@@ -378,6 +378,7 @@ public class Program
         builder.Services.AddSingleton<TaskLogCacheManager>();
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
         builder.Services.AddSingleton<ExceptionCounter>();
+        builder.Services.AddSingleton<WebServerCounter>();
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

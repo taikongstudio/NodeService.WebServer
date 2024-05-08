@@ -185,6 +185,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 stopwatchSave.Stop();
                 _webServerCounter.TaskExecutionReportSaveTimeSpan += stopwatchSave.Elapsed;
                 _webServerCounter.TaskExecutionReportSaveChangesCount += (uint)changesCount;
+                stopwatchSave.Reset();
             }
         }
         catch (Exception ex)

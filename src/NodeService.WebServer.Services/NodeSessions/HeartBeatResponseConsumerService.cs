@@ -61,7 +61,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 _webServerCounter.HeartBeatAvailableCount = (uint)_hearBeatMessageBatchQueue.AvailableCount;
                 _webServerCounter.HeartBeatTotalProcessTimeSpan += stopwatch.Elapsed;
                 _webServerCounter.HeartBeatConsumeCount += (uint)count;
-                stopwatch.Reset();
             }
             catch (Exception ex)
             {

@@ -7,13 +7,13 @@ namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskExecutionInstanceInitializer
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ILogger<TaskExecutionInstanceInitializer> _logger;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly ConcurrentDictionary<string, TaskPenddingContext> _penddingContextDictionary;
-    private readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
-    private readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
-    private readonly ExceptionCounter _exceptionCounter;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ILogger<TaskExecutionInstanceInitializer> _logger;
+    readonly INodeSessionService _nodeSessionService;
+    readonly ConcurrentDictionary<string, TaskPenddingContext> _penddingContextDictionary;
+    readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
+    readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
+    readonly ExceptionCounter _exceptionCounter;
 
     public TaskExecutionInstanceInitializer(
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
@@ -42,7 +42,7 @@ public class TaskExecutionInstanceInitializer
     public Channel<TaskPenddingContext> PenddingContextChannel { get; }
     public ActionBlock<TaskPenddingContext> PenddingActionBlock { get; }
 
-    private async Task SchedulePenddingContextAsync()
+    async Task SchedulePenddingContextAsync()
     {
         while (true)
         {
@@ -56,7 +56,7 @@ public class TaskExecutionInstanceInitializer
         }
     }
 
-    private async Task ProcessPenddingContextAsync(TaskPenddingContext context)
+    async Task ProcessPenddingContextAsync(TaskPenddingContext context)
     {
         var canSendFireEventToNode = false;
         try

@@ -8,7 +8,7 @@ public partial class CommonConfigController
         return AddOrUpdateConfigurationAsync(model, AddOrUpdateJobScheduleConfigAsync);
     }
 
-    private async Task AddOrUpdateJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)
+    async Task AddOrUpdateJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)
     {
         await _serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>().EnqueueAsync(
             new TaskScheduleMessage(TaskTriggerSource.Schedule, jobScheduleConfig.Id,
@@ -56,7 +56,7 @@ public partial class CommonConfigController
         return DeleteConfigurationAsync(model, RemoveJobScheduleConfigAsync);
     }
 
-    private async Task RemoveJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)
+    async Task RemoveJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)
     {
         var messageQueue = _serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>();
         await messageQueue.EnqueueAsync(new TaskScheduleMessage(TaskTriggerSource.Schedule, jobScheduleConfig.Id,

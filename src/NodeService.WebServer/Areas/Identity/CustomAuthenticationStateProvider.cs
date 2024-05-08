@@ -7,7 +7,7 @@ namespace NodeService.WebServer.Areas.Identity;
 
 public class ApiAuthenticationStateProvider : AuthenticationStateProvider
 {
-    private readonly LoginService _loginService;
+    readonly LoginService _loginService;
 
     public ApiAuthenticationStateProvider(LoginService loginService)
     {
@@ -40,7 +40,7 @@ public class ApiAuthenticationStateProvider : AuthenticationStateProvider
         NotifyAuthenticationStateChanged(authState);
     }
 
-    private IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
+    IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
     {
         var claims = new List<Claim>();
         var payload = jwt.Split('.')[1];
@@ -69,7 +69,7 @@ public class ApiAuthenticationStateProvider : AuthenticationStateProvider
         return claims;
     }
 
-    private byte[] ParseBase64WithoutPadding(string base64)
+    byte[] ParseBase64WithoutPadding(string base64)
     {
         switch (base64.Length % 4)
         {

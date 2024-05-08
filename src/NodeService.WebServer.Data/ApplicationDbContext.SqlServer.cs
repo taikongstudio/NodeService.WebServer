@@ -2,7 +2,7 @@
 
 public partial class ApplicationDbContext
 {
-    private void SqlServer_BuildModels(ModelBuilder modelBuilder)
+    void SqlServer_BuildModels(ModelBuilder modelBuilder)
     {
         SqlServer_BuildClientUpdateInfoModel(modelBuilder);
         SqlServer_BuildConfigurationModels(modelBuilder);
@@ -16,7 +16,7 @@ public partial class ApplicationDbContext
         SqlServer_BuildClientUpdateCounterModel(modelBuilder);
     }
 
-    private void SqlServer_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)
+    void SqlServer_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ClientUpdateCounterModel>(entityBuilder =>
         {
@@ -29,7 +29,7 @@ public partial class ApplicationDbContext
         });
     }
 
-    private void SqlServer_BuildNotificationRecordModel(ModelBuilder modelBuilder)
+    void SqlServer_BuildNotificationRecordModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<NotificationRecordModel>(entityBuilder =>
         {
@@ -37,7 +37,7 @@ public partial class ApplicationDbContext
         });
     }
 
-    private void SqlServer_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)
+    void SqlServer_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<JobFireConfigurationModel>(entityBuilder =>
         {
@@ -45,13 +45,13 @@ public partial class ApplicationDbContext
         });
     }
 
-    private void SqlServer_BuildFileUploadRecordModel(ModelBuilder modelBuilder)
+    void SqlServer_BuildFileUploadRecordModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FileRecordModel>()
             .HasKey(t => new { t.Id, t.Name });
     }
 
-    private void SqlServer_BuildClientUpdateInfoModel(ModelBuilder modelBuilder)
+    void SqlServer_BuildClientUpdateInfoModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ClientUpdateConfigModel>()
             .HasKey(t => t.Id);
@@ -68,7 +68,7 @@ public partial class ApplicationDbContext
     }
 
 
-    private static void SqlServer_BuildJobExecutionInstanceModel(ModelBuilder modelBuilder)
+    static void SqlServer_BuildJobExecutionInstanceModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<JobExecutionInstanceModel>()
             .HasKey(nameof(JobExecutionInstanceModel.Id));
@@ -78,7 +78,7 @@ public partial class ApplicationDbContext
             .AutoInclude();
     }
 
-    private void SqlServer_BuildNodePropertySnapshotModel(ModelBuilder modelBuilder)
+    void SqlServer_BuildNodePropertySnapshotModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<NodePropertySnapshotModel>()
             .HasKey(nameof(NodePropertySnapshotModel.Id));
@@ -90,13 +90,13 @@ public partial class ApplicationDbContext
             .SetValueComparer(GetEnumerableComparer<NodePropertyEntry>());
     }
 
-    private static void SqlServer_BuildNodeProfileModel(ModelBuilder modelBuilder)
+    static void SqlServer_BuildNodeProfileModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<NodeProfileModel>()
             .HasKey(nameof(NodeProfileModel.Id));
     }
 
-    private static void SqlServer_BuildNodeInfoModel(ModelBuilder modelBuilder)
+    static void SqlServer_BuildNodeInfoModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<NodeInfoModel>()
             .HasKey(nameof(NodeInfoModel.Id));
@@ -119,7 +119,7 @@ public partial class ApplicationDbContext
             .AutoInclude();
     }
 
-    private static void SqlServer_BuildConfigurationModels(ModelBuilder modelBuilder)
+    static void SqlServer_BuildConfigurationModels(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FtpConfigModel>(builder =>
         {

@@ -83,9 +83,9 @@
 @code{
     [Parameter] public string? NodeId { get; set; }
 
-    private NodePropertyModel _nodeProperties;
-    private NodePropertySnapshotModel _nodePropertySnapshot = new();
-    private NodeInfoModel NodeInfo = new();
+    NodePropertyModel _nodeProperties;
+    NodePropertySnapshotModel _nodePropertySnapshot = new();
+    NodeInfoModel NodeInfo = new();
 
 
     protected override async Task OnInitializedAsync()
@@ -126,12 +126,12 @@
         }
     }
 
-    private void GoBackNodesHomePage()
+    void GoBackNodesHomePage()
     {
         NavigationManager.NavigateTo("/nodes");
     }
 
-    private async Task QueryNodePropsAsync()
+    async Task QueryNodePropsAsync()
     {
         try
         {
@@ -167,7 +167,7 @@
         }
     }
 
-    private void OnProcessClick(string icon)
+    void OnProcessClick(string icon)
     {
     }
 

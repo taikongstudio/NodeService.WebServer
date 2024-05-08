@@ -11,7 +11,7 @@ public class FormItemLayout
 
 public partial class BasicForm
 {
-    private readonly FormItemLayout _formItemLayout = new()
+    readonly FormItemLayout _formItemLayout = new()
     {
         LabelCol = new ColLayoutParam
         {
@@ -27,9 +27,9 @@ public partial class BasicForm
         }
     };
 
-    private readonly BasicFormModel _model = new();
+    readonly BasicFormModel _model = new();
 
-    private readonly FormItemLayout _submitFormLayout = new()
+    readonly FormItemLayout _submitFormLayout = new()
     {
         WrapperCol = new ColLayoutParam
         {
@@ -38,7 +38,7 @@ public partial class BasicForm
         }
     };
 
-    private void HandleSubmit()
+    void HandleSubmit()
     {
     }
 }

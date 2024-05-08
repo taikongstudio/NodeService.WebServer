@@ -6,7 +6,7 @@ namespace NodeService.WebServer.UI.Pages.Profile;
 
 public partial class Basic
 {
-    private BasicProfileDataType _data = new();
+    BasicProfileDataType _data = new();
 
     [Inject] protected IProfileService ProfileService { get; set; }
 

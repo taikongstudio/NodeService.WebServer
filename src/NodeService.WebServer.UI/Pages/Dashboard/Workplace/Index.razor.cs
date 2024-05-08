@@ -6,7 +6,7 @@ namespace NodeService.WebServer.UI.Pages.Dashboard.Workplace;
 
 public partial class Index
 {
-    private readonly EditableLink[] _links =
+    readonly EditableLink[] _links =
     {
         new() { Title = "Operation 1", Href = "" },
         new() { Title = "Operation 2", Href = "" },
@@ -16,8 +16,8 @@ public partial class Index
         new() { Title = "Operation 6", Href = "" }
     };
 
-    private ActivitiesType[] _activities = { };
-    private NoticeType[] _projectNotice = { };
+    ActivitiesType[] _activities = { };
+    NoticeType[] _projectNotice = { };
 
     [Inject] public IProjectService ProjectService { get; set; }
 

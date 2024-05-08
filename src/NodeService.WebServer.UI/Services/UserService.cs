@@ -10,7 +10,7 @@ public interface IUserService
 
 public class UserService : IUserService
 {
-    private readonly HttpClient _httpClient;
+    readonly HttpClient _httpClient;
 
     public UserService(HttpClient httpClient)
     {

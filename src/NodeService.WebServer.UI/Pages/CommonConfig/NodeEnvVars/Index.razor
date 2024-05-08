@@ -11,7 +11,8 @@
 <GridContent>
     <Modal Title="@_modalTitle"
            Width="800"
-           Visible="@_editFormVisible"
+           Style="top:0px"
+           @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
@@ -44,15 +45,6 @@
         </Form>
     </Modal>
 
-    <Space Style="margin-bottom:16px">
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="_dataSource.Request">刷新</Button>
-        </SpaceItem>
-
-    </Space>
     <Table @ref="_table"
            Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
@@ -71,9 +63,19 @@
                 <GridCol Span="4">
                     <Title Level="3">节点环境配置</Title>
                 </GridCol>
-                <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                <GridCol Span="6" Offset="18">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
                 </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
@@ -117,8 +119,8 @@
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
     Form<NodeEnvVarsConfigModel> _editForm;
-    private RoutedPaginationDataSource<NodeEnvVarsConfigModel, PaginationQueryParameters> _dataSource;
-    private IEnumerable<NodeInfoModel> _selectedNodes;
+    RoutedPaginationDataSource<NodeEnvVarsConfigModel, PaginationQueryParameters> _dataSource;
+    IEnumerable<NodeInfoModel> _selectedNodes;
 
     protected override void OnInitialized()
     {
@@ -135,7 +137,7 @@
     NodeEnvVarsConfigModel _editModel = new();
 
 
-    private async Task ShowEditForm(NodeEnvVarsConfigModel? model = null)
+    async Task ShowEditForm(NodeEnvVarsConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
@@ -155,7 +157,7 @@
         }
     }
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -196,13 +198,13 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
-    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
         {
@@ -224,7 +226,7 @@
             options);
     }
 
-    private async Task DeleteConfig(NodeEnvVarsConfigModel model)
+    async Task DeleteConfig(NodeEnvVarsConfigModel model)
     {
         try
         {
@@ -258,13 +260,13 @@
     }
 
 
-    private void HandleEditFormCancel(MouseEventArgs e)
+    void HandleEditFormCancel(MouseEventArgs e)
     {
         _editFormVisible = false;
     }
 
 
-    private void HandleEditFormOk(MouseEventArgs e)
+    void HandleEditFormOk(MouseEventArgs e)
     {
         _editFormSubmitting = true;
         _editForm.Submit();

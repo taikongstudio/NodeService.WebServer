@@ -8,9 +8,9 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class NotificationController : Controller
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ILogger<NotificationController> _logger;
-    private readonly ExceptionCounter _exceptionCounter;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ILogger<NotificationController> _logger;
+    readonly ExceptionCounter _exceptionCounter;
 
     public NotificationController(
         ExceptionCounter exceptionCounter,

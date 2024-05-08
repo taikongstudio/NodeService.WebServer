@@ -14,23 +14,27 @@
             TItem="StringEntry"
             Style="width:200px"
             TItemValue="string"
+            Size="middle"
             DefaultActiveFirstOption
             LabelName="@nameof(StringEntry.Name)"
             ValueName="@nameof(StringEntry.Tag)"/>
-    <RadioGroup
-        Style="margin-left:20px"
+    <RadioGroup Style="margin-left:20px"
         ValueChanged="(NodeStatus status) => OnSelectedStatusChanged(status)"
         Value="@_dataSource.QueryParameters.Status"
         Size="middle">
         <Radio RadioButton Value="@(NodeStatus.All)">全部状态</Radio>
-        <Radio RadioButton Value="@(NodeStatus.Online)">在线</Radio>
-        <Radio RadioButton Value="@(NodeStatus.Offline)">离线</Radio>
+        <Radio RadioButton Value="@(NodeStatus.Online)">
+            <Badge Status="@(GetStatus(NodeStatus.Online))" Text="在线"/>
+        </Radio>
+        <Radio RadioButton Value="@(NodeStatus.Offline)">
+            <Badge Status="@(GetStatus(NodeStatus.Offline))" Text="在线" />
+        </Radio>
     </RadioGroup>
 
 </GridRow>
 
 <GridRow>
-    <div style="margin:10px 0px;padding:10px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
+    <div style="margin:5px 0px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
         @if (SelectedItems != null)
         {
             foreach (var item in SelectedItems)
@@ -65,11 +69,12 @@
                DataSource="@_dataSource.ItemsSource"
                Loading="@_dataSource.IsLoading"
                SelectedRows="@SelectedItems"
+               Resizable
                SelectedRowsChanged="(IEnumerable<NodeInfoModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
                 <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>
-                <PropertyColumn Property="c => c.Id" Sortable Title="标志"></PropertyColumn>
+                <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
                 <PropertyColumn Property="c => c.Name" Sortable Title="节点名称">
                     <Badge Status="@(GetStatus(ctx.Status))" Text="@ctx.Name"></Badge>
                 </PropertyColumn>
@@ -87,7 +92,7 @@
     NodeSettings _nodeSettings = new();
 
 
-    private PaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
+    PaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
 
 
     protected override void OnInitialized()
@@ -109,7 +114,7 @@
         await base.OnInitializedAsync();
     }
 
-    private async Task QueryNodeSettingsAsync()
+    async Task QueryNodeSettingsAsync()
     {
         try
         {
@@ -138,19 +143,19 @@
         }
     }
 
-    private async Task OnSelectedAreaTagChanged(StringEntry value)
+    async Task OnSelectedAreaTagChanged(StringEntry value)
     {
         _dataSource.QueryParameters.AreaTag = value?.Tag;
         await _dataSource.RefreshAsync();
     }
 
-    private async Task OnSelectedStatusChanged(NodeStatus status)
+    async Task OnSelectedStatusChanged(NodeStatus status)
     {
         _dataSource.QueryParameters.Status = status;
         await _dataSource.RefreshAsync();
     }
 
-    private string GetStatus(NodeStatus status)
+    string GetStatus(NodeStatus status)
     {
         switch (status)
         {
@@ -163,7 +168,7 @@
         }
     }
 
-    private async Task OnTableChanged(QueryModel<NodeInfoModel> query)
+    async Task OnTableChanged(QueryModel<NodeInfoModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)

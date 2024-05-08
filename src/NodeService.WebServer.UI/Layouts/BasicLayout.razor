@@ -4,7 +4,8 @@
 <AuthorizeView>
     <Authorized>
         <AntDesign.ProLayout.BasicLayout Logo="@("/assets/nodes.svg")"
-                                         MenuData="_menuItems"  >
+                                         MenuData="_menuItems"
+                                         ContentStyle="margin:5px;">
             <RightContentRender>
                 <RightContent/>
             </RightContentRender>
@@ -25,7 +26,7 @@
 
 @code
 {
-    private MenuDataItem[] _menuItems = { };
+    MenuDataItem[] _menuItems = { };
 
     [Inject] public HttpClient HttpClient { get; set; }
 

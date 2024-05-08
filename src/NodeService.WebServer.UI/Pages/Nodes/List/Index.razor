@@ -79,7 +79,7 @@
     </Drawer>
     <Modal Width="800"
            Title="节点配置"
-           Visible="@_editFormVisible"
+           @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
@@ -290,20 +290,20 @@
         }
     }
 
-    private void HandleEditFormCancel(MouseEventArgs e)
+    void HandleEditFormCancel(MouseEventArgs e)
     {
         _editFormSubmitting = false;
         _editFormVisible = false;
     }
 
 
-    private void HandleEditFormOk(MouseEventArgs e)
+    void HandleEditFormOk(MouseEventArgs e)
     {
         _editFormSubmitting = true;
         _editForm.Submit();
     }
 
-    private async Task QueryNodeSettingsAsync()
+    async Task QueryNodeSettingsAsync()
     {
         try
         {
@@ -351,7 +351,7 @@
     }
 
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -386,21 +386,21 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
-    private void OnNodeNameChanged(MouseEventArgs e)
+    void OnNodeNameChanged(MouseEventArgs e)
     {
     }
 
-    private void OnSelectedFactoryNameChanged(string value)
+    void OnSelectedFactoryNameChanged(string value)
     {
     }
 
-    private bool OnFilterAreaTag(string value, string name)
+    bool OnFilterAreaTag(string value, string name)
     {
         if (name == "*")
         {
@@ -414,7 +414,7 @@
     {
     }
 
-    private async Task RefreshAsync()
+    async Task RefreshAsync()
     {
         await QueryNodeSettingsAsync();
         await QueryNodeListAsync();
@@ -442,7 +442,7 @@
         await RefreshAsync();
     }
 
-    private void OnNodeTableChanged(QueryModel<NodeInfoModel> query)
+    void OnNodeTableChanged(QueryModel<NodeInfoModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
@@ -458,7 +458,7 @@
         _dataSource.Request();
     }
 
-    private void OnKeywordsChanged(string keywords)
+    void OnKeywordsChanged(string keywords)
     {
         _dataSource.PageIndex = 1;
         _dataSource.QueryParameters.Keywords = _keywords;
@@ -478,14 +478,14 @@
         _dataSource.Dispose();
     }
 
-    private void OnSelectedAreaTag(StringEntry entry)
+    void OnSelectedAreaTag(StringEntry entry)
     {
         _dataSource.PageIndex = 1;
         _dataSource.QueryParameters.AreaTag = entry.Tag;
         _dataSource.Request();
     }
 
-    private void OnNodeStatusChanged(NodeStatus nodeStatus)
+    void OnNodeStatusChanged(NodeStatus nodeStatus)
     {
         _nodeStatus = nodeStatus;
         _dataSource.PageIndex = 1;

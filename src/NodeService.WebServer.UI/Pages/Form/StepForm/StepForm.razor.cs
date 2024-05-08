@@ -2,7 +2,7 @@ namespace NodeService.WebServer.UI.Pages.Form;
 
 public partial class StepForm
 {
-    private int _current;
+    int _current;
 
     public void Next()
     {

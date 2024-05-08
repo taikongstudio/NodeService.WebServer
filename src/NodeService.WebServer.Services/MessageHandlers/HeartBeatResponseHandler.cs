@@ -5,9 +5,9 @@ namespace NodeService.WebServer.Services.MessageHandlers;
 
 public class HeartBeatResponseHandler : IMessageHandler
 {
-    private readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
-    private readonly ILogger<HeartBeatResponseHandler> _logger;
-    private readonly INodeSessionService _nodeSessionService;
+    readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
+    readonly ILogger<HeartBeatResponseHandler> _logger;
+    readonly INodeSessionService _nodeSessionService;
 
     public HeartBeatResponseHandler(
         INodeSessionService nodeSessionService,
@@ -21,7 +21,7 @@ public class HeartBeatResponseHandler : IMessageHandler
         NodeSessionId = NodeSessionId.Empty;
     }
 
-    public NodeSessionId NodeSessionId { get; private set; }
+    public NodeSessionId NodeSessionId { get; set; }
 
     public async ValueTask DisposeAsync()
     {

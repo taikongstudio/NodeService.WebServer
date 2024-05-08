@@ -11,7 +11,7 @@ public class AddingNewItemEventArgs : EventArgs
 
     public bool Handled { get; set; }
 
-    public StringEntry DataItem { get; private set; }
+    public StringEntry DataItem { get; set; }
 }
 
 public class ValueChangingEventArgs<T> : EventArgs
@@ -24,7 +24,7 @@ public class ValueChangingEventArgs<T> : EventArgs
 
     public bool Handled { get; set; }
 
-    public StringEntry DataItem { get; private set; }
+    public StringEntry DataItem { get; set; }
 
-    public T Value { get; private set; }
+    public T Value { get; set; }
 }

@@ -9,15 +9,15 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public class HeartBeatResponseConsumerService : BackgroundService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
-    private readonly ILogger<HeartBeatResponseConsumerService> _logger;
-    private readonly IMemoryCache _memoryCache;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly WebServerOptions _webServerOptions;
-    private NodeSettings _nodeSettings;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly WebServerCounter _webServerCounter;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
+    readonly ILogger<HeartBeatResponseConsumerService> _logger;
+    readonly IMemoryCache _memoryCache;
+    readonly INodeSessionService _nodeSessionService;
+    readonly WebServerOptions _webServerOptions;
+    NodeSettings _nodeSettings;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly WebServerCounter _webServerCounter;
 
     public HeartBeatResponseConsumerService(
         ExceptionCounter exceptionCounter,
@@ -77,7 +77,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private async Task InvalidateAllNodeStatusAsync(CancellationToken stoppingToken)
+    async Task InvalidateAllNodeStatusAsync(CancellationToken stoppingToken)
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         try
@@ -93,7 +93,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private async Task ProcessHeartBeatMessagesAsync(
+    async Task ProcessHeartBeatMessagesAsync(
         ArrayPoolCollection<NodeHeartBeatSessionMessage> arrayPoolCollection)
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
@@ -129,7 +129,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private async Task RefreshNodeSettings(ApplicationDbContext dbContext)
+    async Task RefreshNodeSettings(ApplicationDbContext dbContext)
     {
         var dict = await dbContext.PropertyBagDbSet.FindAsync("NodeSettings");
         if (dict == null || !dict.TryGetValue("Value", out var value))
@@ -138,7 +138,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             _nodeSettings = JsonSerializer.Deserialize<NodeSettings>(value as string);
     }
 
-    private async Task ProcessHeartBeatMessageAsync(
+    async Task ProcessHeartBeatMessageAsync(
         ApplicationDbContext dbContext,
         NodeHeartBeatSessionMessage hearBeatMessage
     )
@@ -237,7 +237,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private void AnalysisProcessInfoList(NodeInfoModel? nodeInfo, ProcessInfo[]? processInfoList)
+    void AnalysisProcessInfoList(NodeInfoModel? nodeInfo, ProcessInfo[]? processInfoList)
     {
         if (_nodeSettings.ProcessUsagesMapping != null && processInfoList != null)
         {

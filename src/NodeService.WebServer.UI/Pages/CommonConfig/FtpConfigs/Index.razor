@@ -6,8 +6,9 @@
 @inject NavigationManager NavigationManager
 <GridContent>
     <Modal Width="800"
+           Style="top:0px"
            Title="@_modalTitle"
-           Visible="@_editFormVisible"
+           @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
@@ -48,15 +49,6 @@
         </Form>
     </Modal>
 
-    <Space Style="margin-bottom:16px">
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="_dataSource.ForceRequest">刷新</Button>
-        </SpaceItem>
-
-    </Space>
     <Table @ref="@_table" Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            EnableVirtualization="false"
@@ -74,9 +66,19 @@
                 <GridCol Span="4">
                     <Title Level="3">Ftp配置</Title>
                 </GridCol>
-                <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                <GridCol Span="6" Offset="18">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
                 </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
@@ -137,8 +139,8 @@
     Form<FtpConfigModel> _editForm;
     FtpConfigModel _editModel = new();
 
-    private bool _loading;
-    private RoutedPaginationDataSource<FtpConfigModel, PaginationQueryParameters> _dataSource;
+    bool _loading;
+    RoutedPaginationDataSource<FtpConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
@@ -150,7 +152,7 @@
         base.OnInitialized();
     }
 
-    private void ShowEditForm(FtpConfigModel? model = null)
+    void ShowEditForm(FtpConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
@@ -168,7 +170,7 @@
         }
     }
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -202,14 +204,14 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
 
-    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
         {
@@ -231,7 +233,7 @@
             options);
     }
 
-    private async Task DeleteConfig(FtpConfigModel model)
+    async Task DeleteConfig(FtpConfigModel model)
     {
         try
         {
@@ -265,14 +267,14 @@
     }
 
 
-    private void HandleEditFormCancel(MouseEventArgs e)
+    void HandleEditFormCancel(MouseEventArgs e)
     {
         _editFormSubmitting = false;
         _editFormVisible = false;
     }
 
 
-    private void HandleEditFormOk(MouseEventArgs e)
+    void HandleEditFormOk(MouseEventArgs e)
     {
         _editFormSubmitting = true;
         _editForm.Submit();

@@ -6,11 +6,11 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class VirtualFileSystemController : Controller
 {
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<VirtualFileSystemController> _logger;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly IVirtualFileSystem _virtualFileSystem;
-    private readonly WebServerOptions _webServerOptions;
+    readonly IConfiguration _configuration;
+    readonly ILogger<VirtualFileSystemController> _logger;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly IVirtualFileSystem _virtualFileSystem;
+    readonly WebServerOptions _webServerOptions;
 
     public VirtualFileSystemController(
         ILogger<VirtualFileSystemController> logger,

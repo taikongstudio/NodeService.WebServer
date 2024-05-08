@@ -6,10 +6,10 @@ namespace NodeService.WebServer.Services.Notifications;
 
 public class NotificationService : BackgroundService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ILogger<NotificationService> _logger;
-    private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
-    private readonly ExceptionCounter _exceptionCounter;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ILogger<NotificationService> _logger;
+    readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
+    readonly ExceptionCounter _exceptionCounter;
 
     public NotificationService(
         ExceptionCounter exceptionCounter,

@@ -2,8 +2,8 @@
 
 public class ApplicationDbRepository : IApplicationDbRepository, IDisposable
 {
-    private readonly ApplicationDbContext _dbContext;
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ApplicationDbContext _dbContext;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
     public ApplicationDbRepository(IDbContextFactory<ApplicationDbContext> dbContextFactory)
     {

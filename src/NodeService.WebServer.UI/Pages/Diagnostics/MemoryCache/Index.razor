@@ -26,10 +26,10 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        this.Refresh();
+        Refresh();
     }
 
-    private void Refresh()
+    void Refresh()
     {
         var currentStatistics = MemoryCache.GetCurrentStatistics();
         if (currentStatistics != null)

@@ -24,11 +24,11 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        this.Refresh();
+        Refresh();
     }
 
-    private void Refresh()
+    void Refresh()
     {
-        this.Statistics = ExceptionCounter.GetStatistics().OrderByDescending(x => x.Count);
+        Statistics = ExceptionCounter.GetStatistics().OrderByDescending(x => x.Count);
     }
 }

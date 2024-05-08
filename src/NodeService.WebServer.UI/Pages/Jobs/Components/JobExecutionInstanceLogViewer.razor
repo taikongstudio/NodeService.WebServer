@@ -168,7 +168,7 @@
         return false;
     }
 
-    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
         {
@@ -178,11 +178,11 @@
         };
     }
 
-    private void OnModalVisibleChanged(bool visible)
+    void OnModalVisibleChanged(bool visible)
     {
     }
 
-    private void InitCancellationTokenSource()
+    void InitCancellationTokenSource()
     {
         if (_cancellationTokenSource == null)
         {

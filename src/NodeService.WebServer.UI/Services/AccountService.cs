@@ -10,7 +10,7 @@ public interface IAccountService
 
 public class AccountService : IAccountService
 {
-    private readonly Random _random = new();
+    readonly Random _random = new();
 
     public Task LoginAsync(LoginParamsType model)
     {

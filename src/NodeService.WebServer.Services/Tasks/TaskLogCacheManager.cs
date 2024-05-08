@@ -5,12 +5,12 @@ namespace NodeService.WebServer.Services.Tasks;
 public class TaskLogCacheManager
 {
     public const string TaskKeyPrefix = "Task_";
-    private readonly ILogger<TaskLogCacheManager> _logger;
-    private readonly ConcurrentDictionary<string, TaskLogCache> _taskLogCaches;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly TaskLogDatabase _taskLogDatabase;
-    private long _initialized;
-    private JsonSerializerOptions _jsonSerializerOptions;
+    readonly ILogger<TaskLogCacheManager> _logger;
+    readonly ConcurrentDictionary<string, TaskLogCache> _taskLogCaches;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly TaskLogDatabase _taskLogDatabase;
+    long _initialized;
+    JsonSerializerOptions _jsonSerializerOptions;
 
     public TaskLogCacheManager(
         ILogger<TaskLogCacheManager> logger,
@@ -38,7 +38,7 @@ public class TaskLogCacheManager
         return taskLogCache;
     }
 
-    private TaskLogCache EnsureTaskLogCache(string taskId)
+    TaskLogCache EnsureTaskLogCache(string taskId)
     {
         TaskLogCache? taskLogCache = null;
         if (!_taskLogDatabase.TryReadTask<TaskLogCacheDump>(
@@ -82,7 +82,7 @@ public class TaskLogCacheManager
         }
     }
 
-    private void TryTruncateCache(TaskLogCache taskLogCache)
+    void TryTruncateCache(TaskLogCache taskLogCache)
     {
         if (taskLogCache.CreationDateTimeUtc.ToLocalTime() != DateTime.MinValue &&
             DateTime.UtcNow - taskLogCache.CreationDateTimeUtc > TimeSpan.FromDays(7))
@@ -103,7 +103,7 @@ public class TaskLogCacheManager
         DetachTaskLogCaches();
     }
 
-    private void DetachTaskLogCaches()
+    void DetachTaskLogCaches()
     {
         _logger.LogInformation("begin remove task log cache");
         var taskLogCacheList = new List<TaskLogCache>();

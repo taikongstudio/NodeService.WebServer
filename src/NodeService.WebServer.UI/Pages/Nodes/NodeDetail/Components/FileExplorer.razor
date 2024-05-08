@@ -37,11 +37,11 @@
                 <ActionColumn Fixed="right" Title="操作">
                     <Space Size=@("middle")>
                         <SpaceItem>
-                            @*        <Button OnClick="()=>this.DeleteFileAsync(context.FullName)" Type="@ButtonType.Link">删除</Button>
+                            @*        <Button OnClick="()=>DeleteFileAsync(context.FullName)" Type="@ButtonType.Link">删除</Button>
                             *@
                         </SpaceItem>
                         <SpaceItem>
-                            @*         <Button OnClick="()=>this.MoveFileAsync(context.FullName)" Type="@ButtonType.Link">移动</Button>
+                            @*         <Button OnClick="()=>MoveFileAsync(context.FullName)" Type="@ButtonType.Link">移动</Button>
                             *@
                         </SpaceItem>
                     </Space>
@@ -132,14 +132,14 @@
                         @*                             @if (!context.Type.Contains("Directory"))
                                 {
                                     <SpaceItem>
-                                        <Button OnClick="()=>this.DownloadAsync(context.FullName)" Type="@ButtonType.Link">下载</Button>
+                                        <Button OnClick="()=>DownloadAsync(context.FullName)" Type="@ButtonType.Link">下载</Button>
                                     </SpaceItem>
                                 } *@
                         @*            <SpaceItem>
-                                    <Button OnClick="()=>this.DeleteAsync(context.FullName)" Type="@ButtonType.Link">删除</Button>
+                                    <Button OnClick="()=>DeleteAsync(context.FullName)" Type="@ButtonType.Link">删除</Button>
                                 </SpaceItem>
                                 <SpaceItem>
-                                    <Button OnClick="()=>this.MoveAsync(context.FullName)" Type="@ButtonType.Link">移动</Button>
+                                    <Button OnClick="()=>MoveAsync(context.FullName)" Type="@ButtonType.Link">移动</Button>
                                 </SpaceItem> *@
                     </Space>
                 </ActionColumn>
@@ -183,19 +183,19 @@
         }
     }
 
-    private void TimerCallback(object? sender, EventArgs e)
+    void TimerCallback(object? sender, EventArgs e)
     {
         _ = InvokeAsync(QueryBulkOperationReportAsync);
     }
 
 
-    private async void GoHome()
+    async void GoHome()
     {
         _currentDirectory = "/";
         await ListDirectoryAsync(_currentDirectory);
     }
 
-    private async void GoBack()
+    async void GoBack()
     {
         if (_backStack.Count > 0)
         {
@@ -205,7 +205,7 @@
         }
     }
 
-    private async void GoForward()
+    async void GoForward()
     {
         if (_forwardStack.Count > 0)
         {
@@ -218,7 +218,7 @@
     }
 
 
-    private async Task QueryBulkOperationReportAsync()
+    async Task QueryBulkOperationReportAsync()
     {
         if (bulkOperationRequestIdList.Count == 0)
         {
@@ -277,7 +277,7 @@
         StateHasChanged();
     }
 
-    private async Task NavigateAsync(string url)
+    async Task NavigateAsync(string url)
     {
         if (_currentDirectory != null)
         {
@@ -289,11 +289,11 @@
         await ListDirectoryAsync(_currentDirectory);
     }
 
-    private async void DeleteAsync(string fileName)
+    async void DeleteAsync(string fileName)
     {
     }
 
-    private async void DownloadAsync(string fileName)
+    async void DownloadAsync(string fileName)
     {
         try
         {
@@ -329,11 +329,11 @@
         }
     }
 
-    private async void MoveAsync(string fileName)
+    async void MoveAsync(string fileName)
     {
     }
 
-    private async Task ListDirectoryAsync(string directory)
+    async Task ListDirectoryAsync(string directory)
     {
         try
         {
@@ -372,7 +372,7 @@
         }
     }
 
-    private async Task ListDriveAsync()
+    async Task ListDriveAsync()
     {
         try
         {

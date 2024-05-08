@@ -24,7 +24,7 @@
 </Table>
 
 @code {
-    private IEnumerable<ServiceProcessInfo> _dataSource = [];
+    IEnumerable<ServiceProcessInfo> _dataSource = [];
 
     [Parameter] public IEnumerable<ServiceProcessInfo> Win32Services { get; set; } = [];
 

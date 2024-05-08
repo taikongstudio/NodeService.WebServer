@@ -7,15 +7,15 @@ namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskScheduleService : BackgroundService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ILogger<TaskScheduleService> _logger;
-    private readonly ISchedulerFactory _schedulerFactory;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ILogger<TaskScheduleService> _logger;
+    readonly ISchedulerFactory _schedulerFactory;
+    readonly IServiceProvider _serviceProvider;
+    readonly TaskSchedulerDictionary _taskSchedulerDictionary;
 
-    private readonly IAsyncQueue<TaskScheduleMessage> _taskSchedulerMessageQueue;
-    private readonly ExceptionCounter _exceptionCounter;
-    private IScheduler Scheduler;
+    readonly IAsyncQueue<TaskScheduleMessage> _taskSchedulerMessageQueue;
+    readonly ExceptionCounter _exceptionCounter;
+    IScheduler Scheduler;
 
     public TaskScheduleService(
         IServiceProvider serviceProvider,
@@ -56,7 +56,7 @@ public class TaskScheduleService : BackgroundService
         }
     }
 
-    private async ValueTask ScheduleTaskAsync(
+    async ValueTask ScheduleTaskAsync(
         TaskScheduleMessage taskScheduleMessage,
         CancellationToken cancellationToken = default)
     {
@@ -102,7 +102,7 @@ public class TaskScheduleService : BackgroundService
         }
     }
 
-    private async ValueTask CancelTaskAsync(string key)
+    async ValueTask CancelTaskAsync(string key)
     {
         for (var i = TaskTriggerSource.Schedule; i < TaskTriggerSource.Max - 1; i++)
         {
@@ -112,7 +112,7 @@ public class TaskScheduleService : BackgroundService
         }
     }
 
-    private async ValueTask ScheduleTasksFromDbContextAsync(CancellationToken cancellationToken = default)
+    async ValueTask ScheduleTasksFromDbContextAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -132,7 +132,7 @@ public class TaskScheduleService : BackgroundService
         }
     }
 
-    private async ValueTask<IAsyncDisposable> ScheduleTaskAsync(
+    async ValueTask<IAsyncDisposable> ScheduleTaskAsync(
         TaskSchedulerKey taskSchedulerKey,
         string? parentTaskId,
         JobScheduleConfigModel taskScheduleConfig,

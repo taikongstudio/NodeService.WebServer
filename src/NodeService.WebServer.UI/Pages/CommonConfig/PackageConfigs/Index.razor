@@ -9,15 +9,16 @@
 
 
 <GridContent>
-    <Drawer Closable="true" Width="320" Visible="@_packageConfigDrawerVisible" Title='"查看内容"' OnClose="ClosePackageConfigJsonStringDrawer">
+    <Drawer Closable="true" Width="320" @bind-Visible="@_packageConfigDrawerVisible" Title='"查看内容"' OnClose="ClosePackageConfigJsonStringDrawer">
         <Template style="height:90%">
             <TextArea Style="height:500px" ReadOnly Value="@pluginString" />
         </Template>
     </Drawer>
     <Modal
         Width="800"
+        Style="top:0px"
         Title="@_modalTitle"
-        Visible="@_editFormVisible"
+        @bind-Visible="@_editFormVisible"
         ConfirmLoading="@_editFormConfirmLoading"
         OnOk="@HandleEditOk"
         OnCancel="@HandleCancel">
@@ -78,15 +79,6 @@
         </Form>
     </Modal>
 
-    <Space Style="margin-bottom:16px">
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新增配置</Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="_dataSource.Request">刷新</Button>
-        </SpaceItem>
-
-    </Space>
     <Table @ref="_table"
            Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
@@ -105,9 +97,19 @@
                 <GridCol Span="4">
                     <Title Level="3">包配置</Title>
                 </GridCol>
-                <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                <GridCol Span="6" Offset="18">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
                 </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
@@ -190,8 +192,8 @@
 
     List<string> _entryPoints = new();
 
-    private AutoCompleteOption selectItem;
-    private AutoCompleteOption activeItem;
+    AutoCompleteOption selectItem;
+    AutoCompleteOption activeItem;
 
     void OnSelectionChange(AutoCompleteOption item)
     {
@@ -205,7 +207,7 @@
     }
 
 
-    private RoutedPaginationDataSource<PackageConfigModel, PaginationQueryParameters> _dataSource;
+    RoutedPaginationDataSource<PackageConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
@@ -217,9 +219,9 @@
         base.OnInitialized();
     }
 
-    private IBrowserFile _file;
+    IBrowserFile _file;
 
-    private void ShowEditForm(PackageConfigModel? model = null)
+    void ShowEditForm(PackageConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
@@ -237,20 +239,20 @@
         }
     }
 
-    private void OpenPackageConfigJsonStringDrawer(PackageConfigModel model)
+    void OpenPackageConfigJsonStringDrawer(PackageConfigModel model)
     {
         pluginString = JsonSerializer.Serialize(model);
         _packageConfigDrawerVisible = true;
     }
 
-    private void ClosePackageConfigJsonStringDrawer()
+    void ClosePackageConfigJsonStringDrawer()
     {
         pluginString = null;
         _packageConfigDrawerVisible = false;
     }
 
 
-    private void HandleEditOk(MouseEventArgs e)
+    void HandleEditOk(MouseEventArgs e)
     {
         if (_fileError != null)
         {
@@ -261,12 +263,12 @@
         _editForm.Submit();
     }
 
-    private void HandleCancel(MouseEventArgs e)
+    void HandleCancel(MouseEventArgs e)
     {
         _editFormVisible = false;
     }
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -303,13 +305,13 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
-    private async Task OnInputFileChanged(InputFileChangeEventArgs e)
+    async Task OnInputFileChanged(InputFileChangeEventArgs e)
     {
         try
         {
@@ -356,12 +358,12 @@
     }
 
 
-    private bool IsEntryPoint(ZipArchiveEntry zipArchiveEntry)
+    bool IsEntryPoint(ZipArchiveEntry zipArchiveEntry)
     {
         return zipArchiveEntry.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
     }
 
-    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
         {
@@ -383,7 +385,7 @@
             options);
     }
 
-    private async Task DeleteConfig(PackageConfigModel model)
+    async Task DeleteConfig(PackageConfigModel model)
     {
         try
         {

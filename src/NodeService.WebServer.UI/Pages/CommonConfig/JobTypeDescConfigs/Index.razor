@@ -10,7 +10,8 @@
 <GridContent>
     <Modal Width="800"
            Title="@_modalTitle"
-           Visible="@_editFormVisible"
+           Style="top:0px"
+           @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
@@ -46,15 +47,6 @@
         </Form>
     </Modal>
 
-    <Space Style="margin-bottom:16px">
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="_dataSource.ForceRequest">刷新</Button>
-        </SpaceItem>
-
-    </Space>
     <Table @ref="_table" 
         RowExpandable="c => true" 
         Size="TableSize.Small" 
@@ -73,9 +65,19 @@
                 <GridCol Span="4">
                     <Title Level="3">作业类型描述配置</Title>
                 </GridCol>
-                <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                <GridCol Span="6" Offset="18">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
                 </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
@@ -130,9 +132,9 @@
     TypedEditor<OptionValueType> _selectedEditor;
 
 
-    private bool _loading;
+    bool _loading;
 
-    private RoutedPaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters> _dataSource;
+    RoutedPaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
@@ -270,7 +272,7 @@
         base.OnInitialized();
     }
 
-    private void ShowEditForm(JobTypeDescConfigModel? model = null)
+    void ShowEditForm(JobTypeDescConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
@@ -289,7 +291,7 @@
     }
 
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -323,13 +325,13 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
-    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
         {
@@ -351,7 +353,7 @@
             options);
     }
 
-    private async Task DeleteConfig(JobTypeDescConfigModel model)
+    async Task DeleteConfig(JobTypeDescConfigModel model)
     {
         try
         {
@@ -385,21 +387,21 @@
     }
 
 
-    private void HandleEditFormCancel(MouseEventArgs e)
+    void HandleEditFormCancel(MouseEventArgs e)
     {
         _editFormSubmitting = false;
         _editFormVisible = false;
     }
 
 
-    private void HandleEditFormOk(MouseEventArgs e)
+    void HandleEditFormOk(MouseEventArgs e)
     {
         _editFormSubmitting = true;
         _editForm.Submit();
     }
 
 
-    private void OnOptionValueAdding(AddingNewItemEventArgs e)
+    void OnOptionValueAdding(AddingNewItemEventArgs e)
     {
         if (_selectedEditor == null)
         {
@@ -412,7 +414,7 @@
         e.DataItem.BeginEdit();
     }
 
-    private void RemoveSelectedOptionValueEditors()
+    void RemoveSelectedOptionValueEditors()
     {
     }
 

@@ -17,11 +17,11 @@ public class TaskLogCachePageDump
 
 public struct TaskLogCachePage : IDisposable
 {
-    private LogEntry[]? _entries;
+    LogEntry[]? _entries;
 
-    private long _entriesOffset;
+    long _entriesOffset;
 
-    private long _flushedCount;
+    long _flushedCount;
 
     public string TaskId { get; }
 
@@ -42,7 +42,7 @@ public struct TaskLogCachePage : IDisposable
 
     public bool IsPersistenced => FlushedCount == EntriesCount;
 
-    public bool IsDisposed { get; private set; }
+    public bool IsDisposed { get; set; }
 
     public TaskLogCachePage(string taskId, int pageSize, int pageIndex)
     {
@@ -84,7 +84,7 @@ public struct TaskLogCachePage : IDisposable
         _entriesOffset++;
     }
 
-    private readonly void CheckIsDisposed()
+    readonly void CheckIsDisposed()
     {
         if (IsDisposed) throw new ObjectDisposedException(nameof(_entries));
     }

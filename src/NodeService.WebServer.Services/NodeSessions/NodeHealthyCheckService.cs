@@ -6,15 +6,15 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public class NodeHealthyCheckService : BackgroundService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly NodeHealthyCounterDictionary _healthyCounterDict;
-    private readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
-    private readonly ILogger<NodeHealthyCheckService> _logger;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly NodeHealthyCounterDictionary _healthyCounterDict;
+    readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
+    readonly ILogger<NodeHealthyCheckService> _logger;
 
 
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly IAsyncQueue<NotificationMessage> _notificationQueue;
+    readonly INodeSessionService _nodeSessionService;
+    readonly IAsyncQueue<NotificationMessage> _notificationQueue;
 
     public NodeHealthyCheckService(
         ILogger<NodeHealthyCheckService> logger,
@@ -43,7 +43,7 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    private async Task CheckNodeHealthyAsync(CancellationToken stoppingToken = default)
+    async Task CheckNodeHealthyAsync(CancellationToken stoppingToken = default)
     {
         try
         {
@@ -84,7 +84,7 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    private bool TryReadConfiguration(
+    bool TryReadConfiguration(
         Dictionary<string, object>? notificationSourceDictionary,
         out NodeHealthyCheckConfiguration? configuration)
     {
@@ -108,7 +108,7 @@ public class NodeHealthyCheckService : BackgroundService
         return configuration != null;
     }
 
-    private async Task SendNodeOfflineNotificationAsync(
+    async Task SendNodeOfflineNotificationAsync(
         ApplicationDbContext dbContext,
         NodeHealthyCheckConfiguration configuration,
         List<string> offlineNodeList,
@@ -129,7 +129,7 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    private static bool CanSendNotification(NodeHealthyCheckConfiguration configuration,
+    static bool CanSendNotification(NodeHealthyCheckConfiguration configuration,
         NodeHealthyCounter healthCounter)
     {
         return healthCounter.SentNotificationCount > 0

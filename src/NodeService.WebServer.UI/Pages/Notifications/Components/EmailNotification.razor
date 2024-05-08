@@ -24,14 +24,14 @@
 
 
 @code {
-    private string _to;
-    private string _cc;
-    private IEnumerable<StringEntry> SelectedTo = [];
-    private IEnumerable<StringEntry> SelectedCC = [];
+    string _to;
+    string _cc;
+    IEnumerable<StringEntry> SelectedTo = [];
+    IEnumerable<StringEntry> SelectedCC = [];
 
     [Parameter] public EmailNotificationOptions Configuration { get; set; }
 
-    private void AddTo(AddingNewItemEventArgs e)
+    void AddTo(AddingNewItemEventArgs e)
     {
         if (string.IsNullOrEmpty(_to))
         {
@@ -43,7 +43,7 @@
     }
 
 
-    private void AddCC(AddingNewItemEventArgs e)
+    void AddCC(AddingNewItemEventArgs e)
     {
         if (string.IsNullOrEmpty(_cc))
         {

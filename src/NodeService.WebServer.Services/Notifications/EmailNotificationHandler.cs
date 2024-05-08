@@ -59,11 +59,11 @@ public class EmailNotificationHandler
         return notificationResult;
     }
 
-    private void MessageSent(object sender, MessageSentEventArgs e)
+    void MessageSent(object sender, MessageSentEventArgs e)
     {
     }
 
-    private bool ServerCertificateValidationCallback(
+    bool ServerCertificateValidationCallback(
         object sender,
         X509Certificate? certificate,
         X509Chain? chain,

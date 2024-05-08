@@ -121,13 +121,13 @@
 
 
 @code {
-    private ITable _table;
+    ITable _table;
 
 
     [Parameter] public IList<StringEntry> ItemsSource { get; set; }
 
 
-    public IEnumerable<StringEntry> SelectedItems { get; private set; } = [];
+    public IEnumerable<StringEntry> SelectedItems { get; set; } = [];
 
 
     [Parameter] public EventCallback<IEnumerable<StringEntry>> SelectedItemsChanged { get; set; }
@@ -163,7 +163,7 @@
 
     [Parameter] public IEnumerable<StringEntry> ValueList { get; set; } = [];
 
-    private void RemoveSelectedItem(StringEntry value)
+    void RemoveSelectedItem(StringEntry value)
     {
         ItemsSource.Remove(value);
     }
@@ -180,7 +180,7 @@
         return base.OnParametersSetAsync();
     }
 
-    private async Task OnSelectedItemsChanged(IEnumerable<StringEntry> items)
+    async Task OnSelectedItemsChanged(IEnumerable<StringEntry> items)
     {
         SelectedItems = items;
         await SelectedItemsChanged.InvokeAsync(items);
@@ -196,7 +196,7 @@
         SelectedItems = [];
     }
 
-    private async Task AddNewItem()
+    async Task AddNewItem()
     {
         var entry = new StringEntry();
         var e = new AddingNewItemEventArgs(entry);
@@ -211,7 +211,7 @@
     }
 
 
-    private async Task OnValueChanging(StringEntry stringEntry, string? value)
+    async Task OnValueChanging(StringEntry stringEntry, string? value)
     {
         var e = new ValueChangingEventArgs<string>(stringEntry, value);
         await ValueChanging.InvokeAsync(e);

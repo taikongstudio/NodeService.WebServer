@@ -7,14 +7,14 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class NodesController : Controller
 {
-    private readonly IAsyncQueue<TaskScheduleMessage> _asyncQueue;
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ILogger<NodesController> _logger;
-    private readonly IMemoryCache _memoryCache;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly IVirtualFileSystem _virtualFileSystem;
-    private readonly WebServerOptions _webServerOptions;
-    private readonly ExceptionCounter _exceptionCounter;
+    readonly IAsyncQueue<TaskScheduleMessage> _asyncQueue;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ILogger<NodesController> _logger;
+    readonly IMemoryCache _memoryCache;
+    readonly INodeSessionService _nodeSessionService;
+    readonly IVirtualFileSystem _virtualFileSystem;
+    readonly WebServerOptions _webServerOptions;
+    readonly ExceptionCounter _exceptionCounter;
 
     public NodesController(
         ExceptionCounter exceptionCounter,

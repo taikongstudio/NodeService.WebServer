@@ -7,8 +7,8 @@ public class PaginationDataSource<TElement, TQueryParameters>
     where TElement : class, new()
     where TQueryParameters : PaginationQueryParameters, new()
 {
-    private readonly Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement>>> _queryFunc;
-    private readonly Action _stateChangedAction;
+    readonly Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement>>> _queryFunc;
+    readonly Action _stateChangedAction;
 
     public PaginationDataSource(
         Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement>>> queryHandler,
@@ -28,22 +28,47 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     public Func<TElement, Task> ItemInitializer { get; set; }
 
-    public IEnumerable<TElement> ItemsSource { get; private set; } = [];
+    public Func<Exception, Task> ExceptionHandler { get; set; }
+
+    public IEnumerable<TElement> ItemsSource { get; set; } = [];
 
     public TQueryParameters QueryParameters { get; } = new();
 
+    public DateTime LastQueryDateTime { get; set; }
+
+    public TimeSpan MinRefreshDuration { get; set; } = TimeSpan.FromSeconds(0.5);
+
     public virtual async Task RefreshAsync()
     {
-        IsLoading = true;
-        QueryParameters.QueryStrategy = QueryStrategy.QueryPreferred;
-        var rsp = await _queryFunc.Invoke(QueryParameters, default);
-        PageSize = rsp.PageSize;
-        PageIndex = rsp.PageIndex;
-        TotalCount = Math.Max(rsp.TotalCount, rsp.PageSize);
-        await CallInitializerAsync(rsp.Result);
-        RaiseStateChanged();
-        IsLoading = false;
-        RaiseStateChanged();
+
+        if (IsLoading || (DateTime.Now - LastQueryDateTime) < MinRefreshDuration)
+        {
+            return;
+        }
+        try
+        {
+            LastQueryDateTime = DateTime.Now;
+            IsLoading = true;
+            RaiseStateChanged();
+            QueryParameters.QueryStrategy = QueryStrategy.QueryPreferred;
+            var rsp = await _queryFunc.Invoke(QueryParameters, default);
+            PageSize = rsp.PageSize;
+            PageIndex = rsp.PageIndex;
+            TotalCount = Math.Max(rsp.TotalCount, rsp.PageSize);
+            await InvokeItemInitializerAsync(rsp.Result);
+            ItemsSource = rsp.Result ?? [];
+        }
+        catch (Exception ex)
+        {
+            ExceptionHandler?.Invoke(ex);
+        }
+        finally
+        {
+            IsLoading = false;
+            RaiseStateChanged();
+        }
+
+
     }
 
     protected void RaiseStateChanged()
@@ -51,12 +76,11 @@ public class PaginationDataSource<TElement, TQueryParameters>
         _stateChangedAction();
     }
 
-    private async Task CallInitializerAsync(IEnumerable<TElement>? itemsSource)
+    async Task InvokeItemInitializerAsync(IEnumerable<TElement>? itemsSource)
     {
         if (itemsSource != null && ItemInitializer != null)
             foreach (var item in itemsSource)
                 await ItemInitializer.Invoke(item);
-        ItemsSource = itemsSource ?? [];
     }
 
 

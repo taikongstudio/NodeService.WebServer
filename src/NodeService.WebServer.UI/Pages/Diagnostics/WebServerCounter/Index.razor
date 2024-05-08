@@ -24,15 +24,15 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        this.Refresh();
+        Refresh();
     }
 
-    private void Refresh()
+    void Refresh()
     {
-        this.Statistics = GetStatistics();
+        Statistics = GetStatistics();
     }
 
-    private IEnumerable<(string Desc, string Value)> GetStatistics()
+    IEnumerable<(string Desc, string Value)> GetStatistics()
     {
         yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesCount), WebServerCounter.TaskExecutionReportProcessLogEntriesCount.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan), WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan.ToString());

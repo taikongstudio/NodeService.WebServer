@@ -21,7 +21,7 @@ public class FireTaskJob : JobBase
         }
     }
 
-    private async Task ExecuteCoreAsync(IJobExecutionContext context)
+    async Task ExecuteCoreAsync(IJobExecutionContext context)
     {
         Logger.LogInformation($"Task fire instance id:{context.FireInstanceId}");
 

@@ -18,10 +18,10 @@ namespace NodeService.WebServer.Services.FileRecords
 {
     public class FileRecordService : BackgroundService
     {
-        private readonly ExceptionCounter _exceptionCounter;
-        private readonly ILogger<FileRecordService> _logger;
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly BatchQueue<BatchQueueOperation<object, object>> _fileRecordsBatchQueue;
+        readonly ExceptionCounter _exceptionCounter;
+        readonly ILogger<FileRecordService> _logger;
+        readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+        readonly BatchQueue<BatchQueueOperation<object, object>> _fileRecordsBatchQueue;
 
         public FileRecordService(
         ExceptionCounter exceptionCounter,
@@ -106,7 +106,7 @@ namespace NodeService.WebServer.Services.FileRecords
             }
         }
 
-        private async Task<PaginationResponse<FileRecordModel>> QueryAsync(
+        async Task<PaginationResponse<FileRecordModel>> QueryAsync(
             ApplicationDbContext dbContext,
             BatchQueueOperation<object, object> operation)
         {
@@ -148,7 +148,7 @@ namespace NodeService.WebServer.Services.FileRecords
             return apiResponse;
         }
 
-        private async Task InsertOrUpdateAsync(ApplicationDbContext dbContext, FileRecordModel model, CancellationToken stoppingToken)
+        async Task InsertOrUpdateAsync(ApplicationDbContext dbContext, FileRecordModel model, CancellationToken stoppingToken)
         {
             var fileRecordFromDb = await dbContext.FileRecordsDbSet.FindAsync(model.Id, model.Name);
             if (fileRecordFromDb == null)

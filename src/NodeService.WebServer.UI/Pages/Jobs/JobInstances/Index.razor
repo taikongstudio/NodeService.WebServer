@@ -8,13 +8,6 @@
 @inject NavigationManager NavigationManager
 @implements IDisposable
 
-<style type="text/css">
-.site-tag-plus {
-    background: #fff;
-    border-style: dashed;
-}
-</style>
-
 <GridContent>
     <JobExecutionInstanceLogViewer @ref="@_logViewer"/>
 
@@ -48,7 +41,7 @@
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
-            <GridRow Wrap>
+            <GridRow Wrap Style="min-height:30px">
                 <Text>节点：</Text>
 
                 @if (_selectedNodeList != null)
@@ -60,14 +53,13 @@
                 }
                 else
                 {
-                    <Text>全部</text>   
+                    <Text>全部</Text>   
                 }
 
-                <Tag Class="site-tag-plus" OnClick="ShowNodeSelectorDialogAsync">
-                    <Icon Type="@IconType.Outline.FolderOpen"/>
-                </Tag>
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.FolderOpen" Type="@ButtonType.Primary" OnClick="ShowNodeSelectorDialogAsync"></Button>
+                  
             </GridRow>
-            <GridRow Wrap>
+            <GridRow Wrap Style="min-height:30px">
                 <Text>任务调度配置：</Text>
                 @if (_selectedJobSchduleConfigList != null)
                 {
@@ -78,17 +70,16 @@
                 }
                 else
                 {
-                    <Text>全部</text>   
+                    <Text>全部</Text>
                 }
-
-                <Tag Class="site-tag-plus" OnClick="ShowTaskDefinitionSelectorDialogAsync">
-                    <Icon Type="@IconType.Outline.FolderOpen"/>
-                </Tag>
+                        
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.FolderOpen" Type="@ButtonType.Primary" OnClick="ShowTaskDefinitionSelectorDialogAsync"></Button>
+                  
             </GridRow>
             <GridRow>
                 <Space Wrap Style="margin-bottom:16px">
                     <SpaceItem>
-                        <RangePicker ValueExpression="() => DateTimes" Size="small" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged"/>
+                        <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged"/>
                     </SpaceItem>
                     <SpaceItem>
                         <Select TItem="JobExeuctionStatusModel"
@@ -215,7 +206,7 @@
 
 @code {
 
-    private class JobExeuctionStatusModel
+    class JobExeuctionStatusModel
     {
         public JobExecutionStatus Value { get; set; }
 
@@ -230,26 +221,26 @@
     NodeSelector _nodeSelector;
 
     JobExecutionInstanceLogViewer _logViewer;
-    private bool _nodeModalVisible;
+    bool _nodeModalVisible;
 
-    private DateTime BeginDateTime;
-    private DateTime EndDateTime;
+    DateTime BeginDateTime;
+    DateTime EndDateTime;
 
-    private readonly DateTime?[] DateTimes = [DateTime.UtcNow.Date, DateTime.UtcNow.Date];
+    readonly DateTime?[] DateTimes = [DateTime.UtcNow.Date, DateTime.UtcNow.Date];
 
-    private IEnumerable<string> _selectedNodeIdList;
-    private IEnumerable<string> _selectedTaskScheduleConfigIdList;
+    IEnumerable<string> _selectedNodeIdList;
+    IEnumerable<string> _selectedTaskScheduleConfigIdList;
 
-    private bool _loading;
-    private RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters> _dataSource;
+    bool _loading;
+    RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters> _dataSource;
 
 
-    private readonly List<JobExeuctionStatusModel> _jobExeuctionStatusList = [];
+    readonly List<JobExeuctionStatusModel> _jobExeuctionStatusList = [];
 
-    private IEnumerable<NodeInfoModel> _selectedNodeList = [];
-    private IEnumerable<JobScheduleConfigModel> _selectedJobSchduleConfigList = [];
+    IEnumerable<NodeInfoModel> _selectedNodeList = [];
+    IEnumerable<JobScheduleConfigModel> _selectedJobSchduleConfigList = [];
 
-    private JobExecutionStatus _selectedStatus;
+    JobExecutionStatus _selectedStatus;
 
     protected override void OnInitialized()
     {
@@ -279,13 +270,13 @@
         await QueryTaskExecutionInstanceListAsync();
     }
 
-    private void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
+    void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
     {
         BeginDateTime = e.Dates[0] ?? DateTime.Today.Date;
         EndDateTime = e.Dates[1] ?? DateTime.Today.AddDays(1).Date.AddSeconds(-1);
     }
 
-    private async Task QueryTaskExecutionInstanceListAsync()
+    async Task QueryTaskExecutionInstanceListAsync()
     {
         try
         {
@@ -294,14 +285,14 @@
             _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
             _dataSource.QueryParameters.EndDateTime = EndDateTime;
             _dataSource.QueryParameters.NodeIdList.Clear();
-            if (this._selectedNodeList != null)
+            if (_selectedNodeList != null)
             {
-                _dataSource.QueryParameters.NodeIdList.AddRange(this._selectedNodeList.Select(x => x.Id));
+                _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
             }
             _dataSource.QueryParameters.JobScheduleConfigIdList.Clear();
             if (_selectedJobSchduleConfigList!=null)
             {
-                _dataSource.QueryParameters.JobScheduleConfigIdList.AddRange(this._selectedJobSchduleConfigList.Select(x => x.Id));
+                _dataSource.QueryParameters.JobScheduleConfigIdList.AddRange(_selectedJobSchduleConfigList.Select(x => x.Id));
             }
             if (_selectedStatus != JobExecutionStatus.Unknown)
             {
@@ -320,7 +311,7 @@
         }
     }
 
-    private async Task RevokeJobAsync(JobExecutionInstanceModel instance)
+    async Task RevokeJobAsync(JobExecutionInstanceModel instance)
     {
         try
         {
@@ -336,7 +327,7 @@
         }
     }
 
-    private async Task StopJobAsync(JobExecutionInstanceModel instance)
+    async Task StopJobAsync(JobExecutionInstanceModel instance)
     {
         try
         {
@@ -352,27 +343,27 @@
         }
     }
 
-    private async Task OnSelectedStatusChanged(JobExeuctionStatusModel status)
+    async Task OnSelectedStatusChanged(JobExeuctionStatusModel status)
     {
     }
 
-    private void OnSearchStatus(string status)
+    void OnSearchStatus(string status)
     {
     }
 
-    private async Task OnSelectedTaskScheduleConfigChanged(JobScheduleConfigModel jobScheduleConfig)
+    async Task OnSelectedTaskScheduleConfigChanged(JobScheduleConfigModel jobScheduleConfig)
     {
     }
 
-    private void OnSearchJobScheduleConfig(string nodeId)
+    void OnSearchJobScheduleConfig(string nodeId)
     {
     }
 
-    private async Task OnSelectedNodeChanged(NodeInfoModel node)
+    async Task OnSelectedNodeChanged(NodeInfoModel node)
     {
     }
 
-    private void OnSearchNode(string nodeId)
+    void OnSearchNode(string nodeId)
     {
     }
 
@@ -399,17 +390,17 @@
         await _logViewer.ShowAsync();
     }
 
-    private async Task ShowNodeSelectorDialogAsync()
+    async Task ShowNodeSelectorDialogAsync()
     {
         await _nodeSelectorDialog.ShowAsync();
     }
 
-    private async Task ShowTaskDefinitionSelectorDialogAsync()
+    async Task ShowTaskDefinitionSelectorDialogAsync()
     {
         await _taskDefinitionSelectorDialog.ShowAsync();
     }
 
-    private Task OnDialogClosed()
+    Task OnDialogClosed()
     {
         StateHasChanged();
         return Task.CompletedTask;

@@ -5,8 +5,8 @@ namespace NodeService.WebServer.Services.MessageHandlers;
 
 public class JobExecutionReportHandler : IMessageHandler
 {
-    private readonly BatchQueue<JobExecutionReportMessage> _batchQueue;
-    private readonly ILogger<HeartBeatResponseHandler> _logger;
+    readonly BatchQueue<JobExecutionReportMessage> _batchQueue;
+    readonly ILogger<HeartBeatResponseHandler> _logger;
 
     public JobExecutionReportHandler(
         BatchQueue<JobExecutionReportMessage> batchQueue,

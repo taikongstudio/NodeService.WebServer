@@ -1,5 +1,6 @@
 ﻿<Modal Width="800"
        Maximizable
+       Style="top:0px"
        @bind-Visible="@IsVisible"
        Title="@Title"
        Closable="true"
@@ -15,14 +16,14 @@
 
     [Parameter] public EventCallback Closed { get; set; }
 
-    public bool IsVisible { get; private set; }
+    public bool IsVisible { get; set; }
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
     }
 
-    private async Task CloseImpl()
+    async Task CloseImpl()
     {
         await Closed.InvokeAsync();
     }

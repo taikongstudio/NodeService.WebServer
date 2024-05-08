@@ -7,7 +7,7 @@ namespace NodeService.WebServer.UI.Pages.List;
 
 public partial class CardList
 {
-    private readonly ListGridType _listGridType = new()
+    readonly ListGridType _listGridType = new()
     {
         Gutter = 16,
         Xs = 1,
@@ -18,7 +18,7 @@ public partial class CardList
         Xxl = 4
     };
 
-    private ListItemDataType[] _data = { };
+    ListItemDataType[] _data = { };
 
     [Inject] protected IProjectService ProjectService { get; set; }
 

@@ -7,13 +7,13 @@ namespace NodeService.WebServer.UI.Pages.Profile;
 
 public partial class Advanced
 {
-    private readonly IList<TabPaneItem> _tabList = new List<TabPaneItem>
+    readonly IList<TabPaneItem> _tabList = new List<TabPaneItem>
     {
         new() { Key = "detail", Tab = "Details" },
         new() { Key = "rules", Tab = "Rules" }
     };
 
-    private AdvancedProfileData _data = new();
+    AdvancedProfileData _data = new();
 
     [Inject] protected IProfileService ProfileService { get; set; }
 

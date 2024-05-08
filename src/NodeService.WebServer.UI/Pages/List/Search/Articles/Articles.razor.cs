@@ -6,10 +6,10 @@ namespace NodeService.WebServer.UI.Pages.List;
 
 public partial class Articles
 {
-    private readonly string[] _defaultOwners = { "wzj", "wjh" };
-    private readonly ListFormModel _model = new();
+    readonly string[] _defaultOwners = { "wzj", "wjh" };
+    readonly ListFormModel _model = new();
 
-    private readonly Owner[] _owners =
+    readonly Owner[] _owners =
     {
         new() { Id = "wzj", Name = "Myself" },
         new() { Id = "wjh", Name = "Wu Jiahao" },
@@ -18,11 +18,11 @@ public partial class Articles
         new() { Id = "ym", Name = "Yao Ming" }
     };
 
-    private IList<ListItemDataType> _fakeList = new List<ListItemDataType>();
+    IList<ListItemDataType> _fakeList = new List<ListItemDataType>();
 
     [Inject] public IProjectService ProjectService { get; set; }
 
-    private void SetOwner()
+    void SetOwner()
     {
     }
 

@@ -52,10 +52,10 @@
 
     Form<NodeHealthyCheckConfiguration> _editForm;
 
-    private NodeHealthyCheckConfiguration _editModel = new();
+    NodeHealthyCheckConfiguration _editModel = new();
     IEnumerable<NotificationConfigModel> _selectedNotificationConfigs = [];
 
-    private async Task QueryNodeHealthyConfigurationAsync()
+    async Task QueryNodeHealthyConfigurationAsync()
     {
         try
         {
@@ -84,7 +84,7 @@
         }
     }
 
-    private async Task<IEnumerable<NotificationConfigModel>> InitSelectedNotificationConfigAsync(IEnumerable<StringEntry> items)
+    async Task<IEnumerable<NotificationConfigModel>> InitSelectedNotificationConfigAsync(IEnumerable<StringEntry> items)
     {
         var list = new List<NotificationConfigModel>();
         foreach (var item in items)
@@ -101,13 +101,13 @@
         return list;
     }
 
-    private void NodeHealthyHandleEditFormFailed(EditContext editContext)
+    void NodeHealthyHandleEditFormFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
     }
 
 
-    private async void NodeHealthyHandleEditFormFinished(EditContext editContext)
+    async void NodeHealthyHandleEditFormFinished(EditContext editContext)
     {
         try
         {

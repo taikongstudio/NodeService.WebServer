@@ -10,11 +10,11 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class FileRecordsController : Controller
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly ILogger<FileRecordsController> _logger;
-    private readonly BatchQueue<BatchQueueOperation<object, object>> _fileRecordBatchQueue;
-    private readonly IMemoryCache _memoryCache;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly ILogger<FileRecordsController> _logger;
+    readonly BatchQueue<BatchQueueOperation<object, object>> _fileRecordBatchQueue;
+    readonly IMemoryCache _memoryCache;
 
     public FileRecordsController(
         ILogger<FileRecordsController> logger,

@@ -30,8 +30,8 @@ public class TaskLogCacheDump
 
 public class TaskLogCache
 {
-    private readonly LinkedList<TaskLogCachePage> _pages;
-    [JsonIgnore] private long _count;
+    readonly LinkedList<TaskLogCachePage> _pages;
+    [JsonIgnore] long _count;
 
     public TaskLogCache(string taskId, int pageSize)
     {
@@ -60,7 +60,7 @@ public class TaskLogCache
 
     public int Count => (int)Interlocked.Read(ref _count);
 
-    public int PageCount { get; private set; }
+    public int PageCount { get; set; }
 
     public DateTime CreationDateTimeUtc { get; set; }
 
@@ -99,7 +99,7 @@ public class TaskLogCache
         }
     }
 
-    private IEnumerable<LogEntry> GetPageEntries(ref TaskLogCachePage taskLogCachePage)
+    IEnumerable<LogEntry> GetPageEntries(ref TaskLogCachePage taskLogCachePage)
     {
         LastAccessTimeUtc = DateTime.UtcNow;
         if (taskLogCachePage.IsPersistenced)
@@ -130,14 +130,14 @@ public class TaskLogCache
         }
     }
 
-    private LogEntry CheckLogEntry(LogEntry logEntry)
+    LogEntry CheckLogEntry(LogEntry logEntry)
     {
         logEntry.Index = Count;
         Interlocked.Increment(ref _count);
         return logEntry;
     }
 
-    private LinkedListNode<TaskLogCachePage>? GetNode(int nodeIndex)
+    LinkedListNode<TaskLogCachePage>? GetNode(int nodeIndex)
     {
         var current = _pages.First;
         for (var i = 0; i < nodeIndex; i++)
@@ -149,13 +149,13 @@ public class TaskLogCache
         return current;
     }
 
-    private int CalculateLogEntryPageIndex(LogEntry logEntry)
+    int CalculateLogEntryPageIndex(LogEntry logEntry)
     {
         var pageIndex = EntryIndexToPageIndex(logEntry.Index, PageSize, out _);
         return pageIndex;
     }
 
-    private int EntryIndexToPageIndex(int entryIndex, int pageSize, out int pageOffset)
+    int EntryIndexToPageIndex(int entryIndex, int pageSize, out int pageOffset)
     {
         return Math.DivRem(entryIndex, pageSize, out pageOffset);
     }
@@ -190,7 +190,7 @@ public class TaskLogCache
         return $"{TaskLogCacheManager.TaskKeyPrefix}{taskId}";
     }
 
-    private TaskLogCacheDump CreateDump()
+    TaskLogCacheDump CreateDump()
     {
         var taskLogCacheDump = new TaskLogCacheDump();
         Dump(taskLogCacheDump);

@@ -37,7 +37,7 @@ public class Program
             });
     }
 
-    private static async Task RunWithOptions(CommandLineOptions options, string[] args)
+    static async Task RunWithOptions(CommandLineOptions options, string[] args)
     {
         Environment.CurrentDirectory = AppContext.BaseDirectory;
 
@@ -64,7 +64,7 @@ public class Program
         }
     }
 
-    private static async Task Configure(WebApplication app)
+    static async Task Configure(WebApplication app)
     {
         if (app.Environment.IsDevelopment())
         {
@@ -124,13 +124,13 @@ public class Program
         applicationUserDbContext.Database.EnsureCreated();
     }
 
-    private static void MapGrpcServices(WebApplication app)
+    static void MapGrpcServices(WebApplication app)
     {
         //app.MapGrpcService<FileSystemServiceImpl>().EnableGrpcWeb().RequireCors("AllowAll");
         app.MapGrpcService<NodeServiceImpl>().EnableGrpcWeb().RequireCors("AllowAll");
     }
 
-    private static void Configure(WebApplicationBuilder builder)
+    static void Configure(WebApplicationBuilder builder)
     {
         builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
         builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
@@ -217,7 +217,7 @@ public class Program
             }));
     }
 
-    private static void ConfigureHostedServices(WebApplicationBuilder builder)
+    static void ConfigureHostedServices(WebApplicationBuilder builder)
     {
         builder.Services.AddHostedService<TaskScheduleService>();
         builder.Services.AddHostedService<TaskExecutionReportConsumerService>();
@@ -229,7 +229,7 @@ public class Program
         builder.Services.AddHostedService<FileRecordService>();
     }
 
-    private static void ConfigureScoped(WebApplicationBuilder builder)
+    static void ConfigureScoped(WebApplicationBuilder builder)
     {
         builder.Services.AddScoped(sp => new HttpClient
         {
@@ -308,7 +308,7 @@ public class Program
         );
     }
 
-    private static void ConfigureAuthentication(WebApplicationBuilder builder)
+    static void ConfigureAuthentication(WebApplicationBuilder builder)
     {
         builder.Services.AddCascadingAuthenticationState();
 
@@ -357,7 +357,7 @@ public class Program
         builder.Services.AddScoped<LoginService>();
     }
 
-    private static void ConfigureSingleton(WebApplicationBuilder builder)
+    static void ConfigureSingleton(WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
@@ -381,7 +381,7 @@ public class Program
         builder.Services.AddSingleton<WebServerCounter>();
     }
 
-    private static void ConfigureDbContext(WebApplicationBuilder builder)
+    static void ConfigureDbContext(WebApplicationBuilder builder)
     {
         var debugProductionMode =
             builder.Configuration.GetValue<bool>(

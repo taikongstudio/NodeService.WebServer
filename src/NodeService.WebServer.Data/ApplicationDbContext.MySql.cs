@@ -2,7 +2,7 @@
 
 public partial class ApplicationDbContext
 {
-    private void MySql_BuildModels(ModelBuilder modelBuilder)
+    void MySql_BuildModels(ModelBuilder modelBuilder)
     {
         MySql_BuildClientUpdateInfoModel(modelBuilder);
         MySql_BuildConfigurationModels(modelBuilder);
@@ -16,7 +16,7 @@ public partial class ApplicationDbContext
         MySql_BuildClientUpdateCounterModel(modelBuilder);
     }
 
-    private void MySql_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)
+    void MySql_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ClientUpdateCounterModel>()
             .HasKey(t => new { t.Id, t.Name });
@@ -28,7 +28,7 @@ public partial class ApplicationDbContext
             .SetValueComparer(GetEnumerableComparer<CategoryModel>());
     }
 
-    private void MySql_BuildNotificationRecordModel(ModelBuilder modelBuilder)
+    void MySql_BuildNotificationRecordModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<NotificationRecordModel>(entityBuilder =>
         {
@@ -36,7 +36,7 @@ public partial class ApplicationDbContext
         });
     }
 
-    private void MySql_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)
+    void MySql_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<JobFireConfigurationModel>(entityBuilder =>
         {
@@ -44,13 +44,13 @@ public partial class ApplicationDbContext
         });
     }
 
-    private void MySql_BuildFileUploadRecordModel(ModelBuilder modelBuilder)
+    void MySql_BuildFileUploadRecordModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FileRecordModel>()
             .HasKey(t => new { t.Id, t.Name });
     }
 
-    private void MySql_BuildClientUpdateInfoModel(ModelBuilder modelBuilder)
+    void MySql_BuildClientUpdateInfoModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ClientUpdateConfigModel>()
             .HasKey(t => t.Id);
@@ -67,7 +67,7 @@ public partial class ApplicationDbContext
     }
 
 
-    private static void MySql_BuildJobExecutionInstanceModel(ModelBuilder modelBuilder)
+    static void MySql_BuildJobExecutionInstanceModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<JobExecutionInstanceModel>()
             .HasKey(nameof(JobExecutionInstanceModel.Id));
@@ -77,7 +77,7 @@ public partial class ApplicationDbContext
             .AutoInclude(false);
     }
 
-    private void MySql_BuildNodePropertySnapshotModel(ModelBuilder modelBuilder)
+    void MySql_BuildNodePropertySnapshotModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<NodePropertySnapshotModel>()
             .HasKey(nameof(NodePropertySnapshotModel.Id));
@@ -90,13 +90,13 @@ public partial class ApplicationDbContext
             .SetValueComparer(GetEnumerableComparer<NodePropertyEntry>());
     }
 
-    private static void MySql_BuildNodeProfileModel(ModelBuilder modelBuilder)
+    static void MySql_BuildNodeProfileModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<NodeProfileModel>()
             .HasKey(nameof(NodeProfileModel.Id));
     }
 
-    private static void MySql_BuildNodeInfoModel(ModelBuilder modelBuilder)
+    static void MySql_BuildNodeInfoModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<NodeInfoModel>()
             .HasKey(nameof(NodeInfoModel.Id));
@@ -119,7 +119,7 @@ public partial class ApplicationDbContext
             .AutoInclude();
     }
 
-    private static void MySql_BuildConfigurationModels(ModelBuilder modelBuilder)
+    static void MySql_BuildConfigurationModels(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FtpConfigModel>(builder =>
         {

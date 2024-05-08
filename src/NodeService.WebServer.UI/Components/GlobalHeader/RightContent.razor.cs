@@ -9,13 +9,13 @@ namespace NodeService.WebServer.UI.Components;
 
 public partial class RightContent
 {
-    private int _count = 0;
-    private CurrentUser _currentUser = new();
-    private NoticeIconData[] _events = { };
-    private NoticeIconData[] _messages = { };
-    private NoticeIconData[] _notifications = { };
+    int _count = 0;
+    CurrentUser _currentUser = new();
+    NoticeIconData[] _events = { };
+    NoticeIconData[] _messages = { };
+    NoticeIconData[] _notifications = { };
 
-    private List<AutoCompleteDataItem<string>> DefaultOptions { get; set; } = new()
+    List<AutoCompleteDataItem<string>> DefaultOptions { get; set; } = new()
     {
         new AutoCompleteDataItem<string>
         {

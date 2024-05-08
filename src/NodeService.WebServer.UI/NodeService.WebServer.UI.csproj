@@ -34,5 +34,9 @@
         <ProjectReference Include="..\NodeService.WebServer.Services\NodeService.WebServer.Services.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Pages\ClientConfig\" />
+    </ItemGroup>
+
 
 </Project>

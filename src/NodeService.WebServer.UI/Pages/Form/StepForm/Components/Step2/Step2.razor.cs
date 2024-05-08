@@ -6,7 +6,7 @@ namespace NodeService.WebServer.UI.Pages.Form;
 
 public partial class Step2
 {
-    private readonly FormItemLayout _formLayout = new()
+    readonly FormItemLayout _formLayout = new()
     {
         WrapperCol = new ColLayoutParam
         {
@@ -15,7 +15,7 @@ public partial class Step2
         }
     };
 
-    private readonly StepFormModel _model = new();
+    readonly StepFormModel _model = new();
 
     [CascadingParameter] public StepForm StepForm { get; set; }
 

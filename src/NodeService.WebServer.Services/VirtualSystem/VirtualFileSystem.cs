@@ -83,7 +83,7 @@ public abstract class VirtualFileSystemBase : IVirtualFileSystem
 
 public class FtpVirtualFileSystem : VirtualFileSystemBase
 {
-    private readonly AsyncFtpClient _client;
+    readonly AsyncFtpClient _client;
 
     public FtpVirtualFileSystem(AsyncFtpClient asyncFtpClient)
     {

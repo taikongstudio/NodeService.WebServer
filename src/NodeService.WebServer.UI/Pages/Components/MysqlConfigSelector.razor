@@ -2,8 +2,7 @@
 @inherits Selector<MysqlConfigModel>
 
 <GridRow>
-    <div style="margin:10px 0px;padding:10px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
-
+    <div style="margin:5px 0px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
         @if (SelectedItems != null)
         {
             foreach (var item in SelectedItems)
@@ -45,7 +44,7 @@
 
 @code {
 
-    private PaginationDataSource<MysqlConfigModel, PaginationQueryParameters> _dataSource;
+    PaginationDataSource<MysqlConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
@@ -64,7 +63,7 @@
         await _dataSource.RefreshAsync();
     }
 
-    private async Task OnTableChanged(QueryModel<MysqlConfigModel> query)
+    async Task OnTableChanged(QueryModel<MysqlConfigModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)

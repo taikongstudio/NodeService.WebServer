@@ -10,16 +10,16 @@ namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskExecutionReportConsumerService : BackgroundService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ILogger<TaskExecutionReportConsumerService> _logger;
-    private readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
-    private readonly TaskLogCacheManager _taskLogCacheManager;
-    private readonly IMemoryCache _memoryCache;
-    private readonly WebServerCounter _webServerCounter;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
-    private readonly TaskScheduler _taskScheduler;
-    private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ILogger<TaskExecutionReportConsumerService> _logger;
+    readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
+    readonly TaskLogCacheManager _taskLogCacheManager;
+    readonly IMemoryCache _memoryCache;
+    readonly WebServerCounter _webServerCounter;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
+    readonly TaskScheduler _taskScheduler;
+    readonly TaskSchedulerDictionary _taskSchedulerDictionary;
 
     public TaskExecutionReportConsumerService(
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
@@ -81,7 +81,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-    private static string? GetTaskId(JobExecutionReportMessage? message)
+    static string? GetTaskId(JobExecutionReportMessage? message)
     {
         if (message == null) return null;
         var report = message.GetMessage();
@@ -90,7 +90,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         return report.Id;
     }
 
-    private static LogEntry Convert(JobExecutionLogEntry jobExecutionLogEntry)
+    static LogEntry Convert(JobExecutionLogEntry jobExecutionLogEntry)
     {
         return new LogEntry
         {
@@ -100,7 +100,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         };
     }
 
-    private async Task ProcessTaskExecutionReportsAsync(
+    async Task ProcessTaskExecutionReportsAsync(
         ArrayPoolCollection<JobExecutionReportMessage?> arrayPoolCollection,
         CancellationToken stoppingToken = default)
     {
@@ -200,13 +200,13 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-    private async ValueTask CancelTimeLimitTaskAsync(TaskSchedulerKey jobSchedulerKey)
+    async ValueTask CancelTimeLimitTaskAsync(TaskSchedulerKey jobSchedulerKey)
     {
         if (!_taskSchedulerDictionary.TryRemove(jobSchedulerKey, out var asyncDisposable)) return;
         if (asyncDisposable != null) await asyncDisposable.DisposeAsync();
     }
 
-    private async Task ScheduleTimeLimitTaskAsync(
+    async Task ScheduleTimeLimitTaskAsync(
         ApplicationDbContext dbContext,
         JobExecutionInstanceModel taskExecutionInstance,
         CancellationToken cancellationToken = default)
@@ -236,7 +236,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
             });
     }
 
-    private async Task ProcessTaskExecutionReportAsync(
+    async Task ProcessTaskExecutionReportAsync(
         ApplicationDbContext dbContext,
         JobExecutionInstanceModel taskExecutionInstance,
         NodeSessionMessage<JobExecutionReport> message,
@@ -313,7 +313,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     }
 
 
-    private async Task ScheduleChildTasksAsync(
+    async Task ScheduleChildTasksAsync(
         ApplicationDbContext dbContext,
         JobExecutionInstanceModel parentTaskInstance,
         CancellationToken stoppingToken = default)

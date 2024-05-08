@@ -10,14 +10,14 @@ namespace NodeService.WebServer.Services.Auth;
 
 public class LoginService
 {
-    private const string AccessToken = nameof(AccessToken);
-    private const string RefreshToken = nameof(RefreshToken);
-    private readonly IBackendApiHttpClient _backendApiHttpClient;
-    private readonly IConfiguration _configuration;
+    const string AccessToken = nameof(AccessToken);
+    const string RefreshToken = nameof(RefreshToken);
+    readonly IBackendApiHttpClient _backendApiHttpClient;
+    readonly IConfiguration _configuration;
 
-    private readonly ProtectedLocalStorage _localStorage;
-    private readonly NavigationManager _navigation;
-    private readonly SignInManager<IdentityUser> _signInManager;
+    readonly ProtectedLocalStorage _localStorage;
+    readonly NavigationManager _navigation;
+    readonly SignInManager<IdentityUser> _signInManager;
 
     public LoginService(ProtectedLocalStorage localStorage,
         NavigationManager navigation,
@@ -95,7 +95,7 @@ public class LoginService
         _navigation.NavigateTo("/", true);
     }
 
-    private async Task RemoveAuthDataFromStorageAsync()
+    async Task RemoveAuthDataFromStorageAsync()
     {
         await _localStorage.DeleteAsync(AccessToken);
         await _localStorage.DeleteAsync(RefreshToken);

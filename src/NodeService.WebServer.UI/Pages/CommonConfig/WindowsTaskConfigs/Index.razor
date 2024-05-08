@@ -14,10 +14,11 @@
 </style>
 <GridContent>
     <Modal Width="800"
+           Style="top:0px"
            Maximizable
            DefaultMaximized
            Title="@_modalTitle"
-           Visible="@_editFormVisible"
+           @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
@@ -46,15 +47,6 @@
         </Form>
     </Modal>
 
-    <Space Style="margin-bottom:16px">
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="_dataSource.Request">刷新</Button>
-        </SpaceItem>
-
-    </Space>
     <Table @ref="@_table" Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            EnableVirtualization="false"
@@ -72,8 +64,18 @@
                     <Title Level="3">Windows计划任务配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
                 </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
@@ -119,8 +121,8 @@
     WindowsTaskConfigModel _editModel = new();
     readonly List<UploadFileItem> _uploadFileItems = new();
 
-    private bool _loading;
-    private RoutedPaginationDataSource<WindowsTaskConfigModel, PaginationQueryParameters> _dataSource;
+    bool _loading;
+    RoutedPaginationDataSource<WindowsTaskConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
@@ -132,7 +134,7 @@
         base.OnInitialized();
     }
 
-    private async Task InitXmlEditorAsync()
+    async Task InitXmlEditorAsync()
     {
         if (_editModel != null)
         {
@@ -140,7 +142,7 @@
         }
     }
 
-    private async Task OnInputFileChanged(InputFileChangeEventArgs e)
+    async Task OnInputFileChanged(InputFileChangeEventArgs e)
     {
         try
         {
@@ -162,7 +164,7 @@
         }
     }
 
-    private void ShowEditForm(WindowsTaskConfigModel? model = null)
+    void ShowEditForm(WindowsTaskConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
@@ -180,7 +182,7 @@
         }
     }
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -216,14 +218,14 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
 
-    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
         {
@@ -245,7 +247,7 @@
             options);
     }
 
-    private async Task DeleteConfig(WindowsTaskConfigModel model)
+    async Task DeleteConfig(WindowsTaskConfigModel model)
     {
         try
         {
@@ -279,14 +281,14 @@
     }
 
 
-    private void HandleEditFormCancel(MouseEventArgs e)
+    void HandleEditFormCancel(MouseEventArgs e)
     {
         _editFormSubmitting = false;
         _editFormVisible = false;
     }
 
 
-    private void HandleEditFormOk(MouseEventArgs e)
+    void HandleEditFormOk(MouseEventArgs e)
     {
         _editFormSubmitting = true;
         _editForm.Submit();
@@ -308,7 +310,7 @@
         _dataSource.Request();
     }
 
-    private StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
+    StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
         {

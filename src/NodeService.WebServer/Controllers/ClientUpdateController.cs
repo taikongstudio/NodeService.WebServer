@@ -7,10 +7,10 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class ClientUpdateController : Controller
 {
-    private readonly ILogger<ClientUpdateController> _logger;
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly IMemoryCache _memoryCache;
-    private readonly ExceptionCounter _exceptionCounter;
+    readonly ILogger<ClientUpdateController> _logger;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly IMemoryCache _memoryCache;
+    readonly ExceptionCounter _exceptionCounter;
 
     public ClientUpdateController(
         ILogger<ClientUpdateController> logger,

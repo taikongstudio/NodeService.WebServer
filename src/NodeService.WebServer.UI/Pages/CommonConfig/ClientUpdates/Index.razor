@@ -1,5 +1,5 @@
-﻿@namespace NodeService.WebServer.UI.Pages.ClientConfig.ClientUpdates
-@page "/ClientConfig/ClientUpdates"
+﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.ClientUpdates
+@page "/CommonConfig/ClientUpdates"
 @using NodeService.WebServer.UI.Pages.Components
 @inject NotificationService _notice
 @inject ApiService ApiService
@@ -7,8 +7,9 @@
 @inject NavigationManager NavigationManager
 <GridContent>
     <Modal Width="800"
+           Style="top:0px"
            Title="@_modalTitle"
-           Visible="@_editFormVisible"
+           @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
@@ -56,15 +57,6 @@
         </Form>
     </Modal>
 
-    <Space Style="margin-bottom:16px">
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="@_dataSource.RefreshAsync">刷新</Button>
-        </SpaceItem>
-
-    </Space>
     <Table
         Size="TableSize.Small"
         Loading="_loading"
@@ -76,6 +68,26 @@
         OnPageSizeChange="@_dataSource.OnPaginationEvent"
         TItem="ClientUpdateConfigModel"
         DataSource="@_dataSource.ItemsSource">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="6">
+                    <Title Level="3">客户端更新配置</Title>
+                </GridCol>
+                <GridCol Span="6" Offset="18">
+                    <Search  Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
+            </GridRow>
+        </TitleTemplate>
         <ColumnDefinitions>
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
@@ -133,11 +145,11 @@
     ClientUpdateConfigModel _editModel = new();
     IEnumerable<PackageConfigModel> _selectedPackageConfigs;
 
-    private bool _loading;
+    bool _loading;
     RoutedPaginationDataSource<ClientUpdateConfigModel, PaginationQueryParameters> _dataSource;
 
 
-    private async Task ShowEditForm(ClientUpdateConfigModel? model = null)
+    async Task ShowEditForm(ClientUpdateConfigModel? model = null)
     {
         _editFormVisible = true;
         _loading = true;
@@ -160,7 +172,7 @@
         _loading = false;
     }
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -194,14 +206,14 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
 
-    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
         {
@@ -223,7 +235,7 @@
             options);
     }
 
-    private async Task DeleteConfig(ClientUpdateConfigModel model)
+    async Task DeleteConfig(ClientUpdateConfigModel model)
     {
         try
         {
@@ -257,14 +269,14 @@
     }
 
 
-    private void HandleEditFormCancel(MouseEventArgs e)
+    void HandleEditFormCancel(MouseEventArgs e)
     {
         _editFormSubmitting = false;
         _editFormVisible = false;
     }
 
 
-    private async Task HandleEditFormOk(MouseEventArgs e)
+    async Task HandleEditFormOk(MouseEventArgs e)
     {
         if (_selectedPackageConfigs.IsNullOrEmpty())
         {
@@ -293,7 +305,7 @@
         _dataSource.Request();
     }
 
-    private string ConvertFilterType(string filerType)
+    string ConvertFilterType(string filerType)
     {
         switch (filerType)
         {

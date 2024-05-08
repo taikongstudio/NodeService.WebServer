@@ -6,15 +6,15 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class CommonConfigController : Controller
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ILogger<CommonConfigController> _logger;
-    private readonly IMemoryCache _memoryCache;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IVirtualFileSystem _virtualFileSystem;
-    private readonly WebServerOptions _webServerOptions;
-    private readonly ExceptionCounter _exceptionCounter;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ILogger<CommonConfigController> _logger;
+    readonly IMemoryCache _memoryCache;
+    readonly INodeSessionService _nodeSessionService;
+    readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
+    readonly IServiceProvider _serviceProvider;
+    readonly IVirtualFileSystem _virtualFileSystem;
+    readonly WebServerOptions _webServerOptions;
+    readonly ExceptionCounter _exceptionCounter;
 
     public CommonConfigController(
         IMemoryCache memoryCache,
@@ -37,7 +37,7 @@ public partial class CommonConfigController : Controller
         _notificationMessageQueue = notificationMessageQueue;
     }
 
-    private async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(PaginationQueryParameters queryParameters)
+    async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(PaginationQueryParameters queryParameters)
         where T : ConfigurationModel, new()
     {
         PaginationResponse<T> apiResponse = new PaginationResponse<T>();
@@ -84,7 +84,7 @@ public partial class CommonConfigController : Controller
         return apiResponse;
     }
 
-    private async Task<PaginationResponse<T>> QueryAsync<T>(PaginationQueryParameters queryParameters) where T : ConfigurationModel, new()
+    async Task<PaginationResponse<T>> QueryAsync<T>(PaginationQueryParameters queryParameters) where T : ConfigurationModel, new()
     {
         var dbContext = await _dbContextFactory.CreateDbContextAsync();
         IQueryable<T> queryable = dbContext.GetDbSet<T>();
@@ -100,7 +100,7 @@ public partial class CommonConfigController : Controller
         return apiResponse;
     }
 
-    private async Task<ApiResponse<T>> QueryConfigurationAsync<T>(string id, Func<T?, Task>? func = null)
+    async Task<ApiResponse<T>> QueryConfigurationAsync<T>(string id, Func<T?, Task>? func = null)
         where T : ConfigurationModel
     {
         var apiResponse = new ApiResponse<T>();
@@ -121,7 +121,7 @@ public partial class CommonConfigController : Controller
         return apiResponse;
     }
 
-    private async Task<ApiResponse> DeleteConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
+    async Task<ApiResponse> DeleteConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
         where T : ConfigurationModel
     {
         var apiResponse = new ApiResponse();
@@ -142,7 +142,7 @@ public partial class CommonConfigController : Controller
         return apiResponse;
     }
 
-    private async Task<ApiResponse> AddOrUpdateConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
+    async Task<ApiResponse> AddOrUpdateConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
         where T : ConfigurationModel
     {
         var apiResponse = new ApiResponse();

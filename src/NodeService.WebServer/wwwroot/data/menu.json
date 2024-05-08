@@ -55,7 +55,7 @@
   },
   {
     "path": "/CommonConfig",
-    "name": "通用配置",
+    "name": "配置",
     "key": "CommonConfig",
     "icon": "setting",
     "children": [
@@ -108,19 +108,11 @@
         "path": "/CommonConfig/JobTypeDescConfigs",
         "name": "作业类型描述配置",
         "key": "CommonConfig.JobTypeDescConfigs"
-      }
-    ]
-  },
-  {
-    "path": "/ClientConfig",
-    "name": "客户端配置",
-    "key": "clientconfig",
-    "icon": "dashboard",
-    "children": [
+      },
       {
-        "path": "/ClientConfig/ClientUpdates",
-        "name": "客户端更新",
-        "key": "ClientConfig.ClientUpdates"
+        "path": "/CommonConfig/ClientUpdates",
+        "name": "客户端更新配置",
+        "key": "CommonConfig.ClientUpdates"
       }
     ]
   },

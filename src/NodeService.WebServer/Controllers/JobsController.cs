@@ -9,13 +9,13 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class JobsController : Controller
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ILogger<NodesController> _logger;
-    private readonly IMemoryCache _memoryCache;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly TaskExecutionInstanceInitializer _taskExecutionInstanceInitializer;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly TaskLogCacheManager _taskLogCacheManager;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ILogger<NodesController> _logger;
+    readonly IMemoryCache _memoryCache;
+    readonly INodeSessionService _nodeSessionService;
+    readonly TaskExecutionInstanceInitializer _taskExecutionInstanceInitializer;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly TaskLogCacheManager _taskLogCacheManager;
 
     public JobsController(
         ExceptionCounter exceptionCounter,

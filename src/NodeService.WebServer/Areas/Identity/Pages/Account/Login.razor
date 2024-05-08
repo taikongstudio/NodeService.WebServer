@@ -34,16 +34,16 @@
 @code {
 
     Form<LoginModel> _form;
-    private readonly bool _loading = false;
-    private readonly LoginModel _model = new();
-    private bool _loginFailed;
+    readonly bool _loading = false;
+    readonly LoginModel _model = new();
+    bool _loginFailed;
 
     protected override void OnInitialized()
     {
     }
 
 
-    private async Task OnFinish(EditContext editContext)
+    async Task OnFinish(EditContext editContext)
     {
         try
         {
@@ -84,7 +84,7 @@
         }
     }
 
-    private void OnFinishFailed(EditContext editContext)
+    void OnFinishFailed(EditContext editContext)
     {
     }
 

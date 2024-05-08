@@ -24,7 +24,7 @@ public partial class ApplicationDbContext : DbContext
         new DebugLoggerProvider()
     });
 
-    private readonly Dictionary<Type, object> _dbSetMapping;
+    readonly Dictionary<Type, object> _dbSetMapping;
 
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {
@@ -106,19 +106,19 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<WindowsTaskConfigModel> WindowsTaskConfigurationDbSet { get; set; }
 
-    private static string Serialize<T>(T? value)
+    static string Serialize<T>(T? value)
     {
         if (value == null) return string.Empty;
         return JsonSerializer.Serialize(value);
     }
 
-    private static T Deserialize<T>(string value) where T : class, new()
+    static T Deserialize<T>(string value) where T : class, new()
     {
         if (string.IsNullOrEmpty(value)) return new T();
         return JsonSerializer.Deserialize<T>(value);
     }
 
-    private static ValueComparer<IEnumerable<T>> GetEnumerableComparer<T>()
+    static ValueComparer<IEnumerable<T>> GetEnumerableComparer<T>()
     {
         var comparer = new ValueComparer<IEnumerable<T>>(
             (r, l) => r.SequenceEqual(l),
@@ -128,7 +128,7 @@ public partial class ApplicationDbContext : DbContext
         return comparer;
     }
 
-    private static ValueComparer<T> GetTypedComparer<T>() where T : IEquatable<T>
+    static ValueComparer<T> GetTypedComparer<T>() where T : IEquatable<T>
     {
         var comparer = new ValueComparer<T>(
             (r, l) => r.Equals(l),

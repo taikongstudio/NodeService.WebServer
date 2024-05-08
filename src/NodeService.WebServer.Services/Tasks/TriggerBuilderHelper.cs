@@ -16,12 +16,12 @@ public static class TriggerBuilderHelper
             .AsReadOnly();
     }
 
-    private static bool CheckCronExpression(string value)
+    static bool CheckCronExpression(string value)
     {
         return CronExpression.IsValidExpression(value);
     }
 
-    private static string ProcessCronExpression(string value)
+    static string ProcessCronExpression(string value)
     {
         value = value.Trim();
         value = value.Trim('\r');

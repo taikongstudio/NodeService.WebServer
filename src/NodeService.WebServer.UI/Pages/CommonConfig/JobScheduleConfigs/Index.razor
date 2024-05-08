@@ -13,7 +13,8 @@
 <GridContent>
     <Modal Width="800"
            Title="@_modalTitle"
-           Visible="@_editFormVisible"
+           Style="top:0px"
+           @bind-Visible="@_editFormVisible"
            Maximizable="true"
            DefaultMaximized="true"
            ConfirmLoading="@_editFormConfirmLoading"
@@ -116,16 +117,7 @@
 
         </Form>
     </Modal>
-    <Space Style="margin-bottom:16px">
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="_dataSource.Request">刷新</Button>
-        </SpaceItem>
-
-    </Space>
-    <Table @ref="_table"
+    <Table 
            Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            RowExpandable="c => true"
@@ -140,13 +132,23 @@
            OnPageIndexChange="@_dataSource.OnPaginationEvent"
            OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
-            <GridRow Style="margin-bottom:16px">
+            <GridRow>
                 <GridCol Span="4">
                     <Title Level="3">作业调度配置</Title>
                 </GridCol>
-                <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.ForceRequest"/>
+                <GridCol Span="6" Offset="18">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
                 </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space >
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
@@ -206,42 +208,37 @@
 
 @code {
     OptionValueEditor _optionValueEditor;
-    ITable _childTaskDefinitionTable;
-    ITable _nodeTable;
-    ITable _table;
 
     string _modalTitle;
     bool _nodeTableLoading = false;
     bool _editFormVisible;
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
+    bool _fireTaskFormVisible;
+    bool _fireTaskFormSubmitting;
+    bool _fireTaskFormConfirmLoading;
+    bool _loading;
+    string? _selectedNodeInfoId;
+    string _selectedTaskScheduleDefinitionId;
+
     Form<JobScheduleConfigModel> _editForm;
     JobScheduleConfigModel _editModel = new();
-
-
-    string _selectedTaskScheduleDefinitionId;
 
     JobScheduleConfigModel _taskDefinition;
     Form<JobScheduleConfigModel> _fireTaskForm;
     TaskTypeDescSelector _taskTypeDescSelector;
     CommonDialog _taskTypeDescSelectorDialog;
 
-    bool _fireTaskFormVisible;
-    bool _fireTaskFormSubmitting;
-    bool _fireTaskFormConfirmLoading;
 
-    private bool _loading;
 
 
     IEnumerable<NodeInfoModel> _selectedNodes = [];
     IEnumerable<JobTypeDescConfigModel> _selectedTaskTypeDescConfigList = [];
     IEnumerable<JobScheduleConfigModel> _selectedTaskScheduleConfigList = [];
 
-    private string? _selectedNodeInfoId;
 
-
-    private RoutedPaginationDataSource<JobScheduleConfigModel, PaginationQueryParameters> _dataSource;
-    private PaginationDataSource<NodeInfoModel, PaginationQueryParameters> _nodeDataSource;
+    RoutedPaginationDataSource<JobScheduleConfigModel, PaginationQueryParameters> _dataSource;
+    PaginationDataSource<NodeInfoModel, PaginationQueryParameters> _nodeDataSource;
 
     protected override void OnInitialized()
     {
@@ -260,12 +257,12 @@
         base.OnInitialized();
     }
 
-    private void OnSelectedNodesChanged(IEnumerable<NodeInfoModel> nodes)
+    void OnSelectedNodesChanged(IEnumerable<NodeInfoModel> nodes)
     {
         _selectedNodes = nodes;
     }
 
-    private async Task InitAsync(JobScheduleConfigModel model)
+    async Task InitAsync(JobScheduleConfigModel model)
     {
         if (model == null)
         {
@@ -280,7 +277,7 @@
         }
     }
 
-    private string ConvertFilterType(string filerType)
+    string ConvertFilterType(string filerType)
     {
         switch (filerType)
         {
@@ -296,7 +293,7 @@
     }
 
 
-    private async Task ShowEditForm(JobScheduleConfigModel? model = null)
+    async Task ShowEditForm(JobScheduleConfigModel? model = null)
     {
         _loading = true;
         _editFormVisible = true;
@@ -320,7 +317,7 @@
         _loading = false;
     }
 
-    private async Task<IEnumerable<NodeInfoModel>> InitSelectedNodeInfoListAsync()
+    async Task<IEnumerable<NodeInfoModel>> InitSelectedNodeInfoListAsync()
     {
         var nodeList = new List<NodeInfoModel>();
         var queryPageIndex = 0;
@@ -370,7 +367,7 @@
         return nodeList;
     }
 
-    private void ShowFireTaskForm(JobScheduleConfigModel model)
+    void ShowFireTaskForm(JobScheduleConfigModel model)
     {
         _loading = true;
         _taskDefinition = model.CopyClone<JobScheduleConfigModel>();
@@ -379,7 +376,7 @@
     }
 
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -429,11 +426,11 @@
         }
     }
 
-    private void OnTriggerJobFormFinish()
+    void OnTriggerJobFormFinish()
     {
     }
 
-    private async Task InvokeTaskAsync(JobScheduleConfigModel model)
+    async Task InvokeTaskAsync(JobScheduleConfigModel model)
     {
         try
         {
@@ -474,19 +471,19 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
-    private void OnTriggerJobFormFinishFailed(EditContext editContext)
+    void OnTriggerJobFormFinishFailed(EditContext editContext)
     {
         _fireTaskFormConfirmLoading = false;
         _fireTaskFormSubmitting = false;
     }
 
-    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
         {
@@ -508,7 +505,7 @@
             options);
     }
 
-    private async Task DeleteConfig(JobScheduleConfigModel model)
+    async Task DeleteConfig(JobScheduleConfigModel model)
     {
         try
         {
@@ -541,27 +538,27 @@
         }
     }
 
-    private void HandleFireTaskFormCancel(MouseEventArgs e)
+    void HandleFireTaskFormCancel(MouseEventArgs e)
     {
         _fireTaskFormVisible = false;
         _taskDefinition = new JobScheduleConfigModel();
     }
 
 
-    private void HandleFireTaskFormOk(MouseEventArgs e)
+    void HandleFireTaskFormOk(MouseEventArgs e)
     {
         _fireTaskFormSubmitting = true;
         _fireTaskForm.Submit();
     }
 
 
-    private void HandleEditFormCancel(MouseEventArgs e)
+    void HandleEditFormCancel(MouseEventArgs e)
     {
         _editFormVisible = false;
     }
 
 
-    private async Task HandleEditFormOk(MouseEventArgs e)
+    async Task HandleEditFormOk(MouseEventArgs e)
     {
         _editFormSubmitting = true;
         _editModel.Options.Clear();
@@ -684,23 +681,23 @@
         _editForm.Submit();
     }
 
-    private void AddCronExpression(AddingNewItemEventArgs e)
+    void AddCronExpression(AddingNewItemEventArgs e)
     {
         e.DataItem.BeginEdit();
     }
 
 
-    private async Task OnTaskTypeDescSelectorDialogClosed()
+    async Task OnTaskTypeDescSelectorDialogClosed()
     {
         await OnSelectedTaskTypeDescChanged(_selectedTaskTypeDescConfigList);
     }
 
 
-    private async Task OnSelectedTaskTypeDescChanged(IEnumerable<JobTypeDescConfigModel> items)
+    async Task OnSelectedTaskTypeDescChanged(IEnumerable<JobTypeDescConfigModel> items)
     {
         try
         {
-            //this._selectedJobSchduleConfigList = items;
+            //_selectedJobSchduleConfigList = items;
             var model = items.FirstOrDefault();
             _loading = true;
             if (model == null)
@@ -728,7 +725,7 @@
         }
     }
 
-    private async Task BuildOptionValueEditorsAsync(JobScheduleConfigModel model, Dictionary<string, EditorBase> optionEditors)
+    async Task BuildOptionValueEditorsAsync(JobScheduleConfigModel model, Dictionary<string, EditorBase> optionEditors)
     {
         if (model.JobTypeDesc == null)
         {
@@ -852,7 +849,7 @@
     {
     }
 
-    private void AddChildTaskDefinition(AddingNewItemEventArgs e)
+    void AddChildTaskDefinition(AddingNewItemEventArgs e)
     {
         e.Handled = true;
         var target = _dataSource.ItemsSource.FirstOrDefault(x => x.Id == _selectedTaskScheduleDefinitionId);
@@ -877,7 +874,7 @@
         e.DataItem.Value = taskScheduleConfig.Id;
     }
 
-    private void NewEnvVarAdding(AddingNewItemEventArgs e)
+    void NewEnvVarAdding(AddingNewItemEventArgs e)
     {
         e.DataItem.Name = string.Empty;
         e.DataItem.Value = string.Empty;
@@ -928,9 +925,9 @@
 
     void OnSelectedChildTaskDefinitionChanged(IEnumerable<JobScheduleConfigModel> items)
     {
-        if (this._selectedTaskScheduleConfigList != items)
+        if (_selectedTaskScheduleConfigList != items)
         {
-            this._selectedTaskScheduleConfigList = items;
+            _selectedTaskScheduleConfigList = items;
         }
     }
 

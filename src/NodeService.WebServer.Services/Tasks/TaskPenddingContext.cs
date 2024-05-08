@@ -2,7 +2,7 @@
 
 public class TaskPenddingContext : IAsyncDisposable
 {
-    private CancellationTokenSource _cancelTokenSource;
+    CancellationTokenSource _cancelTokenSource;
 
     public TaskPenddingContext(string id)
     {
@@ -17,7 +17,7 @@ public class TaskPenddingContext : IAsyncDisposable
 
     public required JobExecutionEventRequest FireEvent { get; init; }
 
-    public CancellationToken CancellationToken { get; private set; }
+    public CancellationToken CancellationToken { get; set; }
 
     public required FireTaskParameters FireParameters { get; init; }
 

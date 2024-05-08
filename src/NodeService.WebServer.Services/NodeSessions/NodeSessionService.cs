@@ -28,11 +28,11 @@ public record class JobExecutionReportMessage : NodeSessionMessage<JobExecutionR
 
 public class NodeSessionService : INodeSessionService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatBatchQueue;
-    private readonly ILogger<NodeSessionService> _logger;
-    private readonly NodeHealthyCounterDictionary _nodeHealthyCounterDictionary;
-    private readonly ConcurrentDictionary<NodeSessionId, NodeSession> _nodeSessionDict;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatBatchQueue;
+    readonly ILogger<NodeSessionService> _logger;
+    readonly NodeHealthyCounterDictionary _nodeHealthyCounterDictionary;
+    readonly ConcurrentDictionary<NodeSessionId, NodeSession> _nodeSessionDict;
 
     public NodeSessionService(
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
@@ -334,18 +334,18 @@ public class NodeSessionService : INodeSessionService
         if (_nodeSessionDict.TryGetValue(nodeSessionId, out var nodeSession)) nodeSession.Reset();
     }
 
-    private NodeSession EnsureNodeSession(NodeSessionId nodeSessionId)
+    NodeSession EnsureNodeSession(NodeSessionId nodeSessionId)
     {
         return _nodeSessionDict.GetOrAdd(nodeSessionId, CreateNodeSession);
     }
 
-    private NodeSession CreateNodeSession(NodeSessionId nodeSessionId)
+    NodeSession CreateNodeSession(NodeSessionId nodeSessionId)
     {
         NodeSession nodeSession = new(nodeSessionId);
         return nodeSession;
     }
 
-    private class NodeSession
+    class NodeSession
     {
         public NodeSession(NodeSessionId id)
         {
@@ -363,7 +363,7 @@ public class NodeSessionService : INodeSessionService
 
         public string Name { get; set; }
 
-        public NodeSessionId Id { get; private set; }
+        public NodeSessionId Id { get; set; }
 
         public DateTime LastHeartBeatOutputDateTime { get; set; }
 

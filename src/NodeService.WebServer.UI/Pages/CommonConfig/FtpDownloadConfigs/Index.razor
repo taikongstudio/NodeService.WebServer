@@ -10,8 +10,9 @@
 <GridContent>
 
     <Modal Width="800"
+           Style="top:0px"
            Title="@_modalTitle"
-           Visible="@_editFormVisible"
+           @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
            OnCancel="@HandleEditFormCancel">
@@ -108,15 +109,6 @@
         </Form>
     </Modal>
 
-    <Space Style="margin-bottom:16px">
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新建配置</Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="_dataSource.ForceRequest">刷新</Button>
-        </SpaceItem>
-
-    </Space>
     <Table @ref="_table"
            Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
@@ -135,9 +127,19 @@
                 <GridCol Span="4">
                     <Title Level="3">Ftp下载配置</Title>
                 </GridCol>
-                <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                <GridCol Span="6" Offset="18">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
                 </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
@@ -186,7 +188,7 @@
     FtpConfigSelector _ftpConfigSelector;
     IEnumerable<FtpConfigModel> _selectedFtpConfigs;
 
-    private RoutedPaginationDataSource<FtpDownloadConfigModel, PaginationQueryParameters> _dataSource;
+    RoutedPaginationDataSource<FtpDownloadConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
@@ -199,7 +201,7 @@
         base.OnInitialized();
     }
 
-    private async Task InitializeFtpDownloadConfigAsync(FtpDownloadConfigModel model)
+    async Task InitializeFtpDownloadConfigAsync(FtpDownloadConfigModel model)
     {
         if (model == null)
         {
@@ -213,14 +215,14 @@
         }
     }
 
-    private Task OnSelectFtpConfigDialogClosed()
+    Task OnSelectFtpConfigDialogClosed()
     {
-        this._editModel.Value.FtpConfigId = this._selectedFtpConfigs.FirstOrDefault()?.Id;
+        _editModel.Value.FtpConfigId = _selectedFtpConfigs.FirstOrDefault()?.Id;
         StateHasChanged();
         return Task.CompletedTask;
     }
 
-    private async void ShowEditForm(FtpDownloadConfigModel? model = null)
+    async void ShowEditForm(FtpDownloadConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
@@ -239,16 +241,16 @@
         }
     }
 
-    private async Task InitSelectedFtpConfigAsync()
+    async Task InitSelectedFtpConfigAsync()
     {
         var ftpConfig = await ApiService.GetFtpConfigAsync(_editModel.Value.FtpConfigId);
         if (ftpConfig != null)
         {
-            this._selectedFtpConfigs = [ftpConfig];
+            _selectedFtpConfigs = [ftpConfig];
         }
     }
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -282,13 +284,13 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
-    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
         {
@@ -310,7 +312,7 @@
             options);
     }
 
-    private async Task DeleteConfig(FtpDownloadConfigModel model)
+    async Task DeleteConfig(FtpDownloadConfigModel model)
     {
         try
         {
@@ -344,13 +346,13 @@
     }
 
 
-    private void HandleEditFormCancel(MouseEventArgs e)
+    void HandleEditFormCancel(MouseEventArgs e)
     {
         _editFormVisible = false;
     }
 
 
-    private void HandleEditFormOk(MouseEventArgs e)
+    void HandleEditFormOk(MouseEventArgs e)
     {
         _editFormSubmitting = true;
         _editForm.Submit();

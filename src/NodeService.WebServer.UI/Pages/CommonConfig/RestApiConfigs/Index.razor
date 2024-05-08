@@ -9,8 +9,9 @@
 <GridContent>
     <Modal
         Width="800"
+        Style="top:0px"
         Title="@_modalTitle"
-        Visible="@_editFormVisible"
+        @bind-Visible="@_editFormVisible"
         ConfirmLoading="@_editFormConfirmLoading"
         OnOk="@HandleEditOk"
         OnCancel="@HandleCancel">
@@ -32,15 +33,6 @@
         </Form>
     </Modal>
 
-    <Space Style="margin-bottom:16px">
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="() => ShowEditForm()">新增配置</Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="_dataSource.Request">刷新</Button>
-        </SpaceItem>
-
-    </Space>
     <Table @ref="_table"
            Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
@@ -59,9 +51,19 @@
                 <GridCol Span="4">
                     <Title Level="3">RestApi配置</Title>
                 </GridCol>
-                <GridCol Span="4" Offset="20">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                <GridCol Span="6" Offset="18">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
                 </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
@@ -108,7 +110,7 @@
     RestApiConfigModel _editModel = new();
 
 
-    private RoutedPaginationDataSource<RestApiConfigModel, PaginationQueryParameters> _dataSource;
+    RoutedPaginationDataSource<RestApiConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
@@ -120,7 +122,7 @@
         base.OnInitialized();
     }
 
-    private void ShowEditForm(RestApiConfigModel? model = null)
+    void ShowEditForm(RestApiConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
@@ -139,18 +141,18 @@
     }
 
 
-    private void HandleEditOk(MouseEventArgs e)
+    void HandleEditOk(MouseEventArgs e)
     {
         _editFormSubmitting = true;
         _editForm.Submit();
     }
 
-    private void HandleCancel(MouseEventArgs e)
+    void HandleCancel(MouseEventArgs e)
     {
         _editFormVisible = false;
     }
 
-    private async Task OnEditFormFinish(EditContext editContext)
+    async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
@@ -186,13 +188,13 @@
         }
     }
 
-    private void OnEditFormFinishFailed(EditContext editContext)
+    void OnEditFormFinishFailed(EditContext editContext)
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }
 
-    private Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
         {
@@ -214,7 +216,7 @@
             options);
     }
 
-    private async Task DeleteConfig(RestApiConfigModel model)
+    async Task DeleteConfig(RestApiConfigModel model)
     {
         try
         {

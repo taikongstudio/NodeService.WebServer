@@ -51,7 +51,7 @@
 
     [Parameter] public bool IsEditable { get; set; } = true;
 
-    private void RemoveSelectedItem(TItem value)
+    void RemoveSelectedItem(TItem value)
     {
         if (DataSource is IList<TItem> list)
         {

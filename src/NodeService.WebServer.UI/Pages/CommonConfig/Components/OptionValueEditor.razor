@@ -129,7 +129,7 @@
 
     [Parameter] public bool IsEditable { get; set; } = true;
 
-    private bool disabled = false;
+    bool disabled = false;
 
     protected override void OnInitialized()
     {
@@ -145,7 +145,7 @@
         base.OnInitialized();
     }
 
-    private StandaloneEditorConstructionOptions BuildPythonCodeEditorConstructionOptions(StandaloneCodeEditor editor)
+    StandaloneEditorConstructionOptions BuildPythonCodeEditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
         {
@@ -155,7 +155,7 @@
         };
     }
 
-    private StandaloneEditorConstructionOptions BuildBatchScriptEditorConstructionOptions(StandaloneCodeEditor editor)
+    StandaloneEditorConstructionOptions BuildBatchScriptEditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
         {
@@ -165,7 +165,7 @@
         };
     }
 
-    private async Task InitAsync()
+    async Task InitAsync()
     {
         foreach (var kv in OptionValueEditors)
         {

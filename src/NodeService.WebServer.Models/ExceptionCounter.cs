@@ -9,7 +9,7 @@ namespace NodeService.WebServer.Models
 {
     public class ExceptionCounter
     {
-        private readonly ConcurrentDictionary<string, int> _dict;
+        readonly ConcurrentDictionary<string, int> _dict;
 
         public ExceptionCounter()
         {
@@ -19,10 +19,10 @@ namespace NodeService.WebServer.Models
         public void AddOrUpdate(Exception exception)
         {
             var ex = exception.ToString();
-            this._dict.AddOrUpdate(ex, 1, UpdateValueImpl);
+            _dict.AddOrUpdate(ex, 1, UpdateValueImpl);
         }
 
-        private int UpdateValueImpl(string key, int value)
+        int UpdateValueImpl(string key, int value)
         {
             return value + 1;
         }

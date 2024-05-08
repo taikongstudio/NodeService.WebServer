@@ -10,13 +10,13 @@ namespace NodeService.WebServer.Services;
 
 public class NodeServiceImpl : NodeServiceBase
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ILogger<NodeServiceImpl> _logger;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly WebServerCounter _webServerCounter;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly IOptionsMonitor<WebServerOptions> _optionMonitor;
-    private readonly IServiceProvider _serviceProvider;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ILogger<NodeServiceImpl> _logger;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly WebServerCounter _webServerCounter;
+    readonly INodeSessionService _nodeSessionService;
+    readonly IOptionsMonitor<WebServerOptions> _optionMonitor;
+    readonly IServiceProvider _serviceProvider;
 
 
     public NodeServiceImpl(
@@ -80,7 +80,7 @@ public class NodeServiceImpl : NodeServiceBase
         }
     }
 
-    private async Task DispatchSubscribeEvents(NodeSessionId nodeContextId,
+    async Task DispatchSubscribeEvents(NodeSessionId nodeContextId,
         IServerStreamWriter<SubscribeEvent> responseStream, ServerCallContext context)
     {
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();

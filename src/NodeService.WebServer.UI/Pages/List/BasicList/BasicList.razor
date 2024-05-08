@@ -84,16 +84,16 @@
 
 @code
 {
-    private static readonly RenderFragment Edit = @<a key="edit">
+    static readonly RenderFragment Edit = @<a key="edit">
                                                       Edit
                                                   </a>;
 
-    private readonly RenderFragment[] _actions =
+    readonly RenderFragment[] _actions =
     {
         Edit
     };
 
-    private RenderFragment Info(string title, string value, bool bordered = false)
+    RenderFragment Info(string title, string value, bool bordered = false)
     {
         return @<div class="headerInfo">
                    <span>@title</span>

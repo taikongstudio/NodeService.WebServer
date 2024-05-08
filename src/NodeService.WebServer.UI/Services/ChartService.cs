@@ -13,7 +13,7 @@ public interface IChartService
 
 public class ChartService : IChartService
 {
-    private readonly HttpClient _httpClient;
+    readonly HttpClient _httpClient;
 
     public ChartService(HttpClient httpClient)
     {
@@ -40,7 +40,7 @@ public class ChartService : IChartService
         return (await GetChartDataAsync()).RadarData;
     }
 
-    private async Task<ChartData> GetChartDataAsync()
+    async Task<ChartData> GetChartDataAsync()
     {
         return await _httpClient.GetFromJsonAsync<ChartData>("data/fake_chart_data.json");
     }

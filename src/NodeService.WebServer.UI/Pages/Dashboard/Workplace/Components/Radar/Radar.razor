@@ -25,9 +25,9 @@
 
     [Parameter] public int Height { get; set; } = 343;
 
-    private IChartComponent _chart;
+    IChartComponent _chart;
 
-    private readonly RadarConfig _chartConfig = new()
+    readonly RadarConfig _chartConfig = new()
     {
         Height = 343,
         AutoFit = true,

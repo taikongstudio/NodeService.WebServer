@@ -92,11 +92,11 @@
 
 @code
 {
-    private static readonly RenderFragment Download = @<AntDesign.Tooltip Title="@("下载")">
+    static readonly RenderFragment Download = @<AntDesign.Tooltip Title="@("下载")">
                                                           <Icon Type="download" Theme="outline"/>
                                                       </AntDesign.Tooltip>;
 
-    private static readonly IList<RenderFragment> Actions = new List<RenderFragment>
+    static readonly IList<RenderFragment> Actions = new List<RenderFragment>
     {
         Download,
         @<AntDesign.Tooltip Title="@("Edit")">
@@ -110,7 +110,7 @@
         </Dropdown>
     };
 
-    private static RenderFragment FormatWan(int val)
+    static RenderFragment FormatWan(int val)
     {
         if (val > 10000)
         {

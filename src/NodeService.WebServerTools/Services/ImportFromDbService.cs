@@ -8,8 +8,8 @@ namespace NodeService.WebServerTools.Services;
 
 public class ImportFromDbService : BackgroundService
 {
-    private readonly ApiService _apiService;
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ApiService _apiService;
+    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
     public ImportFromDbService(
         ApiService apiService,
@@ -68,9 +68,9 @@ public class ImportFromDbService : BackgroundService
                 else if (type == typeof(PackageConfigModel))
                 {
                     //using var stream = new MemoryStream();
-                    //await this._apiService.DownloadPackageAsync(obj as PackageConfigModel, stream);
+                    //await _apiService.DownloadPackageAsync(obj as PackageConfigModel, stream);
                     //stream.Position = 0;
-                    //await this._apiService.AddOrUpdateAsync(obj as PackageConfigModel, stream);
+                    //await _apiService.AddOrUpdateAsync(obj as PackageConfigModel, stream);
                 }
                 else if (type == typeof(RestApiConfigModel))
                 {

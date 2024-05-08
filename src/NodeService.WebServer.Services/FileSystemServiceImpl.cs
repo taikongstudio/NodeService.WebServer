@@ -12,9 +12,9 @@
 //{
 //    public class FileSystemServiceImpl : FileSystem.FileSystemBase
 //    {
-//        private readonly ILogger<FileSystemServiceImpl> _logger;
-//        private readonly INodeServerService _nodeSessionService;
-//        private readonly VirtualFileSystemConfig _virtualFileSystemConfig;
+//        readonly ILogger<FileSystemServiceImpl> _logger;
+//        readonly INodeServerService _nodeSessionService;
+//        readonly VirtualFileSystemConfig _virtualFileSystemConfig;
 
 //        public FileSystemServiceImpl(
 //            ILogger<FileSystemServiceImpl> logger,

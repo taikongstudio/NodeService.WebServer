@@ -16,6 +16,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     private readonly TaskLogCacheManager _taskLogCacheManager;
     private readonly IMemoryCache _memoryCache;
     private readonly WebServerCounter _webServerCounter;
+    private readonly ExceptionCounter _exceptionCounter;
     private readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
     private readonly TaskScheduler _taskScheduler;
     private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
@@ -29,7 +30,8 @@ public class TaskExecutionReportConsumerService : BackgroundService
         TaskSchedulerDictionary jobSchedulerDictionary,
         TaskScheduler jobScheduler,
         IMemoryCache memoryCache,
-        WebServerCounter webServerCounter
+        WebServerCounter webServerCounter,
+        ExceptionCounter exceptionCounter
     )
     {
         _dbContextFactory = dbContextFactory;
@@ -41,6 +43,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         _taskLogCacheManager = taskLogCacheManager;
         _memoryCache = memoryCache;
         _webServerCounter = webServerCounter;
+        _exceptionCounter = exceptionCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -67,6 +70,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
             }
             catch (Exception ex)
             {
+                _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
             finally
@@ -179,12 +183,13 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 stopwatchSave.Start();
                 int changesCount = await dbContext.SaveChangesAsync(stoppingToken);
                 stopwatchSave.Stop();
-                _webServerCounter.TaskExecutionReportSaveTimeSpan += stopwatchProcessLogEntries.Elapsed;
+                _webServerCounter.TaskExecutionReportSaveTimeSpan += stopwatchSave.Elapsed;
                 _webServerCounter.TaskExecutionReportSaveChangesCount += (uint)changesCount;
             }
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
         finally
@@ -301,6 +306,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
     }

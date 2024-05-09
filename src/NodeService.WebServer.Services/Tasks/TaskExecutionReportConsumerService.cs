@@ -181,28 +181,48 @@ public class TaskExecutionReportConsumerService : BackgroundService
                         $"process {status} {messageStatusGroup.Count()} messages,spent:{stopwatchProcessMessage.Elapsed}");
                     _webServerCounter.TaskExecutionReportProcessTimeSpan += stopwatchProcessMessage.Elapsed;
                 }
+                int diffCount = 0;
+                if (taskExecutionStatus != taskExecutionInstance.Status)
+                {
+                    diffCount++;
+                }
+                if (messsage != taskExecutionInstance.Message)
+                {
+                    diffCount++;
+                }
+                if (executionBeginTime != taskExecutionInstance.ExecutionBeginTimeUtc)
+                {
+                    diffCount++;
+                }
+                if (executionEndTime != taskExecutionInstance.ExecutionEndTimeUtc)
+                {
+                    diffCount++;
+                }
+                if (diffCount > 0)
+                {
+                    stopwatchSave.Restart();
+                    int changesCount = await dbContext.JobExecutionInstancesDbSet.ExecuteUpdateAsync(
+                        setPropertyCalls =>
+                        setPropertyCalls.SetProperty(
+                            task => task.Status,
+                            task => task.Status != taskExecutionStatus ? task.Status : taskExecutionStatus)
+                        .SetProperty(
+                            task => task.Message,
+                            task => task.Message != messsage ? task.Message : messsage)
+                        .SetProperty(
+                            task => task.ExecutionBeginTimeUtc,
+                            task => task.ExecutionBeginTimeUtc != executionBeginTime ? task.ExecutionBeginTimeUtc : executionBeginTime)
+                        .SetProperty(
+                            task => task.ExecutionEndTimeUtc,
+                            task => task.ExecutionEndTimeUtc != executionEndTime ? task.ExecutionEndTimeUtc : executionEndTime),
+                        stoppingToken);
 
-                stopwatchSave.Restart();
-                int changesCount = await dbContext.JobExecutionInstancesDbSet.ExecuteUpdateAsync(
-                    setPropertyCalls =>
-                    setPropertyCalls.SetProperty(
-                        task => task.Status,
-                        task => task.Status != taskExecutionStatus ? task.Status : taskExecutionStatus)
-                    .SetProperty(
-                        task => task.Message,
-                        task => task.Message != messsage ? task.Message : messsage)
-                    .SetProperty(
-                        task => task.ExecutionBeginTimeUtc,
-                        task => task.ExecutionBeginTimeUtc != executionBeginTime ? task.ExecutionBeginTimeUtc : executionBeginTime)
-                    .SetProperty(
-                        task => task.ExecutionEndTimeUtc,
-                        task => task.ExecutionEndTimeUtc != executionEndTime ? task.ExecutionEndTimeUtc : executionEndTime),
-                    stoppingToken);
+                    stopwatchSave.Stop();
+                    stopwatchSaveTimeSpan += stopwatchSave.Elapsed;
+                    _webServerCounter.TaskExecutionReportSaveTimeSpan += stopwatchSave.Elapsed;
+                    _webServerCounter.TaskExecutionReportSaveChangesCount += (uint)changesCount;
+                }
 
-                stopwatchSave.Stop();
-                stopwatchSaveTimeSpan += stopwatchSave.Elapsed;
-                _webServerCounter.TaskExecutionReportSaveTimeSpan += stopwatchSave.Elapsed;
-                _webServerCounter.TaskExecutionReportSaveChangesCount += (uint)changesCount;
             }
         }
         catch (Exception ex)

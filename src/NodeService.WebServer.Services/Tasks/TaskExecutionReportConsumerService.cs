@@ -128,7 +128,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     taskExecutionInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(taskId);
                     if (taskExecutionInstance == null)
                     {
-                        return;
+                        continue;
                     }
                     _memoryCache.Set(cacheKey, taskExecutionInstance, TimeSpan.FromHours(1));
                 }
@@ -201,7 +201,9 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 if (diffCount > 0)
                 {
                     stopwatchSave.Restart();
-                    int changesCount = await dbContext.JobExecutionInstancesDbSet.ExecuteUpdateAsync(
+                    int changesCount = await dbContext.JobExecutionInstancesDbSet
+                       .Where(x => x.Id == taskId)
+                       .ExecuteUpdateAsync(
                         setPropertyCalls =>
                         setPropertyCalls.SetProperty(
                             task => task.Status,

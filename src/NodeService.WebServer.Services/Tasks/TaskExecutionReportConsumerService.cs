@@ -184,18 +184,22 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 int diffCount = 0;
                 if (taskExecutionStatus != taskExecutionInstance.Status)
                 {
+                    taskExecutionStatus = taskExecutionInstance.Status;
                     diffCount++;
                 }
                 if (messsage != taskExecutionInstance.Message)
                 {
+                    messsage = taskExecutionInstance.Message;
                     diffCount++;
                 }
                 if (executionBeginTime != taskExecutionInstance.ExecutionBeginTimeUtc)
                 {
+                    executionBeginTime = taskExecutionInstance.ExecutionBeginTimeUtc;
                     diffCount++;
                 }
                 if (executionEndTime != taskExecutionInstance.ExecutionEndTimeUtc)
                 {
+                    executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
                     diffCount++;
                 }
                 if (diffCount > 0)
@@ -207,16 +211,16 @@ public class TaskExecutionReportConsumerService : BackgroundService
                         setPropertyCalls =>
                         setPropertyCalls.SetProperty(
                             task => task.Status,
-                            task => task.Status != taskExecutionStatus ? task.Status : taskExecutionStatus)
+                            task => taskExecutionStatus)
                         .SetProperty(
                             task => task.Message,
-                            task => task.Message != messsage ? task.Message : messsage)
+                            task => messsage)
                         .SetProperty(
                             task => task.ExecutionBeginTimeUtc,
-                            task => task.ExecutionBeginTimeUtc != executionBeginTime ? task.ExecutionBeginTimeUtc : executionBeginTime)
+                            task => executionBeginTime)
                         .SetProperty(
                             task => task.ExecutionEndTimeUtc,
-                            task => task.ExecutionEndTimeUtc != executionEndTime ? task.ExecutionEndTimeUtc : executionEndTime),
+                            task => executionEndTime),
                         stoppingToken);
 
                     stopwatchSave.Stop();

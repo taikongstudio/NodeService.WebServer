@@ -140,7 +140,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     async Task ProcessHeartBeatMessageAsync(
         ApplicationDbContext dbContext,
-        NodeHeartBeatSessionMessage hearBeatMessage
+        NodeHeartBeatSessionMessage hearBeatMessage,
+        CancellationToken cancellationToken = default
     )
     {
         NodeInfoModel? nodeInfo = null;
@@ -176,7 +177,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 nodeInfo.Profile.IpAddress = hearBeatResponse.Properties["RemoteIpAddress"];
                 nodeInfo.Profile.InstallStatus = true;
                 nodeInfo.Profile.LoginName = hearBeatResponse.Properties[NodePropertyModel.Environment_UserName_Key];
-                //nodeInfo.Profile.FactoryName = hearBeatResponse.Properties[NodePropertyModel.FactoryName_key];
                 nodeInfo.Profile.FactoryName = "Unknown";
                 if (!string.IsNullOrEmpty(nodeInfo.Profile.IpAddress))
                     foreach (var mapping in _nodeSettings.IpAddressMappings)
@@ -204,7 +204,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
                 if (propsDict.Count > 0)
                     if (propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key, out var processString))
-                        if (!string.IsNullOrEmpty(processString) && processString.IndexOf('[') >= 0)
+                        if (!string.IsNullOrEmpty(processString) && processString.Contains('['))
                         {
                             var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
                             AnalysisProcessInfoList(nodeInfo, processInfoList);
@@ -226,8 +226,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 await dbContext.NodePropertiesSnapshotsDbSet.AddAsync(nodePropertySnapshotModel);
                 var oldId = nodeInfo.LastNodePropertySnapshotId;
                 nodeInfo.LastNodePropertySnapshotId = nodePropertySnapshotModel.Id;
-                var oldPropertySnapshot = await dbContext.NodePropertiesSnapshotsDbSet.FindAsync(oldId);
-                if (oldPropertySnapshot != null) dbContext.NodePropertiesSnapshotsDbSet.Remove(oldPropertySnapshot);
+                await dbContext.NodePropertiesSnapshotsDbSet.Where(x => x.Id == oldId).ExecuteDeleteAsync(cancellationToken);
             }
         }
         catch (Exception ex)
@@ -237,11 +236,12 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    void AnalysisProcessInfoList(NodeInfoModel? nodeInfo, ProcessInfo[]? processInfoList)
+    void AnalysisProcessInfoList(NodeInfoModel nodeInfo, ProcessInfo[]? processInfoList)
     {
         if (_nodeSettings.ProcessUsagesMapping != null && processInfoList != null)
         {
-            var usages = new HashSet<string>();
+            var usagesList = nodeInfo.Profile.Usages?.Split(',') ?? [];
+            var usages = new HashSet<string>(usagesList);
             foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
             {
                 if (string.IsNullOrEmpty(mapping.Name)

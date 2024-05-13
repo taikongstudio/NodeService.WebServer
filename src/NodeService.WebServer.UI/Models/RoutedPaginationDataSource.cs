@@ -40,7 +40,12 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
     ValueTask OnLocationChanging(LocationChangingContext context)
     {
         var uri = new Uri(context.TargetLocation);
-        if (string.IsNullOrEmpty(uri.Query)) return ValueTask.CompletedTask;
+        if (string.IsNullOrEmpty(uri.Query))
+        {
+            this.IsLoading = false;
+            this.RaiseStateChanged();
+            return ValueTask.CompletedTask;
+        }
         if (_currentQuery == uri.Query && IsLoading)
         {
             context.PreventNavigation();

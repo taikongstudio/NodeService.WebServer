@@ -1,6 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using NodeService.Infrastructure.Messages;
+using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.MessageHandlers;
 using static NodeService.Infrastructure.Services.NodeService;
@@ -10,33 +14,64 @@ namespace NodeService.WebServer.Services;
 
 public class NodeServiceImpl : NodeServiceBase
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     readonly ILogger<NodeServiceImpl> _logger;
     readonly ExceptionCounter _exceptionCounter;
     readonly WebServerCounter _webServerCounter;
     readonly INodeSessionService _nodeSessionService;
     readonly IOptionsMonitor<WebServerOptions> _optionMonitor;
     readonly IServiceProvider _serviceProvider;
-
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    readonly ApplicationRepositoryFactory<NodeProfileModel> _nodeProfileRepositoryFactory;
 
     public NodeServiceImpl(
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        ILogger<NodeServiceImpl> logger,
+        ApplicationRepositoryFactory<NodeInfoModel>  nodeInfoRepositoryFactory,
+        ApplicationRepositoryFactory<NodeProfileModel> nodeProfileRepositoryFactory,
         IServiceProvider serviceProvider,
         INodeSessionService nodeService,
-        ILogger<NodeServiceImpl> logger,
         IOptionsMonitor<WebServerOptions> optionsMonitor,
         ExceptionCounter exceptionCounter,
         WebServerCounter webServerCounter
     )
     {
+        _logger = logger;
         _optionMonitor = optionsMonitor;
         _serviceProvider = serviceProvider;
-        _dbContextFactory = dbContextFactory;
+        _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
+        _nodeProfileRepositoryFactory = nodeProfileRepositoryFactory;
         _nodeSessionService = nodeService;
-        _logger = logger;
         _exceptionCounter = exceptionCounter;
         _webServerCounter = webServerCounter;
     }
+
+
+    public async Task<NodeId> EnsureNodeInfoAsync(
+        NodeSessionId nodeSessionId,
+        string nodeName,
+        CancellationToken cancellationToken = default)
+    {
+        using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
+        using var nodeProfileRepo = _nodeProfileRepositoryFactory.CreateRepository();
+        var nodeId = nodeSessionId.NodeId.Value;
+        var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
+
+        if (nodeInfo == null)
+        {
+            nodeInfo = NodeInfoModel.Create(nodeId, nodeName);
+            var nodeProfile = await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileSpecification(nodeName), cancellationToken);
+            if (nodeProfile != null)
+            {
+                var oldNodeInfo = await nodeInfoRepo.GetByIdAsync(nodeProfile.NodeInfoId, cancellationToken);
+                if (oldNodeInfo != null) await nodeInfoRepo.DeleteAsync(oldNodeInfo);
+                nodeProfile.NodeInfoId = nodeId;
+                nodeInfo.ProfileId = nodeProfile.Id;
+            }
+            await nodeInfoRepo.AddAsync(nodeInfo, cancellationToken);
+        }
+
+        return new NodeId(nodeInfo.Id);
+    }
+
 
     public override async Task Subscribe(SubscribeRequest subscribeRequest,
         IServerStreamWriter<SubscribeEvent> responseStream, ServerCallContext context)
@@ -48,7 +83,7 @@ public class NodeServiceImpl : NodeServiceBase
         {
             if (nodeSessionId.NodeId.IsNullOrEmpty) return;
             var messageHandlerDictionary = _serviceProvider.GetService<MessageHandlerDictionary>();
-            await _nodeSessionService.EnsureNodeInfoAsync(nodeSessionId, nodeClientHeaders.HostName);
+            await EnsureNodeInfoAsync(nodeSessionId, nodeClientHeaders.HostName);
             _nodeSessionService.UpdateNodeStatus(nodeSessionId, NodeStatus.Online);
             _nodeSessionService.UpdateNodeName(nodeSessionId, nodeClientHeaders.HostName);
             _nodeSessionService.SetHttpContext(nodeSessionId, httpContext);
@@ -159,44 +194,6 @@ public class NodeServiceImpl : NodeServiceBase
         return new Empty();
     }
 
-    public override async Task<QueryConfigurationResponse> QueryConfigurations(QueryConfigurationRequest request,
-        ServerCallContext context)
-    {
-        var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
-        var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-        var queryConfigurationRsp = new QueryConfigurationResponse();
-        queryConfigurationRsp.RequestId = request.RequestId;
-
-        try
-        {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var configName = request.Parameters["ConfigName"];
-            var nodeId = nodeSessionId.NodeId.Value;
-            var nodeInfo = await dbContext.NodeInfoDbSet.AsQueryable().FirstOrDefaultAsync(x => x.Id == nodeId);
-            if (nodeInfo == null)
-            {
-                queryConfigurationRsp.ErrorCode = -1;
-                queryConfigurationRsp.Message = $"Could not found node info:{nodeClientHeaders.NodeId}";
-            }
-            else
-            {
-                JobScheduleConfigModel nodeConfigTemplate = null;
-                queryConfigurationRsp.Configurations.Add(configName,
-                    nodeConfigTemplate?.ToJsonString<JobScheduleConfigModel>() ?? string.Empty);
-            }
-        }
-        catch (Exception ex)
-        {
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex, ToString());
-            queryConfigurationRsp.ErrorCode = ex.HResult;
-            queryConfigurationRsp.Message = ex.Message;
-        }
-
-
-        return queryConfigurationRsp;
-    }
-
     public override async Task<Empty> SendJobExecutionEventResponse(JobExecutionEventResponse response,
         ServerCallContext context)
     {
@@ -221,7 +218,7 @@ public class NodeServiceImpl : NodeServiceBase
                     var report = requestStream.Current;
                     var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
 
-                    await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(report);
+                    await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(report, context.CancellationToken);
                 }
                 catch (Exception ex)
                 {

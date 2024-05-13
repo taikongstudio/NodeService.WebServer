@@ -5,13 +5,16 @@ using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.NodeSessions;
+using NodeService.WebServer.Data.Repositories;
 
 namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskExecutionReportConsumerService : BackgroundService
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     readonly ILogger<TaskExecutionReportConsumerService> _logger;
+    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
+    readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
+    readonly ApplicationRepositoryFactory<JobFireConfigurationModel> _taskFireConfigRepositoryFactory;
     readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
     readonly TaskLogCacheManager _taskLogCacheManager;
     readonly IMemoryCache _memoryCache;
@@ -22,7 +25,9 @@ public class TaskExecutionReportConsumerService : BackgroundService
     readonly TaskSchedulerDictionary _taskSchedulerDictionary;
 
     public TaskExecutionReportConsumerService(
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        ApplicationRepositoryFactory<JobExecutionInstanceModel>  taskExecutionInstanceRepositoryFactory,
+        ApplicationRepositoryFactory<JobScheduleConfigModel> taskDefinitionRepositoryFactory,
+        ApplicationRepositoryFactory<JobFireConfigurationModel> taskFireConfigRepositoryFactory,
         BatchQueue<JobExecutionReportMessage> jobExecutionReportBatchQueue,
         TaskLogCacheManager taskLogCacheManager,
         IAsyncQueue<TaskScheduleMessage> jobScheduleAsyncQueue,
@@ -34,7 +39,9 @@ public class TaskExecutionReportConsumerService : BackgroundService
         ExceptionCounter exceptionCounter
     )
     {
-        _dbContextFactory = dbContextFactory;
+        _taskExecutionInstanceRepositoryFactory = taskExecutionInstanceRepositoryFactory;
+        _taskDefinitionRepositoryFactory = taskDefinitionRepositoryFactory;
+        _taskFireConfigRepositoryFactory = taskFireConfigRepositoryFactory;
         _taskExecutionReportBatchQueue = jobExecutionReportBatchQueue;
         _taskScheduleAsyncQueue = jobScheduleAsyncQueue;
         _logger = logger;
@@ -51,7 +58,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         _taskLogCacheManager.Load();
         await foreach (var arrayPoolCollection in _taskExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
         {
-            var count = arrayPoolCollection.CountNotNull();
+            var count = arrayPoolCollection.CountDefault();
             if (count == 0) continue;
 
             var stopwatch = new Stopwatch();
@@ -90,13 +97,13 @@ public class TaskExecutionReportConsumerService : BackgroundService
         return report.Id;
     }
 
-    static LogEntry Convert(JobExecutionLogEntry jobExecutionLogEntry)
+    static LogEntry Convert(JobExecutionLogEntry taskExecutionLogEntry)
     {
         return new LogEntry
         {
-            DateTimeUtc = jobExecutionLogEntry.DateTime.ToDateTime().ToUniversalTime(),
-            Type = (int)jobExecutionLogEntry.Type,
-            Value = jobExecutionLogEntry.Value
+            DateTimeUtc = taskExecutionLogEntry.DateTime.ToDateTime().ToUniversalTime(),
+            Type = (int)taskExecutionLogEntry.Type,
+            Value = taskExecutionLogEntry.Value
         };
     }
 
@@ -104,11 +111,12 @@ public class TaskExecutionReportConsumerService : BackgroundService
         ArrayPoolCollection<JobExecutionReportMessage?> arrayPoolCollection,
         CancellationToken stoppingToken = default)
     {
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+
         var stopwatchSaveTimeSpan = TimeSpan.Zero;
 
         try
         {
+            using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
             var stopwatchSave = new Stopwatch();
             var stopwatchQuery = new Stopwatch();
             var stopwatchProcessLogEntries = new Stopwatch();
@@ -125,7 +133,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     ||
                     taskExecutionInstance == null)
                 {
-                    taskExecutionInstance = await dbContext.FindAsync<JobExecutionInstanceModel>(taskId);
+                    taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId);
                     if (taskExecutionInstance == null)
                     {
                         continue;
@@ -171,7 +179,6 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     {
                         if (reportMessage == null) continue;
                         await ProcessTaskExecutionReportAsync(
-                            dbContext,
                             taskExecutionInstance,
                             reportMessage,
                             stoppingToken);
@@ -205,7 +212,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 if (diffCount > 0)
                 {
                     stopwatchSave.Restart();
-                    int changesCount = await dbContext.JobExecutionInstancesDbSet
+                    int changesCount = await taskExecutionInstanceRepo.DbContext.Set<JobExecutionInstanceModel>()
                        .Where(x => x.Id == taskId)
                        .ExecuteUpdateAsync(
                         setPropertyCalls =>
@@ -239,7 +246,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         finally
         {
             _logger.LogInformation(
-                $"Process {arrayPoolCollection.CountNotNull()} messages, SaveElapsed:{stopwatchSaveTimeSpan}");
+                $"Process {arrayPoolCollection.CountDefault()} messages, SaveElapsed:{stopwatchSaveTimeSpan}");
         }
     }
 
@@ -250,17 +257,15 @@ public class TaskExecutionReportConsumerService : BackgroundService
     }
 
     async Task ScheduleTimeLimitTaskAsync(
-        ApplicationDbContext dbContext,
         JobExecutionInstanceModel taskExecutionInstance,
         CancellationToken cancellationToken = default)
     {
         if (taskExecutionInstance == null) return;
+        using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
         var cacheKey = $"{nameof(JobScheduleConfigModel)}:{taskExecutionInstance.JobScheduleConfigId}";
         if (!_memoryCache.TryGetValue<JobScheduleConfigModel>(cacheKey, out var taskScheduleConfig))
         {
-            taskScheduleConfig = await dbContext.JobScheduleConfigurationDbSet.FirstOrDefaultAsync(
-                        x => x.Id == taskExecutionInstance.JobScheduleConfigId,
-                        cancellationToken);
+            taskScheduleConfig = await taskDefinitionRepo.GetByIdAsync(taskExecutionInstance.JobScheduleConfigId, cancellationToken);
             _memoryCache.Set(cacheKey, taskScheduleConfig, TimeSpan.FromMinutes(30));
         }
         if (taskScheduleConfig == null) return;
@@ -280,7 +285,6 @@ public class TaskExecutionReportConsumerService : BackgroundService
     }
 
     async Task ProcessTaskExecutionReportAsync(
-        ApplicationDbContext dbContext,
         JobExecutionInstanceModel taskExecutionInstance,
         NodeSessionMessage<JobExecutionReport> message,
         CancellationToken stoppingToken = default)
@@ -301,7 +305,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     break;
                 case JobExecutionStatus.Started:
                     if (taskExecutionInstance.Status != JobExecutionStatus.Started)
-                        await ScheduleTimeLimitTaskAsync(dbContext, taskExecutionInstance, stoppingToken);
+                        await ScheduleTimeLimitTaskAsync(taskExecutionInstance, stoppingToken);
                     break;
                 case JobExecutionStatus.Running:
                     break;
@@ -311,7 +315,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 case JobExecutionStatus.Finished:
                     if (taskExecutionInstance.Status != JobExecutionStatus.Finished)
                     {
-                        await ScheduleChildTasksAsync(dbContext, taskExecutionInstance, stoppingToken);
+                        await ScheduleChildTasksAsync(taskExecutionInstance, stoppingToken);
                         await CancelTimeLimitTaskAsync(taskSchedulerKey);
                     }
 
@@ -357,16 +361,14 @@ public class TaskExecutionReportConsumerService : BackgroundService
 
 
     async Task ScheduleChildTasksAsync(
-        ApplicationDbContext dbContext,
         JobExecutionInstanceModel parentTaskInstance,
         CancellationToken stoppingToken = default)
     {
         var key = $"{nameof(JobFireConfigurationModel)}:{parentTaskInstance.FireInstanceId}";
         if (!_memoryCache.TryGetValue<JobFireConfigurationModel>(key, out var taskFireConfig))
         {
-            taskFireConfig = await dbContext
-            .JobFireConfigurationsDbSet
-            .FirstOrDefaultAsync(x => x.Id == parentTaskInstance.FireInstanceId, stoppingToken);
+            using var taskFireConfigRepo = _taskFireConfigRepositoryFactory.CreateRepository();
+            taskFireConfig = await taskFireConfigRepo.GetByIdAsync(parentTaskInstance.FireInstanceId, stoppingToken);
             _memoryCache.Set(key, taskFireConfig, TimeSpan.FromMinutes(30));
         }
 
@@ -375,16 +377,16 @@ public class TaskExecutionReportConsumerService : BackgroundService
             _logger.LogError($"Could not found task fire config:{parentTaskInstance.FireInstanceId}");
             return;
         }
-
+        using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
         var taskScheduleConfig =
             JsonSerializer.Deserialize<JobScheduleConfiguration>(taskFireConfig.JobScheduleConfigJsonString);
         foreach (var childTaskDefinition in taskScheduleConfig.ChildTaskDefinitions)
         {
             var childTaskScheduleDefinition =
-                await dbContext.JobScheduleConfigurationDbSet.FindAsync(childTaskDefinition.Value);
+                await taskDefinitionRepo.GetByIdAsync(childTaskDefinition.Value, stoppingToken);
             if (childTaskScheduleDefinition == null) continue;
             await _taskScheduleAsyncQueue.EnqueueAsync(new TaskScheduleMessage(TaskTriggerSource.Parent,
-                childTaskScheduleDefinition.Id, parentTaskInstanceId: parentTaskInstance.Id));
+                childTaskScheduleDefinition.Id, parentTaskInstanceId: parentTaskInstance.Id), stoppingToken);
         }
     }
 }

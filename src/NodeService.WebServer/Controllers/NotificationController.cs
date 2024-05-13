@@ -1,4 +1,6 @@
 ﻿using NodeService.Infrastructure.Models;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using System.Linq;
 
@@ -8,16 +10,16 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class NotificationController : Controller
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ApplicationRepositoryFactory<NotificationRecordModel> _notificationRecordsRepositoryFactory;
     readonly ILogger<NotificationController> _logger;
     readonly ExceptionCounter _exceptionCounter;
 
     public NotificationController(
         ExceptionCounter exceptionCounter,
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        ApplicationRepositoryFactory<NotificationRecordModel> notificationRecordsRepositoryFactory,
         ILogger<NotificationController> logger)
     {
-        _dbContextFactory = dbContextFactory;
+        _notificationRecordsRepositoryFactory = notificationRecordsRepositoryFactory;
         _logger = logger;
         _exceptionCounter = exceptionCounter;
     }
@@ -29,13 +31,14 @@ public class NotificationController : Controller
         var apiResponse = new PaginationResponse<NotificationRecordModel>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-
-            IQueryable<NotificationRecordModel> queryable = dbContext.NotificationRecordsDbSet;
-
-            queryable = queryable.OrderBy(queryParameters.SortDescriptions);
-
-            apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
+            using var repo = _notificationRecordsRepositoryFactory.CreateRepository();
+            var queryResult = await repo.PaginationQueryAsync(
+                new NotificationRecordSpecification(
+                    queryParameters.Keywords,
+                    queryParameters.SortDescriptions),
+                 queryParameters.PageSize,
+                 queryParameters.PageIndex);
+            apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
         {

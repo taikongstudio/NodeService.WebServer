@@ -1,16 +1,18 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using NodeService.Infrastructure.NodeSessions;
+
+namespace NodeService.WebServer.Controllers;
 
 public partial class NodesController
 {
-    [HttpGet("/api/nodes/{id}/filesystem/{**path}")]
-    public async Task<ApiResponse<IEnumerable<FileSystemEntry>>> ListDirectoryAsync(string id, string path,
+    [HttpGet("/api/nodes/{nodeId}/filesystem/{**path}")]
+    public async Task<ApiResponse<IEnumerable<FileSystemEntry>>> ListDirectoryAsync(string nodeId, string path,
         [FromQuery] string? searchpattern)
     {
         var apiResponse = new ApiResponse<IEnumerable<FileSystemEntry>>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var nodeInfo = await dbContext.NodeInfoDbSet.FindAsync(id);
+            using var dbContext = _nodeInfoRepositoryFactory.CreateRepository();
+            var nodeInfo = await dbContext.GetByIdAsync(nodeId);
             if (nodeInfo == null)
             {
                 apiResponse.ErrorCode = -1;
@@ -29,7 +31,7 @@ public partial class NodesController
                 };
                 var rsp = await _nodeSessionService
                     .SendMessageAsync<FileSystemListDirectoryRequest, FileSystemListDirectoryResponse>(
-                        new NodeSessionId(id),
+                        new NodeSessionId(nodeId),
                         fileSystemListRequest);
 
                 apiResponse.ErrorCode = rsp.ErrorCode;

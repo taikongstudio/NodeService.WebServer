@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure.Internal;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NodeService.WebServer.Data;
 
@@ -24,8 +25,6 @@ public partial class ApplicationDbContext : DbContext
         new DebugLoggerProvider()
     });
 
-    readonly Dictionary<Type, object> _dbSetMapping;
-
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {
         foreach (var extension in options.Extensions)
@@ -37,20 +36,6 @@ public partial class ApplicationDbContext : DbContext
                 ProviderType = DatabaseProviderType.SqlServer;
             else if (extension is SqliteOptionsExtension) ProviderType = DatabaseProviderType.Sqlite;
         }
-
-        _dbSetMapping = new Dictionary<Type, object>();
-        _dbSetMapping.Add(typeof(FtpConfigModel), FtpConfigurationDbSet);
-        _dbSetMapping.Add(typeof(FtpUploadConfigModel), FtpUploadConfigurationDbSet);
-        _dbSetMapping.Add(typeof(FtpDownloadConfigModel), FtpDownloadConfigurationDbSet);
-        _dbSetMapping.Add(typeof(MysqlConfigModel), MysqlConfigurationDbSet);
-        _dbSetMapping.Add(typeof(KafkaConfigModel), KafkaConfigurationDbSet);
-        _dbSetMapping.Add(typeof(NodeEnvVarsConfigModel), NodeEnvVarsConfigurationDbSet);
-        _dbSetMapping.Add(typeof(JobScheduleConfigModel), JobScheduleConfigurationDbSet);
-        _dbSetMapping.Add(typeof(JobTypeDescConfigModel), JobTypeDescConfigurationDbSet);
-        _dbSetMapping.Add(typeof(PackageConfigModel), PackageConfigurationDbSet);
-        _dbSetMapping.Add(typeof(RestApiConfigModel), RestApiConfigurationDbSet);
-        _dbSetMapping.Add(typeof(NotificationConfigModel), NotificationConfigurationsDbSet);
-        _dbSetMapping.Add(typeof(WindowsTaskConfigModel), WindowsTaskConfigurationDbSet);
     }
 
 
@@ -96,7 +81,7 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<FileRecordModel> FileRecordsDbSet { get; set; }
 
-    public DbSet<Dictionary<string, object>> PropertyBagDbSet => Set<Dictionary<string, object>>("PropertyBag");
+    public DbSet<PropertyBag> PropertyBagDbSet { get; set; }
 
     public DbSet<NotificationConfigModel> NotificationConfigurationsDbSet { get; set; }
 
@@ -105,6 +90,15 @@ public partial class ApplicationDbContext : DbContext
     public DbSet<ClientUpdateCounterModel> ClientUpdateCountersDbSet { get; set; }
 
     public DbSet<WindowsTaskConfigModel> WindowsTaskConfigurationDbSet { get; set; }
+
+    public override DbSet<TEntity> Set<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties | DynamicallyAccessedMemberTypes.Interfaces)] TEntity>()
+    {
+        if (typeof(TEntity) == typeof(PropertyBag))
+        {
+            return base.Set<PropertyBag>("PropertyBag") as DbSet<TEntity>;
+        }
+        return base.Set<TEntity>();
+    }
 
     static string Serialize<T>(T? value)
     {
@@ -151,7 +145,7 @@ public partial class ApplicationDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
 
-        modelBuilder.SharedTypeEntity<Dictionary<string, object>>("PropertyBag", builder =>
+        modelBuilder.SharedTypeEntity<PropertyBag>("PropertyBag", builder =>
         {
             builder.IndexerProperty<string>("Id").IsRequired();
             builder.IndexerProperty<DateTime>("CreatedDateTime");
@@ -173,11 +167,4 @@ public partial class ApplicationDbContext : DbContext
         }
     }
 
-
-    public DbSet<TEntity>? GetDbSet<TEntity>()
-        where TEntity : class
-    {
-        if (_dbSetMapping.TryGetValue(typeof(TEntity), out var value)) return value as DbSet<TEntity>;
-        return null;
-    }
 }

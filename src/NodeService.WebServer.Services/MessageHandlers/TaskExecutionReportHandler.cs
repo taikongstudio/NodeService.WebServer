@@ -1,14 +1,16 @@
 ﻿using Microsoft.AspNetCore.Http;
+using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Services.NodeSessions;
 
 namespace NodeService.WebServer.Services.MessageHandlers;
 
-public class JobExecutionReportHandler : IMessageHandler
+public class TaskExecutionReportHandler : IMessageHandler
 {
     readonly BatchQueue<JobExecutionReportMessage> _batchQueue;
     readonly ILogger<HeartBeatResponseHandler> _logger;
 
-    public JobExecutionReportHandler(
+    public TaskExecutionReportHandler(
         BatchQueue<JobExecutionReportMessage> batchQueue,
         ILogger<HeartBeatResponseHandler> logger
     )

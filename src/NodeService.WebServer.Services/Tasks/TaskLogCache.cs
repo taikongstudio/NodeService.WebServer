@@ -1,5 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 using NodeService.Infrastructure.Logging;
+using NodeService.WebServer.Data;
 
 namespace NodeService.WebServer.Services.Tasks;
 

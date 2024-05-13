@@ -1,5 +1,5 @@
 @namespace NodeService.WebServer.UI.Pages.Nodes.List
-@page "/nodes"
+@page "/Nodes"
 
 @inject ApiService ApiService;
 @inject NotificationService _notice
@@ -77,37 +77,6 @@
 
         </Template>
     </Drawer>
-    <Modal Width="800"
-           Title="节点配置"
-           @bind-Visible="@_editFormVisible"
-           ConfirmLoading="@_editFormConfirmLoading"
-           OnOk="@HandleEditFormOk"
-           OnCancel="@HandleEditFormCancel">
-        <Form Model="@_nodeSettings" Size="@AntSizeLDSType.Default"
-              LabelColSpan="4"
-              Layout="@FormLayout.Horizontal"
-              WrapperColSpan="20"
-              OnFinish="OnEditFormFinish"
-              OnFinishFailed="OnEditFormFinishFailed"
-              @ref="@_editForm">
-            <FormItem Label="IP地址区域映射">
-                <StringEntryTable
-                    ValueTitle="Ip范围"
-                    NameTitle="区域名称"
-                    IsTagHidden="false"
-                    IsTagEditable="true"
-                    TagTitle="代码"
-                    ItemsSource="@context.IpAddressMappings"/>
-            </FormItem>
-            <FormItem Label="进程用途映射">
-                <StringEntryTable
-                    ValueTitle="用途"
-                    NameTitle="进程名称"
-                    ItemsSource="@context.ProcessUsagesMapping"/>
-            </FormItem>
-
-        </Form>
-    </Modal>
     <GridRow Gutter="(8, 0)">
         <GridCol Span="24">
             <Table Loading="@_dataSource.IsLoading"
@@ -133,10 +102,6 @@
                             <Space>
                                 <SpaceItem>
                                     <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryNodeListAsync"></Button>
-                                </SpaceItem>
-                                <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Setting" OnClick="ShowNodeSettingsModalAsync"></Button>
-
                                 </SpaceItem>
                                 <SpaceItem>
                                     <Select DataSource="@_nodeSettings.IpAddressMappings"
@@ -181,7 +146,7 @@
                                 <Badge Style="margin-right:10px" Status="@BadgeStatus.Error"></Badge>
                                 break;
                         }
-                        <NavLink href="@("/nodes/" + context.Id)">@context.Name</NavLink>
+                        <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
                     </PropertyColumn>
                     <PropertyColumn Title="最后在线时间" Sortable="true" SorterMultiple="1" SorterCompare="(a, b) => a.CompareTo(b)" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.Profile.ServerUpdateTimeUtc"></PropertyColumn><PropertyColumn Title="测试分类" Sortable="true" Property="c => c.Profile.TestInfo"></PropertyColumn>
                     <PropertyColumn Title="实验室区域" Sortable="true" Property="c => c.Profile.LabArea"></PropertyColumn>
@@ -215,21 +180,15 @@
     ITable _table;
     string? _keywords;
 
-    bool _editFormVisible;
-    bool _editFormSubmitting;
-    bool _editFormConfirmLoading;
-
     NodeStatus _nodeStatus = NodeStatus.All;
     string _selectedAreaTag = "*";
-
+    NodeSettings _nodeSettings = new();
 
     public List<TableFilter<string?>> areaNameFilters = [];
 
 
     RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
 
-
-    NodeSettings _nodeSettings = new();
 
     Form<NodeSettings> _editForm;
 
@@ -261,13 +220,6 @@
         nodeInfoDrawerVisible = false;
     }
 
-    async Task ShowNodeSettingsModalAsync()
-    {
-        _editFormVisible = true;
-        await QueryNodeSettingsAsync();
-    }
-
-
     async Task SubmitNodeInfoAsync()
     {
         try
@@ -288,108 +240,6 @@
         {
             _modifyErrorMsg = ex.Message;
         }
-    }
-
-    void HandleEditFormCancel(MouseEventArgs e)
-    {
-        _editFormSubmitting = false;
-        _editFormVisible = false;
-    }
-
-
-    void HandleEditFormOk(MouseEventArgs e)
-    {
-        _editFormSubmitting = true;
-        _editForm.Submit();
-    }
-
-    async Task QueryNodeSettingsAsync()
-    {
-        try
-        {
-            var apiResponse = await ApiService.QueryNodeSettingsAsync();
-            if (apiResponse.ErrorCode == 0)
-            {
-                _nodeSettings = apiResponse.Result;
-                if (_nodeSettings.IpAddressMappings != null)
-                {
-                    areaNameFilters.Clear();
-                    foreach (var item in _nodeSettings.IpAddressMappings)
-                    {
-                        areaNameFilters.Add(new TableFilter<string?>
-                        {
-                            Selected = item.Tag == "*",
-                            Text = item.Name,
-                            Value = item.Tag
-                        });
-                    }
-
-                    _selectedAreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault().Tag;
-                    if (_table != null)
-                    {
-                        await InvokeAsync(_table.ReloadData);
-                    }
-                }
-            }
-            else
-            {
-                await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = apiResponse.Message
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = ex.ToString()
-            });
-        }
-    }
-
-
-    async Task OnEditFormFinish(EditContext editContext)
-    {
-        try
-        {
-            var apiResponse = await ApiService.UpdateNodeSettingsAsync(_nodeSettings);
-            if (apiResponse.ErrorCode == 0)
-            {
-                await QueryNodeSettingsAsync();
-                _editFormVisible = false;
-                await _message.Info("更新节点设置成功");
-            }
-            else
-            {
-                await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = apiResponse.Message
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = ex.Message
-            });
-        }
-        finally
-        {
-            _editFormSubmitting = false;
-            _editFormConfirmLoading = false;
-        }
-    }
-
-    void OnEditFormFinishFailed(EditContext editContext)
-    {
-        _editFormSubmitting = false;
-        _editFormConfirmLoading = false;
     }
 
     void OnNodeNameChanged(MouseEventArgs e)
@@ -418,6 +268,53 @@
     {
         await QueryNodeSettingsAsync();
         await QueryNodeListAsync();
+    }
+
+    async Task QueryNodeSettingsAsync()
+    {
+        try
+        {
+            var apiResponse = await ApiService.QueryNodeSettingsAsync();
+            if (apiResponse.ErrorCode == 0)
+            {
+                _nodeSettings = apiResponse.Result;
+                if (_nodeSettings.IpAddressMappings != null)
+                {
+                    areaNameFilters.Clear();
+                    foreach (var item in _nodeSettings.IpAddressMappings)
+                    {
+                        areaNameFilters.Add(new TableFilter<string?>
+                            {
+                                Selected = item.Tag == "*",
+                                Text = item.Name,
+                                Value = item.Tag
+                            });
+                    }
+
+                    _selectedAreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault().Tag;
+                    if (_table != null)
+                    {
+                        await InvokeAsync(_table.ReloadData);
+                    }
+                }
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
     }
 
     async Task QueryNodeListAsync()

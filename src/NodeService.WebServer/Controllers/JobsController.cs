@@ -1,5 +1,8 @@
 ﻿using System.Text;
 using NodeService.Infrastructure.Logging;
+using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Tasks;
 
@@ -9,7 +12,7 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class JobsController : Controller
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel>  _taskInstanceRepositoryFactory;
     readonly ILogger<NodesController> _logger;
     readonly IMemoryCache _memoryCache;
     readonly INodeSessionService _nodeSessionService;
@@ -19,7 +22,7 @@ public class JobsController : Controller
 
     public JobsController(
         ExceptionCounter exceptionCounter,
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        ApplicationRepositoryFactory<JobExecutionInstanceModel> taskInstanceRepositoryFactory,
         INodeSessionService nodeSessionService,
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
@@ -27,7 +30,7 @@ public class JobsController : Controller
         TaskLogCacheManager taskLogCacheManager)
     {
         _logger = logger;
-        _dbContextFactory = dbContextFactory;
+        _taskInstanceRepositoryFactory = taskInstanceRepositoryFactory;
         _nodeSessionService = nodeSessionService;
         _memoryCache = memoryCache;
         _taskLogCacheManager = taskLogCacheManager;
@@ -47,36 +50,18 @@ public class JobsController : Controller
                 queryParameters.BeginDateTime = DateTime.UtcNow.Date;
             if (queryParameters.EndDateTime == null)
                 queryParameters.EndDateTime = DateTime.UtcNow.Date.AddDays(1).AddSeconds(-1);
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var beginTime = queryParameters.BeginDateTime.Value;
-            var endTime = queryParameters.EndDateTime.Value;
-
-            IQueryable<JobExecutionInstanceModel> queryable = dbContext.JobExecutionInstancesDbSet;
-
-
-            if (!string.IsNullOrEmpty(queryParameters.Keywords))
-            {
-                queryable = queryable.Where(x => x.Name.Contains(queryParameters.Keywords));
-            }
-
-            if (queryParameters.NodeIdList.Any())
-                queryable = queryable.Where(x => queryParameters.NodeIdList.Contains(x.NodeInfoId));
-
-            if (queryParameters.Status != JobExecutionReport.Types.JobExecutionStatus.Unknown)
-                queryable = queryable.Where(x => x.Status == queryParameters.Status);
-
-            if (queryParameters.JobScheduleConfigIdList.Any())
-                queryable = queryable.Where(
-                    x => queryParameters.JobScheduleConfigIdList.Contains(x.JobScheduleConfigId));
-
-            queryable = queryable
-                .Where(x => x.FireTimeUtc >= beginTime && x.FireTimeUtc < endTime)
-                .OrderByDescending(x => x.FireTimeUtc)
-                .AsSplitQuery();
-
-            queryable = queryable.OrderBy(queryParameters.SortDescriptions);
-
-            apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
+            using var repo = _taskInstanceRepositoryFactory.CreateRepository();
+            var queryResult = await repo.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
+                queryParameters.Keywords,
+                queryParameters.Status,
+                queryParameters.NodeIdList,
+                queryParameters.TaskDefinitionIdList,
+                queryParameters.TaskExecutionInstanceIdList,
+                queryParameters.SortDescriptions),
+                queryParameters.PageSize,
+                queryParameters.PageIndex
+                );
+            apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
         {
@@ -95,25 +80,24 @@ public class JobsController : Controller
         var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var jobExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(id);
-            if (jobExecutionInstance == null)
+            using var repo = _taskInstanceRepositoryFactory.CreateRepository();
+            var taskExecutionInstance = await repo.GetByIdAsync(id);
+            if (taskExecutionInstance == null)
             {
                 apiResponse.ErrorCode = -1;
                 apiResponse.Message = "invalid job execution instance id";
             }
             else
             {
-                jobExecutionInstance.ReinvokeTimes++;
+                taskExecutionInstance.ReinvokeTimes++;
+                await repo.UpdateAsync(taskExecutionInstance);
                 var nodeId = new NodeId(id);
                 foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
                 {
                     var rsp = await _nodeSessionService.SendJobExecutionEventAsync(nodeSessionId,
-                        jobExecutionInstance.ToReinvokeEvent());
+                        taskExecutionInstance.ToReinvokeEvent());
                 }
             }
-
-            await dbContext.SaveChangesAsync();
         }
         catch (Exception ex)
         {
@@ -134,8 +118,8 @@ public class JobsController : Controller
         var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var taskExecutionInstance = await dbContext.JobExecutionInstancesDbSet.FindAsync(id);
+            using var repo = _taskInstanceRepositoryFactory.CreateRepository();
+            var taskExecutionInstance = await repo.GetByIdAsync(id);
             if (taskExecutionInstance == null)
             {
                 apiResponse.ErrorCode = -1;
@@ -144,11 +128,13 @@ public class JobsController : Controller
             else
             {
                 taskExecutionInstance.CancelTimes++;
-                await dbContext.SaveChangesAsync();
-                await _taskExecutionInstanceInitializer.TryCancelAsync(taskExecutionInstance.Id);
-                var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
-                    new NodeSessionId(taskExecutionInstance.NodeInfoId),
-                    taskExecutionInstance.ToCancelEvent());
+                await repo.UpdateAsync(taskExecutionInstance);
+                if (!await _taskExecutionInstanceInitializer.TryCancelAsync(taskExecutionInstance.Id))
+                {
+                    var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
+                        new NodeSessionId(taskExecutionInstance.NodeInfoId),
+                        taskExecutionInstance.ToCancelEvent());
+                }
             }
         }
         catch (Exception ex)
@@ -174,13 +160,13 @@ public class JobsController : Controller
             apiResponse.SetTotalCount(_taskLogCacheManager.GetCache(taskId).Count);
             if (queryParameters.PageSize == 0)
             {
-                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                var instance = await dbContext.JobExecutionInstancesDbSet.FirstOrDefaultAsync(x => x.Id == taskId);
+                using var repo = _taskInstanceRepositoryFactory.CreateRepository();
+                var taskExecutionInstance = await repo.GetByIdAsync(taskId);
                 var fileName = "x.log";
-                if (instance == null)
+                if (taskExecutionInstance == null)
                     fileName = $"{taskId}.log";
                 else
-                    fileName = $"{instance.Name}.log";
+                    fileName = $"{taskExecutionInstance.Name}.log";
                 var result = _taskLogCacheManager.GetCache(taskId).GetEntries(
                     queryParameters.PageIndex,
                     queryParameters.PageSize);

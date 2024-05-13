@@ -2,14 +2,14 @@
 
 public partial class NodesController
 {
-    [HttpGet("/api/nodes/{id}/props")]
-    public async Task<ApiResponse<NodePropertySnapshotModel>> QueryNodePropsAsync(string id)
+    [HttpGet("/api/nodes/{nodeId}/props")]
+    public async Task<ApiResponse<NodePropertySnapshotModel>> QueryNodePropsAsync(string nodeId)
     {
         var apiResponse = new ApiResponse<NodePropertySnapshotModel>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var nodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Id == id);
+            using var nodeRepo = _nodeInfoRepositoryFactory.CreateRepository();
+            var nodeInfo = await nodeRepo.GetByIdAsync(nodeId);
             if (nodeInfo == null)
             {
                 apiResponse.ErrorCode = -1;
@@ -26,9 +26,11 @@ public partial class NodesController
                         model.NodeProperties = propsDict.Select(NodePropertyEntry.From).ToList();
                     }
 
-                if (model.NodeProperties == null || !model.NodeProperties.Any())
-                    model = await dbContext.NodePropertiesSnapshotsDbSet.FindAsync(nodeInfo.LastNodePropertySnapshotId);
-
+                if ((model.NodeProperties == null || !model.NodeProperties.Any()) && nodeInfo.LastNodePropertySnapshotId != null)
+                {
+                    using var nodePropRepo = _nodePropertySnapshotRepositoryFactory.CreateRepository();
+                    model = await nodePropRepo.GetByIdAsync(nodeInfo.LastNodePropertySnapshotId);
+                }
                 apiResponse.SetResult(model);
             }
         }

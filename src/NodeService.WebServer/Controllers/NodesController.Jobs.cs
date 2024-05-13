@@ -1,4 +1,4 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿using NodeService.WebServer.Data.Repositories.Specifications;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -10,8 +10,8 @@ public partial class NodesController
         var apiResponse = new ApiResponse<IEnumerable<JobScheduleConfigModel>>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var nodeInfo = await dbContext.NodeInfoDbSet.FindAsync(id);
+            using var repository = _nodeInfoRepositoryFactory.CreateRepository();
+            var nodeInfo = await repository.GetByIdAsync(id);
             if (nodeInfo == null)
             {
                 apiResponse.ErrorCode = -1;
@@ -34,29 +34,32 @@ public partial class NodesController
     }
 
 
-    [HttpGet("/api/nodes/{id}/jobs/instances/list")]
-    public async Task<ApiResponse<IEnumerable<JobExecutionInstanceModel>>> GetNodeJobInstancesAsync(string id,
+    [HttpGet("/api/nodes/{nodeId}/jobs/instances/list")]
+    public async Task<PaginationResponse<JobExecutionInstanceModel>> GetNodeTaskInstancesAsync(string nodeId,
        [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters)
     {
-        var apiResponse = new ApiResponse<IEnumerable<JobExecutionInstanceModel>>();
+        var apiResponse = new PaginationResponse<JobExecutionInstanceModel>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var nodeInfo = await dbContext.NodeInfoDbSet.FindAsync(id);
+            using var repository = _nodeInfoRepositoryFactory.CreateRepository();
+            var nodeInfo = await repository.GetByIdAsync(nodeId);
             if (nodeInfo == null)
             {
                 apiResponse.ErrorCode = -1;
-                apiResponse.Message = $"invalid node id:{id}";
+                apiResponse.Message = $"invalid node id:{nodeId}";
             }
             else
             {
-                var queryable = dbContext.JobExecutionInstancesDbSet.AsQueryable()
-                    .Where(x => x.NodeInfoId == nodeInfo.Id);
-                if (queryParameters.JobScheduleConfigIdList != null && queryParameters.JobScheduleConfigIdList.Any())
-                    queryable = queryable.Where(x => queryParameters.JobScheduleConfigIdList.Contains(x.JobScheduleConfigId));
-                if (!string.IsNullOrEmpty(queryParameters.Keywords))
-                    queryable = queryable.Where(x => x.Name.Contains(queryParameters.Keywords));
-                apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
+                queryParameters.NodeIdList = [nodeId];
+                using var repo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
+                var queryResult = await repo.ListAsync(new TaskExecutionInstanceSpecification(
+                    queryParameters.Keywords,
+                    queryParameters.Status,
+                    queryParameters.NodeIdList,
+                    queryParameters.TaskDefinitionIdList,
+                    queryParameters.TaskExecutionInstanceIdList,
+                    queryParameters.SortDescriptions));
+                apiResponse.SetResult(queryResult);
             }
         }
         catch (Exception ex)

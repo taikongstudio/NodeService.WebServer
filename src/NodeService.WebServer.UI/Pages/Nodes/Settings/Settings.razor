@@ -1,0 +1,104 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Nodes.Settings
+@page "/Nodes/Settings"
+@inject ApiService ApiService;
+@inject IMessageService _message
+@inject NotificationService _notice
+<Space>
+    <SpaceItem>
+        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryNodeSettingsAsync"></Button>
+    </SpaceItem>
+    <SpaceItem>
+        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="SaveAsync"></Button>
+
+    </SpaceItem>
+</Space>
+<Tabs Animated>
+   
+    <TabPane Tab="区域设置" Key="1">
+        <StringEntryTable ValueTitle="Ip范围"
+                          NameTitle="区域名称"
+                          IsTagHidden="false"
+                          IsTagEditable="true"
+                          TagTitle="代码"
+                          ItemsSource="@_nodeSettings.IpAddressMappings" />
+    </TabPane>
+    <TabPane Tab="进程用途映射" Key="2">
+        <StringEntryTable
+            ValueTitle="用途"
+            NameTitle="进程名称"
+                          ItemsSource="@_nodeSettings.ProcessUsagesMapping" />
+    </TabPane>
+</Tabs>
+
+@code {
+    NodeSettings _nodeSettings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await QueryNodeSettingsAsync();
+        await base.OnInitializedAsync();
+    }
+
+    async Task QueryNodeSettingsAsync()
+    {
+        try
+        {
+            var apiResponse = await ApiService.QueryNodeSettingsAsync();
+            if (apiResponse.ErrorCode == 0)
+            {
+                _nodeSettings = apiResponse.Result;
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+
+    async Task SaveAsync()
+    {
+        try
+        {
+            var apiResponse = await ApiService.UpdateNodeSettingsAsync(_nodeSettings);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await QueryNodeSettingsAsync();
+                await _message.Info("更新节点设置成功");
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.Message
+                });
+        }
+        finally
+        {
+            
+        }
+    }
+
+}

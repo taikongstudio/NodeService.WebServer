@@ -6,12 +6,17 @@
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
+    <ItemGroup>
+      <Content Remove="Pages\Nodes\List\Settings.razor" />
+    </ItemGroup>
+
 
     <ItemGroup>
         <SupportedPlatform Include="browser" />
     </ItemGroup>
 
     <ItemGroup>
+        <PackageReference Include="CurrieTechnologies.Razor.Clipboard" Version="1.6.0" />
         <PackageReference Include="Quartz" Version="3.8.1" />
         <PackageReference Include="BlazorMonaco" Version="3.2.0" />
         <PackageReference Include="CronExpressionDescriptor" Version="2.33.0" />
@@ -35,7 +40,15 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Pages\ClientConfig\" />
+      <UpToDateCheckInput Remove="Pages\Nodes\List\Settings.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <_ContentIncludedByDefault Remove="Pages\Nodes\List\Settings.razor" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="Pages\Nodes\Settings\Settings.razor" />
     </ItemGroup>
 
 

@@ -1,0 +1,12 @@
+﻿global using Microsoft.EntityFrameworkCore;
+global using NodeService.Infrastructure.Data;
+global using NodeService.Infrastructure.DataModels;
+global using NodeService.Infrastructure.Models;
+global using System.Diagnostics;
+global using System.Text.Json;
+global using Ardalis.Specification;
+global using Microsoft.EntityFrameworkCore.Internal;
+global using NodeService.Infrastructure.DataModels;
+global using NodeService.Infrastructure.Models;
+global using Ardalis.Specification.EntityFrameworkCore;
+global using static NodeService.Infrastructure.Models.JobExecutionReport.Types;

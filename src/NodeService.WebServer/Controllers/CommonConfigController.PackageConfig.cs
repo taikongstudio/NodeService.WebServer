@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using NodeService.WebServer.Data.Repositories;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -20,16 +21,18 @@ public partial class CommonConfigController
     public async Task<IActionResult> DownloadPackageAsync(string packageId)
     {
         ArgumentException.ThrowIfNullOrEmpty(packageId);
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-        var model = await dbContext.GetDbSet<PackageConfigModel>().FindAsync(packageId);
+        using var virtualFileSystem = _serviceProvider.GetService<IVirtualFileSystem>();
+        var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PackageConfigModel>>();
+        using var repo = repoFactory.CreateRepository();
+        var model = await repo.GetByIdAsync(packageId);
         if (model == null) return NotFound();
         if (model.DownloadUrl == null) return NotFound();
         var packageCacheKey = $"Package:{model.DownloadUrl}";
         var fileContents = await _memoryCache.GetOrCreateAsync(packageCacheKey, async () =>
         {
             using var stream = new MemoryStream();
-            await _virtualFileSystem.ConnectAsync();
-            if (await _virtualFileSystem.DownloadStream(model.DownloadUrl, stream))
+            await virtualFileSystem.ConnectAsync();
+            if (await virtualFileSystem.DownloadStream(model.DownloadUrl, stream))
             {
                 stream.Position = 0;
                 var hash = await CryptographyHelper.CalculateSHA256Async(stream);
@@ -53,6 +56,7 @@ public partial class CommonConfigController
         var apiResponse = new ApiResponse();
         try
         {
+            using var virtualFileSystem = _serviceProvider.GetService<IVirtualFileSystem>();
             ArgumentNullException.ThrowIfNull(package.Name);
             ArgumentNullException.ThrowIfNull(package.Platform);
             ArgumentNullException.ThrowIfNull(package.Version);
@@ -60,7 +64,7 @@ public partial class CommonConfigController
             ArgumentNullException.ThrowIfNull(package.Hash);
             var fileName = Guid.NewGuid().ToString("N");
             var remotePath = Path.Combine(_webServerOptions.GetPackagePath(package.Id), fileName);
-            await _virtualFileSystem.ConnectAsync();
+            await virtualFileSystem.ConnectAsync();
             var stream = package.File.OpenReadStream();
             if (!ZipArchiveHelper.TryRead(stream, out var zipArchive))
             {
@@ -77,35 +81,37 @@ public partial class CommonConfigController
             }
 
             stream.Position = 0;
-            if (!await _virtualFileSystem.UploadStream(remotePath, stream))
+            if (!await virtualFileSystem.UploadStream(remotePath, stream))
             {
                 apiResponse.ErrorCode = -1;
                 apiResponse.Message = "Upload stream fail";
                 return apiResponse;
             }
 
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var model = await dbContext.GetDbSet<PackageConfigModel>().FindAsync(package.Id);
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PackageConfigModel>>();
+            using var repo = repoFactory.CreateRepository();
+            var model = await repo.GetByIdAsync(package.Id);
             if (model == null)
             {
                 model = package;
-                await dbContext.GetDbSet<PackageConfigModel>().AddAsync(model);
+                await repo.AddAsync(model);
             }
             else
             {
                 var packageCacheKey = $"Package:{model.DownloadUrl}";
                 _memoryCache.Remove(packageCacheKey);
-                if (model.DownloadUrl != null) await _virtualFileSystem.DeleteFileAsync(model.DownloadUrl);
+                if (model.DownloadUrl != null) await virtualFileSystem.DeleteFileAsync(model.DownloadUrl);
                 model.With(package);
             }
 
             model.FileName = package.File.FileName;
             model.FileSize = package.File.Length;
             model.DownloadUrl = remotePath;
-            await dbContext.SaveChangesAsync();
+            await repo.UpdateAsync(model);
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.ToString();

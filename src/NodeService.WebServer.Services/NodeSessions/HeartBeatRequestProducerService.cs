@@ -1,6 +1,8 @@
 ﻿using System.Buffers;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.NodeSessions;
@@ -31,14 +33,14 @@ public class HeartBeatRequestProducerService : BackgroundService
         _exceptionCounter = exceptionCounter;
     }
 
-    void OnOptionsChange(WebServerOptions options, string value)
+    void OnOptionsChange(WebServerOptions options, string? value)
     {
         _options = options;
     }
 
     public override void Dispose()
     {
-        _token.Dispose();
+        _token?.Dispose();
         base.Dispose();
     }
 

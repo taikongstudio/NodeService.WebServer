@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using NodeService.Infrastructure.Entities;
+using NodeService.Infrastructure.Identity;
 using NodeService.Infrastructure.Permissions;
 
 namespace NodeService.WebServer.Controllers;
@@ -57,7 +57,7 @@ public class AccountController : ControllerBase
             TimeSpan.FromMinutes(_refreshTokenExpiration));
         if (!updateSuccessfully)
             return Conflict(new BaseApiResponse<AuthenticationResponse>
-                { Errors = new List<string> { "Cannot update refresh token" } });
+                { Errors = ["Cannot update refresh token"] });
 
         return Ok(new BaseApiResponse<AuthenticationResponse>
         {
@@ -106,7 +106,7 @@ public class AccountController : ControllerBase
             TimeSpan.FromMinutes(_refreshTokenExpiration));
         if (!updateSuccessfully)
             return Conflict(new BaseApiResponse<AuthenticationResponse>
-                { Errors = new List<string> { "Cannot update refresh token" } });
+                { Errors = ["Cannot update refresh token"] });
 
         return Ok(new BaseApiResponse<AuthenticationResponse>
         {

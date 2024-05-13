@@ -2,15 +2,15 @@
 
 public partial class NodesController
 {
-    [HttpPost("/api/nodes/{id}/profile/update")]
-    public async Task<ApiResponse<bool>> UpdateNodeInfoAsync(string id, [FromBody] UpdateNodeProfileModel value)
+    [HttpPost("/api/nodes/{nodeId}/profile/update")]
+    public async Task<ApiResponse<bool>> UpdateNodeInfoAsync(string nodeId, [FromBody] UpdateNodeProfileModel value)
     {
         var apiResponse = new ApiResponse<bool>();
         try
         {
             ArgumentNullException.ThrowIfNull(value, nameof(value));
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var nodeInfo = await dbContext.NodeInfoDbSet.FindAsync(id);
+            using var repo = _nodeInfoRepositoryFactory.CreateRepository();
+            var nodeInfo = await repo.GetByIdAsync(nodeId);
             if (nodeInfo == null)
             {
                 apiResponse.ErrorCode = -1;
@@ -24,7 +24,7 @@ public partial class NodesController
                 nodeInfo.Profile.LabName = value.LabName;
                 nodeInfo.Profile.Usages = value.Usages;
                 nodeInfo.Profile.Remarks = value.Remarks;
-                var changes = await dbContext.SaveChangesAsync();
+                await repo.UpdateAsync(nodeInfo);
                 apiResponse.SetResult(true);
             }
         }

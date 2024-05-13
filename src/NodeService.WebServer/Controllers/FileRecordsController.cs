@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.RateLimiting;
 using NodeService.Infrastructure.Concurrent;
-using NodeService.Infrastructure.Messages;
+using NodeService.Infrastructure.Data;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.FileRecords;
 
@@ -13,13 +14,18 @@ public class FileRecordsController : Controller
     readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     readonly ExceptionCounter _exceptionCounter;
     readonly ILogger<FileRecordsController> _logger;
-    readonly BatchQueue<BatchQueueOperation<object, object>> _fileRecordBatchQueue;
+    readonly BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>> _queryOpBatchQueue;
+    readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _cudOpBatchQueue;
+    readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _CUDBatchQueue;
     readonly IMemoryCache _memoryCache;
 
     public FileRecordsController(
         ILogger<FileRecordsController> logger,
         ExceptionCounter exceptionCounter,
-        [FromKeyedServices(nameof(FileRecordService))]BatchQueue<BatchQueueOperation<object, object>> fileRecordBatchQueue,
+        [FromKeyedServices(nameof(FileRecordQueryService))]
+        BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>> queryOpBatchQueue,
+        [FromKeyedServices(nameof(FileRecordQueryService))]
+        BatchQueue<BatchQueueOperation<FileRecordModel, bool>> cudOpBatchQueue,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
         IMemoryCache  memoryCache)
     {
@@ -27,26 +33,25 @@ public class FileRecordsController : Controller
         _exceptionCounter = exceptionCounter;
         _memoryCache = memoryCache;
         _logger = logger;
-        _fileRecordBatchQueue = fileRecordBatchQueue;
+        _queryOpBatchQueue = queryOpBatchQueue;
+        _cudOpBatchQueue = cudOpBatchQueue;
     }
 
     [HttpGet("/api/filerecords/{nodeId}/list")]
     public async Task<PaginationResponse<FileRecordModel>> QueryNodeFileListAsync(
         string nodeId,
-        [FromQuery] PaginationQueryParameters queryParameters)
+        [FromQuery] PaginationQueryParameters queryParameters,
+        CancellationToken cancellationToken = default)
     {
         var apiResponse = new PaginationResponse<FileRecordModel>();
         try
         {
-            var fileRecordOperation = new BatchQueueOperation<object, object>(
-                Tuple.Create(nodeId, queryParameters),
+            var fileRecordQueryOperation = new BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>(
+                new FileRecordSpecification(nodeId, queryParameters.Keywords, queryParameters.SortDescriptions),
                 BatchQueueOperationKind.Query);
-            await _fileRecordBatchQueue.SendAsync(fileRecordOperation);
-            PaginationResponse<FileRecordModel>? value = await fileRecordOperation.WaitAsync() as PaginationResponse<FileRecordModel>;
-            if (value != null)
-            {
-                apiResponse = value;
-            }
+            await _queryOpBatchQueue.SendAsync(fileRecordQueryOperation, cancellationToken);
+            var queryResult = await fileRecordQueryOperation.WaitAsync(cancellationToken);
+            apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
         {
@@ -67,8 +72,8 @@ public class FileRecordsController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            var fileRecordOperation = new BatchQueueOperation<object, object>(model, BatchQueueOperationKind.InsertOrUpdate);
-            await _fileRecordBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
+            var fileRecordOperation = new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.InsertOrUpdate);
+            await _CUDBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
             await fileRecordOperation.WaitAsync(cancellationToken);
         }
         catch (Exception ex)
@@ -83,14 +88,17 @@ public class FileRecordsController : Controller
     }
 
     [HttpPost("/api/filerecords/{nodeId}/remove")]
-    public async Task<PaginationResponse<FileRecordModel>> RemoveAsync([FromBody] FileRecordModel fileRecord)
+    public async Task<ApiResponse> RemoveAsync(
+        [FromBody] FileRecordModel model,
+        CancellationToken cancellationToken = default)
     {
-        var apiResponse = new PaginationResponse<FileRecordModel>();
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+        var apiResponse = new ApiResponse();
+
         try
         {
-            dbContext.Remove(fileRecord);
-            await dbContext.SaveChangesAsync();
+            var fileRecordOperation = new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.Delete);
+            await _CUDBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
+            await fileRecordOperation.WaitAsync(cancellationToken);
         }
         catch (Exception ex)
         {

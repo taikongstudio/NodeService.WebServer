@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeService.WebServer.Data"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeService.WebServerTools", "src\NodeService.WebServerTools\NodeService.WebServerTools.csproj", "{06D966A8-D7F1-4C36-9056-8AAD77B8D294}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeService.WebServer.Data.Repositories", "src\NodeService.WebServer.Data.Repositories\NodeService.WebServer.Data.Repositories.csproj", "{118CF479-8BCC-4B4E-8EFD-8B3E9A5182B4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -101,6 +103,14 @@ Global
 		{06D966A8-D7F1-4C36-9056-8AAD77B8D294}.Release|Any CPU.Build.0 = Release|Any CPU
 		{06D966A8-D7F1-4C36-9056-8AAD77B8D294}.Release|x64.ActiveCfg = Release|x64
 		{06D966A8-D7F1-4C36-9056-8AAD77B8D294}.Release|x64.Build.0 = Release|x64
+		{118CF479-8BCC-4B4E-8EFD-8B3E9A5182B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{118CF479-8BCC-4B4E-8EFD-8B3E9A5182B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{118CF479-8BCC-4B4E-8EFD-8B3E9A5182B4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{118CF479-8BCC-4B4E-8EFD-8B3E9A5182B4}.Debug|x64.Build.0 = Debug|Any CPU
+		{118CF479-8BCC-4B4E-8EFD-8B3E9A5182B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{118CF479-8BCC-4B4E-8EFD-8B3E9A5182B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{118CF479-8BCC-4B4E-8EFD-8B3E9A5182B4}.Release|x64.ActiveCfg = Release|Any CPU
+		{118CF479-8BCC-4B4E-8EFD-8B3E9A5182B4}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

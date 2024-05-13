@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
-using NodeService.Infrastructure.Entities;
+using NodeService.Infrastructure.Identity;
 
 namespace NodeService.WebServer.Data;
 

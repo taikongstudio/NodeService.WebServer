@@ -51,6 +51,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\NodeService.WebServer.Data.Repositories\NodeService.WebServer.Data.Repositories.csproj" />
         <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj" />
         <ProjectReference Include="..\NodeService.WebServer.Services\NodeService.WebServer.Services.csproj" />
         <ProjectReference Include="..\NodeService.WebServer.UI\NodeService.WebServer.UI.csproj" />

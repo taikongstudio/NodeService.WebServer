@@ -2,7 +2,7 @@
 @inherits Selector<JobTypeDescConfigModel>
 
 <GridRow>
-    <div style="margin:5px 0px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
+    <div style="margin:5px;padding:5px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
         @if (SelectedItems != null)
         {
             foreach (var item in SelectedItems)
@@ -49,7 +49,7 @@
 
     protected override void OnInitialized()
     {
-        _dataSource = new PaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters>(ApiService.QueryJobTypeDescConfigurationListAsync, StateHasChanged);
+        _dataSource = new PaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters>(ApiService.QueryTaskTypeDescConfigurationListAsync, StateHasChanged);
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
 

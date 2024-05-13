@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using NodeService.WebServer.Data.Repositories.Specifications;
+
+namespace NodeService.WebServer.Controllers;
 
 public partial class ClientUpdateController
 {
@@ -9,9 +11,10 @@ public partial class ClientUpdateController
         var apiResponse = new ApiResponse<bool>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var counter =
-                await dbContext.ClientUpdateCountersDbSet.FindAsync(model.ClientUpdateConfigId, model.NodeName);
+            using var repo = _clientUpdateCounterRepoFactory.CreateRepository();
+            var counter = await repo.FirstOrDefaultAsync(new ClientUpdateCounterSpecification(
+                model.ClientUpdateConfigId,
+                model.NodeName));
             if (counter == null)
             {
                 counter = new ClientUpdateCounterModel
@@ -19,7 +22,7 @@ public partial class ClientUpdateController
                     Id = model.ClientUpdateConfigId,
                     Name = model.NodeName
                 };
-                await dbContext.ClientUpdateCountersDbSet.AddAsync(counter);
+                await repo.AddAsync(counter);
             }
 
             var newCounterList = counter.Counters.ToList();
@@ -43,7 +46,7 @@ public partial class ClientUpdateController
 
             counter.Counters = newCounterList;
 
-            await dbContext.SaveChangesAsync();
+            await repo.UpdateAsync(counter);
             apiResponse.SetResult(true);
         }
         catch (Exception ex)

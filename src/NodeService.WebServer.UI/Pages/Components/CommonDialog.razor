@@ -1,10 +1,12 @@
 ﻿<Modal Width="800"
        Maximizable
        Style="top:0px"
-       @bind-Visible="@IsVisible"
+       Visible="@IsVisible"
        Title="@Title"
        Closable="true"
-       AfterClose="CloseImpl"
+       DefaultMaximized="true"
+       VisibleChanged="OnVisibleChanged"
+       AfterClose="Closed.InvokeAsync"
        DestroyOnClose>
     @ChildContent
 </Modal>
@@ -16,6 +18,8 @@
 
     [Parameter] public EventCallback Closed { get; set; }
 
+    [Parameter] public EventCallback Opened { get; set; }
+
     public bool IsVisible { get; set; }
 
     protected override void OnInitialized()
@@ -23,15 +27,20 @@
         base.OnInitialized();
     }
 
-    async Task CloseImpl()
-    {
-        await Closed.InvokeAsync();
-    }
-
     public virtual Task ShowAsync()
     {
         IsVisible = true;
+        this.StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    private async Task OnVisibleChanged(bool visible)
+    {
+        this.IsVisible = visible;
+        if (visible)
+        {
+            await Opened.InvokeAsync();
+        }
     }
 
 }

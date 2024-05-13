@@ -1,5 +1,11 @@
-﻿using Microsoft.AspNetCore.RateLimiting;
+﻿using Ardalis.Specification;
+using Ardalis.Specification.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
 using NodeService.Infrastructure.Models;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
+using System.Drawing.Printing;
+using static NuGet.Protocol.Core.Types.Repository;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -8,18 +14,24 @@ namespace NodeService.WebServer.Controllers;
 public partial class ClientUpdateController : Controller
 {
     readonly ILogger<ClientUpdateController> _logger;
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    private readonly ApplicationRepositoryFactory<ClientUpdateCounterModel> _clientUpdateCounterRepoFactory;
     readonly IMemoryCache _memoryCache;
     readonly ExceptionCounter _exceptionCounter;
 
     public ClientUpdateController(
         ILogger<ClientUpdateController> logger,
         ExceptionCounter exceptionCounter,
-        IDbContextFactory<ApplicationDbContext> dbContext,
+        ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
+        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
+        ApplicationRepositoryFactory<ClientUpdateCounterModel> clientUpdateCounterRepoFactory,
         IMemoryCache memoryCache)
     {
         _logger = logger;
-        _dbContextFactory = dbContext;
+        _clientUpdateRepoFactory = clientUpdateRepoFactory;
+        _nodeInfoRepoFactory = nodeInfoRepoFactory;
+        _clientUpdateCounterRepoFactory = clientUpdateCounterRepoFactory;
         _memoryCache = memoryCache;
         _exceptionCounter = exceptionCounter;
     }
@@ -33,21 +45,17 @@ public partial class ClientUpdateController : Controller
             ClientUpdateConfigModel? clientUpdateConfig = null;
             if (string.IsNullOrEmpty(name)) return apiResponse;
             var key = $"ClientUpdateConfig:{name}";
-            await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(1000, 5000)));
-            if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue)||cacheValue==null)
+            await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(1000, 1000)));
+            if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue) || cacheValue == null)
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 5000)));
+                await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 1000)));
                 if (!_memoryCache.TryGetValue(key, out cacheValue) || cacheValue == null)
                 {
-                    await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 5000)));
-                    await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                    cacheValue = await
-                        dbContext
-                            .ClientUpdateConfigurationDbSet
-                            .Where(x => x.Status == ClientUpdateStatus.Public)
-                            .Where(x => x.Name == name)
-                            .OrderByDescending(static x => x.Version)
-                            .FirstOrDefaultAsync();
+                    await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 1000)));
+                    await using var repo = _clientUpdateRepoFactory.CreateRepository();
+
+                    cacheValue = await repo.FirstOrDefaultAsync(new ClientUpdateConfigSpecification(ClientUpdateStatus.Public, name));
+
                     if (cacheValue != null)
                     {
                         _memoryCache.Set(key, cacheValue, TimeSpan.FromMinutes(1));
@@ -64,32 +72,40 @@ public partial class ClientUpdateController : Controller
             if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null &&
                 clientUpdateConfig.DnsFilters.Any())
             {
-                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                await using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
                 var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
 
+                DataFilterTypes dataFilterType = DataFilterTypes.None;
 
-                if (clientUpdateConfig.DnsFilterType == "include")
-                    foreach (var filter in clientUpdateConfig.DnsFilters)
+                if (clientUpdateConfig.DnsFilterType.Equals("include", StringComparison.OrdinalIgnoreCase))
+                {
+                    dataFilterType = DataFilterTypes.Include;
+                }
+
+                else if (clientUpdateConfig.DnsFilterType.Equals("exclude", StringComparison.OrdinalIgnoreCase))
+                {
+                    dataFilterType = DataFilterTypes.Exclude;
+                }
+                var nodeList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
+                    AreaTags.Any,
+                    NodeStatus.All,
+                    [],
+                    DataFilterCollection<string>.Empty,
+                   new DataFilterCollection<string>(
+                       dataFilterType,
+                       clientUpdateConfig.DnsFilters.Select(x => x.Value))));
+                if (nodeList.Count != 0)
+                {
+                    if (dataFilterType == DataFilterTypes.Include)
                     {
-                        var nodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Name == filter.Value);
-                        if (nodeInfo == null) continue;
-                        if (nodeInfo.Profile.IpAddress == ipAddress)
-                        {
-                            apiResponse.SetResult(clientUpdateConfig);
-                            break;
-                        }
+                        apiResponse.SetResult(clientUpdateConfig);
                     }
-                else if (clientUpdateConfig.DnsFilterType == "exclude")
-                    foreach (var filter in clientUpdateConfig.DnsFilters)
+                    else if (dataFilterType == DataFilterTypes.Exclude)
                     {
-                        var nodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(x => x.Name == filter.Value);
-                        if (nodeInfo == null) continue;
-                        if (nodeInfo.Profile.IpAddress == ipAddress)
-                        {
-                            apiResponse.SetResult(null);
-                            break;
-                        }
+                        apiResponse.SetResult(null);
                     }
+
+                }
             }
             else
             {
@@ -113,26 +129,17 @@ public partial class ClientUpdateController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var modelFromDb = await dbContext.ClientUpdateConfigurationDbSet.FindAsync(model.Id);
-            if (modelFromDb == null)
+            using var repo = _clientUpdateRepoFactory.CreateRepository();
+            var modelFromRepo = await repo.GetByIdAsync(model.Id);
+            model.PackageConfig = null;
+            if (modelFromRepo == null)
             {
-                model.PackageConfig = null;
-                await dbContext.ClientUpdateConfigurationDbSet.AddAsync(model);
+                await repo.AddAsync(model);
             }
             else
             {
-                modelFromDb.Id = model.Id;
-                modelFromDb.Name = model.Name;
-                modelFromDb.Version = model.Version;
-                modelFromDb.DecompressionMethod = model.DecompressionMethod;
-                modelFromDb.DnsFilters = model.DnsFilters;
-                modelFromDb.DnsFilterType = model.DnsFilterType;
-                modelFromDb.PackageConfigId = model.PackageConfigId;
-                modelFromDb.Status = model.Status;
+                await repo.UpdateAsync(model);
             }
-
-            await dbContext.SaveChangesAsync();
             var key = $"ClientUpdateConfig:{model.Name}";
             _memoryCache.Remove(key);
         }
@@ -155,16 +162,14 @@ public partial class ClientUpdateController : Controller
         var apiResponse = new PaginationResponse<ClientUpdateConfigModel>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-
-            var pageIndex = queryParameters.PageIndex - 1;
-            var pageSize = queryParameters.PageSize;
-
-            IQueryable<ClientUpdateConfigModel> queryable = dbContext.ClientUpdateConfigurationDbSet;
-
-            queryable = queryable.Include(x => x.PackageConfig).AsSplitQuery();
-
-            apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
+            using var repo = _clientUpdateRepoFactory.CreateRepository();
+            var queryResult = await repo.PaginationQueryAsync(
+                new ClientUpdateConfigSpecification(
+                    queryParameters.Keywords,
+                    queryParameters.SortDescriptions),
+                queryParameters.PageSize,
+                queryParameters.PageIndex);
+            apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
         {
@@ -177,15 +182,16 @@ public partial class ClientUpdateController : Controller
         return apiResponse;
     }
 
+
+
     [HttpPost("/api/clientupdate/remove")]
     public async Task<ApiResponse> RemoveAsync([FromBody] ClientUpdateConfigModel model)
     {
         var apiResponse = new ApiResponse();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            dbContext.ClientUpdateConfigurationDbSet.Remove(model);
-            await dbContext.SaveChangesAsync();
+            using var repo = _clientUpdateRepoFactory.CreateRepository();
+            await repo.DeleteAsync(model);
             var key = $"ClientUpdateConfig:{model.Name}";
             _memoryCache.Remove(key);
         }

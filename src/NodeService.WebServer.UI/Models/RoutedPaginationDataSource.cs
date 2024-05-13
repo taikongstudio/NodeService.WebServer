@@ -110,6 +110,10 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
         uriBuilder.Query = string.Empty;
         uri = uriBuilder.Uri;
         _currentQuery = $"?{QueryParameters}";
-        if (force || (oldQuery != _currentQuery && !IsLoading)) _navigationManager.NavigateTo($"{uri}{_currentQuery}");
+        if (force || (oldQuery != _currentQuery && !IsLoading))
+        {
+            _navigationManager.NavigateTo($"{uri}{_currentQuery}");
+        }
+
     }
 }

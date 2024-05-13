@@ -265,7 +265,7 @@
 
         _dataSource = new RoutedPaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters>(
             NavigationManager,
-            ApiService.QueryJobTypeDescConfigurationListAsync,
+            ApiService.QueryTaskTypeDescConfigurationListAsync,
             StateHasChanged);
         _dataSource.Request();
 

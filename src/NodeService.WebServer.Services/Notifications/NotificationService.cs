@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Models;
 

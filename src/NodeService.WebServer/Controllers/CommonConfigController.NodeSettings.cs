@@ -1,4 +1,7 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
+
+namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
@@ -9,21 +12,21 @@ public partial class CommonConfigController
         try
         {
             NodeSettings? result = null;
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var notificationSourceDictionary = await dbContext.PropertyBagDbSet.FindAsync("NodeSettings");
-            if (notificationSourceDictionary == null)
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+            using var repo = repoFactory.CreateRepository();
+            var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
+            if (propertyBag == null)
             {
-                notificationSourceDictionary = new Dictionary<string, object>();
                 result = new NodeSettings();
-                notificationSourceDictionary.Add("Id", "NodeSettings");
-                notificationSourceDictionary.Add("Value", JsonSerializer.Serialize(result));
-                notificationSourceDictionary["CreatedDate"] = DateTime.UtcNow;
-                dbContext.PropertyBagDbSet.Add(notificationSourceDictionary);
-                await dbContext.SaveChangesAsync();
+                propertyBag = new PropertyBag();
+                propertyBag.Add("Id", "NodeSettings");
+                propertyBag.Add("Value", JsonSerializer.Serialize(result));
+                propertyBag.Add("CreatedDate", DateTime.UtcNow);
+                await repo.AddAsync(propertyBag);
             }
             else
             {
-                result = JsonSerializer.Deserialize<NodeSettings>(notificationSourceDictionary["Value"] as string);
+                result = JsonSerializer.Deserialize<NodeSettings>(propertyBag["Value"] as string);
             }
 
             rsp.SetResult(result);
@@ -43,11 +46,14 @@ public partial class CommonConfigController
         var rsp = new ApiResponse();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var dictionary = await dbContext.PropertyBagDbSet.FindAsync("NodeSettings");
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+            using var repo = repoFactory.CreateRepository();
+            var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
 
-            dictionary["Value"] = JsonSerializer.Serialize(model);
-            await dbContext.SaveChangesAsync();
+            var value = JsonSerializer.Serialize(model);
+            int count = await repo.DbContext.Set<PropertyBag>()
+                .Where(x => x["Id"] == nameof(NodeSettings))
+                .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x["Value"], x => value));
         }
         catch (Exception ex)
         {

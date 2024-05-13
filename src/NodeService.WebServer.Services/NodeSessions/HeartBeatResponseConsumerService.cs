@@ -2,28 +2,37 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
 public class HeartBeatResponseConsumerService : BackgroundService
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
     readonly ILogger<HeartBeatResponseConsumerService> _logger;
     readonly IMemoryCache _memoryCache;
     readonly INodeSessionService _nodeSessionService;
+    readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
+    readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertyRepositoryFactory;
     readonly WebServerOptions _webServerOptions;
-    NodeSettings _nodeSettings;
     readonly ExceptionCounter _exceptionCounter;
     readonly WebServerCounter _webServerCounter;
+    NodeSettings _nodeSettings;
 
     public HeartBeatResponseConsumerService(
         ExceptionCounter exceptionCounter,
         ILogger<HeartBeatResponseConsumerService> logger,
         INodeSessionService nodeSessionService,
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        ApplicationRepositoryFactory<JobScheduleConfigModel> taskDefinitionRepositoryFactory,
+        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
+        ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
+        ApplicationRepositoryFactory<NodePropertySnapshotModel>  nodePropertyRepositoryFactory,
         BatchQueue<NodeHeartBeatSessionMessage> heartBeatMessageBatchBlock,
         IMemoryCache memoryCache,
         IOptionsMonitor<WebServerOptions> optionsMonitor,
@@ -32,8 +41,11 @@ public class HeartBeatResponseConsumerService : BackgroundService
     {
         _logger = logger;
         _nodeSessionService = nodeSessionService;
-        _dbContextFactory = dbContextFactory;
+        _taskDefinitionRepositoryFactory = taskDefinitionRepositoryFactory;
+        _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
         _hearBeatMessageBatchQueue = heartBeatMessageBatchBlock;
+        _propertyBagRepositoryFactory = propertyBagRepositoryFactory;
+        _nodePropertyRepositoryFactory = nodePropertyRepositoryFactory;
         _memoryCache = memoryCache;
         _webServerOptions = optionsMonitor.CurrentValue;
         _nodeSettings = new NodeSettings();
@@ -51,13 +63,13 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var count = 0;
             try
             {
-                count = arrayPoolCollection.CountNotNull();
+                count = arrayPoolCollection.CountDefault();
                 if (count == 0) continue;
 
                 stopwatch.Start();
                 await ProcessHeartBeatMessagesAsync(arrayPoolCollection);
                 _logger.LogInformation(
-                    $"process {arrayPoolCollection.CountNotNull()} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
+                    $"process {arrayPoolCollection.CountDefault()} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
                 _webServerCounter.HeartBeatAvailableCount = (uint)_hearBeatMessageBatchQueue.AvailableCount;
                 _webServerCounter.HeartBeatTotalProcessTimeSpan += stopwatch.Elapsed;
                 _webServerCounter.HeartBeatConsumeCount += (uint)count;
@@ -79,12 +91,13 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     async Task InvalidateAllNodeStatusAsync(CancellationToken stoppingToken)
     {
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+        using var repo = _nodeInfoRepositoryFactory.CreateRepository();
         try
         {
-            foreach (var item in dbContext.NodeInfoDbSet.AsQueryable().Where(x => x.Status == NodeStatus.Online))
+            var nodes = await repo.ListAsync(new NodeInfoSpecification(AreaTags.Any, NodeStatus.Online, []));
+            foreach (var item in nodes)
                 item.Status = NodeStatus.Offline;
-            await dbContext.SaveChangesAsync(stoppingToken);
+           await repo.UpdateRangeAsync(nodes);
         }
         catch (Exception ex)
         {
@@ -94,26 +107,34 @@ public class HeartBeatResponseConsumerService : BackgroundService
     }
 
     async Task ProcessHeartBeatMessagesAsync(
-        ArrayPoolCollection<NodeHeartBeatSessionMessage> arrayPoolCollection)
+        ArrayPoolCollection<NodeHeartBeatSessionMessage> arrayPoolCollection,
+        CancellationToken cancellationToken=default)
     {
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+
         var stopwatch = new Stopwatch();
         try
         {
-            await RefreshNodeSettings(dbContext);
+            using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
+            using var nodePropsRepo = _nodePropertyRepositoryFactory.CreateRepository();
+            await RefreshNodeSettingsAsync();
+            List<NodeInfoModel> nodeList = new List<NodeInfoModel>();
             foreach (var hearBeatSessionMessage in arrayPoolCollection)
             {
                 if (hearBeatSessionMessage == null) continue;
                 stopwatch.Start();
-                await ProcessHeartBeatMessageAsync(dbContext, hearBeatSessionMessage);
+                await ProcessHeartBeatMessageAsync(
+                    nodeInfoRepo,
+                    nodePropsRepo,
+                    hearBeatSessionMessage,
+                    nodeList,
+                    cancellationToken);
                 stopwatch.Stop();
                 _logger.LogInformation(
                     $"process heartbeat {hearBeatSessionMessage.NodeSessionId} spent:{stopwatch.Elapsed}");
                 stopwatch.Reset();
             }
-
+            await nodeInfoRepo.UpdateRangeAsync(nodeList, cancellationToken);
             stopwatch.Start();
-            await dbContext.SaveChangesAsync();
             stopwatch.Stop();
         }
         catch (Exception ex)
@@ -124,23 +145,26 @@ public class HeartBeatResponseConsumerService : BackgroundService
         finally
         {
             _logger.LogInformation(
-                $"Process {arrayPoolCollection.CountNotNull()} messages, SaveElapsed:{stopwatch.Elapsed}");
+                $"Process {arrayPoolCollection.CountDefault()} messages, SaveElapsed:{stopwatch.Elapsed}");
             stopwatch.Reset();
         }
     }
 
-    async Task RefreshNodeSettings(ApplicationDbContext dbContext)
+    async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
-        var dict = await dbContext.PropertyBagDbSet.FindAsync("NodeSettings");
-        if (dict == null || !dict.TryGetValue("Value", out var value))
+        using var repo = _propertyBagRepositoryFactory.CreateRepository();
+        var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
+        if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value))
             _nodeSettings = new NodeSettings();
         else
             _nodeSettings = JsonSerializer.Deserialize<NodeSettings>(value as string);
     }
 
     async Task ProcessHeartBeatMessageAsync(
-        ApplicationDbContext dbContext,
+        IRepository<NodeInfoModel> nodeInfoRepo,
+        IRepository<NodePropertySnapshotModel> nodePropertyRepo,
         NodeHeartBeatSessionMessage hearBeatMessage,
+        List<NodeInfoModel> nodeList,
         CancellationToken cancellationToken = default
     )
     {
@@ -154,7 +178,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 return;
             }
 
-            nodeInfo = await dbContext.FindAsync<NodeInfoModel>(hearBeatMessage.NodeSessionId.NodeId.Value);
+            nodeInfo = await nodeInfoRepo.GetByIdAsync(hearBeatMessage.NodeSessionId.NodeId.Value);
 
             if (nodeInfo == null) return;
 
@@ -164,7 +188,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var propsDict =
                 await _memoryCache.GetOrCreateAsync<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id,
                     TimeSpan.FromHours(1));
-
+            nodeList.Add(nodeInfo);
             if (hearBeatResponse != null)
             {
                 nodeInfo.Profile.UpdateTime =
@@ -214,7 +238,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             if (nodeInfo.Status == NodeStatus.Offline)
             {
-                var nodePropertySnapshotModel =
+                var nodeProps =
                     new NodePropertySnapshotModel
                     {
                         Id = Guid.NewGuid().ToString(),
@@ -223,10 +247,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
                         NodeProperties = propsDict.Select(NodePropertyEntry.From).ToList(),
                         NodeInfoId = nodeInfo.Id
                     };
-                await dbContext.NodePropertiesSnapshotsDbSet.AddAsync(nodePropertySnapshotModel);
+                await nodePropertyRepo.AddAsync(nodeProps);
                 var oldId = nodeInfo.LastNodePropertySnapshotId;
-                nodeInfo.LastNodePropertySnapshotId = nodePropertySnapshotModel.Id;
-                await dbContext.NodePropertiesSnapshotsDbSet.Where(x => x.Id == oldId).ExecuteDeleteAsync(cancellationToken);
+                nodeInfo.LastNodePropertySnapshotId = nodeProps.Id;
+                await nodePropertyRepo.DbContext.Set<NodePropertySnapshotModel>().Where(x => x.Id == oldId).ExecuteDeleteAsync();
             }
         }
         catch (Exception ex)

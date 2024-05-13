@@ -1,4 +1,10 @@
-﻿namespace NodeService.WebServer.Services.Tasks;
+﻿using NodeService.Infrastructure.Data;
+using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Data;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
+
+namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskPenddingContext : IAsyncDisposable
 {
@@ -11,7 +17,7 @@ public class TaskPenddingContext : IAsyncDisposable
 
     public string Id { get; }
 
-    public INodeSessionService NodeServerService { get; init; }
+    public INodeSessionService NodeSessionService { get; init; }
 
     public required NodeSessionId NodeSessionId { get; init; }
 
@@ -27,44 +33,40 @@ public class TaskPenddingContext : IAsyncDisposable
         return ValueTask.CompletedTask;
     }
 
-    public async Task<bool> WaitAllTaskTerminatedAsync()
+    public async Task<bool> WaitAllTaskTerminatedAsync(IRepository<JobExecutionInstanceModel> repository)
     {
         while (!CancellationToken.IsCancellationRequested)
         {
-            if (NodeServerService.GetNodeStatus(NodeSessionId) != NodeStatus.Online) return false;
+            if (NodeSessionService.GetNodeStatus(NodeSessionId) != NodeStatus.Online) return false;
 
-            var jobExecutionInstances = await GetRunningTasksAsync();
+            var queryResult = await QueryTaskExecutionInstancesAsync(repository,
+                new QueryTaskExecutionInstanceListParameters()
+                {
+                    NodeIdList = [this.NodeSessionId.NodeId.Value],
+                    TaskDefinitionIdList = [this.FireParameters.TaskScheduleConfig.Id],
+                    Status = JobExecutionStatus.Running
+                });
 
-            if (!jobExecutionInstances.Any()) return true;
+            if (queryResult.IsEmpty) return true;
             await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken);
         }
 
         return false;
     }
 
-    public async Task<IEnumerable<JobExecutionInstanceModel>> GetRunningTasksAsync()
-    {
-        var taskExecutionInstances = await NodeServerService.QueryTaskExecutionInstancesAsync(NodeSessionId.NodeId
-            , new QueryTaskExecutionInstancesParameters
-            {
-                Id = FireParameters.TaskScheduleConfig.Id,
-                Status = JobExecutionStatus.Running
-            }, CancellationToken);
-        return taskExecutionInstances;
-    }
-
-    public async Task<bool> StopRunningTasksAsync()
+    public async Task<bool> StopRunningTasksAsync(IRepository<JobExecutionInstanceModel> repository)
     {
         while (!CancellationToken.IsCancellationRequested)
         {
-            var taskExecutionInstances = await GetRunningTasksAsync();
+            var queryResult = await QueryTaskExecutionInstancesAsync(repository, new QueryTaskExecutionInstanceListParameters()
+            {
+                NodeIdList = [this.NodeSessionId.NodeId.Value],
+                TaskDefinitionIdList = [this.FireParameters.TaskScheduleConfig.Id]
+            });
 
-            var count = taskExecutionInstances.Count();
-
-
-            if (count == 0) return true;
-            foreach (var taskExecutionInstance in taskExecutionInstances)
-                await NodeServerService.SendJobExecutionEventAsync(
+            if (!queryResult.IsEmpty) return true;
+            foreach (var taskExecutionInstance in queryResult.Items)
+                await NodeSessionService.SendJobExecutionEventAsync(
                     NodeSessionId,
                     taskExecutionInstance.ToCancelEvent(),
                     CancellationToken);
@@ -87,16 +89,38 @@ public class TaskPenddingContext : IAsyncDisposable
         return ValueTask.CompletedTask;
     }
 
-    public async Task<bool> WaitForRunningTasksAsync()
+    public async Task<bool> WaitForRunningTasksAsync(IRepository<JobExecutionInstanceModel> repository)
     {
         while (true)
         {
-            var runningTasks = await GetRunningTasksAsync();
-            if (!runningTasks.Any()) break;
+            var queryResult = await QueryTaskExecutionInstancesAsync(repository, new QueryTaskExecutionInstanceListParameters()
+            {
+                NodeIdList = [this.NodeSessionId.NodeId.Value],
+                TaskDefinitionIdList = [this.FireParameters.TaskScheduleConfig.Id],
+                Status = JobExecutionStatus.Running
+            });
+            if (!queryResult.HasValue) break;
             await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken);
         }
 
         return true;
+    }
+
+
+    public async Task<ListQueryResult<JobExecutionInstanceModel>> QueryTaskExecutionInstancesAsync(
+        IRepository<JobExecutionInstanceModel>  repository,
+        QueryTaskExecutionInstanceListParameters queryParameters,
+        CancellationToken cancellationToken = default)
+    {
+        var queryResult = await repository.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
+            queryParameters.Keywords,
+            queryParameters.Status,
+            queryParameters.NodeIdList,
+            queryParameters.TaskDefinitionIdList,
+            queryParameters.TaskExecutionInstanceIdList,
+            queryParameters.SortDescriptions),
+            cancellationToken: cancellationToken);
+        return queryResult;
     }
 
     public async ValueTask CancelAsync()

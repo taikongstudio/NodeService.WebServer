@@ -1,76 +1,78 @@
 ﻿@inject NotificationService _notice
 @inject ApiService ApiService
+@implements IAsyncDisposable
 <style type="text/css">
-    .jobLogViwer { /* for a specific editor instance */
-        height: calc(100% - 60px);
-        margin-top: 10px;
+    .taskLogViwer { /* for a specific editor instance */
+        height:100%;
+        width:100%;
     }
 </style>
-<Modal Width="800"
-       Maximizable
-       Title="@($"查看日志({_loadedLogEntriesCount}/{_totalLogEntriesCount})")"
-       @bind-Visible="@_logModalVisible"
-       Closable="true"
-       DefaultMaximized
-       DestroyOnClose
-       AfterClose="CloseAsync">
-    <Space>
-        @if (_showStopButton)
-        {
+
+<Flex Vertical Style="height:100%">
+    <Flex Vertical >
+
+        <Space>
+            @if (_loading)
+            {
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle"
+                            Type="@ButtonType.Primary"
+                            Icon="@IconType.Outline.CloseCircle"
+                            OnClick="StopAsync">
+                    </Button>
+                </SpaceItem>
+            }
+            else
+            {
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle"
+                            Type="@ButtonType.Primary"
+                            Disabled="@_loadMoreButtonDisabled"
+                            Icon="@IconType.Outline.Reload"
+                            OnClick="LoadTaskLogsAsync">
+                    </Button>
+                </SpaceItem>
+            }
+
             <SpaceItem>
-                <Button Shape="@ButtonShape.Circle"
-                        Type="@ButtonType.Primary"
-                        Icon="@IconType.Outline.CloseCircle"
-                        OnClick="StopAsync">
-                </Button>
+                <a href="@($"/api/jobs/instances/{TaskExecutionInstanceId}/log")" target="_blank">
+                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Download">
+                    </Button>
+                </a>
             </SpaceItem>
-        }
-        else
-        {
-            <SpaceItem>
-                <Button Shape="@ButtonShape.Circle"
-                        Type="@ButtonType.Primary"
-                        Disabled="@_loadMoreButtonDisabled"
-                        Icon="@IconType.Outline.Reload"
-                        OnClick="StartLoadLogsAsync">
-                </Button>
-            </SpaceItem>
-        }
+        </Space>
+        <AntDesign.Progress Percent=@(this._loadedLogEntriesCount / (this._totalLogEntriesCount + 0d)*100) ShowInfo=false />
 
-        <SpaceItem>
-            <a href="@($"/api/jobs/instances/{LogQueryId}/log")" target="_blank">
-                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Download">
-                </Button>
-            </a>
-        </SpaceItem>
+    </Flex>
+    <Flex Vertical Style="flex:auto">
+        <StandaloneCodeEditor @ref="@_viewer"
+                              CssClass="taskLogViwer"
+                              OnDidInit=LoadTaskLogsAsync
+                              ConstructionOptions=EditorConstructionOptions />
+    </Flex>
+</Flex>
 
-    </Space>
-    <StandaloneCodeEditor @ref="@_viewer" CssClass="jobLogViwer" OnDidInit="StartLoadLogsAsync" ConstructionOptions="EditorConstructionOptions"/>
-
-
-</Modal>
 
 
 @code {
-    [Parameter] public string? LogQueryId { get; set; }
+    [Parameter] public string TaskExecutionInstanceId { get; set; }
 
 
     StandaloneCodeEditor _viewer = null!;
     CancellationTokenSource _cancellationTokenSource;
-    bool _showStopButton;
-    int _logPageIndex = 0;
     List<string> _logPages = [];
+    bool _loading;
+    int _logPageIndex = 0;
     int _loadedLogEntriesCount;
     int _totalLogEntriesCount;
     bool _loadMoreButtonDisabled;
-    bool _logModalVisible;
 
-    async Task StartLoadLogsAsync()
+    async Task LoadTaskLogsAsync()
     {
         try
         {
             _loadMoreButtonDisabled = true;
-            _showStopButton = true;
+            _loading = true;
             InitCancellationTokenSource();
             await _viewer.UpdateOptions(new EditorUpdateOptions
             {
@@ -108,7 +110,7 @@
         finally
         {
             _loadMoreButtonDisabled = false;
-            _showStopButton = false;
+            _loading = false;
             StateHasChanged();
         }
     }
@@ -116,7 +118,7 @@
     async Task<bool> LoadNextLogPageAsync(CancellationToken cancellationToken = default)
     {
         var pageSize = 512;
-        var apiResponse = await ApiService.QueryTaskExecutionInstanceLogAsync(LogQueryId,
+        var apiResponse = await ApiService.QueryTaskExecutionInstanceLogAsync(TaskExecutionInstanceId,
             new PaginationQueryParameters
             {
                 PageIndex = _logPageIndex,
@@ -130,30 +132,30 @@
 
             foreach (var item in apiResponse.Result)
             {
-                sb.AppendLine($"{item.Index} {item.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
+                sb.AppendLine($"{item.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
             }
 
             var log = sb.ToString();
 
-            IEnumerable<string> allLogPages = [];
+            IEnumerable<string> logPages = [];
             var lastPageItemsCount = 0;
             var resultCount = apiResponse.Result.Count();
             if (resultCount == apiResponse.PageSize)
             {
                 _logPages.Add(log);
-                allLogPages = _logPages;
+                logPages = _logPages;
                 _logPageIndex++;
             }
             else
             {
-                allLogPages = _logPages.Union([log]);
+                logPages = _logPages.Union([log]);
                 lastPageItemsCount = resultCount;
             }
 
             var stringBuilder = new StringBuilder();
-            stringBuilder.AppendJoin(string.Empty, allLogPages);
-            var allLogText = stringBuilder.ToString();
-            await _viewer.SetValue(allLogText);
+            stringBuilder.AppendJoin(string.Empty, logPages);
+            var logText = stringBuilder.ToString();
+            await _viewer.SetValue(logText);
             _loadedLogEntriesCount = pageSize * _logPages.Count + lastPageItemsCount;
             _totalLogEntriesCount = apiResponse.TotalCount;
             await InvokeAsync(StateHasChanged);
@@ -178,10 +180,6 @@
         };
     }
 
-    void OnModalVisibleChanged(bool visible)
-    {
-    }
-
     void InitCancellationTokenSource()
     {
         if (_cancellationTokenSource == null)
@@ -195,43 +193,32 @@
         }
     }
 
-    public Task ShowAsync()
+    public async ValueTask DisposeAsync()
     {
-        _logModalVisible = true;
-        InitCancellationTokenSource();
-        StateHasChanged();
-        return Task.CompletedTask;
-    }
-
-    public async Task CloseAsync()
-    {
-        if (!_cancellationTokenSource.IsCancellationRequested)
-        {
-            _cancellationTokenSource.Cancel();
-        }
-
-        _logModalVisible = false;
-        LogQueryId = null;
-        _totalLogEntriesCount = 0;
-        _loadedLogEntriesCount = 0;
-        _logPageIndex = 0;
-        _logPages.Clear();
         if (_viewer != null)
         {
             await _viewer.SetValue(string.Empty);
         }
+        if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+        {
+            await _cancellationTokenSource.CancelAsync();
+        }
+        TaskExecutionInstanceId = null;
+        _totalLogEntriesCount = 0;
+        _loadedLogEntriesCount = 0;
+        _logPageIndex = 0;
+        _logPages.Clear();
     }
 
-    public Task StopAsync()
+    public async Task StopAsync()
     {
         if (!_cancellationTokenSource.IsCancellationRequested)
         {
-            _cancellationTokenSource.Cancel();
+            await _cancellationTokenSource.CancelAsync();
         }
 
-        _showStopButton = false;
+        _loading = false;
         StateHasChanged();
-        return Task.CompletedTask;
     }
 
 }

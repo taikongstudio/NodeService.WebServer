@@ -1,18 +1,19 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Jobs.JobInstances
-@page "/Jobs/Instances"
-@using NodeService.WebServer.UI.Pages.Components
-@using NodeService.WebServer.UI.Pages.Jobs.Components
-@using static Infrastructure.Models.JobExecutionReport.Types
+@page "/Jobs/Instances/"
+@page "/Jobs/Instances/{TaskExecutionInstanceId}/Log"
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
-@implements IDisposable
-
+@inject ClipboardService ClipboardService
 <GridContent>
-    <JobExecutionInstanceLogViewer @ref="@_logViewer"/>
-
+    <CommonDialog Title="@_taskLogDialogTitle"
+        @ref="_taskLogViewerDialog"
+        Opened="@OnTaskLogViewDialogOpenedAsync"
+        Closed="OnTaskLogViewDialogClosedAsync">
+        <JobExecutionInstanceLogViewer TaskExecutionInstanceId="@TaskExecutionInstanceId" />
+    </CommonDialog>
     <CommonDialog Closed="OnDialogClosed" @ref="_taskDefinitionSelectorDialog">
-        <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="_selectedJobSchduleConfigList" Mode="SelectionMode.Multiple"/>
+        <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="_selectedTaskDefinitionList" Mode="SelectionMode.Multiple"/>
     </CommonDialog>
     <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
         <NodeSelector @ref="_nodeSelector" @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple"/>
@@ -43,6 +44,7 @@
             </GridRow>
             <GridRow Wrap Style="min-height:30px">
                 <Text>节点：</Text>
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowNodeSelectorDialogAsync"></Button>
 
                 @if (_selectedNodeList != null)
                 {
@@ -56,14 +58,15 @@
                     <Text>全部</Text>   
                 }
 
-                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.FolderOpen" Type="@ButtonType.Primary" OnClick="ShowNodeSelectorDialogAsync"></Button>
-                  
             </GridRow>
             <GridRow Wrap Style="min-height:30px">
                 <Text>任务调度配置：</Text>
-                @if (_selectedJobSchduleConfigList != null)
+
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowTaskDefinitionSelectorDialogAsync"></Button>
+
+                @if (_selectedTaskDefinitionList != null)
                 {
-                    foreach (var item in _selectedJobSchduleConfigList)
+                    foreach (var item in _selectedTaskDefinitionList)
                     {
                         <Tag @key="item.Id" Style="height:20px;">@item.Name</Tag>
                     }
@@ -72,9 +75,7 @@
                 {
                     <Text>全部</Text>
                 }
-                        
-                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.FolderOpen" Type="@ButtonType.Primary" OnClick="ShowTaskDefinitionSelectorDialogAsync"></Button>
-                  
+ 
             </GridRow>
             <GridRow>
                 <Space Wrap Style="margin-bottom:16px">
@@ -90,10 +91,8 @@
                                 ValueName="@nameof(JobExeuctionStatusModel.Value)"
                                 Placeholder="选择状态"
                                 DefaultActiveFirstOption="true"
-                                EnableSearch
                                 Style="width:200px"
-                                OnSelectedItemChanged="OnSelectedStatusChanged"
-                                OnSearch="OnSearchStatus">
+                                OnSelectedItemChanged="OnSelectedStatusChanged">
                         </Select>
                     </SpaceItem>
                     <SpaceItem>
@@ -118,7 +117,7 @@
                         break;
                 }
             </PropertyColumn>
-            <PropertyColumn Title="状态" SorterMultiple="3" SorterCompare="(a, b) => a-b" Sortable="true" Property="c => c.Status">
+            <PropertyColumn Title="状态" SorterMultiple=0 SorterCompare="(a, b) => a-b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
                 @switch (context.Status)
                 {
                     case JobExecutionStatus.Unknown:
@@ -150,11 +149,11 @@
                         break;
                 }
             </PropertyColumn>
-            <PropertyColumn Title="触发时间" SorterMultiple="0" SorterCompare="(a, b) => DateTime.Compare(a,b)" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
-            <PropertyColumn Title="开始时间" SorterMultiple="1"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
-            <PropertyColumn Title="结束时间" SorterMultiple="2"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="触发时间" SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a,b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="开始时间" SorterMultiple="2"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="结束时间" SorterMultiple="3"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
             <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.Message"></PropertyColumn>
-            <ActionColumn Fixed="right" Width="150" Title="操作">
+            <ActionColumn Fixed="right" Width="200" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
                         @switch (context.Status)
@@ -171,12 +170,16 @@
                                 break;
                             case JobExecutionStatus.Running:
                                 <SpaceItem>
-                                    <Button Danger Shape="@ButtonShape.Circle" OnClick="() => StopJobAsync(context)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
+                                    <Button Danger Shape="@ButtonShape.Circle" OnClick="() => CancelTaskAsync(context)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
                                 </SpaceItem>
                                 break;
                         }
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="() => ShowLogMessageModalAsync(context.Id)">
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="() => ShowTaskLogViewerDialogAsync(context.Id)">
+                            </Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Link" OnClick="() => CopyTaskLogViewLinkToClipboardAsync(context.Id)">
                             </Button>
                         </SpaceItem>
                         <SpaceItem>
@@ -214,42 +217,39 @@
     }
 
     ITable _table;
-    string _searchText;
     CommonDialog _nodeSelectorDialog;
     CommonDialog _taskDefinitionSelectorDialog;
+    CommonDialog _taskLogViewerDialog;
     TaskDefinitionSelector _taskDefinitionSelector;
     NodeSelector _nodeSelector;
-
-    JobExecutionInstanceLogViewer _logViewer;
-    bool _nodeModalVisible;
+    JobExecutionInstanceLogViewer _taskLogViewer;
 
     DateTime BeginDateTime;
     DateTime EndDateTime;
 
     readonly DateTime?[] DateTimes = [DateTime.UtcNow.Date, DateTime.UtcNow.Date];
 
-    IEnumerable<string> _selectedNodeIdList;
-    IEnumerable<string> _selectedTaskScheduleConfigIdList;
+    string _taskLogDialogTitle = "Loading";
 
-    bool _loading;
     RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters> _dataSource;
 
 
     readonly List<JobExeuctionStatusModel> _jobExeuctionStatusList = [];
 
     IEnumerable<NodeInfoModel> _selectedNodeList = [];
-    IEnumerable<JobScheduleConfigModel> _selectedJobSchduleConfigList = [];
+    IEnumerable<JobScheduleConfigModel> _selectedTaskDefinitionList = [];
 
     JobExecutionStatus _selectedStatus;
+
+    [Parameter]
+    public string? TaskExecutionInstanceId { get; set; }
+
 
     protected override void OnInitialized()
     {
         _dataSource = new RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
-
-
         base.OnInitialized();
     }
-
 
     protected override async Task OnInitializedAsync()
     {
@@ -267,7 +267,22 @@
         EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
-        await QueryTaskExecutionInstanceListAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!string.IsNullOrEmpty(this.TaskExecutionInstanceId))
+            {
+                await ShowTaskLogViewerDialogAsync(this.TaskExecutionInstanceId);
+            }
+            else
+            {
+                await QueryTaskExecutionInstanceListAsync();
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
     }
 
     void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
@@ -280,8 +295,7 @@
     {
         try
         {
-            _loading = true;
-
+            this.TaskExecutionInstanceId = null;
             _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
             _dataSource.QueryParameters.EndDateTime = EndDateTime;
             _dataSource.QueryParameters.NodeIdList.Clear();
@@ -289,10 +303,10 @@
             {
                 _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
             }
-            _dataSource.QueryParameters.JobScheduleConfigIdList.Clear();
-            if (_selectedJobSchduleConfigList!=null)
+            _dataSource.QueryParameters.TaskDefinitionIdList.Clear();
+            if (_selectedTaskDefinitionList!=null)
             {
-                _dataSource.QueryParameters.JobScheduleConfigIdList.AddRange(_selectedJobSchduleConfigList.Select(x => x.Id));
+                _dataSource.QueryParameters.TaskDefinitionIdList.AddRange(_selectedTaskDefinitionList.Select(x => x.Id));
             }
             if (_selectedStatus != JobExecutionStatus.Unknown)
             {
@@ -327,11 +341,11 @@
         }
     }
 
-    async Task StopJobAsync(JobExecutionInstanceModel instance)
+    async Task CancelTaskAsync(JobExecutionInstanceModel instance)
     {
         try
         {
-            await ApiService.CancelJobAsync(instance.Id, new TaskCancellationParameters());
+            await ApiService.CancelTaskAsync(instance.Id, new TaskCancellationParameters());
         }
         catch (Exception ex)
         {
@@ -343,33 +357,16 @@
         }
     }
 
-    async Task OnSelectedStatusChanged(JobExeuctionStatusModel status)
+    void OnSelectedStatusChanged(JobExeuctionStatusModel status)
     {
     }
-
-    void OnSearchStatus(string status)
-    {
-    }
-
-    async Task OnSelectedTaskScheduleConfigChanged(JobScheduleConfigModel jobScheduleConfig)
-    {
-    }
-
-    void OnSearchJobScheduleConfig(string nodeId)
-    {
-    }
-
-    async Task OnSelectedNodeChanged(NodeInfoModel node)
-    {
-    }
-
-    void OnSearchNode(string nodeId)
-    {
-    }
-
 
     void OnTableChange(QueryModel<JobExecutionInstanceModel> query)
-    {   
+    {
+        if (this._taskLogViewerDialog.IsVisible)
+        {
+            return;
+        }
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
         {
@@ -384,10 +381,54 @@
         _dataSource.Request();
     }
 
-    async Task ShowLogMessageModalAsync(string id)
+    async Task ShowTaskLogViewerDialogAsync(string value)
     {
-        _logViewer.LogQueryId = id;
-        await _logViewer.ShowAsync();
+        try
+        {
+            var rsp = await ApiService.QueryTaskExecutionInstancesAsync(new QueryTaskExecutionInstanceListParameters()
+                {
+                    TaskExecutionInstanceIdList = [value]
+                });
+            if (rsp.ErrorCode == 0 && rsp.Result != null)
+            {
+                var taskExecutionInstance = rsp.Result.FirstOrDefault();
+                if (taskExecutionInstance != null)
+                {
+                    _taskLogDialogTitle = $"{taskExecutionInstance.Name}";
+                    TaskExecutionInstanceId = value;
+                    this.StateHasChanged();
+                    await _taskLogViewerDialog.ShowAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+
+    }
+
+    async Task CopyTaskLogViewLinkToClipboardAsync(string value)
+    {
+        if (!await ClipboardService.IsSupportedAsync())
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = "粘贴板服务不可用。"
+                });
+            return;
+        }
+        await ClipboardService.WriteTextAsync($"{ApiService.HttpClient.BaseAddress}Jobs/Instances/{value}/Log");
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "提示",
+                Description = "已经复制到粘贴板。"
+            });
     }
 
     async Task ShowNodeSelectorDialogAsync()
@@ -400,15 +441,24 @@
         await _taskDefinitionSelectorDialog.ShowAsync();
     }
 
+    Task OnTaskLogViewDialogOpenedAsync()
+    {
+        return Task.CompletedTask;
+    }
+
     Task OnDialogClosed()
     {
+
         StateHasChanged();
         return Task.CompletedTask;
     }
 
-
-    public void Dispose()
+    Task OnTaskLogViewDialogClosedAsync()
     {
+        this.TaskExecutionInstanceId = null;
+        var uri = this.NavigationManager.BaseUri;
+        NavigationManager.NavigateTo($"{uri}Jobs/Instances");
+        return Task.CompletedTask;
     }
 
 }

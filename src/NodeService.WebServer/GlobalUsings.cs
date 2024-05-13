@@ -14,7 +14,6 @@ global using NodeService.Infrastructure.DataModels;
 global using NodeService.Infrastructure.Interfaces;
 global using NodeService.Infrastructure.Messages;
 global using NodeService.Infrastructure.Models;
-global using NodeService.Infrastructure.Sessions;
 global using NodeService.WebServer;
 global using NodeService.WebServer.Data;
 global using NodeService.WebServer.Extensions;

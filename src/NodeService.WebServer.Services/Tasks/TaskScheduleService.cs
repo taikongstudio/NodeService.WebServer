@@ -1,13 +1,16 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskScheduleService : BackgroundService
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
     readonly ILogger<TaskScheduleService> _logger;
     readonly ISchedulerFactory _schedulerFactory;
     readonly IServiceProvider _serviceProvider;
@@ -20,14 +23,14 @@ public class TaskScheduleService : BackgroundService
     public TaskScheduleService(
         IServiceProvider serviceProvider,
         IAsyncQueue<TaskScheduleMessage> taskScheduleMessageQueue,
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
+        ApplicationRepositoryFactory<JobScheduleConfigModel> taskDefinitionRepositoryFactory,
         ISchedulerFactory schedulerFactory,
         TaskSchedulerDictionary taskSchedulerDictionary,
         ILogger<TaskScheduleService> logger,
         ExceptionCounter exceptionCounter)
     {
         _serviceProvider = serviceProvider;
-        _dbContextFactory = dbContextFactory;
+        _taskDefinitionRepositoryFactory = taskDefinitionRepositoryFactory;
         _logger = logger;
         _schedulerFactory = schedulerFactory;
         _taskSchedulerDictionary = taskSchedulerDictionary;
@@ -39,8 +42,7 @@ public class TaskScheduleService : BackgroundService
     {
         Scheduler = await _schedulerFactory.GetScheduler(stoppingToken);
         if (!Scheduler.IsStarted) await Scheduler.Start(stoppingToken);
-
-        await ScheduleTasksFromDbContextAsync(stoppingToken);
+        await ScheduleTasksAsync(stoppingToken);
         while (!stoppingToken.IsCancellationRequested)
         {
             var taskScheduleMessage = await _taskSchedulerMessageQueue.DeuqueAsync(stoppingToken);
@@ -61,13 +63,8 @@ public class TaskScheduleService : BackgroundService
         CancellationToken cancellationToken = default)
     {
         if (taskScheduleMessage.TaskScheduleConfigId == null) return;
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var taskScheduleConfig = await dbContext
-            .JobScheduleConfigurationDbSet
-            .AsQueryable()
-            .FirstOrDefaultAsync(
-                x => x.Id == taskScheduleMessage.TaskScheduleConfigId,
-                cancellationToken);
+        using var repository = _taskDefinitionRepositoryFactory.CreateRepository();
+        var taskScheduleConfig = await repository.GetByIdAsync(taskScheduleMessage.TaskScheduleConfigId, cancellationToken);
         if (taskScheduleConfig == null)
         {
             await CancelTaskAsync(taskScheduleMessage.TaskScheduleConfigId);
@@ -112,18 +109,16 @@ public class TaskScheduleService : BackgroundService
         }
     }
 
-    async ValueTask ScheduleTasksFromDbContextAsync(CancellationToken cancellationToken = default)
+    async ValueTask ScheduleTasksAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-            var taskScheduleConfigs = await dbContext.JobScheduleConfigurationDbSet
-                .AsAsyncEnumerable()
-                .Where(x => x.IsEnabled && x.TriggerType == JobScheduleTriggerType.Schedule)
-                .ToListAsync(cancellationToken);
-            foreach (var jobScheduleConfig in taskScheduleConfigs)
+            using var repository = _taskDefinitionRepositoryFactory.CreateRepository();
+            var taskDefinitions = await repository.ListAsync(new TaskDefinitionSpecification(true, JobScheduleTriggerType.Schedule));
+            taskDefinitions = taskDefinitions.Where(x => x.IsEnabled && x.TriggerType == JobScheduleTriggerType.Schedule).ToList();
+            foreach (var taskDefinition in taskDefinitions)
                 await _taskSchedulerMessageQueue.EnqueueAsync(
-                    new TaskScheduleMessage(TaskTriggerSource.Schedule, jobScheduleConfig.Id),
+                    new TaskScheduleMessage(TaskTriggerSource.Schedule, taskDefinition.Id),
                     cancellationToken);
         }
         catch (Exception ex)

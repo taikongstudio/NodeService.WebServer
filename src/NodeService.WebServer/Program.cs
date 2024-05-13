@@ -2,6 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Threading.RateLimiting;
 using AntDesign.ProLayout;
+using Ardalis.Specification.EntityFrameworkCore;
+using CurrieTechnologies.Razor.Clipboard;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -9,9 +11,12 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.Entities;
+using NodeService.Infrastructure.Identity;
+using NodeService.Infrastructure.NodeSessions;
 using NodeService.Infrastructure.Services;
 using NodeService.WebServer.Areas.Identity;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.FileRecords;
 using NodeService.WebServer.Services.MessageHandlers;
@@ -115,12 +120,10 @@ public class Program
 
         var factory = app.Services.GetService<IDbContextFactory<ApplicationDbContext>>();
         await using var dbContext = await factory.CreateDbContextAsync();
-        //dbContext.Database.EnsureDeleted();
         dbContext.Database.EnsureCreated();
 
         using var scope = app.Services.CreateAsyncScope();
         using var applicationUserDbContext = scope.ServiceProvider.GetService<ApplicationUserDbContext>();
-        //applicationUserDbContext.Database.EnsureDeleted();
         applicationUserDbContext.Database.EnsureCreated();
     }
 
@@ -135,6 +138,8 @@ public class Program
         builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
         builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
         builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
+        builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 1024 * 1024 * 1024; });
+
 
         builder.Services.AddControllersWithViews();
         builder.Services.AddControllers();
@@ -178,9 +183,6 @@ public class Program
 
         ConfigureDbContext(builder);
 
-        builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 1024 * 1024 * 1024; });
-
-
         builder.Services.AddLogging(logger =>
         {
             logger.ClearProviders();
@@ -196,7 +198,20 @@ public class Program
 
         ConfigureHostedServices(builder);
 
+        ConfigureGrpc(builder);
+
+        ConfifureCor(builder);
+
+        ConfigureRateLimiter(builder);
+    }
+
+    private static void ConfigureGrpc(WebApplicationBuilder builder)
+    {
         builder.Services.AddGrpc(grpcServiceOptions => { });
+    }
+
+    private static void ConfifureCor(WebApplicationBuilder builder)
+    {
         builder.Services.AddCors(o => o.AddPolicy("AllowAll", corPolicyBuilder =>
         {
             corPolicyBuilder.AllowAnyOrigin()
@@ -205,7 +220,10 @@ public class Program
                 .WithExposedHeaders("Grpc-Status", "Grpc-Message", "Grpc-Encoding", "Grpc-Accept-Encoding")
                 .WithHeaders("Access-Control-Allow-Headers: *", "Access-Control-Allow-Origin: *");
         }));
+    }
 
+    private static void ConfigureRateLimiter(WebApplicationBuilder builder)
+    {
         var concurrencyRateLimitPolicy = "Concurrency";
 
         builder.Services.AddRateLimiter(options => options
@@ -226,7 +244,8 @@ public class Program
         builder.Services.AddHostedService<TaskLogPersistenceService>();
         builder.Services.AddHostedService<NotificationService>();
         builder.Services.AddHostedService<NodeHealthyCheckService>();
-        builder.Services.AddHostedService<FileRecordService>();
+        builder.Services.AddHostedService<FileRecordQueryService>();
+        builder.Services.AddHostedService<FileRecordInsertUpdateDeleteService>();
     }
 
     static void ConfigureScoped(WebApplicationBuilder builder)
@@ -286,7 +305,7 @@ public class Program
         builder.Services.AddScoped<IUserService, UserService>();
         builder.Services.AddScoped<IAccountService, AccountService>();
         builder.Services.AddScoped<IProfileService, ProfileService>();
-
+        builder.Services.AddClipboard();
 
         builder.Services.AddScoped<ApiService>(serviceProvider =>
         {
@@ -295,13 +314,13 @@ public class Program
         });
 
         builder.Services.AddScoped<HeartBeatResponseHandler>();
-        builder.Services.AddScoped<JobExecutionReportHandler>();
+        builder.Services.AddScoped<TaskExecutionReportHandler>();
         builder.Services.AddScoped<MessageHandlerDictionary>(sp =>
             {
                 var messageHandlerDictionary = new MessageHandlerDictionary
                 {
                     { HeartBeatResponse.Descriptor, sp.GetService<HeartBeatResponseHandler>() },
-                    { JobExecutionReport.Descriptor, sp.GetService<JobExecutionReportHandler>() }
+                    { JobExecutionReport.Descriptor, sp.GetService<TaskExecutionReportHandler>() }
                 };
                 return messageHandlerDictionary;
             }
@@ -366,9 +385,12 @@ public class Program
             new AsyncQueue<JobExecutionEventRequest>());
         builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>>(new AsyncQueue<TaskScheduleMessage>());
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>>(new AsyncQueue<NotificationMessage>());
-        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(10)));
-        builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(10)));
-        builder.Services.AddKeyedSingleton(nameof(FileRecordService), new BatchQueue<BatchQueueOperation<object, object>>(
+        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(5)));
+        builder.Services.AddKeyedSingleton(nameof(FileRecordQueryService), new BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>>(
+            1024 * 2,
+            TimeSpan.FromSeconds(5)));
+        builder.Services.AddKeyedSingleton(nameof(FileRecordInsertUpdateDeleteService), new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(
             1024 * 2,
             TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
@@ -379,6 +401,8 @@ public class Program
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
+        builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
+  
     }
 
     static void ConfigureDbContext(WebApplicationBuilder builder)

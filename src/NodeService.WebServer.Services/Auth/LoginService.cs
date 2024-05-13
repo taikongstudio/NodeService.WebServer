@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
-using NodeService.Infrastructure.Entities;
+using NodeService.Infrastructure.Identity;
 using NodeService.Infrastructure.Interfaces;
 
 namespace NodeService.WebServer.Services.Auth;

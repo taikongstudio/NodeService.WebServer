@@ -1,4 +1,9 @@
-﻿using NodeService.Infrastructure.Models;
+﻿using Ardalis.Specification.EntityFrameworkCore;
+using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.Models;
+using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using System.IO;
 
 namespace NodeService.WebServer.Controllers;
@@ -7,8 +12,9 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class NodesController : Controller
 {
-    readonly IAsyncQueue<TaskScheduleMessage> _asyncQueue;
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
+    readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertySnapshotRepositoryFactory;
     readonly ILogger<NodesController> _logger;
     readonly IMemoryCache _memoryCache;
     readonly INodeSessionService _nodeSessionService;
@@ -21,13 +27,15 @@ public partial class NodesController : Controller
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
         IOptionsSnapshot<WebServerOptions> webServerOptions,
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
-        IAsyncQueue<TaskScheduleMessage> jobScheduleServiceMessageQueue,
+        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
+        ApplicationRepositoryFactory<JobExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
+        ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertySnapshotRepositoryFactory,
         INodeSessionService nodeSessionService)
     {
         _logger = logger;
-        _dbContextFactory = dbContextFactory;
-        _asyncQueue = jobScheduleServiceMessageQueue;
+        _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
+        _taskExecutionInstanceRepositoryFactory = taskExecutionInstanceRepositoryFactory;
+        _nodePropertySnapshotRepositoryFactory = nodePropertySnapshotRepositoryFactory;
         _nodeSessionService = nodeSessionService;
         _memoryCache = memoryCache;
         _webServerOptions = webServerOptions.Value;
@@ -42,58 +50,23 @@ public partial class NodesController : Controller
         var apiResponse = new PaginationResponse<NodeInfoModel>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-
-            var queryable = dbContext.NodeInfoDbSet.AsQueryable();
-
-            if (queryParameters.AreaTag != "*")
-                queryable = queryable.Where(x => x.Profile.FactoryName == queryParameters.AreaTag);
-            if (queryParameters.Status != NodeStatus.All)
-                queryable = queryable.Where(x => x.Status == queryParameters.Status);
-            if (queryParameters.IdList != null && queryParameters.IdList.Any())
-                queryable = queryable.Where(x => queryParameters.IdList.Contains(x.Id));
-            if (queryParameters.Keywords != null)
-                queryable = queryable.Where(x => x.Name == queryParameters.Keywords ||
-                                                 x.Name.Contains(queryParameters.Keywords)
-                                                 ||
-                                                 x.Profile.IpAddress == queryParameters.Keywords ||
-                                                 x.Profile.IpAddress.Contains(queryParameters.Keywords)
-                                                 ||
-                                                 x.Profile.ClientVersion == queryParameters.Keywords ||
-                                                 x.Profile.ClientVersion.Contains(queryParameters.Keywords)
-                                                 ||
-                                                 x.Profile.IpAddress == queryParameters.Keywords ||
-                                                 x.Profile.IpAddress.Contains(queryParameters.Keywords)
-                                                 ||
-                                                 x.Profile.Usages == queryParameters.Keywords ||
-                                                 x.Profile.Usages.Contains(queryParameters.Keywords)
-                                                 ||
-                                                 x.Profile.Remarks == queryParameters.Keywords ||
-                                                 x.Profile.Remarks.Contains(queryParameters.Keywords));
-
-            queryable = queryable
-            .Include(x => x.Profile)
-                .AsSplitQuery();
-
-            queryable = queryable.OrderBy(queryParameters.SortDescriptions, static (name) =>
-            {
-                return name switch
-                {
-                    nameof(NodeInfoModel.Name) or nameof(NodeInfoModel.Status) => name,
-                    _ => $"{nameof(NodeInfoModel.Profile)}.{name}",
-                };
-            });
-
-            apiResponse= await queryable.QueryPageItemsAsync(
-                queryParameters,
+            using var repo = _nodeInfoRepositoryFactory.CreateRepository();
+            var queryResult = await repo.PaginationQueryAsync(new NodeInfoSpecification(
+                queryParameters.AreaTag,
+                queryParameters.Status,
+                queryParameters.Keywords,
+                queryParameters.SortDescriptions),
+                queryParameters.PageSize,
+                queryParameters.PageIndex,
                 cancellationToken);
+            apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
+            _logger.LogInformation(ex.ToString());
             apiResponse.ErrorCode = ex.HResult;
-            apiResponse.Message = ex.ToString();
+            apiResponse.Message = ex.Message;
         }
 
         return apiResponse;
@@ -107,11 +80,8 @@ public partial class NodesController : Controller
         var apiResponse = new ApiResponse<NodeInfoModel>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var nodeInfo =
-                await dbContext
-                    .NodeInfoDbSet
-                    .FindAsync(id);
+            using var repo = _nodeInfoRepositoryFactory.CreateRepository();
+            var nodeInfo = await repo.GetByIdAsync(id);
             apiResponse.SetResult(nodeInfo);
         }
         catch (Exception ex)

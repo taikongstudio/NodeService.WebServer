@@ -1,4 +1,11 @@
-﻿using NodeService.WebServer.Models;
+﻿using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.Data;
+using NodeService.Infrastructure.Models;
+using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Models;
+using static NuGet.Protocol.Core.Types.Repository;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -6,35 +13,30 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class CommonConfigController : Controller
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     readonly ILogger<CommonConfigController> _logger;
     readonly IMemoryCache _memoryCache;
     readonly INodeSessionService _nodeSessionService;
     readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
     readonly IServiceProvider _serviceProvider;
-    readonly IVirtualFileSystem _virtualFileSystem;
     readonly WebServerOptions _webServerOptions;
     readonly ExceptionCounter _exceptionCounter;
 
     public CommonConfigController(
+        ILogger<CommonConfigController> logger,
         IMemoryCache memoryCache,
         ExceptionCounter exceptionCounter,
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
-        ILogger<CommonConfigController> logger,
-        IVirtualFileSystem virtualFileSystem,
         IOptionsSnapshot<WebServerOptions> optionSnapshot,
         IServiceProvider serviceProvider,
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationMessageQueue)
     {
-        _serviceProvider = serviceProvider;
-        _dbContextFactory = dbContextFactory;
-        _memoryCache = memoryCache;
-        _virtualFileSystem = virtualFileSystem;
-        _webServerOptions = optionSnapshot.Value;
         _logger = logger;
+        _serviceProvider = serviceProvider;
+        _memoryCache = memoryCache;
+        _webServerOptions = optionSnapshot.Value;
         _nodeSessionService = nodeSessionService;
         _notificationMessageQueue = notificationMessageQueue;
+        _exceptionCounter = exceptionCounter;
     }
 
     async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(PaginationQueryParameters queryParameters)
@@ -44,34 +46,46 @@ public partial class CommonConfigController : Controller
 
         try
         {
+            ApplicationRepositoryFactory<T> repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
+            using var repo = repoFactory.CreateRepository();
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
+            ListQueryResult<T> cachedQueryResult = default;
             if (queryParameters.QueryStrategy == QueryStrategy.QueryPreferred)
             {
-                apiResponse = await QueryAsync<T>(queryParameters);
+                cachedQueryResult = await repo.PaginationQueryAsync(
+                    new CommonConfigSpecification<T>(queryParameters.Keywords),
+                                        queryParameters.PageSize,
+                                        queryParameters.PageIndex);
             }
             else if (queryParameters.QueryStrategy == QueryStrategy.CachePreferred)
             {
                 _logger.LogInformation($"{queryParameters}");
                 var key = $"{typeof(T).FullName}:{queryParameters}";
-                PaginationResponse<T>? cacheValue = null;
-                if (!_memoryCache.TryGetValue(key, out cacheValue) || cacheValue == null)
+
+                if (!_memoryCache.TryGetValue(key, out cachedQueryResult) || !cachedQueryResult.HasValue)
                 {
-                    await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 5000)));
-                    if (!_memoryCache.TryGetValue(key, out cacheValue) || cacheValue == null)
+                    await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 500)));
+                    if (!_memoryCache.TryGetValue(key, out cachedQueryResult) || !cachedQueryResult.HasValue)
                     {
-                        await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 5000)));
-                        cacheValue = await QueryAsync<T>(queryParameters);
-                        if (cacheValue != null)
+                        await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 500)));
+                        cachedQueryResult = await repo.PaginationQueryAsync(
+
+                            new CommonConfigSpecification<T>(
+                            queryParameters.Keywords,
+                            queryParameters.SortDescriptions),
+                            queryParameters.PageSize,
+                            queryParameters.PageIndex);
+
+                        if (cachedQueryResult.HasValue)
                         {
-                            _memoryCache.Set(key, cacheValue, TimeSpan.FromMinutes(1));
+                            _memoryCache.Set(key, cachedQueryResult, TimeSpan.FromMinutes(1));
                         }
                     }
                 }
-                if (cacheValue != null)
-                {
-                    apiResponse = cacheValue;
-                }
-
+            }
+            if (cachedQueryResult.HasValue)
+            {
+                apiResponse.SetResult(cachedQueryResult);
             }
         }
         catch (Exception ex)
@@ -84,30 +98,15 @@ public partial class CommonConfigController : Controller
         return apiResponse;
     }
 
-    async Task<PaginationResponse<T>> QueryAsync<T>(PaginationQueryParameters queryParameters) where T : ConfigurationModel, new()
-    {
-        var dbContext = await _dbContextFactory.CreateDbContextAsync();
-        IQueryable<T> queryable = dbContext.GetDbSet<T>();
-
-        if (!string.IsNullOrEmpty(queryParameters.Keywords))
-            queryable = queryable.Where(x =>
-                x.Name == queryParameters.Keywords || x.Name.Contains(queryParameters.Keywords));
-
-        queryable = queryable.OrderByDescending(x => x.ModifiedDateTime);
-
-        queryable = queryable.OrderBy(queryParameters.SortDescriptions);
-        var apiResponse = await queryable.QueryPageItemsAsync(queryParameters);
-        return apiResponse;
-    }
-
     async Task<ApiResponse<T>> QueryConfigurationAsync<T>(string id, Func<T?, Task>? func = null)
         where T : ConfigurationModel
     {
         var apiResponse = new ApiResponse<T>();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            apiResponse.SetResult(await dbContext.GetDbSet<T>().AsQueryable().FirstOrDefaultAsync(x => x.Id == id));
+            ApplicationRepositoryFactory<T> repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
+            using var repo = repoFactory.CreateRepository();
+            apiResponse.SetResult(await repo.GetByIdAsync(id));
             if (apiResponse.Result != null && func != null) await func.Invoke(apiResponse.Result);
         }
         catch (Exception ex)
@@ -127,10 +126,10 @@ public partial class CommonConfigController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            dbContext.GetDbSet<T>().Remove(model);
-            var changes = await dbContext.SaveChangesAsync();
-            if (changes > 0 && changesFunc != null) await changesFunc.Invoke(model);
+            ApplicationRepositoryFactory<T> repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
+            using var repo = repoFactory.CreateRepository();
+            await repo.DeleteAsync(model);
+            if (repo.LastSaveChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
         }
         catch (Exception ex)
         {
@@ -148,22 +147,21 @@ public partial class CommonConfigController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-            var modelFromDb = await dbContext.GetDbSet<T>().FindAsync(model.Id);
+            ApplicationRepositoryFactory<T> repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
+            using var repo = repoFactory.CreateRepository();
+            var modelFromDb = await repo.GetByIdAsync(model.Id);
             if (modelFromDb == null)
             {
                 model.EntityVersion = Guid.NewGuid().ToByteArray();
-                await dbContext
-                    .GetDbSet<T>().AddAsync(model);
+                await repo.AddAsync(model);
             }
             else
             {
                 modelFromDb.With(model);
-                modelFromDb.EntityVersion = Guid.NewGuid().ToByteArray();
+                await repo.UpdateAsync(model);
             }
 
-            var changes = await dbContext.SaveChangesAsync();
-            if (changes > 0 && changesFunc != null) await changesFunc.Invoke(model);
+            if (repo.LastSaveChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
         }
         catch (Exception ex)
         {

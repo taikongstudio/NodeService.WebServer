@@ -76,6 +76,7 @@
                     <StringEntryTable ItemsSource="@context.CronExpressions"
                                       NameTitle="备注"
                                       ValueTitle="Cron表达式"
+                                      IsTagHidden="false"
                                       AddingNewItem="AddCronExpression"
                                       ValueChanging="OnCronExpressionValueChanging"/>
                 </FormItem>
@@ -269,7 +270,7 @@
             return;
         }
 
-        var rsp = await ApiService.QueryJobTypeDescConfigAsync(model.Value.JobTypeDescId);
+        var rsp = await ApiService.QueryTaskTypeDescConfigAsync(model.Value.JobTypeDescId);
         if (rsp.ErrorCode == 0)
         {
             model.Value.JobTypeDesc = rsp.Result;
@@ -560,7 +561,18 @@
 
     async Task HandleEditFormOk(MouseEventArgs e)
     {
-        _editFormSubmitting = true;
+        if (_editModel.Value.TriggerType == JobScheduleTriggerType.Schedule
+            &&
+            _editModel.Value.CronExpressions.Count == 0)
+        {
+            _editFormVisible = true;
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = "调度触发模式需要设置至少一个Cron表达式"
+                });
+            return;
+        }
         _editModel.Options.Clear();
         await _optionValueEditor.CommitAsync();
         foreach (var kv in _editModel.OptionValueEditors)
@@ -665,19 +677,7 @@
                     break;
             }
         }
-
-        if (_editModel.Value.TriggerType == JobScheduleTriggerType.Schedule
-            &&
-            _editModel.Value.CronExpressions.Count == 0)
-        {
-            await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = "调度触发模式需要设置至少一个Cron表达式"
-            });
-            return;
-        }
-
+        _editFormSubmitting = true;
         _editForm.Submit();
     }
 

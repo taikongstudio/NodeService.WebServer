@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
+using NodeService.Infrastructure.Messages;
+using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 
 namespace NodeService.WebServer.Services.NodeSessions;
@@ -73,54 +75,7 @@ public class NodeSessionService : INodeSessionService
         return EnsureNodeSession(nodeSessionId).OutputQueue;
     }
 
-    public async Task<IEnumerable<JobExecutionInstanceModel>> QueryTaskExecutionInstancesAsync(
-        NodeId nodeId,
-        QueryTaskExecutionInstancesParameters parameters,
-        CancellationToken cancellationToken = default)
-    {
-        JobExecutionInstanceModel[] result = [];
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var queryable =
-            dbContext
-                .JobExecutionInstancesDbSet
-                .AsQueryable();
-        var id = nodeId.Value;
-        if (nodeId != NodeId.Any) queryable = queryable.Where(x => x.NodeInfoId == id);
-        if (!string.IsNullOrEmpty(parameters.Id))
-        {
-            var jobScheduleConfigId = parameters.Id;
-            queryable = queryable.Where(x => x.JobScheduleConfigId == jobScheduleConfigId);
-        }
 
-        if (!string.IsNullOrEmpty(parameters.FireInstanceId))
-            queryable.Where(x => x.FireInstanceId == parameters.FireInstanceId);
-        if (parameters.Status != null)
-        {
-            var status = parameters.Status.Value;
-            queryable = queryable.Where(x => x.Status == status);
-        }
-
-        if (parameters.BeginTime != null && parameters.EndTime == null)
-        {
-            var beginTime = parameters.BeginTime.Value;
-            queryable = queryable.Where(x => x.FireTimeUtc >= beginTime);
-        }
-
-        if (parameters.BeginTime == null && parameters.EndTime != null)
-        {
-            var endTime = parameters.EndTime.Value;
-            queryable = queryable.Where(x => x.FireTimeUtc <= endTime);
-        }
-        else if (parameters.BeginTime != null && parameters.EndTime != null)
-        {
-            var beginTime = parameters.BeginTime.Value;
-            var endTime = parameters.EndTime.Value;
-            queryable = queryable.Where(x => x.FireTimeUtc >= beginTime && x.FireTimeUtc <= endTime);
-        }
-
-        result = await queryable.ToArrayAsync(cancellationToken);
-        return result;
-    }
 
     public void UpdateNodeStatus(NodeSessionId nodeSessionId, NodeStatus nodeStatus)
     {
@@ -175,41 +130,6 @@ public class NodeSessionService : INodeSessionService
         return rsp;
     }
 
-    public async Task<NodeId> EnsureNodeInfoAsync(
-        NodeSessionId nodeSessionId,
-        string nodeName,
-        CancellationToken cancellationToken = default)
-    {
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var nodeId = nodeSessionId.NodeId.Value;
-        var nodeInfo = await dbContext.NodeInfoDbSet.AsQueryable()
-            .FirstOrDefaultAsync(x => x.Id == nodeId);
-
-        if (nodeInfo == null)
-        {
-            nodeInfo = NodeInfoModel.Create(nodeId, nodeName);
-            var nodeProfile = await dbContext.NodeProfilesDbSet.OrderByDescending(x => x.ServerUpdateTimeUtc)
-                .FirstOrDefaultAsync(
-                    x => x.Name == nodeName,
-                    cancellationToken);
-            if (nodeProfile != null)
-            {
-                var oldNodeInfo = await dbContext.NodeInfoDbSet.FirstOrDefaultAsync(
-                    x => x.Id == nodeProfile.NodeInfoId,
-                    cancellationToken);
-                if (oldNodeInfo != null) dbContext.NodeInfoDbSet.Remove(oldNodeInfo);
-                nodeProfile.NodeInfoId = nodeId;
-                nodeInfo.Profile = nodeProfile;
-                nodeInfo.ProfileId = nodeInfo.Profile.Id;
-            }
-
-            await dbContext.NodeInfoDbSet.AddAsync(nodeInfo, cancellationToken);
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        return new NodeId(nodeInfo.Id);
-    }
-
     public IEnumerable<NodeSessionId> EnumNodeSessions(NodeId nodeId)
     {
         foreach (var nodeSessionId in _nodeSessionDict.Keys)
@@ -229,74 +149,7 @@ public class NodeSessionService : INodeSessionService
         EnsureNodeSession(nodeSessionId).Name = nodeName;
     }
 
-    public async Task<JobExecutionInstanceModel> AddJobExecutionInstanceAsync(
-        NodeSessionId nodeSessionId,
-        FireTaskParameters parameters,
-        CancellationToken cancellationToken = default)
-    {
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var nodeName = GetNodeName(nodeSessionId);
-        var taskExecutionInstance = new JobExecutionInstanceModel
-        {
-            Id = Guid.NewGuid().ToString(),
-            Name = $"{nodeName} {parameters.TaskScheduleConfig.Name} {parameters.FireInstanceId}",
-            NodeInfoId = nodeSessionId.NodeId.Value,
-            Status = JobExecutionStatus.Triggered,
-            FireTimeUtc = parameters.FireTimeUtc.DateTime,
-            Message = string.Empty,
-            FireType = "Server",
-            TriggerSource = parameters.TriggerSource,
-            JobScheduleConfigId = parameters.TaskScheduleConfig.Id,
-            ParentId = parameters.ParentTaskId,
-            FireInstanceId = parameters.FireInstanceId
-        };
 
-
-        var isOnline = GetNodeStatus(nodeSessionId) == NodeStatus.Online;
-        if (!isOnline)
-        {
-            taskExecutionInstance.Message = $"{nodeName} offline";
-            taskExecutionInstance.Status = JobExecutionStatus.Failed;
-        }
-        else
-        {
-            switch (parameters.TaskScheduleConfig.ExecutionStrategy)
-            {
-                case JobExecutionStrategy.Concurrent:
-                    taskExecutionInstance.Message = $"{nodeName}:triggered";
-                    break;
-                case JobExecutionStrategy.Queue:
-                    taskExecutionInstance.Status = JobExecutionStatus.Pendding;
-                    taskExecutionInstance.Message = $"{nodeName}: waiting for any job";
-                    break;
-                case JobExecutionStrategy.Skip:
-                    taskExecutionInstance.Status = JobExecutionStatus.Pendding;
-                    taskExecutionInstance.Message = $"{nodeName}: start job";
-                    break;
-                case JobExecutionStrategy.Stop:
-                    taskExecutionInstance.Status = JobExecutionStatus.Pendding;
-                    taskExecutionInstance.Message = $"{nodeName}: waiting for kill all job";
-                    break;
-            }
-        }
-
-
-        var taskScheduleConfigJsonString = parameters.TaskScheduleConfig.ToJsonString<JobScheduleConfigModel>();
-
-        if (parameters.NextFireTimeUtc != null)
-            taskExecutionInstance.NextFireTimeUtc = parameters.NextFireTimeUtc.Value.UtcDateTime;
-        if (parameters.PreviousFireTimeUtc != null)
-            taskExecutionInstance.NextFireTimeUtc = parameters.PreviousFireTimeUtc.Value.UtcDateTime;
-        if (parameters.ScheduledFireTimeUtc != null)
-            taskExecutionInstance.ScheduledFireTimeUtc = parameters.ScheduledFireTimeUtc.Value.UtcDateTime;
-
-
-        await dbContext.JobExecutionInstancesDbSet.AddAsync(taskExecutionInstance, cancellationToken);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return taskExecutionInstance;
-    }
 
     public int GetNodeSessionsCount()
     {

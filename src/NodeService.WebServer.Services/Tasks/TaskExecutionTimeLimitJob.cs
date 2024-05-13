@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using NodeService.Infrastructure.NodeSessions;
 
 namespace NodeService.WebServer.Services.Tasks;
 

@@ -1,5 +1,5 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Nodes.NodeDetail
-@page "/nodes/{nodeId}"
+@page "/Nodes/~/{nodeId}"
 @using NodeService.WebServer.UI.Pages.Nodes.NodeDetail.Components
 @inject ApiService ApiService
 @inject NotificationService _notice
@@ -87,7 +87,6 @@
     NodePropertySnapshotModel _nodePropertySnapshot = new();
     NodeInfoModel NodeInfo = new();
 
-
     protected override async Task OnInitializedAsync()
     {
         _nodeProperties = NodePropertyModel.FromNodePropertyItems(null);
@@ -107,6 +106,7 @@
             }
             else
             {
+                
                 _nodePropertySnapshot = new NodePropertySnapshotModel();
                 _nodeProperties = NodePropertyModel.FromNodePropertyItems(null);
                 await _notice.Open(new NotificationConfig
@@ -128,7 +128,7 @@
 
     void GoBackNodesHomePage()
     {
-        NavigationManager.NavigateTo("/nodes");
+        NavigationManager.NavigateTo("/Nodes");
     }
 
     async Task QueryNodePropsAsync()

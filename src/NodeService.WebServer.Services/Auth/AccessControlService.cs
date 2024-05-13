@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using NodeService.Infrastructure.Entities;
+using NodeService.Infrastructure.Identity;
 using NodeService.Infrastructure.Interfaces;
 using NodeService.Infrastructure.Permissions;
 

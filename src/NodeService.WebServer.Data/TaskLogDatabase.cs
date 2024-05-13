@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Logging;
 using RocksDbSharp;
 
-namespace NodeService.Infrastructure.Models;
+namespace NodeService.WebServer.Data;
 
 public class TaskLogDatabase : IDisposable
 {

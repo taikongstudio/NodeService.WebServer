@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using NodeService.Infrastructure.Concurrent;
+
+namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {

@@ -49,7 +49,8 @@ namespace NodeService.WebServer.Services.FileRecords
                             switch (kind)
                             {
                                 case BatchQueueOperationKind.Query:
-                                    await this._repo.PaginationQueryAsync(operation.Argument);
+                                    var queryResult = await this._repo.PaginationQueryAsync(operation.Argument);
+                                    operation.SetResult(queryResult);
                                     break;
                                 default:
                                     break;

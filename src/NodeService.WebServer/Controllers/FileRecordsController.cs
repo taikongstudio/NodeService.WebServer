@@ -15,8 +15,7 @@ public class FileRecordsController : Controller
     readonly ExceptionCounter _exceptionCounter;
     readonly ILogger<FileRecordsController> _logger;
     readonly BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>> _queryOpBatchQueue;
-    readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _cudOpBatchQueue;
-    readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _CUDBatchQueue;
+    readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _insertUpdateDeleteOpBatchQueue;
     readonly IMemoryCache _memoryCache;
 
     public FileRecordsController(
@@ -24,8 +23,8 @@ public class FileRecordsController : Controller
         ExceptionCounter exceptionCounter,
         [FromKeyedServices(nameof(FileRecordQueryService))]
         BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>> queryOpBatchQueue,
-        [FromKeyedServices(nameof(FileRecordQueryService))]
-        BatchQueue<BatchQueueOperation<FileRecordModel, bool>> cudOpBatchQueue,
+        [FromKeyedServices(nameof(FileRecordInsertUpdateDeleteService))]
+        BatchQueue<BatchQueueOperation<FileRecordModel, bool>> insertUpdateDeleteOpBatchQueue,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
         IMemoryCache  memoryCache)
     {
@@ -34,7 +33,7 @@ public class FileRecordsController : Controller
         _memoryCache = memoryCache;
         _logger = logger;
         _queryOpBatchQueue = queryOpBatchQueue;
-        _cudOpBatchQueue = cudOpBatchQueue;
+        _insertUpdateDeleteOpBatchQueue = insertUpdateDeleteOpBatchQueue;
     }
 
     [HttpGet("/api/filerecords/{nodeId}/list")]
@@ -73,7 +72,7 @@ public class FileRecordsController : Controller
         try
         {
             var fileRecordOperation = new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.InsertOrUpdate);
-            await _CUDBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
+            await _insertUpdateDeleteOpBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
             await fileRecordOperation.WaitAsync(cancellationToken);
         }
         catch (Exception ex)
@@ -97,7 +96,7 @@ public class FileRecordsController : Controller
         try
         {
             var fileRecordOperation = new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.Delete);
-            await _CUDBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
+            await _insertUpdateDeleteOpBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
             await fileRecordOperation.WaitAsync(cancellationToken);
         }
         catch (Exception ex)

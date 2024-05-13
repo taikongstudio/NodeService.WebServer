@@ -89,7 +89,6 @@ public partial class ClientUpdateController : Controller
                 var nodeList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.All,
-                    [],
                     DataFilterCollection<string>.Empty,
                    new DataFilterCollection<string>(
                        dataFilterType,

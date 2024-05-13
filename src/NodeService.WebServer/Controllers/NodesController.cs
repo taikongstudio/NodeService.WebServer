@@ -1,5 +1,6 @@
 ﻿using Ardalis.Specification.EntityFrameworkCore;
 using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
@@ -51,14 +52,29 @@ public partial class NodesController : Controller
         try
         {
             using var repo = _nodeInfoRepositoryFactory.CreateRepository();
-            var queryResult = await repo.PaginationQueryAsync(new NodeInfoSpecification(
-                queryParameters.AreaTag,
-                queryParameters.Status,
-                queryParameters.Keywords,
-                queryParameters.SortDescriptions),
-                queryParameters.PageSize,
-                queryParameters.PageIndex,
-                cancellationToken);
+            ListQueryResult<NodeInfoModel> queryResult = default;
+            if (queryParameters.IdList == null || queryParameters.IdList.Count == 0)
+            {
+                queryResult = await repo.PaginationQueryAsync(new NodeInfoSpecification(
+                    queryParameters.AreaTag,
+                    queryParameters.Status,
+                    queryParameters.Keywords,
+                    queryParameters.SortDescriptions),
+                    queryParameters.PageSize,
+                    queryParameters.PageIndex,
+                    cancellationToken);
+            }
+            else
+            {
+                queryResult = await repo.PaginationQueryAsync(new NodeInfoSpecification(
+                    queryParameters.AreaTag,
+                    queryParameters.Status,
+                    new DataFilterCollection<string>(DataFilterTypes.Include, queryParameters.IdList)),
+                    queryParameters.PageSize,
+                    queryParameters.PageIndex,
+                    cancellationToken);
+            }
+
             apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)

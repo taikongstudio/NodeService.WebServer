@@ -17,7 +17,7 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
         public NodeInfoSpecification(
             string? areaTag,
             NodeStatus nodeStatus,
-            IEnumerable<SortDescription> sortDescriptions)
+            IEnumerable<SortDescription>? sortDescriptions)
         {
             Query.AsSplitQuery();
             if (!string.IsNullOrEmpty(areaTag) && areaTag != AreaTags.Any)
@@ -45,7 +45,7 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
             string? areaTag,
             NodeStatus nodeStatus,
             string? keywords,
-            IEnumerable<SortDescription> sortDescriptions)
+            IEnumerable<SortDescription>? sortDescriptions)
             :
             this(
                 areaTag,
@@ -69,9 +69,9 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
         public NodeInfoSpecification(
             string? areaTag,
             NodeStatus nodeStatus,
-            IEnumerable<SortDescription> sortDescriptions,
             DataFilterCollection<string> keyFilters = default,
-            DataFilterCollection<string> nameFilters = default
+            DataFilterCollection<string> nameFilters = default,
+            IEnumerable<SortDescription>? sortDescriptions = default
             )
             :
             this(

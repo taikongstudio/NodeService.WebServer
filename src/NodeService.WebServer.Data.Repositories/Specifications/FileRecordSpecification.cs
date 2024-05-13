@@ -28,5 +28,31 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
                 Query.SortBy(sortDescriptions);
             }
         }
+
+        public FileRecordSpecification(
+            string nodeId,
+            DataFilterCollection<string> nameFilters = default,
+            IEnumerable<SortDescription>? sortDescriptions = null)
+        {
+            if (!string.IsNullOrEmpty(nodeId))
+            {
+                Query.Where(x => x.Id == nodeId);
+            }
+            if (nameFilters.HasValue)
+            {
+                if (nameFilters.FilterType == DataFilterTypes.Include)
+                {
+                    Query.Where(x => nameFilters.Items.Contains(x.Name));
+                }
+                else if (nameFilters.FilterType == DataFilterTypes.Include)
+                {
+                    Query.Where(x => !nameFilters.Items.Contains(x.Name));
+                }
+            }
+            if (sortDescriptions != null && sortDescriptions.Any())
+            {
+                Query.SortBy(sortDescriptions);
+            }
+        }
     }
 }

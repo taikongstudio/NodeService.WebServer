@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.FileRecords
@@ -56,21 +57,25 @@ namespace NodeService.WebServer.Services.FileRecords
                                 case BatchQueueOperationKind.None:
                                     break;
                                 case BatchQueueOperationKind.InsertOrUpdate:
-                                    var modelFromDb = await _repo.GetByIdAsync((operation.Argument.Id, operation.Argument.Name));
-                                    if (modelFromDb == null)
+                                    var modelFromRepo = await _repo.FirstOrDefaultAsync(
+                                        new FileRecordSpecification(
+                                            operation.Argument.Id,
+                                            DataFilterCollection<string>.Includes(operation.Argument.Name)),
+                                        stoppingToken);
+                                    if (modelFromRepo == null)
                                     {
                                         await _repo.AddAsync(operation.Argument);
                                     }
                                     else
                                     {
-                                        modelFromDb.Category = operation.Argument.Category;
-                                        modelFromDb.State = operation.Argument.State;
-                                        modelFromDb.Size = operation.Argument.Size;
-                                        modelFromDb.Properties = operation.Argument.Properties;
-                                        modelFromDb.OriginalFileName = operation.Argument.OriginalFileName;
-                                        modelFromDb.CompressedSize = operation.Argument.CompressedSize;
-                                        modelFromDb.CompressedFileHashValue = operation.Argument.CompressedFileHashValue;
-                                        modelFromDb.FileHashValue = operation.Argument.FileHashValue;
+                                        modelFromRepo.Category = operation.Argument.Category;
+                                        modelFromRepo.State = operation.Argument.State;
+                                        modelFromRepo.Size = operation.Argument.Size;
+                                        modelFromRepo.Properties = operation.Argument.Properties;
+                                        modelFromRepo.OriginalFileName = operation.Argument.OriginalFileName;
+                                        modelFromRepo.CompressedSize = operation.Argument.CompressedSize;
+                                        modelFromRepo.CompressedFileHashValue = operation.Argument.CompressedFileHashValue;
+                                        modelFromRepo.FileHashValue = operation.Argument.FileHashValue;
                                         await _repo.SaveChangesAsync(stoppingToken);
                                     }
 

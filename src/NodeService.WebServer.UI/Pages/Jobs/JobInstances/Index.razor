@@ -455,9 +455,12 @@
 
     Task OnTaskLogViewDialogClosedAsync()
     {
-        this.TaskExecutionInstanceId = null;
-        var uri = this.NavigationManager.BaseUri;
-        NavigationManager.NavigateTo($"{uri}Jobs/Instances");
+        if (!string.IsNullOrEmpty(this.TaskExecutionInstanceId))
+        {
+            this.TaskExecutionInstanceId = null;
+            var uri = this.NavigationManager.BaseUri;
+            NavigationManager.NavigateTo($"{uri}Jobs/Instances");
+        }
         return Task.CompletedTask;
     }
 

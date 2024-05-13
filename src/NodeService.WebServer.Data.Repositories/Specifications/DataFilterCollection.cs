@@ -35,5 +35,25 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
             }
         }
 
+        public static DataFilterCollection<string> Includes(IEnumerable<string> items)
+        {
+            return new DataFilterCollection<string>(DataFilterTypes.Include, items);
+        }
+
+        public static DataFilterCollection<string> Includes(params string[] items)
+        {
+            return new DataFilterCollection<string>(DataFilterTypes.Include, items);
+        }
+
+        public static DataFilterCollection<string> Excludes(IEnumerable<string> items)
+        {
+            return new DataFilterCollection<string>(DataFilterTypes.Exclude, items);
+        }
+        public static DataFilterCollection<string> Excludes(params string[] items)
+        {
+            return new DataFilterCollection<string>(DataFilterTypes.Exclude, items);
+        }
+
+
     }
 }

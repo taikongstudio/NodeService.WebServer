@@ -81,11 +81,25 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
         {
             if (keyFilters.HasValue)
             {
-                Query.Where(x => keyFilters.Items.Contains(x.Id));
+                if (keyFilters.FilterType == DataFilterTypes.Include)
+                {
+                    Query.Where(x => keyFilters.Items.Contains(x.Id));
+                }
+                else if (keyFilters.FilterType == DataFilterTypes.Exclude)
+                {
+                    Query.Where(x => !keyFilters.Items.Contains(x.Id));
+                }
             }
             if (nameFilters.HasValue)
             {
-                Query.Where(x => keyFilters.Items.Contains(x.Id));
+                if (nameFilters.FilterType == DataFilterTypes.Include)
+                {
+                    Query.Where(x => nameFilters.Items.Contains(x.Name));
+                }
+                else if (keyFilters.FilterType == DataFilterTypes.Exclude)
+                {
+                    Query.Where(x => !nameFilters.Items.Contains(x.Name));
+                }
             }
         }
 

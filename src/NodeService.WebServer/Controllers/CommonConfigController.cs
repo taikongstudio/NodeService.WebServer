@@ -158,7 +158,7 @@ public partial class CommonConfigController : Controller
             else
             {
                 modelFromDb.With(model);
-                await repo.UpdateAsync(model);
+                await repo.SaveChangesAsync();
             }
 
             if (repo.LastSaveChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);

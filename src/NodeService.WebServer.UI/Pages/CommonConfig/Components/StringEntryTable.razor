@@ -30,7 +30,7 @@
             }
             else
             {
-                <Input Type="text" @bind-Value="@mappingEntry.Name" AutoFocus="@IsNameEditable" />
+                <Input Type="text" Value="@mappingEntry.Name" ValueChanged="(string value)=>OnNameChanged(mappingEntry,value)" AutoFocus="@IsNameEditable" />
             }
         }
         else if (IsNameEditable)
@@ -59,7 +59,7 @@
             }
             else
             {
-                <Input Type="text" @bind-Value="@mappingEntry.Value" AutoFocus="@(!IsNameEditable && IsValueEditable)" />
+                <Input Type="text" Value="@mappingEntry.Value" ValueChanged="(string value)=>OnValueChanged(mappingEntry,value)" AutoFocus="@(!IsNameEditable && IsValueEditable)" />
             }
         }
         else if (IsValueEditable)
@@ -76,7 +76,7 @@
     <PropertyColumn Hidden="@IsTagHidden" Title="@TagTitle" Property="c => c.Tag" Sortable>
         @if (mappingEntry.IsEditing && IsTagEditable)
         {
-            <Input Type="text" @bind-Value="@mappingEntry.Tag" AutoFocus="@(!IsNameEditable && IsTagEditable)"/>
+            <Input Type="text" Value="@mappingEntry.Tag" ValueChanged="(string value)=>OnTagChanged(mappingEntry,value)" AutoFocus="@(!IsNameEditable && IsTagEditable)"/>
         }
         else if (IsTagEditable)
         {
@@ -134,9 +134,11 @@
 
     [Parameter] public EventCallback<AddingNewItemEventArgs> AddingNewItem { get; set; }
 
-    [Parameter] public EventCallback<ValueChangingEventArgs<string>> ValueChanging { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<string>> ValueChanged { get; set; }
 
-    [Parameter] public EventCallback<ValueChangingEventArgs<string>> NameChanging { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<string>> NameChanged { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<string>> TagChanged { get; set; }
 
     [Parameter] public string NameTitle { get; set; } = "名称";
 
@@ -211,10 +213,22 @@
     }
 
 
-    async Task OnValueChanging(StringEntry stringEntry, string? value)
+    async Task OnValueChanged(StringEntry stringEntry, string? value)
     {
-        var e = new ValueChangingEventArgs<string>(stringEntry, value);
-        await ValueChanging.InvokeAsync(e);
+        var e = new ValueChangedEventArgs<string>(stringEntry, value);
+        await ValueChanged.InvokeAsync(e);
+    }
+
+    async Task OnNameChanged(StringEntry stringEntry, string? value)
+    {
+        var e = new ValueChangedEventArgs<string>(stringEntry, value);
+        await NameChanged.InvokeAsync(e);
+    }
+
+    async Task OnTagChanged(StringEntry stringEntry, string? value)
+    {
+        var e = new ValueChangedEventArgs<string>(stringEntry, value);
+        await TagChanged.InvokeAsync(e);
     }
 
 

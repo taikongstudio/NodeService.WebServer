@@ -46,7 +46,7 @@ public partial class ClientUpdateController
 
             counter.Counters = newCounterList;
 
-            await repo.UpdateAsync(counter);
+            await repo.SaveChangesAsync();
             apiResponse.SetResult(true);
         }
         catch (Exception ex)

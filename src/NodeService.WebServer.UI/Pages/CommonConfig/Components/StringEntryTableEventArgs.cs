@@ -14,9 +14,9 @@ public class AddingNewItemEventArgs : EventArgs
     public StringEntry DataItem { get; set; }
 }
 
-public class ValueChangingEventArgs<T> : EventArgs
+public class ValueChangedEventArgs<T> : EventArgs
 {
-    public ValueChangingEventArgs(StringEntry item, T value)
+    public ValueChangedEventArgs(StringEntry item, T value)
     {
         DataItem = item;
         Value = value;

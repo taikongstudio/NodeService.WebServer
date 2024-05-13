@@ -107,7 +107,7 @@ public partial class CommonConfigController
             model.FileName = package.File.FileName;
             model.FileSize = package.File.Length;
             model.DownloadUrl = remotePath;
-            await repo.UpdateAsync(model);
+            await repo.SaveChangesAsync();
         }
         catch (Exception ex)
         {

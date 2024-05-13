@@ -95,7 +95,7 @@ public partial class CommonConfigController
             using var repo = repoFactory.CreateRepository();
             var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
             propertyBag["Value"] = JsonSerializer.Serialize(model);
-            await repo.UpdateAsync(propertyBag);
+            await repo.SaveChangesAsync();
         }
         catch (Exception ex)
         {

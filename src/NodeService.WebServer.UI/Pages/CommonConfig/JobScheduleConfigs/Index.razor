@@ -78,7 +78,7 @@
                                       ValueTitle="Cron表达式"
                                       IsTagHidden="false"
                                       AddingNewItem="AddCronExpression"
-                                      ValueChanging="OnCronExpressionValueChanging"/>
+                                      ValueChanged="OnCronExpressionValueChanged"/>
                 </FormItem>
             }
             <FormItem Label="优先级">
@@ -200,7 +200,9 @@
                     <StringEntryTable ItemsSource="@context.Data.CronExpressions"
                                       NameTitle="备注"
                                       ValueTitle="Cron表达式"
-                                      IsEditable="false"/>
+                                      IsEditable="false"
+                                      ValueChanged="OnCronExpressionValueChanged"
+                                      />
                 </TabPane>
             </Tabs>
         </ExpandTemplate>
@@ -399,7 +401,6 @@
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                _editFormVisible = false;
                 _selectedNodes = [];
                 await _dataSource.RefreshAsync();
             }
@@ -424,6 +425,7 @@
         {
             _editFormSubmitting = false;
             _editFormConfirmLoading = false;
+            _editFormVisible = false;
         }
     }
 
@@ -561,11 +563,11 @@
 
     async Task HandleEditFormOk(MouseEventArgs e)
     {
+        _editFormVisible = true;
         if (_editModel.Value.TriggerType == JobScheduleTriggerType.Schedule
             &&
             _editModel.Value.CronExpressions.Count == 0)
         {
-            _editFormVisible = true;
             await _notice.Open(new NotificationConfig
                 {
                     Message = "错误提示",
@@ -897,7 +899,7 @@
         _dataSource.Request();
     }
 
-    void OnCronExpressionValueChanging(ValueChangingEventArgs<string> e)
+    void OnCronExpressionValueChanged(ValueChangedEventArgs<string> e)
     {
         try
         {

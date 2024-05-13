@@ -24,7 +24,7 @@ public partial class NodesController
                 nodeInfo.Profile.LabName = value.LabName;
                 nodeInfo.Profile.Usages = value.Usages;
                 nodeInfo.Profile.Remarks = value.Remarks;
-                await repo.UpdateAsync(nodeInfo);
+                await repo.SaveChangesAsync();
                 apiResponse.SetResult(true);
             }
         }

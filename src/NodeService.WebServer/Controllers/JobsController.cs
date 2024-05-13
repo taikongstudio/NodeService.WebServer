@@ -90,7 +90,7 @@ public class JobsController : Controller
             else
             {
                 taskExecutionInstance.ReinvokeTimes++;
-                await repo.UpdateAsync(taskExecutionInstance);
+                await repo.SaveChangesAsync();
                 var nodeId = new NodeId(id);
                 foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
                 {
@@ -128,7 +128,7 @@ public class JobsController : Controller
             else
             {
                 taskExecutionInstance.CancelTimes++;
-                await repo.UpdateAsync(taskExecutionInstance);
+                await repo.SaveChangesAsync();
                 if (!await _taskExecutionInstanceInitializer.TryCancelAsync(taskExecutionInstance.Id))
                 {
                     var rsp = await _nodeSessionService.SendJobExecutionEventAsync(

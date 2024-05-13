@@ -56,14 +56,22 @@ namespace NodeService.WebServer.Services.FileRecords
                                 case BatchQueueOperationKind.None:
                                     break;
                                 case BatchQueueOperationKind.InsertOrUpdate:
-                                    var modelFromDb = await _repo.GetByIdAsync(operation.Argument.Id);
+                                    var modelFromDb = await _repo.GetByIdAsync((operation.Argument.Id, operation.Argument.Name));
                                     if (modelFromDb == null)
                                     {
                                         await _repo.AddAsync(operation.Argument);
                                     }
                                     else
                                     {
-                                        await _repo.UpdateAsync(operation.Argument);
+                                        modelFromDb.Category = operation.Argument.Category;
+                                        modelFromDb.State = operation.Argument.State;
+                                        modelFromDb.Size = operation.Argument.Size;
+                                        modelFromDb.Properties = operation.Argument.Properties;
+                                        modelFromDb.OriginalFileName = operation.Argument.OriginalFileName;
+                                        modelFromDb.CompressedSize = operation.Argument.CompressedSize;
+                                        modelFromDb.CompressedFileHashValue = operation.Argument.CompressedFileHashValue;
+                                        modelFromDb.FileHashValue = operation.Argument.FileHashValue;
+                                        await _repo.SaveChangesAsync(stoppingToken);
                                     }
 
                                     _logger.LogInformation($"Add or update SaveChanges:{_repo.LastSaveChangesCount}");

@@ -137,7 +137,15 @@ public partial class ClientUpdateController : Controller
             }
             else
             {
-                await repo.UpdateAsync(model);
+                modelFromRepo.Id = model.Id;
+                modelFromRepo.Name = model.Name;
+                modelFromRepo.Version = model.Version;
+                modelFromRepo.DecompressionMethod = model.DecompressionMethod;
+                modelFromRepo.DnsFilters = model.DnsFilters;
+                modelFromRepo.DnsFilterType = model.DnsFilterType;
+                modelFromRepo.PackageConfigId = model.PackageConfigId;
+                modelFromRepo.Status = model.Status;
+                await repo.SaveChangesAsync();
             }
             var key = $"ClientUpdateConfig:{model.Name}";
             _memoryCache.Remove(key);

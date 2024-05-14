@@ -73,7 +73,7 @@ public class TaskLogCache
 
     public DateTime LastAccessTimeUtc { get; set; }
 
-    public bool IsTruncated { get; set; }
+    public bool IsTruncated { get; private set; }
 
     [JsonIgnore] public DateTime LoadedDateTime { get; set; }
 

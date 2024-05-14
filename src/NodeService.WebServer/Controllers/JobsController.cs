@@ -155,34 +155,48 @@ public class JobsController : Controller
         var apiResponse = new PaginationResponse<LogEntry>();
         try
         {
-            apiResponse.SetTotalCount(_taskLogCacheManager.GetCache(taskId).Count);
-            if (queryParameters.PageSize == 0)
+            var taskLogCache = _taskLogCacheManager.GetCache(taskId);
+            apiResponse.SetTotalCount(taskLogCache.Count);
+            if (taskLogCache.IsTruncated)
             {
-                using var repo = _taskInstanceRepositoryFactory.CreateRepository();
-                var taskExecutionInstance = await repo.GetByIdAsync(taskId);
-                var fileName = "x.log";
-                if (taskExecutionInstance == null)
-                    fileName = $"{taskId}.log";
-                else
-                    fileName = $"{taskExecutionInstance.Name}.log";
-                var result = _taskLogCacheManager.GetCache(taskId).GetEntries(
-                    queryParameters.PageIndex,
-                    queryParameters.PageSize);
-                var memoryStream = new MemoryStream();
-                using var streamWriter = new StreamWriter(memoryStream, Encoding.UTF8, leaveOpen: true);
-
-                foreach (var logEntry in result)
-                    streamWriter.WriteLine(
-                        $"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
-                await streamWriter.FlushAsync();
-                memoryStream.Position = 0;
-                return File(memoryStream, "text/plain", fileName);
+                apiResponse.ErrorCode = -1;
+                apiResponse.Message = "log is truncated";
             }
-            var items = _taskLogCacheManager.GetCache(taskId).GetEntries(
-                    queryParameters.PageIndex,
-                    queryParameters.PageSize)
-                .OrderBy(static x => x.Index).ToArray();
-            apiResponse.SetResult(items);
+            else if (taskLogCache.Count > 0)
+            {
+                if (queryParameters.PageSize == 0)
+                {
+                    using var repo = _taskInstanceRepositoryFactory.CreateRepository();
+                    var taskExecutionInstance = await repo.GetByIdAsync(taskId);
+                    var fileName = "x.log";
+                    if (taskExecutionInstance == null)
+                        fileName = $"{taskId}.log";
+                    else
+                        fileName = $"{taskExecutionInstance.Name}.log";
+                    var result = taskLogCache.GetEntries(
+                        queryParameters.PageIndex,
+                        queryParameters.PageSize);
+                    var memoryStream = new MemoryStream();
+                    using var streamWriter = new StreamWriter(memoryStream, Encoding.UTF8, leaveOpen: true);
+
+                    foreach (var logEntry in result)
+                        streamWriter.WriteLine(
+                            $"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
+                    await streamWriter.FlushAsync();
+                    memoryStream.Position = 0;
+                    return File(memoryStream, "text/plain", fileName);
+                }
+                var items = taskLogCache.GetEntries(
+                        queryParameters.PageIndex,
+                        queryParameters.PageSize)
+                    .OrderBy(static x => x.Index).ToArray();
+                apiResponse.SetResult(items);
+            }
+            else
+            {
+                apiResponse.SetResult([]);
+            }
+
 
             apiResponse.SetPageIndex(queryParameters.PageIndex);
             apiResponse.SetPageSize(queryParameters.PageSize);

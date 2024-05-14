@@ -55,7 +55,6 @@ public class TaskExecutionReportConsumerService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _taskLogCacheManager.Load();
         await foreach (var arrayPoolCollection in _taskExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
         {
             var count = arrayPoolCollection.CountDefault();

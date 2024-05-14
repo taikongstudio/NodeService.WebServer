@@ -41,47 +41,24 @@ public class TaskLogCacheManager
 
     TaskLogCache EnsureTaskLogCache(string taskId)
     {
-        TaskLogCache? taskLogCache = null;
-        if (!_taskLogDatabase.TryReadTask<TaskLogCacheDump>(
+        TaskLogCache taskLogCache = null;
+        if (_taskLogDatabase.TryReadTask<TaskLogCacheDump>(
                 TaskLogCache.BuildTaskKey(taskId),
-                out var taskLogCacheDump) || taskLogCacheDump == null)
-            taskLogCache = new TaskLogCache(taskId, PageSize);
-        else
+                out var taskLogCacheDump) && taskLogCacheDump != null)
+        {
             taskLogCache = new TaskLogCache(taskLogCacheDump);
-        taskLogCache.Database = _taskLogDatabase;
+        }
+        else if (taskLogCacheDump == null)
+        {
+            taskLogCache = new TaskLogCache(taskId, PageSize);
+        }
+        if (taskLogCache != null)
+        {
+            taskLogCache.Database = _taskLogDatabase;
+        }
         return taskLogCache;
     }
 
-    public void Load()
-    {
-        var stopwatch = Stopwatch.StartNew();
-        _logger.LogInformation("Start read log record");
-        var count = 0;
-        try
-        {
-            var taskLogCacheDumps = _taskLogDatabase.ReadTasksWithPrefix<TaskLogCacheDump>(TaskKeyPrefix);
-            foreach (var taskLogCacheDump in taskLogCacheDumps)
-            {
-                var taskLogCache = new TaskLogCache(taskLogCacheDump);
-                taskLogCache.Database = _taskLogDatabase;
-                if (taskLogCache.IsTruncated) continue;
-                TryTruncateCache(taskLogCache);
-                if (taskLogCache.IsTruncated) continue;
-                _taskLogCaches.TryAdd(taskLogCacheDump.TaskId, taskLogCache);
-                count++;
-            }
-        }
-        catch (Exception ex)
-        {
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
-        }
-        finally
-        {
-            stopwatch.Stop();
-            _logger.LogInformation($"finish read {count} log record,spent:{stopwatch.Elapsed}");
-        }
-    }
 
     void TryTruncateCache(TaskLogCache taskLogCache)
     {
@@ -121,7 +98,7 @@ public class TaskLogCacheManager
                 TryTruncateCache(taskLogCache);
                 taskLogCache.Clear();
                 _logger.LogInformation($"remove task log cache:{taskLogCache.TaskId}");
-                _logger.LogInformation($"Remove {taskLogCache.TaskId},LastWriteTimeUtc:{taskLogCache.LastWriteTimeUtc}");
+                _logger.LogInformation($"Remove {taskLogCache.TaskId},{nameof(TaskLogCache.LastAccessTimeUtc)}:{taskLogCache.LastAccessTimeUtc},{nameof(TaskLogCache.CreationDateTimeUtc)}:{taskLogCache.CreationDateTimeUtc},{nameof(TaskLogCache.LastWriteTimeUtc)}:{taskLogCache.LastWriteTimeUtc}");
 
             }
         }

@@ -207,7 +207,7 @@ public class TaskLogDatabase : IDisposable
         {
         }
 
-        return false;
+        return task != null;
     }
 
     public void Reset()

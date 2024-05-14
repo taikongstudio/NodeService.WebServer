@@ -385,8 +385,8 @@ public class Program
             new AsyncQueue<JobExecutionEventRequest>());
         builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>>(new AsyncQueue<TaskScheduleMessage>());
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>>(new AsyncQueue<NotificationMessage>());
-        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(5)));
-        builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddKeyedSingleton(nameof(FileRecordQueryService), new BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>>(
             1024 * 2,
             TimeSpan.FromSeconds(5)));

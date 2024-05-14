@@ -36,21 +36,25 @@ public class TaskLogCache
 
     public TaskLogCache(string taskId, int pageSize)
     {
-        CreationDateTimeUtc = DateTime.UtcNow;
         TaskId = taskId;
         PageSize = pageSize;
         _pages = new LinkedList<TaskLogCachePage>();
         LoadedDateTime = DateTime.UtcNow;
+        CreationDateTimeUtc = DateTime.UtcNow;
     }
 
-    public TaskLogCache(TaskLogCacheDump dump) : this(dump.TaskId, dump.PageSize)
+    public TaskLogCache(TaskLogCacheDump dump)
     {
+        this.TaskId = dump.TaskId;
+        this.PageSize = dump.PageSize;
         PageCount = dump.PageCount;
         _count = dump.Count;
         CreationDateTimeUtc = dump.CreationDateTimeUtc;
         LastAccessTimeUtc = dump.LastAccessTimeUtc;
         LastAccessTimeUtc = dump.LastAccessTimeUtc;
+        LoadedDateTime = DateTime.UtcNow;
         IsTruncated = dump.IsTruncated;
+        this._pages = new LinkedList<TaskLogCachePage>();
         foreach (var pageDump in dump.PageDumps)
             _pages.AddLast(new LinkedListNode<TaskLogCachePage>(new TaskLogCachePage(pageDump)));
     }
@@ -205,6 +209,9 @@ public class TaskLogCache
         taskLogCacheDump.PageSize = PageSize;
         taskLogCacheDump.Count = Count;
         taskLogCacheDump.IsTruncated = IsTruncated;
+        taskLogCacheDump.CreationDateTimeUtc = CreationDateTimeUtc;
+        taskLogCacheDump.LastWriteTimeUtc = LastWriteTimeUtc;
+        taskLogCacheDump.LastAccessTimeUtc = LastAccessTimeUtc;
         var current = _pages.First;
         while (current != null)
         {

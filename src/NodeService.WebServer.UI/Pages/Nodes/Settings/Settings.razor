@@ -3,33 +3,34 @@
 @inject ApiService ApiService;
 @inject IMessageService _message
 @inject NotificationService _notice
-<Space>
-    <SpaceItem>
-        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryNodeSettingsAsync"></Button>
-    </SpaceItem>
-    <SpaceItem>
-        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="SaveAsync"></Button>
+<GridContent>
+    <Space>
+        <SpaceItem>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryNodeSettingsAsync"></Button>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="SaveAsync"></Button>
 
-    </SpaceItem>
-</Space>
-<Tabs Animated>
-   
-    <TabPane Tab="区域设置" Key="1">
-        <StringEntryTable ValueTitle="Ip范围"
-                          NameTitle="区域名称"
-                          IsTagHidden="false"
-                          IsTagEditable="true"
-                          TagTitle="代码"
-                          ItemsSource="@_nodeSettings.IpAddressMappings" />
-    </TabPane>
-    <TabPane Tab="进程用途映射" Key="2">
-        <StringEntryTable
-            ValueTitle="用途"
-            NameTitle="进程名称"
-                          ItemsSource="@_nodeSettings.ProcessUsagesMapping" />
-    </TabPane>
-</Tabs>
+        </SpaceItem>
+    </Space>
+    <Tabs>
 
+        <TabPane Tab="区域设置" Key="1">
+            <StringEntryTable ValueTitle="Ip范围"
+                              NameTitle="区域名称"
+                              IsTagHidden="false"
+                              IsTagEditable="true"
+                              TagTitle="代码"
+                              ItemsSource="@_nodeSettings.IpAddressMappings" />
+        </TabPane>
+        <TabPane Tab="进程用途映射" Key="2">
+            <StringEntryTable ValueTitle="用途"
+                              NameTitle="进程名称"
+                              ItemsSource="@_nodeSettings.ProcessUsagesMapping" />
+        </TabPane>
+    </Tabs>
+
+</GridContent>
 @code {
     NodeSettings _nodeSettings = new();
 

@@ -114,8 +114,8 @@ public class TaskScheduleService : BackgroundService
         try
         {
             using var repository = _taskDefinitionRepositoryFactory.CreateRepository();
-            var taskDefinitions = await repository.ListAsync(new TaskDefinitionSpecification(true, JobScheduleTriggerType.Schedule));
-            taskDefinitions = taskDefinitions.Where(x => x.IsEnabled && x.TriggerType == JobScheduleTriggerType.Schedule).ToList();
+            var taskDefinitions = await repository.ListAsync(new TaskDefinitionSpecification(true, TaskTriggerType.Schedule));
+            taskDefinitions = taskDefinitions.Where(x => x.IsEnabled && x.TriggerType == TaskTriggerType.Schedule).ToList();
             foreach (var taskDefinition in taskDefinitions)
                 await _taskSchedulerMessageQueue.EnqueueAsync(
                     new TaskScheduleMessage(TaskTriggerSource.Schedule, taskDefinition.Id),

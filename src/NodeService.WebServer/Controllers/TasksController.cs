@@ -10,7 +10,7 @@ namespace NodeService.WebServer.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]
-public class JobsController : Controller
+public class TasksController : Controller
 {
     readonly ApplicationRepositoryFactory<JobExecutionInstanceModel>  _taskInstanceRepositoryFactory;
     readonly ILogger<NodesController> _logger;
@@ -20,7 +20,7 @@ public class JobsController : Controller
     readonly ExceptionCounter _exceptionCounter;
     readonly TaskLogCacheManager _taskLogCacheManager;
 
-    public JobsController(
+    public TasksController(
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<JobExecutionInstanceModel> taskInstanceRepositoryFactory,
         INodeSessionService nodeSessionService,
@@ -38,7 +38,7 @@ public class JobsController : Controller
         _exceptionCounter = exceptionCounter;
     }
 
-    [HttpGet("/api/jobs/instances/list")]
+    [HttpGet("/api/tasks/instances/list")]
     public async Task<PaginationResponse<JobExecutionInstanceModel>> QueryTaskExecutionInstanceListAsync(
         [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters
     )
@@ -74,7 +74,7 @@ public class JobsController : Controller
         return apiResponse;
     }
 
-    [HttpGet("/api/jobs/instances/{id}/reinvoke")]
+    [HttpGet("/api/tasks/instances/{id}/reinvoke")]
     public async Task<ApiResponse<JobExecutionInstanceModel>> ReinvokeAsync(string id)
     {
         var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
@@ -110,7 +110,7 @@ public class JobsController : Controller
         return apiResponse;
     }
 
-    [HttpPost("/api/jobs/instances/{id}/cancel")]
+    [HttpPost("/api/tasks/instances/{id}/cancel")]
     public async Task<ApiResponse<JobExecutionInstanceModel>> CancelAsync(
         string id,
         [FromBody] TaskCancellationParameters parameters)
@@ -129,10 +129,12 @@ public class JobsController : Controller
             {
                 taskExecutionInstance.CancelTimes++;
                 await repo.SaveChangesAsync();
-                await _taskExecutionInstanceInitializer.TryCancelAsync(taskExecutionInstance.Id);
-                var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
-                    new NodeSessionId(taskExecutionInstance.NodeInfoId),
-                    taskExecutionInstance.ToCancelEvent());
+                if (!await _taskExecutionInstanceInitializer.TryCancelAsync(taskExecutionInstance.Id))
+                {
+                    var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
+                        new NodeSessionId(taskExecutionInstance.NodeInfoId),
+                        taskExecutionInstance.ToCancelEvent());
+                }
             }
         }
         catch (Exception ex)
@@ -147,7 +149,7 @@ public class JobsController : Controller
     }
 
 
-    [HttpGet("/api/jobs/instances/{taskId}/log")]
+    [HttpGet("/api/tasks/instances/{taskId}/log")]
     public async Task<IActionResult> QueryTaskLogAsync(
         string taskId,
         [FromQuery] PaginationQueryParameters queryParameters)
@@ -178,11 +180,11 @@ public class JobsController : Controller
                 memoryStream.Position = 0;
                 return File(memoryStream, "text/plain", fileName);
             }
-            var items = _taskLogCacheManager.GetCache(taskId).GetEntries(
+
+            apiResponse.SetResult(_taskLogCacheManager.GetCache(taskId).GetEntries(
                     queryParameters.PageIndex,
                     queryParameters.PageSize)
-                .OrderBy(static x => x.Index).ToArray();
-            apiResponse.SetResult(items);
+                .OrderBy(static x => x.Index));
 
             apiResponse.SetPageIndex(queryParameters.PageIndex);
             apiResponse.SetPageSize(queryParameters.PageSize);

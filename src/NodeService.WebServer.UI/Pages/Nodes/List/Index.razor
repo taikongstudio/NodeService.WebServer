@@ -1,5 +1,6 @@
 @namespace NodeService.WebServer.UI.Pages.Nodes.List
 @page "/Nodes"
+@using NodeService.WebServer.UI.Helpers
 
 @inject ApiService ApiService;
 @inject NotificationService _notice
@@ -70,7 +71,7 @@
                         <Button Type="default" OnClick="CloseModifyNodeInfoDrawer">取消</Button>
                     </AntDesign.Col>
                     <AntDesign.Col Span="6">
-                        <Button Type="primary" OnClick="SubmitNodeInfoAsync">提交</Button>
+                        <Button Type="primary" OnClick="SubmitNodeProfileAsync">提交</Button>
                     </AntDesign.Col>
                 </Row>
             }
@@ -116,9 +117,13 @@
                                 </SpaceItem>
                                 <SpaceItem>
                                     <RadioGroup Value="_nodeStatus" ValueChanged="(NodeStatus nodeStatus) => OnNodeStatusChanged(nodeStatus)" Size="middle">
-                                        <Radio RadioButton Value="@(NodeStatus.All)">全部</Radio>
-                                        <Radio RadioButton Value="@(NodeStatus.Online)">在线</Radio>
-                                        <Radio RadioButton Value="@(NodeStatus.Offline)">离线</Radio>
+                                        <Radio RadioButton Value="@(NodeStatus.All)">全部状态</Radio>
+                                        <Radio RadioButton Value="@(NodeStatus.Online)">
+                                            <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线" />
+                                        </Radio>
+                                        <Radio RadioButton Value="@(NodeStatus.Offline)">
+                                            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="在线" />
+                                        </Radio>
                                     </RadioGroup>
                                 </SpaceItem>
                                 <SpaceItem>
@@ -129,11 +134,17 @@
                     </GridRow>
                 </TitleTemplate>
                 <ColumnDefinitions>
-                    <PropertyColumn Title="厂区" Filters="areaNameFilters" OnFilter="(name, value) => OnFilterAreaTag(value, name)" Sortable="true" Filterable="true" Property="c => c.Profile.FactoryName">
+                    <PropertyColumn Title="厂区"  Sortable="true"  Property="c => c.Profile.FactoryName">
                         <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
                     </PropertyColumn>
-                    <PropertyColumn Title="状态" Sortable="true" Hidden SorterMultiple="0" SorterCompare="(a, b) => a - b" Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
-                    <PropertyColumn Title="节点名称" Sortable="true" SorterMultiple="2" SorterCompare="(a, b) => StringComparer.Ordinal.Compare(a, b)" Property="c => c.Name" DefaultSortOrder="SortDirection.Descending">
+                    <PropertyColumn Title="状态" Sortable="true" Hidden SorterMultiple="1" SorterCompare="(a, b) => a - b" Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
+                    <PropertyColumn
+                        Title="节点名称"
+                        Sortable="true"
+                        SorterMultiple="2"
+                        SorterCompare="(a, b) => StringComparer.Ordinal.Compare(a, b)"
+                        Property="c => c.Name"
+                        DefaultSortOrder="SortDirection.Ascending">
                         @switch (context.Status)
                         {
                             case NodeStatus.Online:
@@ -148,7 +159,15 @@
                         }
                         <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
                     </PropertyColumn>
-                    <PropertyColumn Title="最后在线时间" Sortable="true" SorterMultiple="1" SorterCompare="(a, b) => a.CompareTo(b)" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.Profile.ServerUpdateTimeUtc"></PropertyColumn><PropertyColumn Title="测试分类" Sortable="true" Property="c => c.Profile.TestInfo"></PropertyColumn>
+                    <PropertyColumn 
+                        Title="最后在线时间" 
+                        Sortable="true" 
+                        SorterMultiple="0" 
+                        SorterCompare="(a, b) => a.CompareTo(b)"
+                        DefaultSortOrder="SortDirection.Descending"
+                        Format="@NodePropertyModel.DateTimeFormatString" 
+                        Property="c => c.Profile.ServerUpdateTimeUtc"></PropertyColumn>
+                    <PropertyColumn Title="测试分类" Sortable="true" Property="c => c.Profile.TestInfo"></PropertyColumn>
                     <PropertyColumn Title="实验室区域" Sortable="true" Property="c => c.Profile.LabArea"></PropertyColumn>
                     <PropertyColumn Title="实验室名称" Sortable="true" Property="c => c.Profile.LabName"></PropertyColumn>
 
@@ -164,7 +183,7 @@
                     <ActionColumn Fixed="right" Title="操作">
                         <Space Size=@("middle")>
                             <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OpenModifyNodeInfoDrawer(context)"></Button>
+                                <Button Shape="@ButtonShape.Circle" Size="small" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OpenModifyNodeInfoDrawer(context)"></Button>
                             </SpaceItem>
                         </Space>
                     </ActionColumn>
@@ -201,6 +220,7 @@
 
     void OpenModifyNodeInfoDrawer(NodeInfoModel nodeInfo)
     {
+        _modifyErrorMsg = null;
         _editingNodeInfoModel = new UpdateNodeProfileModel
         {
             NodeId = nodeInfo.Id,
@@ -220,7 +240,7 @@
         nodeInfoDrawerVisible = false;
     }
 
-    async Task SubmitNodeInfoAsync()
+    async Task SubmitNodeProfileAsync()
     {
         try
         {
@@ -292,10 +312,6 @@
                     }
 
                     _selectedAreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault().Tag;
-                    if (_table != null)
-                    {
-                        await InvokeAsync(_table.ReloadData);
-                    }
                 }
             }
             else

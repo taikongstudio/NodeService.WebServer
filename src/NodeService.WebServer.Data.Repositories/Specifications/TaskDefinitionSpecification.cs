@@ -20,7 +20,7 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
 
         public TaskDefinitionSpecification(
             bool isEnabled,
-            JobScheduleTriggerType triggerType,
+            TaskTriggerType triggerType,
             IEnumerable<SortDescription>? sortDescriptions = null)
         {
             if (sortDescriptions != null && sortDescriptions.Any())

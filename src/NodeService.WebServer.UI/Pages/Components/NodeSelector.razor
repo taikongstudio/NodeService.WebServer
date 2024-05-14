@@ -1,4 +1,5 @@
-﻿@inject ApiService ApiService
+﻿@using NodeService.WebServer.UI.Helpers
+@inject ApiService ApiService
 @inject NotificationService _notice
 @inherits Selector<NodeInfoModel>
 <GridRow>
@@ -24,10 +25,10 @@
         Size="middle">
         <Radio RadioButton Value="@(NodeStatus.All)">全部状态</Radio>
         <Radio RadioButton Value="@(NodeStatus.Online)">
-            <Badge Status="@(GetStatus(NodeStatus.Online))" Text="在线"/>
+            <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线" />
         </Radio>
         <Radio RadioButton Value="@(NodeStatus.Offline)">
-            <Badge Status="@(GetStatus(NodeStatus.Offline))" Text="在线" />
+            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="在线" />
         </Radio>
     </RadioGroup>
 
@@ -45,7 +46,7 @@
                 }
 
                 <Tag @key="item.Id" Closable OnClose="() => RemoveSelectedItem(item)">
-                    <Badge Status="@(GetStatus(item.Status))" Text="@item.Name"></Badge>
+                    <Badge Status="@(item.Status.GetBadgeStatus())" Text="@item.Name"></Badge>
                 </Tag>
             }
         }
@@ -76,7 +77,7 @@
                 <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>
                 <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
                 <PropertyColumn Property="c => c.Name" Sortable Title="节点名称">
-                    <Badge Status="@(GetStatus(ctx.Status))" Text="@ctx.Name"></Badge>
+                    <Badge Status="@(ctx.Status.GetBadgeStatus())" Text="@ctx.Name"></Badge>
                 </PropertyColumn>
                 <PropertyColumn Property="c => c.Profile.Usages" Sortable Title="用途"></PropertyColumn>
                 <PropertyColumn Property="c => c.Profile.IpAddress" Sortable Title="Ip地址"></PropertyColumn>
@@ -108,6 +109,8 @@
     protected override async Task OnInitializedAsync()
     {
         await QueryNodeSettingsAsync();
+        _dataSource.QueryParameters.AreaTag = "*";
+        _dataSource.QueryParameters.Status = NodeStatus.All;
         _dataSource.QueryParameters.Keywords = null;
         _dataSource.QueryParameters.PageIndex = 1;
         await _dataSource.RefreshAsync();
@@ -155,18 +158,6 @@
         await _dataSource.RefreshAsync();
     }
 
-    string GetStatus(NodeStatus status)
-    {
-        switch (status)
-        {
-            case NodeStatus.Offline:
-                return BadgeStatus.Warning;
-            case NodeStatus.Online:
-                return BadgeStatus.Success;
-            default:
-                return BadgeStatus.Processing;
-        }
-    }
 
     async Task OnTableChanged(QueryModel<NodeInfoModel> query)
     {

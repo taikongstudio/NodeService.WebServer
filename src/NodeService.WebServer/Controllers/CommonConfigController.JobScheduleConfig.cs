@@ -10,11 +10,11 @@ public partial class CommonConfigController
         return AddOrUpdateConfigurationAsync(model, AddOrUpdateJobScheduleConfigAsync);
     }
 
-    async Task AddOrUpdateJobScheduleConfigAsync(JobScheduleConfigModel jobScheduleConfig)
+    async Task AddOrUpdateJobScheduleConfigAsync(JobScheduleConfigModel taskScheduleConfig)
     {
         await _serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>().EnqueueAsync(
-            new TaskScheduleMessage(TaskTriggerSource.Schedule, jobScheduleConfig.Id,
-                jobScheduleConfig.TriggerType == JobScheduleTriggerType.Manual));
+            new TaskScheduleMessage(TaskTriggerSource.Schedule, taskScheduleConfig.Id,
+                taskScheduleConfig.TriggerType == TaskTriggerType.Manual));
     }
 
 

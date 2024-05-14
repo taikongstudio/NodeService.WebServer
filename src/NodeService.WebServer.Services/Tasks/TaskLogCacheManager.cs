@@ -16,7 +16,7 @@ public class TaskLogCacheManager
     public TaskLogCacheManager(
         ILogger<TaskLogCacheManager> logger,
         TaskLogDatabase taskLogDatabase,
-        ExceptionCounter  exceptionCounter,
+        ExceptionCounter exceptionCounter,
         int pageSize = 512)
     {
         _logger = logger;
@@ -85,8 +85,8 @@ public class TaskLogCacheManager
 
     void TryTruncateCache(TaskLogCache taskLogCache)
     {
-        if (taskLogCache.CreationDateTimeUtc.ToLocalTime() != DateTime.MinValue &&
-            DateTime.UtcNow - taskLogCache.CreationDateTimeUtc > TimeSpan.FromDays(7))
+        if (taskLogCache.CreationDateTimeUtc != DateTime.MinValue &&
+            DateTime.UtcNow - taskLogCache.CreationDateTimeUtc > TimeSpan.FromDays(30))
         {
             taskLogCache.Truncate();
             _logger.LogInformation($"Truncate cache:{taskLogCache.TaskId}");
@@ -107,13 +107,13 @@ public class TaskLogCacheManager
     void DetachTaskLogCaches()
     {
         _logger.LogInformation("begin remove task log cache");
-        var taskLogCacheList = new List<TaskLogCache>();
+        List<TaskLogCache> taskLogCacheList = new List<TaskLogCache>();
         foreach (var item in _taskLogCaches)
-            if (DateTime.UtcNow - item.Value.LastWriteTimeUtc > TimeSpan.FromHours(6)
-                &&
-                DateTime.UtcNow - item.Value.LoadedDateTime > TimeSpan.FromMinutes(10)
-               )
+            if (ShouldDetach(item.Value))
+            {
                 taskLogCacheList.Add(item.Value);
+            }
+
         foreach (var taskLogCache in taskLogCacheList)
         {
             if (_taskLogCaches.TryRemove(taskLogCache.TaskId, out _))
@@ -126,5 +126,12 @@ public class TaskLogCacheManager
             }
         }
         _logger.LogInformation($"remove task log caches:{taskLogCacheList.Count}");
+    }
+
+    private bool ShouldDetach(TaskLogCache item)
+    {
+        return DateTime.UtcNow - item.LastWriteTimeUtc > TimeSpan.FromHours(6)
+                        &&
+                        DateTime.UtcNow - item.LoadedDateTime > TimeSpan.FromMinutes(30);
     }
 }

@@ -66,11 +66,11 @@
             </FormItem>
             <FormItem Label="触发方式">
                 <RadioGroup @bind-Value="@context.TriggerType">
-                    <Radio RadioButton Value="@JobScheduleTriggerType.Schedule">定时触发</Radio>
-                    <Radio RadioButton Value="@JobScheduleTriggerType.Manual">手动执行</Radio>
+                    <Radio RadioButton Value="@TaskTriggerType.Schedule">定时触发</Radio>
+                    <Radio RadioButton Value="@TaskTriggerType.Manual">手动执行</Radio>
                 </RadioGroup>
             </FormItem>
-            @if (context.TriggerType == JobScheduleTriggerType.Schedule)
+            @if (context.TriggerType == TaskTriggerType.Schedule)
             {
                 <FormItem Label="Cron表达式">
                     <StringEntryTable ItemsSource="@context.CronExpressions"
@@ -564,7 +564,7 @@
     async Task HandleEditFormOk(MouseEventArgs e)
     {
         _editFormVisible = true;
-        if (_editModel.Value.TriggerType == JobScheduleTriggerType.Schedule
+        if (_editModel.Value.TriggerType == TaskTriggerType.Schedule
             &&
             _editModel.Value.CronExpressions.Count == 0)
         {

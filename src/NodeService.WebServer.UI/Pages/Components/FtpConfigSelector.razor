@@ -19,7 +19,7 @@
 <GridRow>
     <GridCol Flex=@("auto")>
         <Table Size="TableSize.Small"
-               OnChange="(QueryModel<FtpConfigModel> query)=>OnTableChanged(query)"
+               OnChange="(QueryModel<FtpConfigModel> query) => OnTableChanged(query)"
                OnPageIndexChange="@_dataSource.OnPaginationEvent"
                OnPageSizeChange="@_dataSource.OnPaginationEvent"
                PageSize="@_dataSource.PageSize"
@@ -31,9 +31,12 @@
                SelectedRowsChanged="(IEnumerable<FtpConfigModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
-                <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>
-                <PropertyColumn Property="c => c.Id" Sortable Title="标志"></PropertyColumn>
-                <PropertyColumn Property="c => c.Name" Sortable Title="配置名称"></PropertyColumn>
+                <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
+                <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
+                <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="配置名称"></PropertyColumn>
+                <PropertyColumn Property="c => c.Value.Host" Sortable Title="主机名称"></PropertyColumn>
+                <PropertyColumn Property="c => c.Value.Port" Sortable Title="端口"></PropertyColumn>
+                <PropertyColumn Property="c => c.Value.Username" Sortable Title="用户名称"></PropertyColumn>
             </ColumnDefinitions>
         </Table>
     </GridCol>
@@ -43,6 +46,8 @@
 @code {
 
     PaginationDataSource<FtpConfigModel, PaginationQueryParameters> _dataSource;
+
+    protected override IEnumerable<FtpConfigModel> ItemsSource => _dataSource.ItemsSource;
 
     protected override void OnInitialized()
     {
@@ -76,4 +81,5 @@
 
         await _dataSource.RefreshAsync();
     }
+
 }

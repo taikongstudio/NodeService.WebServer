@@ -38,6 +38,10 @@
 @using Microsoft.AspNetCore.WebUtilities
 @using CurrieTechnologies.Razor.Clipboard
 @using NodeService.WebServer.UI.Pages.Components
-@using NodeService.WebServer.UI.Pages.Jobs.Components
+@using NodeService.WebServer.UI.Pages.Tasks.Components
+@using CronExpressionDescriptor
+@using Microsoft.Extensions.Logging
+@using Quartz
 @using static Infrastructure.Models.JobExecutionReport.Types
+@using NodeService.WebServer.UI.Pages.Notifications.Components
 @attribute [Authorize]

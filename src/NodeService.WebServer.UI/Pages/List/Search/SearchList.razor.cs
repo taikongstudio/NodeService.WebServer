@@ -5,7 +5,7 @@ namespace NodeService.WebServer.UI.Pages.List;
 
 public partial class SearchList
 {
-    readonly IList<TabPaneItem> _tabList = new List<TabPaneItem>
+    private readonly IList<TabPaneItem> _tabList = new List<TabPaneItem>
     {
         new() { Key = "articles", Tab = "Articles" },
         new() { Key = "projects", Tab = "Projects" },
@@ -14,14 +14,14 @@ public partial class SearchList
 
     [Inject] protected NavigationManager NavigationManager { get; set; }
 
-    string GetTabKey()
+    private string GetTabKey()
     {
         var url = NavigationManager.Uri.TrimEnd('/');
         var key = url.Substring(url.LastIndexOf('/') + 1);
         return key;
     }
 
-    void HandleTabChange(string key)
+    private void HandleTabChange(string key)
     {
         var url = NavigationManager.Uri.TrimEnd('/');
         url = url.Substring(0, url.LastIndexOf('/'));

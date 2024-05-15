@@ -21,14 +21,14 @@ public class FireTaskJob : JobBase
         }
     }
 
-    async Task ExecuteCoreAsync(IJobExecutionContext context)
+    private async Task ExecuteCoreAsync(IJobExecutionContext context)
     {
         Logger.LogInformation($"Task fire instance id:{context.FireInstanceId}");
 
         var parentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string;
         var fireTaskParameters = new FireTaskParameters
         {
-            TaskScheduleConfig = Properties[nameof(FireTaskParameters.TaskScheduleConfig)] as JobScheduleConfigModel,
+            TaskDefinitionId = Properties[nameof(ModelBase.Id)] as string,
             FireInstanceId = $"{Guid.NewGuid()}_{parentTaskId}_{context.FireInstanceId}",
             FireTimeUtc = context.FireTimeUtc,
             NextFireTimeUtc = context.NextFireTimeUtc,
@@ -36,8 +36,8 @@ public class FireTaskJob : JobBase
             ScheduledFireTimeUtc = context.ScheduledFireTimeUtc,
             ParentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string
         };
-        var initializer = ServiceProvider.GetService<TaskExecutionInstanceInitializer>();
-        await initializer.InitAsync(fireTaskParameters);
+        var batchQueue = ServiceProvider.GetService<BatchQueue<FireTaskParameters>>();
+        await batchQueue.SendAsync(fireTaskParameters);
         Logger.LogInformation($"Task fire instance id:{context.FireInstanceId} end init");
     }
 }

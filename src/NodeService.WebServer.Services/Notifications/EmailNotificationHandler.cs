@@ -17,16 +17,14 @@ public class EmailNotificationHandler
                 out var emailOptionsValue) || emailOptionsValue is not EmailNotificationOptions options)
         {
             if (emailOptionsValue is JsonElement jsonElement)
+            {
                 options = jsonElement.Deserialize<EmailNotificationOptions>();
+            }
             else
             {
-                if (Debugger.IsAttached)
-                {
-                    return notificationResult;
-                }
+                if (Debugger.IsAttached) return notificationResult;
                 throw new InvalidOperationException("Email notification is not supported");
             }
-
         }
 
         using var smtp = new SmtpClient();
@@ -59,11 +57,11 @@ public class EmailNotificationHandler
         return notificationResult;
     }
 
-    void MessageSent(object sender, MessageSentEventArgs e)
+    private void MessageSent(object sender, MessageSentEventArgs e)
     {
     }
 
-    bool ServerCertificateValidationCallback(
+    private bool ServerCertificateValidationCallback(
         object sender,
         X509Certificate? certificate,
         X509Chain? chain,

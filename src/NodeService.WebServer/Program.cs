@@ -2,7 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Threading.RateLimiting;
 using AntDesign.ProLayout;
-using Ardalis.Specification.EntityFrameworkCore;
 using CurrieTechnologies.Razor.Clipboard;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -42,7 +41,7 @@ public class Program
             });
     }
 
-    static async Task RunWithOptions(CommandLineOptions options, string[] args)
+    private static async Task RunWithOptions(CommandLineOptions options, string[] args)
     {
         Environment.CurrentDirectory = AppContext.BaseDirectory;
 
@@ -69,7 +68,7 @@ public class Program
         }
     }
 
-    static async Task Configure(WebApplication app)
+    private static async Task Configure(WebApplication app)
     {
         if (app.Environment.IsDevelopment())
         {
@@ -102,10 +101,7 @@ public class Program
 
         app.UseCors("AllowAll");
 
-        app.UseEndpoints(builder =>
-        {
-           
-        });
+        app.UseEndpoints(builder => { });
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapRazorPages();
@@ -127,13 +123,13 @@ public class Program
         applicationUserDbContext.Database.EnsureCreated();
     }
 
-    static void MapGrpcServices(WebApplication app)
+    private static void MapGrpcServices(WebApplication app)
     {
         //app.MapGrpcService<FileSystemServiceImpl>().EnableGrpcWeb().RequireCors("AllowAll");
         app.MapGrpcService<NodeServiceImpl>().EnableGrpcWeb().RequireCors("AllowAll");
     }
 
-    static void Configure(WebApplicationBuilder builder)
+    private static void Configure(WebApplicationBuilder builder)
     {
         builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
         builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
@@ -144,42 +140,36 @@ public class Program
         builder.Services.AddControllersWithViews();
         builder.Services.AddControllers();
 
-        builder.WebHost.ConfigureKestrel(options =>
-        {
-            options.Limits.MaxRequestLineSize = 8192 * 10;
-        });
+        builder.WebHost.ConfigureKestrel(options => { options.Limits.MaxRequestLineSize = 8192 * 10; });
 
         builder.Services.AddRazorPages(options =>
         {
             options.Conventions.AllowAnonymousToAreaFolder("Identity", "/Account");
         });
-        builder.Services.AddServerSideBlazor(options =>
-        {
-            options.DetailedErrors = true;
-        });
+        builder.Services.AddServerSideBlazor(options => { options.DetailedErrors = true; });
         builder.Services.AddAntDesign();
         builder.Services.AddOpenApiDocument();
         builder.Services.AddHttpClient();
-        builder.Services.AddMemoryCache(options =>
-        {
-            options.TrackStatistics = true;
-        });
+        builder.Services.AddMemoryCache(options => { options.TrackStatistics = true; });
         builder.Services.AddDistributedMemoryCache(options => { });
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
         builder.Services.AddOpenTelemetry()
-        .WithMetrics(builder =>
-        {
-            builder.AddPrometheusExporter();
+            .WithMetrics(builder =>
+            {
+                builder.AddPrometheusExporter();
 
-            builder.AddMeter("Microsoft.AspNetCore.Hosting",
-                                "Microsoft.AspNetCore.Server.Kestrel");
-            builder.AddView("http.server.request.duration",
-                new ExplicitBucketHistogramConfiguration
-                {
-                    Boundaries = [ 0, 0.005, 0.01, 0.025, 0.05,
-                            0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10 ]
-                });
-        });
+                builder.AddMeter("Microsoft.AspNetCore.Hosting",
+                    "Microsoft.AspNetCore.Server.Kestrel");
+                builder.AddView("http.server.request.duration",
+                    new ExplicitBucketHistogramConfiguration
+                    {
+                        Boundaries =
+                        [
+                            0, 0.005, 0.01, 0.025, 0.05,
+                            0.075, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10
+                        ]
+                    });
+            });
 
         ConfigureDbContext(builder);
 
@@ -235,7 +225,7 @@ public class Program
             }));
     }
 
-    static void ConfigureHostedServices(WebApplicationBuilder builder)
+    private static void ConfigureHostedServices(WebApplicationBuilder builder)
     {
         builder.Services.AddHostedService<TaskScheduleService>();
         builder.Services.AddHostedService<TaskExecutionReportConsumerService>();
@@ -246,9 +236,10 @@ public class Program
         builder.Services.AddHostedService<NodeHealthyCheckService>();
         builder.Services.AddHostedService<FileRecordQueryService>();
         builder.Services.AddHostedService<FileRecordInsertUpdateDeleteService>();
+        builder.Services.AddHostedService<TaskFireService>();
     }
 
-    static void ConfigureScoped(WebApplicationBuilder builder)
+    private static void ConfigureScoped(WebApplicationBuilder builder)
     {
         builder.Services.AddScoped(sp => new HttpClient
         {
@@ -327,7 +318,7 @@ public class Program
         );
     }
 
-    static void ConfigureAuthentication(WebApplicationBuilder builder)
+    private static void ConfigureAuthentication(WebApplicationBuilder builder)
     {
         builder.Services.AddCascadingAuthenticationState();
 
@@ -376,25 +367,29 @@ public class Program
         builder.Services.AddScoped<LoginService>();
     }
 
-    static void ConfigureSingleton(WebApplicationBuilder builder)
+    private static void ConfigureSingleton(WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
-        builder.Services.AddSingleton<IAsyncQueue<TaskLogDatabase>>(new AsyncQueue<TaskLogDatabase>());
-        builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>>(
-            new AsyncQueue<JobExecutionEventRequest>());
-        builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>>(new AsyncQueue<TaskScheduleMessage>());
-        builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>>(new AsyncQueue<NotificationMessage>());
+        builder.Services.AddSingleton<IAsyncQueue<TaskLogDatabase>, AsyncQueue<TaskLogDatabase>>();
+        builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>, AsyncQueue<JobExecutionEventRequest>>();
+        builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>, AsyncQueue<TaskScheduleMessage>>();
+        builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
+        builder.Services
+            .AddSingleton<IAsyncQueue<TaskCancellationParameters>, AsyncQueue<TaskCancellationParameters>>();
         builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
-        builder.Services.AddKeyedSingleton(nameof(FileRecordQueryService), new BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>>(
-            1024 * 2,
-            TimeSpan.FromSeconds(5)));
-        builder.Services.AddKeyedSingleton(nameof(FileRecordInsertUpdateDeleteService), new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(
-            1024 * 2,
-            TimeSpan.FromSeconds(5)));
+        builder.Services.AddKeyedSingleton(nameof(FileRecordQueryService),
+            new BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>>(
+                1024 * 2,
+                TimeSpan.FromSeconds(5)));
+        builder.Services.AddKeyedSingleton(nameof(FileRecordInsertUpdateDeleteService),
+            new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(
+                1024 * 2,
+                TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(
+            new BatchQueue<FireTaskParameters>(Environment.ProcessorCount, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
-        builder.Services.AddSingleton<TaskExecutionInstanceInitializer>();
         builder.Services.AddSingleton<TaskLogDatabase>();
         builder.Services.AddSingleton<TaskScheduler>();
         builder.Services.AddSingleton<TaskLogCacheManager>();
@@ -402,10 +397,9 @@ public class Program
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
         builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
-  
     }
 
-    static void ConfigureDbContext(WebApplicationBuilder builder)
+    private static void ConfigureDbContext(WebApplicationBuilder builder)
     {
         var debugProductionMode =
             builder.Configuration.GetValue<bool>(

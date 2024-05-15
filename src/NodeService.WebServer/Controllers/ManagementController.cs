@@ -4,8 +4,8 @@
 [Route("api/[controller]/[action]")]
 public class ManagementController : Controller
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    readonly IServiceProvider _serviceProvider;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly IServiceProvider _serviceProvider;
 
     public ManagementController(
         IServiceProvider serviceProvider,

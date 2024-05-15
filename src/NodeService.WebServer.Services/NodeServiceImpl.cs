@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.Messages;
 using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
@@ -14,18 +13,18 @@ namespace NodeService.WebServer.Services;
 
 public class NodeServiceImpl : NodeServiceBase
 {
-    readonly ILogger<NodeServiceImpl> _logger;
-    readonly ExceptionCounter _exceptionCounter;
-    readonly WebServerCounter _webServerCounter;
-    readonly INodeSessionService _nodeSessionService;
-    readonly IOptionsMonitor<WebServerOptions> _optionMonitor;
-    readonly IServiceProvider _serviceProvider;
-    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    readonly ApplicationRepositoryFactory<NodeProfileModel> _nodeProfileRepositoryFactory;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<NodeServiceImpl> _logger;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<NodeProfileModel> _nodeProfileRepositoryFactory;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly IOptionsMonitor<WebServerOptions> _optionMonitor;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly WebServerCounter _webServerCounter;
 
     public NodeServiceImpl(
         ILogger<NodeServiceImpl> logger,
-        ApplicationRepositoryFactory<NodeInfoModel>  nodeInfoRepositoryFactory,
+        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
         ApplicationRepositoryFactory<NodeProfileModel> nodeProfileRepositoryFactory,
         IServiceProvider serviceProvider,
         INodeSessionService nodeService,
@@ -58,7 +57,8 @@ public class NodeServiceImpl : NodeServiceBase
         if (nodeInfo == null)
         {
             nodeInfo = NodeInfoModel.Create(nodeId, nodeName);
-            var nodeProfile = await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileSpecification(nodeName), cancellationToken);
+            var nodeProfile =
+                await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileSpecification(nodeName), cancellationToken);
             if (nodeProfile != null)
             {
                 var oldNodeInfo = await nodeInfoRepo.GetByIdAsync(nodeProfile.NodeInfoId, cancellationToken);
@@ -66,6 +66,7 @@ public class NodeServiceImpl : NodeServiceBase
                 nodeProfile.NodeInfoId = nodeId;
                 nodeInfo.ProfileId = nodeProfile.Id;
             }
+
             await nodeInfoRepo.AddAsync(nodeInfo, cancellationToken);
         }
 
@@ -115,7 +116,7 @@ public class NodeServiceImpl : NodeServiceBase
         }
     }
 
-    async Task DispatchSubscribeEvents(NodeSessionId nodeContextId,
+    private async Task DispatchSubscribeEvents(NodeSessionId nodeContextId,
         IServerStreamWriter<SubscribeEvent> responseStream, ServerCallContext context)
     {
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
@@ -218,7 +219,8 @@ public class NodeServiceImpl : NodeServiceBase
                     var report = requestStream.Current;
                     var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
 
-                    await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(report, context.CancellationToken);
+                    await _nodeSessionService.GetInputQueue(nodeSessionId)
+                        .EnqueueAsync(report, context.CancellationToken);
                 }
                 catch (Exception ex)
                 {

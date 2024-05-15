@@ -1,8 +1,7 @@
-﻿using Ardalis.Specification;
+﻿using System.Linq.Expressions;
+using Ardalis.Specification;
 using Microsoft.EntityFrameworkCore;
-using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Models;
-using System.Linq.Expressions;
 
 namespace NodeService.WebServer.Extensions;
 
@@ -13,7 +12,7 @@ public static class QueryableExtensions
         PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
     {
-        PaginationResponse<T> apiResponse = new PaginationResponse<T>();
+        var apiResponse = new PaginationResponse<T>();
 
         T[] items = [];
         var totalCount = 0;
@@ -31,9 +30,9 @@ public static class QueryableExtensions
             var startIndex = pageIndex * pageSize;
             var skipCount = totalCount > startIndex ? startIndex : 0;
             items = await queryable
-                            .Skip(skipCount)
-                            .Take(pageSize)
-                            .ToArrayAsync(cancellationToken);
+                .Skip(skipCount)
+                .Take(pageSize)
+                .ToArrayAsync(cancellationToken);
             var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
             if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
             if (totalCount < pageSize && pageCount == 1)
@@ -61,11 +60,11 @@ public static class QueryableExtensions
             var path = pathSelector?.Invoke(sortDescription.Name) ?? sortDescription.Name;
 
 
-            if (string.IsNullOrEmpty(sortDescription.Direction) 
+            if (string.IsNullOrEmpty(sortDescription.Direction)
                 ||
                 sortDescription.Direction.StartsWith(
-                "asc",
-                StringComparison.OrdinalIgnoreCase))
+                    "asc",
+                    StringComparison.OrdinalIgnoreCase))
             {
                 if (orderedQueryable == null)
                     orderedQueryable = queryable.OrderByColumnUsing(path, sortDescription.Direction);
@@ -86,9 +85,9 @@ public static class QueryableExtensions
     }
 
     public static ISpecificationBuilder<T> SortBy<T>(
-    this ISpecificationBuilder<T> builder,
-    IEnumerable<SortDescription> sortDescriptions,
-    Func<string, string>? pathSelector = null)
+        this ISpecificationBuilder<T> builder,
+        IEnumerable<SortDescription> sortDescriptions,
+        Func<string, string>? pathSelector = null)
     {
         IOrderedSpecificationBuilder<T>? orderedQueryable = null;
         foreach (var sortDescription in sortDescriptions)
@@ -98,29 +97,20 @@ public static class QueryableExtensions
             if (string.IsNullOrEmpty(sortDescription.Direction)
                 ||
                 sortDescription.Direction.StartsWith(
-                "asc",
-                StringComparison.OrdinalIgnoreCase))
+                    "asc",
+                    StringComparison.OrdinalIgnoreCase))
             {
                 if (orderedQueryable == null)
-                {
                     orderedQueryable = builder.OrderBy(expr);
-                }
                 else
-                {
                     orderedQueryable = orderedQueryable.ThenBy(expr);
-                }
-
             }
             else if (sortDescription.Direction.StartsWith("desc", StringComparison.OrdinalIgnoreCase))
             {
                 if (orderedQueryable == null)
-                {
                     orderedQueryable = builder.OrderByDescending(expr);
-                }
                 else
-                {
                     orderedQueryable = orderedQueryable.ThenByDescending(expr);
-                }
             }
         }
 
@@ -138,11 +128,11 @@ public static class QueryableExtensions
     }
 
     private static IOrderedQueryable<T>? CreateOrderQuery<T>(
-    IQueryable<T> source,
-    string columnPath,
-    string? sortDirection,
-    string ascMethodName,
-    string descMethodName)
+        IQueryable<T> source,
+        string columnPath,
+        string? sortDirection,
+        string ascMethodName,
+        string descMethodName)
     {
         var parameter = Expression.Parameter(typeof(T), "item");
         var member = columnPath.Split('.')
@@ -167,8 +157,8 @@ public static class QueryableExtensions
         string columnPath,
         string? sortDirection)
     {
-        string ascMethodName = nameof(Queryable.OrderBy);
-        string descMethodName = nameof(Queryable.OrderByDescending);
+        var ascMethodName = nameof(Queryable.OrderBy);
+        var descMethodName = nameof(Queryable.OrderByDescending);
         return CreateOrderQuery(source, columnPath, sortDirection, ascMethodName, descMethodName);
     }
 
@@ -177,8 +167,8 @@ public static class QueryableExtensions
         string columnPath,
         string sortDirection)
     {
-        string ascMethodName = nameof(Queryable.ThenBy);
-        string descMethodName = nameof(Queryable.ThenByDescending);
+        var ascMethodName = nameof(Queryable.ThenBy);
+        var descMethodName = nameof(Queryable.ThenByDescending);
         return CreateOrderQuery(source, columnPath, sortDirection, ascMethodName, descMethodName);
     }
 }

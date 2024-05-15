@@ -7,7 +7,7 @@ namespace NodeService.WebServerTools;
 
 internal class Program
 {
-    static async Task Main(string[] args)
+    private static async Task Main(string[] args)
     {
         Console.WriteLine("Hello, World!");
 
@@ -31,7 +31,7 @@ internal class Program
         }
     }
 
-    static void Configure(HostApplicationBuilder builder)
+    private static void Configure(HostApplicationBuilder builder)
     {
         ConfigureDbContext(builder);
         builder.Services.AddHostedService<AnalysisLogService>();
@@ -50,7 +50,7 @@ internal class Program
         });
     }
 
-    static void ConfigureDbContext(HostApplicationBuilder builder)
+    private static void ConfigureDbContext(HostApplicationBuilder builder)
     {
         builder.Services.AddPooledDbContextFactory<ApplicationDbContext>(options =>
             options.UseMySql(builder.Configuration.GetConnectionString("NodeServiceDbMySQL"),

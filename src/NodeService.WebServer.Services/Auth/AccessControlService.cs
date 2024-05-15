@@ -12,10 +12,10 @@ namespace NodeService.WebServer.Services.Auth;
 
 public class AccessControlService : IAccessControlService
 {
-    readonly JwtSettings _jwtSettings;
-    readonly ILogger<AccessControlService> _logger;
-    readonly RoleManager<ApplicationRole> _roleManager;
-    readonly UserManager<ApplicationUser> _userManager;
+    private readonly JwtSettings _jwtSettings;
+    private readonly ILogger<AccessControlService> _logger;
+    private readonly RoleManager<ApplicationRole> _roleManager;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public AccessControlService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager,
         IOptions<JwtSettings> jwtSettings, ILogger<AccessControlService> logger)
@@ -353,7 +353,7 @@ public class AccessControlService : IAccessControlService
         return tokenHandler.WriteToken(token);
     }
 
-    async Task<UpdateUserResult> UpdateUserRole(string id, List<string> newRoles)
+    private async Task<UpdateUserResult> UpdateUserRole(string id, List<string> newRoles)
     {
         var result = new UpdateUserResult { UpdatedUser = null, Succeeded = false };
         var user = await _userManager.Users.FirstOrDefaultAsync(x => x.Id == id);

@@ -7,7 +7,7 @@ namespace NodeService.WebServer.UI.Pages.List;
 
 public partial class Applications
 {
-    readonly ListGridType _listGridType = new()
+    private readonly ListGridType _listGridType = new()
     {
         Gutter = 16,
         Xs = 1,
@@ -18,10 +18,10 @@ public partial class Applications
         Xxl = 4
     };
 
-    readonly ListFormModel _model = new();
-    readonly IList<string> _selectCategories = new List<string>();
+    private readonly ListFormModel _model = new();
+    private readonly IList<string> _selectCategories = new List<string>();
 
-    IList<ListItemDataType> _fakeList = new List<ListItemDataType>();
+    private IList<ListItemDataType> _fakeList = new List<ListItemDataType>();
 
 
     [Inject] public IProjectService ProjectService { get; set; }

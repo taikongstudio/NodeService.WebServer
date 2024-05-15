@@ -21,16 +21,17 @@
                               IsTagHidden="false"
                               IsTagEditable="true"
                               TagTitle="代码"
-                              ItemsSource="@_nodeSettings.IpAddressMappings" />
+                              ItemsSource="@_nodeSettings.IpAddressMappings"/>
         </TabPane>
         <TabPane Tab="进程用途映射" Key="2">
             <StringEntryTable ValueTitle="用途"
                               NameTitle="进程名称"
-                              ItemsSource="@_nodeSettings.ProcessUsagesMapping" />
+                              ItemsSource="@_nodeSettings.ProcessUsagesMapping"/>
         </TabPane>
     </Tabs>
 
 </GridContent>
+
 @code {
     NodeSettings _nodeSettings = new();
 
@@ -52,19 +53,19 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message
-                    });
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
     }
 
@@ -82,23 +83,19 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message
-                    });
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.Message
-                });
-        }
-        finally
-        {
-            
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
         }
     }
 

@@ -1,6 +1,7 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Diagnostics.WebServerCounter
 @page "/Diagnostics/WebServerCounter"
-@inject NodeService.WebServer.Models.WebServerCounter WebServerCounter
+@using NodeService.WebServer.Models
+@inject WebServerCounter WebServerCounter
 
 <Space Style="margin-bottom:16px">
     <SpaceItem>
@@ -9,8 +10,7 @@
 
 </Space>
 <Table Size="TableSize.Small"
-       DataSource="@Statistics"
-      >
+       DataSource="@Statistics">
     <ColumnDefinitions Context="ctx">
         <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
         <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
@@ -49,6 +49,6 @@
         yield return (nameof(WebServerCounter.NodeServiceInputMessagesCount), WebServerCounter.NodeServiceInputMessagesCount.ToString());
         yield return (nameof(WebServerCounter.NodeServiceOutputMessagesCount), WebServerCounter.NodeServiceOutputMessagesCount.ToString());
         yield return (nameof(WebServerCounter.NodeServiceExpiredMessagesCount), WebServerCounter.NodeServiceExpiredMessagesCount.ToString());
-        yield break;
     }
+
 }

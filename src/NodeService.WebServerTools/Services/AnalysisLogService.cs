@@ -7,9 +7,9 @@ namespace NodeService.WebServerTools.Services;
 
 public class AnalysisLogService : BackgroundService
 {
-    readonly ApiService _apiService;
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    readonly ILogger<AnalysisLogService> _logger;
+    private readonly ApiService _apiService;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ILogger<AnalysisLogService> _logger;
 
     public AnalysisLogService(
         ILogger<AnalysisLogService> logger,

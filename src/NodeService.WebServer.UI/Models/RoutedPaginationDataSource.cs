@@ -11,14 +11,14 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
     where TElement : class, new()
     where TQueryParameters : PaginationQueryParameters, new()
 {
-    readonly IDisposable _locaitionChangingToken;
-    readonly NavigationManager _navigationManager;
-    string _currentQuery;
-    string _uri;
+    private readonly IDisposable _locaitionChangingToken;
+    private readonly NavigationManager _navigationManager;
+    private string _currentQuery;
+    private string _uri;
 
     public RoutedPaginationDataSource(
         NavigationManager navigationManager,
-        Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement>>> queryFunc,
+        Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement?>>> queryFunc,
         Action stateChangedAction) : base(queryFunc, stateChangedAction)
     {
         _navigationManager = navigationManager;
@@ -32,20 +32,21 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
         _locaitionChangingToken.Dispose();
     }
 
-    async void NavigationManager_LocationChanged(object? sender, LocationChangedEventArgs e)
+    private async void NavigationManager_LocationChanged(object? sender, LocationChangedEventArgs e)
     {
         await RefreshAsync();
     }
 
-    ValueTask OnLocationChanging(LocationChangingContext context)
+    private ValueTask OnLocationChanging(LocationChangingContext context)
     {
         var uri = new Uri(context.TargetLocation);
         if (string.IsNullOrEmpty(uri.Query))
         {
-            this.IsLoading = false;
-            this.RaiseStateChanged();
+            IsLoading = false;
+            RaiseStateChanged();
             return ValueTask.CompletedTask;
         }
+
         if (_currentQuery == uri.Query && IsLoading)
         {
             context.PreventNavigation();
@@ -71,7 +72,7 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
         await base.RefreshAsync();
     }
 
-    Uri GetUri()
+    private Uri GetUri()
     {
         if (_uri == null) return new Uri(_navigationManager.Uri);
         return _navigationManager.ToAbsoluteUri(_uri);
@@ -102,7 +103,7 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
         RequestCore(true);
     }
 
-    void RequestCore(bool force)
+    private void RequestCore(bool force)
     {
         if (PageIndex <= 0) PageIndex = 1;
         if (PageSize <= 0) PageSize = 10;
@@ -115,10 +116,6 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
         uriBuilder.Query = string.Empty;
         uri = uriBuilder.Uri;
         _currentQuery = $"?{QueryParameters}";
-        if (force || (oldQuery != _currentQuery && !IsLoading))
-        {
-            _navigationManager.NavigateTo($"{uri}{_currentQuery}");
-        }
-
+        if (force || (oldQuery != _currentQuery && !IsLoading)) _navigationManager.NavigateTo($"{uri}{_currentQuery}");
     }
 }

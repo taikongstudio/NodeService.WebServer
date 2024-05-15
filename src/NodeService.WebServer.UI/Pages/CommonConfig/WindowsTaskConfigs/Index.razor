@@ -1,5 +1,5 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.WindowsTaskConfigs
-@page "/CommonConfig/WindowsTaskConfigs"
+@page "/CommonConfig/WindowsTask"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
@@ -14,7 +14,7 @@
 </style>
 <GridContent>
     <Modal Width="800"
-           Style="top:0px"
+           Style="top:0"
            Maximizable
            DefaultMaximized
            Title="@_modalTitle"
@@ -64,7 +64,7 @@
                     <Title Level="3">Windows计划任务配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>

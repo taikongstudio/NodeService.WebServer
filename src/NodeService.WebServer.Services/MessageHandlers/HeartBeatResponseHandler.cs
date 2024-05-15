@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Http;
-using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Services.NodeSessions;
 
@@ -7,9 +6,9 @@ namespace NodeService.WebServer.Services.MessageHandlers;
 
 public class HeartBeatResponseHandler : IMessageHandler
 {
-    readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
-    readonly ILogger<HeartBeatResponseHandler> _logger;
-    readonly INodeSessionService _nodeSessionService;
+    private readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
+    private readonly ILogger<HeartBeatResponseHandler> _logger;
+    private readonly INodeSessionService _nodeSessionService;
 
     public HeartBeatResponseHandler(
         INodeSessionService nodeSessionService,

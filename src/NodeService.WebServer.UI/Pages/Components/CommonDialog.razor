@@ -1,26 +1,42 @@
-﻿<Modal Width="800"
-       Maximizable
-       Style="top:0px"
-       Visible="@IsVisible"
-       Title="@Title"
-       Closable="true"
-       DefaultMaximized="true"
-       VisibleChanged="OnVisibleChanged"
-       AfterClose="Closed.InvokeAsync"
-       DestroyOnClose>
-    @ChildContent
-</Modal>
+﻿<ErrorBoundary>
+    <ErrorContent>
+        <Text>@context</Text>
+    </ErrorContent>
+    <ChildContent>
+        <Modal Width="800"
+               Maximizable
+               Style="top:0"
+               Visible="@Visible"
+               Title="@Title"
+               Closable="true"
+               DefaultMaximized="true"
+               VisibleChanged="OnVisibleChanged"
+               AfterClose="Closed.InvokeAsync"
+               OnOk="OnOk"
+               OnCancel="OnCancel"
+               DestroyOnClose>
+            @ChildContent
+        </Modal>
+    </ChildContent>
+</ErrorBoundary>
+
 
 @code {
-    [Parameter] public string Title { get; set; } = "对象浏览器";
+    [Parameter] public string Title { get; set; } = "对话框";
 
-    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
 
     [Parameter] public EventCallback Closed { get; set; }
 
     [Parameter] public EventCallback Opened { get; set; }
 
-    public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnOk { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Parameter] public bool Visible { get; set; }
+
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
 
     protected override void OnInitialized()
     {
@@ -29,18 +45,36 @@
 
     public virtual Task ShowAsync()
     {
-        IsVisible = true;
-        this.StateHasChanged();
+        Visible = true;
+        StateHasChanged();
         return Task.CompletedTask;
     }
 
     private async Task OnVisibleChanged(bool visible)
     {
-        this.IsVisible = visible;
+        if (VisibleChanged.HasDelegate)
+        {
+            await VisibleChanged.InvokeAsync(visible);
+        }
+        else
+        {
+            Visible = visible;
+        }
+
         if (visible)
         {
             await Opened.InvokeAsync();
         }
+    }
+
+    async Task HandleFormOk(MouseEventArgs e)
+    {
+        await OnOk.InvokeAsync();
+    }
+
+    async Task HandleFormCancel(MouseEventArgs e)
+    {
+        await OnOk.InvokeAsync();
     }
 
 }

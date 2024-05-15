@@ -36,7 +36,7 @@ public partial class NodesController
 
     [HttpGet("/api/nodes/{nodeId}/jobs/instances/list")]
     public async Task<PaginationResponse<JobExecutionInstanceModel>> GetNodeTaskInstancesAsync(string nodeId,
-       [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters)
+        [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters)
     {
         var apiResponse = new PaginationResponse<JobExecutionInstanceModel>();
         try

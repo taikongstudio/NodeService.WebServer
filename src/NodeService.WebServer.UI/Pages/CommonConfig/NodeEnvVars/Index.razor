@@ -5,13 +5,12 @@
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
-@using NodeService.WebServer.UI.Pages.Components
 @implements IDisposable
 
 <GridContent>
     <Modal Title="@_modalTitle"
            Width="800"
-           Style="top:0px"
+           Style="top:0"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
@@ -64,7 +63,7 @@
                     <Title Level="3">节点环境配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -151,7 +150,7 @@
         else
         {
             _editModel = model;
-            var selectedNode = await ApiService.GetNodeInfoAsync(model.Value.NodeId);
+            var selectedNode = await ApiService.GetNodeInfoAsync(model.Id);
             _selectedNodes = selectedNode == null ? [] : [selectedNode];
             _modalTitle = "编辑配置";
         }
@@ -166,7 +165,7 @@
                 item.EndEdit();
             }
 
-            _editModel.Value.NodeId = _selectedNodes?.FirstOrDefault()?.Id;
+            _editModel.Id = _selectedNodes?.FirstOrDefault()?.Id;
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {

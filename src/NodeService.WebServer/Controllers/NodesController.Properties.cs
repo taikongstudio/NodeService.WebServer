@@ -26,11 +26,13 @@ public partial class NodesController
                         model.NodeProperties = propsDict.Select(NodePropertyEntry.From).ToList();
                     }
 
-                if ((model.NodeProperties == null || !model.NodeProperties.Any()) && nodeInfo.LastNodePropertySnapshotId != null)
+                if ((model.NodeProperties == null || !model.NodeProperties.Any()) &&
+                    nodeInfo.LastNodePropertySnapshotId != null)
                 {
                     using var nodePropRepo = _nodePropertySnapshotRepositoryFactory.CreateRepository();
                     model = await nodePropRepo.GetByIdAsync(nodeInfo.LastNodePropertySnapshotId);
                 }
+
                 apiResponse.SetResult(model);
             }
         }

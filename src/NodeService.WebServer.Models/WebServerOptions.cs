@@ -6,7 +6,7 @@ public class WebServerOptions
 
     public int HeartBearRandomMin { get; set; } = 30000;
 
-    public int HearBeatRandomeMax { get; set; } = 60000;
+    public int HearBeatRandomMax { get; set; } = 60000;
 
     public string Channel { get; set; }
     public string VirtualFileSystem { get; set; }

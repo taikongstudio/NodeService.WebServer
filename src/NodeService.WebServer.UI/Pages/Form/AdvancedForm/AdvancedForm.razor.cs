@@ -4,5 +4,5 @@ namespace NodeService.WebServer.UI.Pages.Form;
 
 public partial class AdvancedForm
 {
-    readonly AdvancedFormModel _model = new();
+    private readonly AdvancedFormModel _model = new();
 }

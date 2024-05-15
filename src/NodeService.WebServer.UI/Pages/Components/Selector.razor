@@ -1,12 +1,14 @@
-﻿@typeparam TItem
+﻿@typeparam TItem where TItem : class, new()
 
 
 
 @code {
-    [Parameter] public RenderFragment ChildContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter] public SelectionMode Mode { get; set; }
     [Parameter] public IEnumerable<TItem> SelectedItems { get; set; }
     [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
+
+    protected virtual IEnumerable<TItem> ItemsSource { get; }
 
     public void RemoveSelectedItem(TItem value)
     {
@@ -22,15 +24,21 @@
 
     protected void OnSelectedItemsChanged(IEnumerable<TItem> items)
     {
+        if (Mode == SelectionMode.Single && items.Count() > 1)
+        {
+            items = [items.LastOrDefault()];
+        }
+
         if (SelectedItems == items)
         {
             return;
         }
+
         SelectedItemsChanged.InvokeAsync(items);
     }
 
 
-    protected string GetSelectionType()
+    protected string GetSelectionMode()
     {
         switch (Mode)
         {
@@ -42,5 +50,6 @@
                 return "checkbox";
         }
     }
+
 
 }

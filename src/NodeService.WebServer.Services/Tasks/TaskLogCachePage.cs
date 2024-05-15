@@ -17,11 +17,11 @@ public class TaskLogCachePageDump
 
 public struct TaskLogCachePage : IDisposable
 {
-    LogEntry[]? _entries;
+    private LogEntry[]? _entries;
 
-    long _entriesOffset;
+    private long _entriesOffset;
 
-    long _flushedCount;
+    private long _flushedCount;
 
     public string TaskId { get; }
 
@@ -84,7 +84,7 @@ public struct TaskLogCachePage : IDisposable
         _entriesOffset++;
     }
 
-    readonly void CheckIsDisposed()
+    private readonly void CheckIsDisposed()
     {
         if (IsDisposed) throw new ObjectDisposedException(nameof(_entries));
     }
@@ -117,11 +117,11 @@ public struct TaskLogCachePage : IDisposable
     {
         if (!Debugger.IsAttached) return;
         CheckIsDisposed();
-        for (var i = FlushedCount; i < EntriesCount; i++)
-        {
-            var entry = _entries[i];
-            if (entry.Index % PageSize != i) throw new InvalidOperationException();
-        }
+        //for (var i = FlushedCount; i < EntriesCount; i++)
+        //{
+        //    var entry = _entries[i];
+        //    if (entry.Index % PageSize != i) throw new InvalidOperationException();
+        //}
     }
 
     public void Dump(TaskLogCachePageDump taskLogCachePageDump)

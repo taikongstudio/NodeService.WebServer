@@ -1,16 +1,16 @@
-﻿@namespace NodeService.WebServer.UI.Pages.Jobs.JobInstances
-@page "/Jobs/Instances/"
-@page "/Jobs/Instances/{TaskExecutionInstanceId}/Log"
+﻿@namespace NodeService.WebServer.UI.Pages.Tasks.Instances
+@page "/tasks/instances/"
+@page "/tasks/instances/{TaskExecutionInstanceId}/log"
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
 @inject ClipboardService ClipboardService
 <GridContent>
     <CommonDialog Title="@_taskLogDialogTitle"
-        @ref="_taskLogViewerDialog"
-        Opened="@OnTaskLogViewDialogOpenedAsync"
-        Closed="OnTaskLogViewDialogClosedAsync">
-        <JobExecutionInstanceLogViewer TaskExecutionInstanceId="@_taskExecutionInstanceId" />
+                  @ref="_taskLogViewerDialog"
+                  Opened="@OnTaskLogViewDialogOpenedAsync"
+                  Closed="OnTaskLogViewDialogClosedAsync">
+        <TaskExecutionInstanceLogViewer TaskExecutionInstanceId="@_taskExecutionInstanceId"/>
     </CommonDialog>
     <CommonDialog Closed="OnDialogClosed" @ref="_taskDefinitionSelectorDialog">
         <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="_selectedTaskDefinitionList" Mode="SelectionMode.Multiple"/>
@@ -36,7 +36,7 @@
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="4">
-                    <Title Level="3">作业执行实例</Title>
+                    <Title Level="3">任务实例</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
@@ -55,12 +55,12 @@
                 }
                 else
                 {
-                    <Text>全部</Text>   
+                    <Text>全部</Text>
                 }
 
             </GridRow>
             <GridRow Wrap Style="min-height:30px">
-                <Text>任务调度配置：</Text>
+                <Text>任务定义配置：</Text>
 
                 <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowTaskDefinitionSelectorDialogAsync"></Button>
 
@@ -75,7 +75,7 @@
                 {
                     <Text>全部</Text>
                 }
- 
+
             </GridRow>
             <GridRow>
                 <Space Wrap Style="margin-bottom:16px">
@@ -117,7 +117,7 @@
                         break;
                 }
             </PropertyColumn>
-            <PropertyColumn Title="状态" SorterMultiple=0 SorterCompare="(a, b) => a-b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
+            <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
                 @switch (context.Status)
                 {
                     case JobExecutionStatus.Unknown:
@@ -149,9 +149,9 @@
                         break;
                 }
             </PropertyColumn>
-            <PropertyColumn Title="触发时间" SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a,b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
-            <PropertyColumn Title="开始时间" SorterMultiple="2"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
-            <PropertyColumn Title="结束时间" SorterMultiple="3"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="触发时间" SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="开始时间" SorterMultiple="2" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="结束时间" SorterMultiple="3" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
             <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.Message"></PropertyColumn>
             <ActionColumn Fixed="right" Width="200" Title="操作">
                 <CellRender Context="cellData">
@@ -222,7 +222,7 @@
     CommonDialog _taskLogViewerDialog;
     TaskDefinitionSelector _taskDefinitionSelector;
     NodeSelector _nodeSelector;
-    JobExecutionInstanceLogViewer _taskLogViewer;
+    TaskExecutionInstanceLogViewer _taskLogViewer;
 
     DateTime BeginDateTime;
     DateTime EndDateTime;
@@ -241,8 +241,7 @@
 
     JobExecutionStatus _selectedStatus;
 
-    [Parameter]
-    public string? TaskExecutionInstanceId { get; set; }
+    [Parameter] public string? TaskExecutionInstanceId { get; set; }
 
     private string? _taskExecutionInstanceId { get; set; }
 
@@ -275,15 +274,16 @@
     {
         if (firstRender)
         {
-            if (!string.IsNullOrEmpty(this.TaskExecutionInstanceId))
+            if (!string.IsNullOrEmpty(TaskExecutionInstanceId))
             {
-                await ShowTaskLogViewerDialogAsync(this.TaskExecutionInstanceId);
+                await ShowTaskLogViewerDialogAsync(TaskExecutionInstanceId);
             }
             else
             {
                 await QueryTaskExecutionInstanceListAsync();
             }
         }
+
         await base.OnAfterRenderAsync(firstRender);
     }
 
@@ -304,11 +304,13 @@
             {
                 _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
             }
+
             _dataSource.QueryParameters.TaskDefinitionIdList.Clear();
-            if (_selectedTaskDefinitionList!=null)
+            if (_selectedTaskDefinitionList != null)
             {
                 _dataSource.QueryParameters.TaskDefinitionIdList.AddRange(_selectedTaskDefinitionList.Select(x => x.Id));
             }
+
             if (_selectedStatus != JobExecutionStatus.Unknown)
             {
                 _dataSource.QueryParameters.Status = _selectedStatus;
@@ -319,10 +321,10 @@
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
     }
 
@@ -342,11 +344,15 @@
         }
     }
 
-    async Task CancelTaskAsync(JobExecutionInstanceModel instance)
+    async Task CancelTaskAsync(JobExecutionInstanceModel model)
     {
         try
         {
-            await ApiService.CancelTaskAsync(instance.Id, new TaskCancellationParameters());
+            await ApiService.CancelTaskAsync(model.Id, new TaskCancellationParameters
+            {
+                UserName = "WebUser",
+                TaskExeuctionInstanceId = model.Id
+            });
         }
         catch (Exception ex)
         {
@@ -364,10 +370,11 @@
 
     void OnTableChange(QueryModel<JobExecutionInstanceModel> query)
     {
-        if (!string.IsNullOrEmpty(this.TaskExecutionInstanceId))
+        if (!string.IsNullOrEmpty(TaskExecutionInstanceId))
         {
             return;
         }
+
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
         {
@@ -386,10 +393,10 @@
     {
         try
         {
-            var rsp = await ApiService.QueryTaskExecutionInstancesAsync(new QueryTaskExecutionInstanceListParameters()
-                {
-                    TaskExecutionInstanceIdList = [value]
-                });
+            var rsp = await ApiService.QueryTaskExecutionInstancesAsync(new QueryTaskExecutionInstanceListParameters
+            {
+                TaskExecutionInstanceIdList = [value]
+            });
             if (rsp.ErrorCode == 0 && rsp.Result != null)
             {
                 var taskExecutionInstance = rsp.Result.FirstOrDefault();
@@ -397,7 +404,7 @@
                 {
                     _taskLogDialogTitle = $"{taskExecutionInstance.Name}";
                     _taskExecutionInstanceId = value;
-                    this.StateHasChanged();
+                    StateHasChanged();
                     await _taskLogViewerDialog.ShowAsync();
                 }
             }
@@ -405,12 +412,11 @@
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
-
     }
 
     async Task CopyTaskLogViewLinkToClipboardAsync(string value)
@@ -418,18 +424,19 @@
         if (!await ClipboardService.IsSupportedAsync())
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = "粘贴板服务不可用。"
-                });
+            {
+                Message = "错误提示",
+                Description = "粘贴板服务不可用。"
+            });
             return;
         }
-        await ClipboardService.WriteTextAsync($"{ApiService.HttpClient.BaseAddress}Jobs/Instances/{value}/Log");
+
+        await ClipboardService.WriteTextAsync($"{ApiService.HttpClient.BaseAddress}tasks/instances/{value}/log");
         await _notice.Open(new NotificationConfig
-            {
-                Message = "提示",
-                Description = "已经复制到粘贴板。"
-            });
+        {
+            Message = "提示",
+            Description = "已经复制到粘贴板。"
+        });
     }
 
     async Task ShowNodeSelectorDialogAsync()
@@ -449,7 +456,6 @@
 
     Task OnDialogClosed()
     {
-
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -461,11 +467,11 @@
 
     private void NavigateToDefault()
     {
-        if (!string.IsNullOrEmpty(this.TaskExecutionInstanceId))
+        if (!string.IsNullOrEmpty(TaskExecutionInstanceId))
         {
-            this.TaskExecutionInstanceId = null;
-            var uri = this.NavigationManager.BaseUri;
-            NavigationManager.NavigateTo($"{uri}Jobs/Instances");
+            TaskExecutionInstanceId = null;
+            var uri = NavigationManager.BaseUri;
+            NavigationManager.NavigateTo($"{uri}tasks/instances");
         }
     }
 

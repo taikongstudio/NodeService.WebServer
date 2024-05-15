@@ -1,7 +1,6 @@
 ﻿using System.Buffers;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Models;
 
@@ -9,14 +8,14 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public class HeartBeatRequestProducerService : BackgroundService
 {
-    readonly ILogger<HeartBeatRequestProducerService> _logger;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<HeartBeatRequestProducerService> _logger;
 
-    readonly INodeSessionService _nodeSessionService;
-    readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
-    readonly IOptionsMonitor<WebServerOptions> _optionsMonitor;
-    readonly IDisposable? _token;
-    WebServerOptions _options;
-    readonly ExceptionCounter _exceptionCounter;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
+    private readonly IOptionsMonitor<WebServerOptions> _optionsMonitor;
+    private readonly IDisposable? _token;
+    private WebServerOptions _options;
 
     public HeartBeatRequestProducerService(
         ExceptionCounter exceptionCounter,
@@ -33,7 +32,7 @@ public class HeartBeatRequestProducerService : BackgroundService
         _exceptionCounter = exceptionCounter;
     }
 
-    void OnOptionsChange(WebServerOptions options, string? value)
+    private void OnOptionsChange(WebServerOptions options, string? value)
     {
         _options = options;
     }
@@ -58,7 +57,7 @@ public class HeartBeatRequestProducerService : BackgroundService
             }
     }
 
-    async Task ExecuteCoreAsync(CancellationToken stoppingToken = default)
+    private async Task ExecuteCoreAsync(CancellationToken stoppingToken = default)
     {
         var nodeSessions = _nodeSessionService.EnumNodeSessions(NodeId.Any);
         if (!nodeSessions.Any())
@@ -100,7 +99,7 @@ public class HeartBeatRequestProducerService : BackgroundService
         await _nodeSessionService.InvalidateAllNodeStatusAsync();
     }
 
-    void TryAbortConnection(NodeSessionId nodeSessionId)
+    private void TryAbortConnection(NodeSessionId nodeSessionId)
     {
         try
         {
@@ -116,7 +115,7 @@ public class HeartBeatRequestProducerService : BackgroundService
         }
     }
 
-    class HeartBeatCounter
+    private class HeartBeatCounter
     {
         public long Count { get; set; }
         public NodeSessionId SessionId { get; init; }

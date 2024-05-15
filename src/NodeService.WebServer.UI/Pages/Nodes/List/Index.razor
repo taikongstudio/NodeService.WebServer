@@ -1,79 +1,83 @@
 @namespace NodeService.WebServer.UI.Pages.Nodes.List
-@page "/Nodes"
-@using NodeService.WebServer.UI.Helpers
+@page "/Nodes/List"
 
 @inject ApiService ApiService;
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
 @inject IMessageService _message
-@inject NavigationManager NavigationManager
+@using NodeService.WebServer.UI.Helpers
 @implements IDisposable
 
 <GridContent>
-    <Drawer Closable="true" Width="320" Visible="nodeInfoDrawerVisible" Title='"修改节点信息"' OnClose="_ => CloseModifyNodeInfoDrawer()">
+    <Drawer Closable="true"
+            OnClose="_ => CloseModifyNodeInfoDrawer()"
+            Title='"修改节点信息"'
+            Visible="nodeInfoDrawerVisible"
+            Width="320">
         <Template style="height:90%">
             @if (_editingNodeInfoModel == null)
             {
-                <Row>
-                    <AntDesign.Col Span="24">
-                        <Alert>请选择一个节点</Alert>
-                    </AntDesign.Col>
-                </Row>
-                <br/>
-                <Row>
-                    <AntDesign.Col Span="6">
-                        <Button Type="default">取消</Button>
-                    </AntDesign.Col>
-                    <AntDesign.Col Span="6">
-                        <Button Type="primary" OnClick="CloseModifyNodeInfoDrawer">提交</Button>
-                    </AntDesign.Col>
-                </Row>
+            <Row>
+                <AntDesign.Col Span="24">
+                    <Alert>请选择一个节点</Alert>
+                </AntDesign.Col>
+            </Row>
+            <br/>
+            <Row>
+                <AntDesign.Col Span="6">
+                    <Button Type="default">取消</Button>
+                </AntDesign.Col>
+                <AntDesign.Col Span="6">
+                    <Button Type="primary" OnClick="CloseModifyNodeInfoDrawer">提交</Button>
+                </AntDesign.Col>
+            </Row>
             }
             else
             {
-                @if (_modifyErrorMsg != null)
-                {
-                    <Row>
-                        <AntDesign.Col Span="24">
-                            <Alert Message="@_modifyErrorMsg" Type="@AlertType.Error"/>
-                        </AntDesign.Col>
-                    </Row>
-                }
-
-                <Row Gutter="24">
-                    <AntDesign.Col Span="24">
-                        <Text>测试分类</Text>
-                        <Input @bind-Value="@_editingNodeInfoModel.TestInfo" Placeholder="请输入测试分类" TValue="string"></Input>
-                    </AntDesign.Col>
-                    <AntDesign.Col Span="24">
-                        <Text>实验室区域</Text>
-                        <Input @bind-Value="@_editingNodeInfoModel.LabArea" Placeholder="请输入实验室区域" TValue="string"/>
-                    </AntDesign.Col>
-                    <AntDesign.Col Span="24">
-                        <Text>实验室名称</Text>
-                        <Input @bind-Value="@_editingNodeInfoModel.LabName" Placeholder="请输入实验室名称" TValue="string"/>
-                    </AntDesign.Col>
-                </Row>
-                <br/>
+            @if (_modifyErrorMsg != null)
+            {
+            <Row>
                 <AntDesign.Col Span="24">
-                    <Text>用途</Text>
-                    <Input @bind-Value="@_editingNodeInfoModel.Usages" Placeholder="请输入用途" TValue="string"/>
+                    <Alert Message="@_modifyErrorMsg" Type="@AlertType.Error"/>
                 </AntDesign.Col>
-                <Row>
-                    <AntDesign.Col Span="24">
-                        <Text>备注</Text>
-                        <TextArea @bind-Value="@_editingNodeInfoModel.Remarks" Placeholder="请输入备注"></TextArea>
-                    </AntDesign.Col>
-                </Row>
-                <br/>
-                <Row>
-                    <AntDesign.Col Span="6">
-                        <Button Type="default" OnClick="CloseModifyNodeInfoDrawer">取消</Button>
-                    </AntDesign.Col>
-                    <AntDesign.Col Span="6">
-                        <Button Type="primary" OnClick="SubmitNodeProfileAsync">提交</Button>
-                    </AntDesign.Col>
-                </Row>
+            </Row>
+            }
+
+            <Row Gutter="24">
+                <AntDesign.Col Span="24">
+                    <Text>测试分类</Text>
+                    <Input @bind-Value="@_editingNodeInfoModel.TestInfo" Placeholder="请输入测试分类"
+                           TValue="string"></Input>
+                </AntDesign.Col>
+                <AntDesign.Col Span="24">
+                    <Text>实验室区域</Text>
+                    <Input @bind-Value="@_editingNodeInfoModel.LabArea" Placeholder="请输入实验室区域" TValue="string"/>
+                </AntDesign.Col>
+                <AntDesign.Col Span="24">
+                    <Text>实验室名称</Text>
+                    <Input @bind-Value="@_editingNodeInfoModel.LabName" Placeholder="请输入实验室名称" TValue="string"/>
+                </AntDesign.Col>
+            </Row>
+            <br/>
+            <AntDesign.Col Span="24">
+                <Text>用途</Text>
+                <Input @bind-Value="@_editingNodeInfoModel.Usages" Placeholder="请输入用途" TValue="string"/>
+            </AntDesign.Col>
+            <Row>
+                <AntDesign.Col Span="24">
+                    <Text>备注</Text>
+                    <TextArea @bind-Value="@_editingNodeInfoModel.Remarks" Placeholder="请输入备注"></TextArea>
+                </AntDesign.Col>
+            </Row>
+            <br/>
+            <Row>
+                <AntDesign.Col Span="6">
+                    <Button Type="default" OnClick="CloseModifyNodeInfoDrawer">取消</Button>
+                </AntDesign.Col>
+                <AntDesign.Col Span="6">
+                    <Button Type="primary" OnClick="SubmitNodeProfileAsync">提交</Button>
+                </AntDesign.Col>
+            </Row>
             }
 
         </Template>
@@ -119,10 +123,10 @@
                                     <RadioGroup Value="_nodeStatus" ValueChanged="(NodeStatus nodeStatus) => OnNodeStatusChanged(nodeStatus)" Size="middle">
                                         <Radio RadioButton Value="@(NodeStatus.All)">全部状态</Radio>
                                         <Radio RadioButton Value="@(NodeStatus.Online)">
-                                            <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线" />
+                                            <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线"/>
                                         </Radio>
                                         <Radio RadioButton Value="@(NodeStatus.Offline)">
-                                            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="在线" />
+                                            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="在线"/>
                                         </Radio>
                                     </RadioGroup>
                                 </SpaceItem>
@@ -134,7 +138,7 @@
                     </GridRow>
                 </TitleTemplate>
                 <ColumnDefinitions>
-                    <PropertyColumn Title="厂区"  Sortable="true"  Property="c => c.Profile.FactoryName">
+                    <PropertyColumn Title="厂区" Sortable="true" Property="c => c.Profile.FactoryName">
                         <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
                     </PropertyColumn>
                     <PropertyColumn Title="状态" Sortable="true" Hidden SorterMultiple="1" SorterCompare="(a, b) => a - b" Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
@@ -159,14 +163,15 @@
                         }
                         <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
                     </PropertyColumn>
-                    <PropertyColumn 
-                        Title="最后在线时间" 
-                        Sortable="true" 
-                        SorterMultiple="0" 
+                    <PropertyColumn
+                        Title="最后在线时间"
+                        Sortable="true"
+                        SorterMultiple="0"
                         SorterCompare="(a, b) => a.CompareTo(b)"
                         DefaultSortOrder="SortDirection.Descending"
-                        Format="@NodePropertyModel.DateTimeFormatString" 
-                        Property="c => c.Profile.ServerUpdateTimeUtc"></PropertyColumn>
+                        Format="@NodePropertyModel.DateTimeFormatString"
+                        Property="c => c.Profile.ServerUpdateTimeUtc">
+                    </PropertyColumn>
                     <PropertyColumn Title="测试分类" Sortable="true" Property="c => c.Profile.TestInfo"></PropertyColumn>
                     <PropertyColumn Title="实验室区域" Sortable="true" Property="c => c.Profile.LabArea"></PropertyColumn>
                     <PropertyColumn Title="实验室名称" Sortable="true" Property="c => c.Profile.LabName"></PropertyColumn>
@@ -304,11 +309,11 @@
                     foreach (var item in _nodeSettings.IpAddressMappings)
                     {
                         areaNameFilters.Add(new TableFilter<string?>
-                            {
-                                Selected = item.Tag == "*",
-                                Text = item.Name,
-                                Value = item.Tag
-                            });
+                        {
+                            Selected = item.Tag == "*",
+                            Text = item.Name,
+                            Value = item.Tag
+                        });
                     }
 
                     _selectedAreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault().Tag;
@@ -317,19 +322,19 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message
-                    });
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
     }
 

@@ -22,7 +22,7 @@
 <GridRow>
     <GridCol Flex=@("auto")>
         <Table Size="TableSize.Small"
-               OnChange="(QueryModel<NotificationConfigModel> query)=>OnTableChanged(query)"
+               OnChange="(QueryModel<NotificationConfigModel> query) => OnTableChanged(query)"
                OnPageIndexChange="@_dataSource.OnPaginationEvent"
                OnPageSizeChange="@_dataSource.OnPaginationEvent"
                PageSize="@_dataSource.PageSize"
@@ -34,9 +34,9 @@
                SelectedRowsChanged="(IEnumerable<NotificationConfigModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
-                <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>
-                <PropertyColumn Property="c => c.Id" Sortable Title="标志"></PropertyColumn>
-                <PropertyColumn Property="c => c.Name" Sortable Title="配置名称"></PropertyColumn>
+                <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
+                <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
+                <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="配置名称"></PropertyColumn>
             </ColumnDefinitions>
         </Table>
     </GridCol>
@@ -46,6 +46,8 @@
 @code {
 
     PaginationDataSource<NotificationConfigModel, PaginationQueryParameters> _dataSource;
+
+    protected override IEnumerable<NotificationConfigModel> ItemsSource => _dataSource.ItemsSource;
 
     protected override void OnInitialized()
     {

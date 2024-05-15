@@ -2,20 +2,20 @@
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/commonconfig/ftpdownload/addorupdate")]
+    [HttpPost("/api/CommonConfig/ftpdownload/addorupdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] FtpDownloadConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/commonconfig/ftpdownload/list")]
+    [HttpGet("/api/CommonConfig/ftpdownload/list")]
     public Task<PaginationResponse<FtpDownloadConfigModel>> QueryFtpDownloadConfigAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<FtpDownloadConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/commonconfig/ftpdownload/{id}")]
+    [HttpGet("/api/CommonConfig/ftpdownload/{id}")]
     public Task<ApiResponse<FtpDownloadConfigModel>> QueryFtpDownloadConfigAsync(string id)
     {
         return QueryConfigurationAsync<FtpDownloadConfigModel>(id, FindFtpConfigAsync);
@@ -28,7 +28,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/commonconfig/ftpdownload/remove")]
+    [HttpPost("/api/CommonConfig/ftpdownload/remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] FtpDownloadConfigModel model)
     {
         return DeleteConfigurationAsync(model);

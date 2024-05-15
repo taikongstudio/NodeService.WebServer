@@ -2,26 +2,26 @@
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/commonconfig/mysql/addorupdate")]
+    [HttpPost("/api/CommonConfig/mysql/addorupdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] MysqlConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/commonconfig/mysql/list")]
+    [HttpGet("/api/CommonConfig/mysql/list")]
     public Task<PaginationResponse<MysqlConfigModel>> QueryMysqlConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<MysqlConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/commonconfig/mysql/{id}")]
+    [HttpGet("/api/CommonConfig/mysql/{id}")]
     public Task<ApiResponse<MysqlConfigModel>> QueryMysqlConfigAsync(string id)
     {
         return QueryConfigurationAsync<MysqlConfigModel>(id);
     }
 
-    [HttpPost("/api/commonconfig/mysql/remove")]
+    [HttpPost("/api/CommonConfig/mysql/remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] MysqlConfigModel model)
     {
         return DeleteConfigurationAsync(model);

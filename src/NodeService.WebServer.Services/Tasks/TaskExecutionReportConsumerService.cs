@@ -1,31 +1,28 @@
-﻿using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Concurrent;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Logging;
-using NodeService.WebServer.Data;
+using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.NodeSessions;
-using NodeService.WebServer.Data.Repositories;
 
 namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskExecutionReportConsumerService : BackgroundService
 {
-    readonly ILogger<TaskExecutionReportConsumerService> _logger;
-    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
-    readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
-    readonly ApplicationRepositoryFactory<JobFireConfigurationModel> _taskFireConfigRepositoryFactory;
-    readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
-    readonly TaskLogCacheManager _taskLogCacheManager;
-    readonly IMemoryCache _memoryCache;
-    readonly WebServerCounter _webServerCounter;
-    readonly ExceptionCounter _exceptionCounter;
-    readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
-    readonly TaskScheduler _taskScheduler;
-    readonly TaskSchedulerDictionary _taskSchedulerDictionary;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<TaskExecutionReportConsumerService> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
+    private readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
+    private readonly ApplicationRepositoryFactory<JobFireConfigurationModel> _taskFireConfigRepositoryFactory;
+    private readonly TaskLogCacheManager _taskLogCacheManager;
+    private readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
+    private readonly TaskScheduler _taskScheduler;
+    private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
+    private readonly WebServerCounter _webServerCounter;
 
     public TaskExecutionReportConsumerService(
-        ApplicationRepositoryFactory<JobExecutionInstanceModel>  taskExecutionInstanceRepositoryFactory,
+        ApplicationRepositoryFactory<JobExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
         ApplicationRepositoryFactory<JobScheduleConfigModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<JobFireConfigurationModel> taskFireConfigRepositoryFactory,
         BatchQueue<JobExecutionReportMessage> jobExecutionReportBatchQueue,
@@ -69,7 +66,8 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 stopwatch.Stop();
                 _logger.LogInformation(
                     $"process {count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
-                _webServerCounter.TaskExecutionReportAvailableCount = (uint)_taskExecutionReportBatchQueue.AvailableCount;
+                _webServerCounter.TaskExecutionReportAvailableCount =
+                    (uint)_taskExecutionReportBatchQueue.AvailableCount;
                 _webServerCounter.TaskExecutionReportTotalTimeSpan += stopwatch.Elapsed;
                 _webServerCounter.TaskExecutionReportConsumeCount += (uint)count;
                 stopwatch.Reset();
@@ -87,7 +85,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-    static string? GetTaskId(JobExecutionReportMessage? message)
+    private static string? GetTaskId(JobExecutionReportMessage? message)
     {
         if (message == null) return null;
         var report = message.GetMessage();
@@ -96,7 +94,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         return report.Id;
     }
 
-    static LogEntry Convert(JobExecutionLogEntry taskExecutionLogEntry)
+    private static LogEntry Convert(JobExecutionLogEntry taskExecutionLogEntry)
     {
         return new LogEntry
         {
@@ -106,11 +104,10 @@ public class TaskExecutionReportConsumerService : BackgroundService
         };
     }
 
-    async Task ProcessTaskExecutionReportsAsync(
+    private async Task ProcessTaskExecutionReportsAsync(
         ArrayPoolCollection<JobExecutionReportMessage?> arrayPoolCollection,
         CancellationToken stoppingToken = default)
     {
-
         var stopwatchSaveTimeSpan = TimeSpan.Zero;
 
         try
@@ -127,18 +124,17 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 if (taskReportGroup.Key == null) continue;
                 stopwatchQuery.Restart();
                 var taskId = taskReportGroup.Key;
-                var cacheKey = $"{nameof(TaskExecutionReportConsumerService)}:{nameof(JobExecutionInstanceModel)}:{taskId}";
+                var cacheKey =
+                    $"{nameof(TaskExecutionReportConsumerService)}:{nameof(JobExecutionInstanceModel)}:{taskId}";
                 if (!_memoryCache.TryGetValue<JobExecutionInstanceModel>(cacheKey, out var taskExecutionInstance)
                     ||
                     taskExecutionInstance == null)
                 {
                     taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId);
-                    if (taskExecutionInstance == null)
-                    {
-                        continue;
-                    }
+                    if (taskExecutionInstance == null) continue;
                     _memoryCache.Set(cacheKey, taskExecutionInstance, TimeSpan.FromHours(1));
                 }
+
                 stopwatchQuery.Stop();
                 _logger.LogInformation($"{taskId}:QueryElapsed:{stopwatchQuery.Elapsed}");
                 _webServerCounter.TaskExecutionReportQueryTimeSpan += stopwatchQuery.Elapsed;
@@ -161,9 +157,9 @@ public class TaskExecutionReportConsumerService : BackgroundService
                         _webServerCounter.TaskExecutionReportProcessLogEntriesCount += (uint)(count2 - count1);
                     }
                 }
+
                 stopwatchProcessLogEntries.Stop();
                 _webServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan += stopwatchProcessLogEntries.Elapsed;
-
 
 
                 var taskExecutionStatus = taskExecutionInstance.Status;
@@ -182,59 +178,64 @@ public class TaskExecutionReportConsumerService : BackgroundService
                             reportMessage,
                             stoppingToken);
                     }
+
                     stopwatchProcessMessage.Stop();
                     _logger.LogInformation(
                         $"process {status} {messageStatusGroup.Count()} messages,spent:{stopwatchProcessMessage.Elapsed}");
                     _webServerCounter.TaskExecutionReportProcessTimeSpan += stopwatchProcessMessage.Elapsed;
                 }
-                int diffCount = 0;
+
+                var diffCount = 0;
                 if (taskExecutionStatus != taskExecutionInstance.Status)
                 {
                     taskExecutionStatus = taskExecutionInstance.Status;
                     diffCount++;
                 }
+
                 if (messsage != taskExecutionInstance.Message)
                 {
                     messsage = taskExecutionInstance.Message;
                     diffCount++;
                 }
+
                 if (executionBeginTime != taskExecutionInstance.ExecutionBeginTimeUtc)
                 {
                     executionBeginTime = taskExecutionInstance.ExecutionBeginTimeUtc;
                     diffCount++;
                 }
+
                 if (executionEndTime != taskExecutionInstance.ExecutionEndTimeUtc)
                 {
                     executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
                     diffCount++;
                 }
+
                 if (diffCount > 0)
                 {
                     stopwatchSave.Restart();
-                    int changesCount = await taskExecutionInstanceRepo.DbContext.Set<JobExecutionInstanceModel>()
-                       .Where(x => x.Id == taskId)
-                       .ExecuteUpdateAsync(
-                        setPropertyCalls =>
-                        setPropertyCalls.SetProperty(
-                            task => task.Status,
-                            task => taskExecutionStatus)
-                        .SetProperty(
-                            task => task.Message,
-                            task => messsage)
-                        .SetProperty(
-                            task => task.ExecutionBeginTimeUtc,
-                            task => executionBeginTime)
-                        .SetProperty(
-                            task => task.ExecutionEndTimeUtc,
-                            task => executionEndTime),
-                        stoppingToken);
+                    var changesCount = await taskExecutionInstanceRepo.DbContext.Set<JobExecutionInstanceModel>()
+                        .Where(x => x.Id == taskId)
+                        .ExecuteUpdateAsync(
+                            setPropertyCalls =>
+                                setPropertyCalls.SetProperty(
+                                        task => task.Status,
+                                        task => taskExecutionStatus)
+                                    .SetProperty(
+                                        task => task.Message,
+                                        task => messsage)
+                                    .SetProperty(
+                                        task => task.ExecutionBeginTimeUtc,
+                                        task => executionBeginTime)
+                                    .SetProperty(
+                                        task => task.ExecutionEndTimeUtc,
+                                        task => executionEndTime),
+                            stoppingToken);
 
                     stopwatchSave.Stop();
                     stopwatchSaveTimeSpan += stopwatchSave.Elapsed;
                     _webServerCounter.TaskExecutionReportSaveTimeSpan += stopwatchSave.Elapsed;
                     _webServerCounter.TaskExecutionReportSaveChangesCount += (uint)changesCount;
                 }
-
             }
         }
         catch (Exception ex)
@@ -249,13 +250,13 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-    async ValueTask CancelTimeLimitTaskAsync(TaskSchedulerKey jobSchedulerKey)
+    private async ValueTask CancelTimeLimitTaskAsync(TaskSchedulerKey jobSchedulerKey)
     {
         if (!_taskSchedulerDictionary.TryRemove(jobSchedulerKey, out var asyncDisposable)) return;
         if (asyncDisposable != null) await asyncDisposable.DisposeAsync();
     }
 
-    async Task ScheduleTimeLimitTaskAsync(
+    private async Task ScheduleTimeLimitTaskAsync(
         JobExecutionInstanceModel taskExecutionInstance,
         CancellationToken cancellationToken = default)
     {
@@ -264,9 +265,11 @@ public class TaskExecutionReportConsumerService : BackgroundService
         var cacheKey = $"{nameof(JobScheduleConfigModel)}:{taskExecutionInstance.JobScheduleConfigId}";
         if (!_memoryCache.TryGetValue<JobScheduleConfigModel>(cacheKey, out var taskScheduleConfig))
         {
-            taskScheduleConfig = await taskDefinitionRepo.GetByIdAsync(taskExecutionInstance.JobScheduleConfigId, cancellationToken);
+            taskScheduleConfig =
+                await taskDefinitionRepo.GetByIdAsync(taskExecutionInstance.JobScheduleConfigId, cancellationToken);
             _memoryCache.Set(cacheKey, taskScheduleConfig, TimeSpan.FromMinutes(30));
         }
+
         if (taskScheduleConfig == null) return;
         if (taskScheduleConfig.ExecutionLimitTimeSeconds <= 0) return;
         var key = new TaskSchedulerKey(
@@ -283,7 +286,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
             });
     }
 
-    async Task ProcessTaskExecutionReportAsync(
+    private async Task ProcessTaskExecutionReportAsync(
         JobExecutionInstanceModel taskExecutionInstance,
         NodeSessionMessage<JobExecutionReport> message,
         CancellationToken stoppingToken = default)
@@ -359,7 +362,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     }
 
 
-    async Task ScheduleChildTasksAsync(
+    private async Task ScheduleChildTasksAsync(
         JobExecutionInstanceModel parentTaskInstance,
         CancellationToken stoppingToken = default)
     {
@@ -376,6 +379,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
             _logger.LogError($"Could not found task fire config:{parentTaskInstance.FireInstanceId}");
             return;
         }
+
         using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
         var taskScheduleConfig =
             JsonSerializer.Deserialize<JobScheduleConfiguration>(taskFireConfig.JobScheduleConfigJsonString);

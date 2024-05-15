@@ -30,11 +30,11 @@ public record class JobExecutionReportMessage : NodeSessionMessage<JobExecutionR
 
 public class NodeSessionService : INodeSessionService
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatBatchQueue;
-    readonly ILogger<NodeSessionService> _logger;
-    readonly NodeHealthyCounterDictionary _nodeHealthyCounterDictionary;
-    readonly ConcurrentDictionary<NodeSessionId, NodeSession> _nodeSessionDict;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatBatchQueue;
+    private readonly ILogger<NodeSessionService> _logger;
+    private readonly NodeHealthyCounterDictionary _nodeHealthyCounterDictionary;
+    private readonly ConcurrentDictionary<NodeSessionId, NodeSession> _nodeSessionDict;
 
     public NodeSessionService(
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
@@ -74,7 +74,6 @@ public class NodeSessionService : INodeSessionService
     {
         return EnsureNodeSession(nodeSessionId).OutputQueue;
     }
-
 
 
     public void UpdateNodeStatus(NodeSessionId nodeSessionId, NodeStatus nodeStatus)
@@ -150,7 +149,6 @@ public class NodeSessionService : INodeSessionService
     }
 
 
-
     public int GetNodeSessionsCount()
     {
         return _nodeSessionDict.Count;
@@ -187,18 +185,18 @@ public class NodeSessionService : INodeSessionService
         if (_nodeSessionDict.TryGetValue(nodeSessionId, out var nodeSession)) nodeSession.Reset();
     }
 
-    NodeSession EnsureNodeSession(NodeSessionId nodeSessionId)
+    private NodeSession EnsureNodeSession(NodeSessionId nodeSessionId)
     {
         return _nodeSessionDict.GetOrAdd(nodeSessionId, CreateNodeSession);
     }
 
-    NodeSession CreateNodeSession(NodeSessionId nodeSessionId)
+    private NodeSession CreateNodeSession(NodeSessionId nodeSessionId)
     {
         NodeSession nodeSession = new(nodeSessionId);
         return nodeSession;
     }
 
-    class NodeSession
+    private class NodeSession
     {
         public NodeSession(NodeSessionId id)
         {

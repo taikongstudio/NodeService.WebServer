@@ -5,32 +5,32 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/commonconfig/notification/addorupdate")]
+    [HttpPost("/api/CommonConfig/notification/addorupdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] NotificationConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/commonconfig/notification/list")]
+    [HttpGet("/api/CommonConfig/notification/list")]
     public Task<PaginationResponse<NotificationConfigModel>> QueryNotificationConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<NotificationConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/commonconfig/notification/{id}")]
+    [HttpGet("/api/CommonConfig/notification/{id}")]
     public Task<ApiResponse<NotificationConfigModel>> QueryNotificationConfigAsync(string id)
     {
         return QueryConfigurationAsync<NotificationConfigModel>(id);
     }
 
-    [HttpPost("/api/commonconfig/notification/remove")]
+    [HttpPost("/api/CommonConfig/notification/remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] NotificationConfigModel model)
     {
         return DeleteConfigurationAsync(model);
     }
 
-    [HttpPost("/api/commonconfig/notification/{id}/invoke")]
+    [HttpPost("/api/CommonConfig/notification/{id}/invoke")]
     public async Task<ApiResponse> InvokeAsync(string id, [FromBody] InvokeNotificationParameters parameters)
     {
         var rsp = await QueryNotificationConfigAsync(id);
@@ -49,7 +49,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpGet("/api/commonconfig/notificationsource/nodehealthycheck")]
+    [HttpGet("/api/CommonConfig/NotificationSource/nodehealthycheck")]
     public async Task<ApiResponse<NodeHealthyCheckConfiguration>> QueryNodeHealthyCheckConfigurationAsync()
     {
         var rsp = new ApiResponse<NodeHealthyCheckConfiguration>();
@@ -58,7 +58,8 @@ public partial class CommonConfigController
             NodeHealthyCheckConfiguration? result = null;
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
             using var repo = repoFactory.CreateRepository();
-            var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
+            var propertyBag =
+                await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
             if (propertyBag == null)
             {
                 result = new NodeHealthyCheckConfiguration();
@@ -84,7 +85,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpPost("/api/commonconfig/notificationsource/nodehealthycheck/update")]
+    [HttpPost("/api/CommonConfig/NotificationSource/nodehealthycheck/update")]
     public async Task<ApiResponse> UpdateNodeHealthyCheckConfigurationAsync(
         [FromBody] NodeHealthyCheckConfiguration model)
     {
@@ -93,7 +94,8 @@ public partial class CommonConfigController
         {
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
             using var repo = repoFactory.CreateRepository();
-            var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
+            var propertyBag =
+                await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
             propertyBag["Value"] = JsonSerializer.Serialize(model);
             await repo.SaveChangesAsync();
         }

@@ -6,12 +6,12 @@ namespace NodeService.WebServer.Services.Tasks;
 public class TaskLogCacheManager
 {
     public const string TaskKeyPrefix = "Task_";
-    readonly ILogger<TaskLogCacheManager> _logger;
-    readonly ConcurrentDictionary<string, TaskLogCache> _taskLogCaches;
-    readonly ExceptionCounter _exceptionCounter;
-    readonly TaskLogDatabase _taskLogDatabase;
-    long _initialized;
-    JsonSerializerOptions _jsonSerializerOptions;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<TaskLogCacheManager> _logger;
+    private readonly ConcurrentDictionary<string, TaskLogCache> _taskLogCaches;
+    private readonly TaskLogDatabase _taskLogDatabase;
+    private long _initialized;
+    private JsonSerializerOptions _jsonSerializerOptions;
 
     public TaskLogCacheManager(
         ILogger<TaskLogCacheManager> logger,
@@ -39,28 +39,20 @@ public class TaskLogCacheManager
         return taskLogCache;
     }
 
-    TaskLogCache EnsureTaskLogCache(string taskId)
+    private TaskLogCache EnsureTaskLogCache(string taskId)
     {
         TaskLogCache taskLogCache = null;
         if (_taskLogDatabase.TryReadTask<TaskLogCacheDump>(
                 TaskLogCache.BuildTaskKey(taskId),
                 out var taskLogCacheDump) && taskLogCacheDump != null)
-        {
             taskLogCache = new TaskLogCache(taskLogCacheDump);
-        }
-        else if (taskLogCacheDump == null)
-        {
-            taskLogCache = new TaskLogCache(taskId, PageSize);
-        }
-        if (taskLogCache != null)
-        {
-            taskLogCache.Database = _taskLogDatabase;
-        }
+        else if (taskLogCacheDump == null) taskLogCache = new TaskLogCache(taskId, PageSize);
+        if (taskLogCache != null) taskLogCache.Database = _taskLogDatabase;
         return taskLogCache;
     }
 
 
-    void TryTruncateCache(TaskLogCache taskLogCache)
+    private void TryTruncateCache(TaskLogCache taskLogCache)
     {
         if (taskLogCache.CreationDateTimeUtc != DateTime.MinValue &&
             DateTime.UtcNow - taskLogCache.CreationDateTimeUtc > TimeSpan.FromDays(30))
@@ -81,34 +73,31 @@ public class TaskLogCacheManager
         DetachTaskLogCaches();
     }
 
-    void DetachTaskLogCaches()
+    private void DetachTaskLogCaches()
     {
         _logger.LogInformation("begin remove task log cache");
-        List<TaskLogCache> taskLogCacheList = new List<TaskLogCache>();
+        var taskLogCacheList = new List<TaskLogCache>();
         foreach (var item in _taskLogCaches)
             if (ShouldDetach(item.Value))
-            {
                 taskLogCacheList.Add(item.Value);
-            }
 
         foreach (var taskLogCache in taskLogCacheList)
-        {
             if (_taskLogCaches.TryRemove(taskLogCache.TaskId, out _))
             {
                 TryTruncateCache(taskLogCache);
                 taskLogCache.Clear();
                 _logger.LogInformation($"remove task log cache:{taskLogCache.TaskId}");
-                _logger.LogInformation($"Remove {taskLogCache.TaskId},{nameof(TaskLogCache.LastAccessTimeUtc)}:{taskLogCache.LastAccessTimeUtc},{nameof(TaskLogCache.CreationDateTimeUtc)}:{taskLogCache.CreationDateTimeUtc},{nameof(TaskLogCache.LastWriteTimeUtc)}:{taskLogCache.LastWriteTimeUtc}");
-
+                _logger.LogInformation(
+                    $"Remove {taskLogCache.TaskId},{nameof(TaskLogCache.LastAccessTimeUtc)}:{taskLogCache.LastAccessTimeUtc},{nameof(TaskLogCache.CreationDateTimeUtc)}:{taskLogCache.CreationDateTimeUtc},{nameof(TaskLogCache.LastWriteTimeUtc)}:{taskLogCache.LastWriteTimeUtc}");
             }
-        }
+
         _logger.LogInformation($"remove task log caches:{taskLogCacheList.Count}");
     }
 
     private bool ShouldDetach(TaskLogCache item)
     {
         return DateTime.UtcNow - item.LastWriteTimeUtc > TimeSpan.FromHours(6)
-                        &&
-                        DateTime.UtcNow - item.LoadedDateTime > TimeSpan.FromMinutes(30);
+               &&
+               DateTime.UtcNow - item.LoadedDateTime > TimeSpan.FromMinutes(30);
     }
 }

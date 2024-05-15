@@ -1,16 +1,14 @@
-﻿using NodeService.WebServer.Models;
-
-namespace NodeService.WebServer.Controllers;
+﻿namespace NodeService.WebServer.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]
 public class VirtualFileSystemController : Controller
 {
-    readonly IConfiguration _configuration;
-    readonly ILogger<VirtualFileSystemController> _logger;
-    readonly ExceptionCounter _exceptionCounter;
-    readonly IVirtualFileSystem _virtualFileSystem;
-    readonly WebServerOptions _webServerOptions;
+    private readonly IConfiguration _configuration;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<VirtualFileSystemController> _logger;
+    private readonly IVirtualFileSystem _virtualFileSystem;
+    private readonly WebServerOptions _webServerOptions;
 
     public VirtualFileSystemController(
         ILogger<VirtualFileSystemController> logger,

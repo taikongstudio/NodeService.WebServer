@@ -27,7 +27,7 @@ public class VirtualFileSystemInfo
         };
     }
 
-    static VirtualFileSystemObjectType FromFtpObjectType(FtpObjectType ftpObjectType)
+    private static VirtualFileSystemObjectType FromFtpObjectType(FtpObjectType ftpObjectType)
     {
         return ftpObjectType switch
         {

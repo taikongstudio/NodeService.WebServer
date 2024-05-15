@@ -1,5 +1,5 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.JobTypeDescConfigs
-@page "/CommonConfig/JobTypeDescConfigs"
+@page "/CommonConfig/JobTypeDesc"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject IMessageService _message
@@ -10,7 +10,7 @@
 <GridContent>
     <Modal Width="800"
            Title="@_modalTitle"
-           Style="top:0px"
+           Style="top:0"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
@@ -47,26 +47,26 @@
         </Form>
     </Modal>
 
-    <Table @ref="_table" 
-        RowExpandable="c => true" 
-        Size="TableSize.Small" 
-        Loading="@_dataSource.IsLoading"
-        EnableVirtualization="false"
-        TItem="JobTypeDescConfigModel"
-        Resizable
-        OnChange="OnTableChange"
-        DataSource="@_dataSource.ItemsSource"
-        PageIndex="_dataSource.PageIndex"
-        PageSize="_dataSource.PageSize"
-        OnPageIndexChange="@_dataSource.OnPaginationEvent"
-        OnPageSizeChange="@_dataSource.OnPaginationEvent">
+    <Table @ref="_table"
+           RowExpandable="c => true"
+           Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           EnableVirtualization="false"
+           TItem="JobTypeDescConfigModel"
+           Resizable
+           OnChange="OnTableChange"
+           DataSource="@_dataSource.ItemsSource"
+           PageIndex="_dataSource.PageIndex"
+           PageSize="_dataSource.PageSize"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="4">
                     <Title Level="3">作业类型描述配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>

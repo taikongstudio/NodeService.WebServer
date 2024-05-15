@@ -26,11 +26,11 @@
                         AutoFocus
                         TItemValue="string"
                         LabelName="@nameof(StringEntry.Name)"
-                        ValueName="@nameof(StringEntry.Value)" />
+                        ValueName="@nameof(StringEntry.Value)"/>
             }
             else
             {
-                <Input Type="text" Value="@mappingEntry.Name" ValueChanged="(string value)=>OnNameChanged(mappingEntry,value)" AutoFocus="@IsNameEditable" />
+                <Input Type="text" Value="@mappingEntry.Name" ValueChanged="(string value) => OnNameChanged(mappingEntry, value)" AutoFocus="@IsNameEditable"/>
             }
         }
         else if (IsNameEditable)
@@ -55,11 +55,11 @@
                         AutoFocus
                         TItemValue="string"
                         LabelName="@nameof(StringEntry.Name)"
-                        ValueName="@nameof(StringEntry.Value)" />
+                        ValueName="@nameof(StringEntry.Value)"/>
             }
             else
             {
-                <Input Type="text" Value="@mappingEntry.Value" ValueChanged="(string value)=>OnValueChanged(mappingEntry,value)" AutoFocus="@(!IsNameEditable && IsValueEditable)" />
+                <Input Type="text" Value="@mappingEntry.Value" ValueChanged="(string value) => OnValueChanged(mappingEntry, value)" AutoFocus="@(!IsNameEditable && IsValueEditable)"/>
             }
         }
         else if (IsValueEditable)
@@ -76,7 +76,7 @@
     <PropertyColumn Hidden="@IsTagHidden" Title="@TagTitle" Property="c => c.Tag" Sortable>
         @if (mappingEntry.IsEditing && IsTagEditable)
         {
-            <Input Type="text" Value="@mappingEntry.Tag" ValueChanged="(string value)=>OnTagChanged(mappingEntry,value)" AutoFocus="@(!IsNameEditable && IsTagEditable)"/>
+            <Input Type="text" Value="@mappingEntry.Tag" ValueChanged="(string value) => OnTagChanged(mappingEntry, value)" AutoFocus="@(!IsNameEditable && IsTagEditable)"/>
         }
         else if (IsTagEditable)
         {
@@ -216,19 +216,40 @@
     async Task OnValueChanged(StringEntry stringEntry, string? value)
     {
         var e = new ValueChangedEventArgs<string>(stringEntry, value);
-        await ValueChanged.InvokeAsync(e);
+        if (ValueChanged.HasDelegate)
+        {
+            await ValueChanged.InvokeAsync(e);
+        }
+        if (!e.Handled)
+        {
+            stringEntry.Value = value;
+        }
     }
 
     async Task OnNameChanged(StringEntry stringEntry, string? value)
     {
         var e = new ValueChangedEventArgs<string>(stringEntry, value);
-        await NameChanged.InvokeAsync(e);
+        if (NameChanged.HasDelegate)
+        {
+            await NameChanged.InvokeAsync(e);
+        }
+        if (!e.Handled)
+        {
+            stringEntry.Name = value;
+        }
     }
 
     async Task OnTagChanged(StringEntry stringEntry, string? value)
     {
         var e = new ValueChangedEventArgs<string>(stringEntry, value);
-        await TagChanged.InvokeAsync(e);
+        if (TagChanged.HasDelegate)
+        {
+            await TagChanged.InvokeAsync(e);
+        }
+        if (!e.Handled)
+        {
+            stringEntry.Tag = value;
+        }
     }
 
 

@@ -1,17 +1,16 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.FtpUploadConfigs
-@page "/CommonConfig/FtpUploadConfigs"
+@page "/CommonConfig/FtpUpload"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
-@using NodeService.WebServer.UI.Pages.Components
 @implements IDisposable
 
 <GridContent>
 
     <Modal Width="800"
            Title="@_modalTitle"
-           Style="top:0px"
+           Style="top:0"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
@@ -41,17 +40,17 @@
                         }
                     }
                     <Tag Class="site-tag-plus" OnClick="ShowFtpConfigSelectorDialogAsync">
-                        <Icon Type="@IconType.Outline.FolderOpen"/>
+                        <Icon Type="@IconType.Outline.Edit"/>
                     </Tag>
                     <CommonDialog @ref="_ftpConfigDialog" Closed="OnSelectFtpConfigDialogClosed">
-                        <FtpConfigSelector @ref="_ftpConfigSelector" @bind-SelectedItems="@_selectedFtpConfigs" Mode="SelectionMode.Single" />
+                        <FtpConfigSelector @ref="_ftpConfigSelector" @bind-SelectedItems="@_selectedFtpConfigs" Mode="SelectionMode.Single"/>
                     </CommonDialog>
                 </FormItem>
                 <FormItem Label="远程目录">
                     <Input @bind-Value="@context.RemoteDirectory"/>
                 </FormItem>
                 <FormItem Label="清空远程目录">
-                    <Switch @bind-Checked="@context.CleanupRemoteDirectory" />
+                    <Switch @bind-Checked="@context.CleanupRemoteDirectory"/>
                 </FormItem>
                 <FormItem Label="本地目录">
                     <Input @bind-Value="@context.LocalDirectory"/>
@@ -103,8 +102,7 @@
                 <FormItem Label="过滤器">
                     <StringEntryTable
                         ItemsSource="@context.Filters"
-                        NameList="_nameList"
-                                           />
+                        NameList="_nameList"/>
                 </FormItem>
                 <FormItem Label="打印本地文件">
                     <Switch @bind-Checked="@context.PrintLocalFiles"></Switch>
@@ -135,7 +133,7 @@
                     <Title Level="3">Ftp上传配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -215,8 +213,9 @@
             StateHasChanged);
         _dataSource.ItemInitializer = InitAsync;
         _dataSource.Request();
-        _nameList = [
-            new StringEntry() { Name="包含",Value="include" },new StringEntry() {Name="排除",Value="exclude"}
+        _nameList =
+        [
+            new StringEntry { Name = "包含", Value = "include" }, new StringEntry { Name = "排除", Value = "exclude" }
         ];
         base.OnInitialized();
     }

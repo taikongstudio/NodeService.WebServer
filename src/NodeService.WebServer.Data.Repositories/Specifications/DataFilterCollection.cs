@@ -1,59 +1,45 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-namespace NodeService.WebServer.Data.Repositories.Specifications
+public enum DataFilterTypes
 {
-    public enum DataFilterTypes
+    None,
+    Include,
+    Exclude
+}
+
+public readonly struct DataFilterCollection<T>
+{
+    public static readonly DataFilterCollection<T> Empty = new();
+
+    public DataFilterCollection(DataFilterTypes filterType, IEnumerable<T> items)
     {
-        None,
-        Include,
-        Exclude,
+        FilterType = filterType;
+        Items = items ?? throw new ArgumentNullException(nameof(items));
     }
 
-    public readonly struct DataFilterCollection<T>
+    public DataFilterTypes FilterType { get; init; }
+
+    public IEnumerable<T> Items { get; init; }
+
+    public bool HasValue => Items != null && Items.Any();
+
+    public static DataFilterCollection<string> Includes(IEnumerable<string> items)
     {
-        public static readonly DataFilterCollection<T> Empty = new DataFilterCollection<T>();
+        return new DataFilterCollection<string>(DataFilterTypes.Include, items);
+    }
 
-        public DataFilterCollection(DataFilterTypes filterType, IEnumerable<T> items)
-        {
-            FilterType = filterType;
-            Items = items ?? throw new ArgumentNullException(nameof(items));
-        }
+    public static DataFilterCollection<string> Includes(params string[] items)
+    {
+        return new DataFilterCollection<string>(DataFilterTypes.Include, items);
+    }
 
-        public DataFilterTypes FilterType { get; init; }
+    public static DataFilterCollection<string> Excludes(IEnumerable<string> items)
+    {
+        return new DataFilterCollection<string>(DataFilterTypes.Exclude, items);
+    }
 
-        public IEnumerable<T> Items { get; init; }
-
-        public bool HasValue
-        {
-            get
-            {
-                return Items != null && Items.Any();
-            }
-        }
-
-        public static DataFilterCollection<string> Includes(IEnumerable<string> items)
-        {
-            return new DataFilterCollection<string>(DataFilterTypes.Include, items);
-        }
-
-        public static DataFilterCollection<string> Includes(params string[] items)
-        {
-            return new DataFilterCollection<string>(DataFilterTypes.Include, items);
-        }
-
-        public static DataFilterCollection<string> Excludes(IEnumerable<string> items)
-        {
-            return new DataFilterCollection<string>(DataFilterTypes.Exclude, items);
-        }
-        public static DataFilterCollection<string> Excludes(params string[] items)
-        {
-            return new DataFilterCollection<string>(DataFilterTypes.Exclude, items);
-        }
-
-
+    public static DataFilterCollection<string> Excludes(params string[] items)
+    {
+        return new DataFilterCollection<string>(DataFilterTypes.Exclude, items);
     }
 }

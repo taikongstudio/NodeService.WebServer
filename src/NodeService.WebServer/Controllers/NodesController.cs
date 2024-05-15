@@ -1,11 +1,7 @@
-﻿using Ardalis.Specification.EntityFrameworkCore;
-using NodeService.Infrastructure.Concurrent;
-using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.Models;
+﻿using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using System.IO;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -13,15 +9,15 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class NodesController : Controller
 {
-    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
-    readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertySnapshotRepositoryFactory;
-    readonly ILogger<NodesController> _logger;
-    readonly IMemoryCache _memoryCache;
-    readonly INodeSessionService _nodeSessionService;
-    readonly IVirtualFileSystem _virtualFileSystem;
-    readonly WebServerOptions _webServerOptions;
-    readonly ExceptionCounter _exceptionCounter;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<NodesController> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertySnapshotRepositoryFactory;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
+    private readonly IVirtualFileSystem _virtualFileSystem;
+    private readonly WebServerOptions _webServerOptions;
 
     public NodesController(
         ExceptionCounter exceptionCounter,
@@ -54,26 +50,22 @@ public partial class NodesController : Controller
             using var repo = _nodeInfoRepositoryFactory.CreateRepository();
             ListQueryResult<NodeInfoModel> queryResult = default;
             if (queryParameters.IdList == null || queryParameters.IdList.Count == 0)
-            {
                 queryResult = await repo.PaginationQueryAsync(new NodeInfoSpecification(
-                    queryParameters.AreaTag,
-                    queryParameters.Status,
-                    queryParameters.Keywords,
-                    queryParameters.SortDescriptions),
+                        queryParameters.AreaTag,
+                        queryParameters.Status,
+                        queryParameters.Keywords,
+                        queryParameters.SortDescriptions),
                     queryParameters.PageSize,
                     queryParameters.PageIndex,
                     cancellationToken);
-            }
             else
-            {
                 queryResult = await repo.PaginationQueryAsync(new NodeInfoSpecification(
-                    queryParameters.AreaTag,
-                    queryParameters.Status,
-                    new DataFilterCollection<string>(DataFilterTypes.Include, queryParameters.IdList)),
+                        queryParameters.AreaTag,
+                        queryParameters.Status,
+                        new DataFilterCollection<string>(DataFilterTypes.Include, queryParameters.IdList)),
                     queryParameters.PageSize,
                     queryParameters.PageIndex,
                     cancellationToken);
-            }
 
             apiResponse.SetResult(queryResult);
         }
@@ -87,7 +79,6 @@ public partial class NodesController : Controller
 
         return apiResponse;
     }
-
 
 
     [HttpGet("/api/nodes/{id}")]

@@ -1,0 +1,222 @@
+﻿@inject ApiService ApiService
+@inject NotificationService _notice
+@inject ILogger<Index> _logger;
+
+<CommonDialog
+    Title="@($"调用任务:{TaskDefinition?.Name}")"
+    Visible="@Visible"
+    VisibleChanged="@VisibleChanged"
+    OnOk="OnOkAsync">
+    <Form Model="@TaskDefinition"
+          LabelColSpan="4"
+          Layout="@FormLayout.Horizontal"
+          Loading="@_loading"
+          WrapperColSpan="18"
+          OnFinish="OnFinish"
+          OnFinishFailed="OnFinishFailed">
+        @if (context != null)
+        {
+            <FormItem Label="环境变量">
+                <StringEntryTable ItemsSource="@context.EnvironmentVariables"
+                                  NameTitle="变量"
+                                  ValueTitle="值"
+                                  AddingNewItem="NewEnvVarAdding"/>
+            </FormItem>
+            <FormItem Label="节点">
+                <NodeSelector Mode="SelectionMode.Multiple"
+                              SelectedItems="@_selectedNodes"
+                              SelectedItemsChanged="OnSelectedNodesChanged"/>
+            </FormItem>
+        }
+    </Form>
+</CommonDialog>
+
+
+@code {
+    bool _submitting;
+    bool _confirmLoading;
+    bool _visible;
+    bool _loading;
+
+    Form<JobScheduleConfigModel> _fireTaskForm;
+
+    IEnumerable<NodeInfoModel> _selectedNodes = [];
+
+    [Parameter] public JobScheduleConfigModel TaskDefinition { get; set; }
+
+    [Parameter] public bool Visible { get; set; }
+
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            if (Visible)
+            {
+                _selectedNodes = await InitSelectedNodeInfoListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
+        }
+
+        await base.OnParametersSetAsync();
+    }
+
+    void HandleFireTaskFormCancel(MouseEventArgs e)
+    {
+        _visible = false;
+    }
+
+
+    void OnSelectedNodesChanged(IEnumerable<NodeInfoModel> nodes)
+    {
+        _selectedNodes = nodes;
+    }
+
+
+    void HandleInvokeTaskFormOk(MouseEventArgs e)
+    {
+        _submitting = true;
+        _fireTaskForm.Submit();
+    }
+
+    void OnInvokeTaskFormFinish()
+    {
+    }
+
+    async Task<IEnumerable<NodeInfoModel>> InitSelectedNodeInfoListAsync()
+    {
+        if (TaskDefinition == null)
+        {
+            return [];
+        }
+
+        var nodeList = new List<NodeInfoModel>();
+        var queryPageIndex = 0;
+        var queryPageSize = 50;
+        while (true)
+        {
+            var idList = TaskDefinition.Value.NodeList
+                .Skip(queryPageIndex * queryPageSize)
+                .Take(queryPageSize)
+                .Select(x => x.Value)
+                .ToList();
+            if (idList.Count == 0)
+            {
+                break;
+            }
+
+            queryPageIndex++;
+            var pageIndex = 0;
+            var pageSize = 50;
+            var count = 0;
+            while (true)
+            {
+                pageIndex++;
+                var rsp = await ApiService.QueryNodeListAsync(new QueryNodeListParameters
+                {
+                    AreaTag = "*",
+                    Status = NodeStatus.All,
+                    IdList = idList,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize
+                });
+
+                if (rsp.ErrorCode == 0 && rsp.Result != null)
+                {
+                    nodeList.AddRange(rsp.Result);
+                    count += rsp.Result.Count();
+                }
+
+                if (rsp.TotalCount == count)
+                {
+                    break;
+                }
+            }
+        }
+
+
+        return nodeList;
+    }
+
+    private async Task OnOkAsync()
+    {
+        await InvokeTaskAsync();
+    }
+
+    async Task InvokeTaskAsync()
+    {
+        try
+        {
+            var invokeTaskParameters = new InvokeTaskParameters
+            {
+                UserName = "WebUser",
+                TaskDefinitionId = TaskDefinition.Id
+            };
+            invokeTaskParameters.NodeList.Clear();
+            if (_selectedNodes != null)
+            {
+                invokeTaskParameters.NodeList.AddRange(_selectedNodes.Select(x => new StringEntry
+                {
+                    Name = x.Name,
+                    Value = x.Id
+                }));
+            }
+
+            var apiResponse = await ApiService.InvokeTaskAsync(invokeTaskParameters);
+            if (apiResponse.ErrorCode == 0)
+            {
+                _visible = false;
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
+        }
+    }
+
+    void OnTriggerJobFormFinishFailed(EditContext editContext)
+    {
+        _confirmLoading = false;
+        _submitting = false;
+    }
+
+    Task OnFinish(EditContext editContext)
+    {
+        return Task.CompletedTask;
+    }
+
+    Task OnFinishFailed(EditContext editContext)
+    {
+        _visible = true;
+        return Task.CompletedTask;
+    }
+
+    void NewEnvVarAdding(AddingNewItemEventArgs e)
+    {
+        e.DataItem.Name = string.Empty;
+        e.DataItem.Value = string.Empty;
+        e.DataItem.BeginEdit();
+    }
+
+}

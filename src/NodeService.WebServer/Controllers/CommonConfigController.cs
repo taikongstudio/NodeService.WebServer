@@ -1,11 +1,8 @@
 ﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Models;
-using static NuGet.Protocol.Core.Types.Repository;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -13,13 +10,13 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class CommonConfigController : Controller
 {
-    readonly ILogger<CommonConfigController> _logger;
-    readonly IMemoryCache _memoryCache;
-    readonly INodeSessionService _nodeSessionService;
-    readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
-    readonly IServiceProvider _serviceProvider;
-    readonly WebServerOptions _webServerOptions;
-    readonly ExceptionCounter _exceptionCounter;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<CommonConfigController> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly WebServerOptions _webServerOptions;
 
     public CommonConfigController(
         ILogger<CommonConfigController> logger,
@@ -39,14 +36,14 @@ public partial class CommonConfigController : Controller
         _exceptionCounter = exceptionCounter;
     }
 
-    async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(PaginationQueryParameters queryParameters)
+    private async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(PaginationQueryParameters queryParameters)
         where T : ConfigurationModel, new()
     {
-        PaginationResponse<T> apiResponse = new PaginationResponse<T>();
+        var apiResponse = new PaginationResponse<T>();
 
         try
         {
-            ApplicationRepositoryFactory<T> repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
             using var repo = repoFactory.CreateRepository();
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
             ListQueryResult<T> cachedQueryResult = default;
@@ -54,8 +51,8 @@ public partial class CommonConfigController : Controller
             {
                 cachedQueryResult = await repo.PaginationQueryAsync(
                     new CommonConfigSpecification<T>(queryParameters.Keywords),
-                                        queryParameters.PageSize,
-                                        queryParameters.PageIndex);
+                    queryParameters.PageSize,
+                    queryParameters.PageIndex);
             }
             else if (queryParameters.QueryStrategy == QueryStrategy.CachePreferred)
             {
@@ -69,24 +66,19 @@ public partial class CommonConfigController : Controller
                     {
                         await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 500)));
                         cachedQueryResult = await repo.PaginationQueryAsync(
-
                             new CommonConfigSpecification<T>(
-                            queryParameters.Keywords,
-                            queryParameters.SortDescriptions),
+                                queryParameters.Keywords,
+                                queryParameters.SortDescriptions),
                             queryParameters.PageSize,
                             queryParameters.PageIndex);
 
                         if (cachedQueryResult.HasValue)
-                        {
                             _memoryCache.Set(key, cachedQueryResult, TimeSpan.FromMinutes(1));
-                        }
                     }
                 }
             }
-            if (cachedQueryResult.HasValue)
-            {
-                apiResponse.SetResult(cachedQueryResult);
-            }
+
+            if (cachedQueryResult.HasValue) apiResponse.SetResult(cachedQueryResult);
         }
         catch (Exception ex)
         {
@@ -95,16 +87,17 @@ public partial class CommonConfigController : Controller
             apiResponse.ErrorCode = ex.HResult;
             apiResponse.Message = ex.Message;
         }
+
         return apiResponse;
     }
 
-    async Task<ApiResponse<T>> QueryConfigurationAsync<T>(string id, Func<T?, Task>? func = null)
+    private async Task<ApiResponse<T>> QueryConfigurationAsync<T>(string id, Func<T?, Task>? func = null)
         where T : ConfigurationModel
     {
         var apiResponse = new ApiResponse<T>();
         try
         {
-            ApplicationRepositoryFactory<T> repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
             using var repo = repoFactory.CreateRepository();
             apiResponse.SetResult(await repo.GetByIdAsync(id));
             if (apiResponse.Result != null && func != null) await func.Invoke(apiResponse.Result);
@@ -120,13 +113,13 @@ public partial class CommonConfigController : Controller
         return apiResponse;
     }
 
-    async Task<ApiResponse> DeleteConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
+    private async Task<ApiResponse> DeleteConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
         where T : ConfigurationModel
     {
         var apiResponse = new ApiResponse();
         try
         {
-            ApplicationRepositoryFactory<T> repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
             using var repo = repoFactory.CreateRepository();
             await repo.DeleteAsync(model);
             if (repo.LastSaveChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
@@ -141,13 +134,13 @@ public partial class CommonConfigController : Controller
         return apiResponse;
     }
 
-    async Task<ApiResponse> AddOrUpdateConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
+    private async Task<ApiResponse> AddOrUpdateConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
         where T : ConfigurationModel
     {
         var apiResponse = new ApiResponse();
         try
         {
-            ApplicationRepositoryFactory<T> repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
             using var repo = repoFactory.CreateRepository();
             var modelFromDb = await repo.GetByIdAsync(model.Id);
             if (modelFromDb == null)

@@ -1,8 +1,5 @@
-﻿using NodeService.Infrastructure.Models;
-using NodeService.WebServer.Data.Repositories;
+﻿using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Models;
-using System.Linq;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -10,9 +7,9 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class NotificationController : Controller
 {
-    readonly ApplicationRepositoryFactory<NotificationRecordModel> _notificationRecordsRepositoryFactory;
-    readonly ILogger<NotificationController> _logger;
-    readonly ExceptionCounter _exceptionCounter;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<NotificationController> _logger;
+    private readonly ApplicationRepositoryFactory<NotificationRecordModel> _notificationRecordsRepositoryFactory;
 
     public NotificationController(
         ExceptionCounter exceptionCounter,
@@ -36,8 +33,8 @@ public class NotificationController : Controller
                 new NotificationRecordSpecification(
                     queryParameters.Keywords,
                     queryParameters.SortDescriptions),
-                 queryParameters.PageSize,
-                 queryParameters.PageIndex);
+                queryParameters.PageSize,
+                queryParameters.PageIndex);
             apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)

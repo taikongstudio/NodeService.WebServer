@@ -6,75 +6,67 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 
-namespace NodeService.WebServer.Services.FileRecords
-{
-    public class FileRecordQueryService : BackgroundService
-    {
-        readonly ExceptionCounter _exceptionCounter;
-        readonly ILogger<FileRecordQueryService> _logger;
-        readonly ApplicationRepositoryFactory<FileRecordModel> _repositoryFactory;
-        readonly BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>> _queryBatchQueue;
-        private readonly IRepository<FileRecordModel> _repo;
+namespace NodeService.WebServer.Services.FileRecords;
 
-        public FileRecordQueryService(
+public class FileRecordQueryService : BackgroundService
+{
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<FileRecordQueryService> _logger;
+
+    private readonly BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>>
+        _queryBatchQueue;
+
+    private readonly IRepository<FileRecordModel> _repo;
+    private readonly ApplicationRepositoryFactory<FileRecordModel> _repositoryFactory;
+
+    public FileRecordQueryService(
         ExceptionCounter exceptionCounter,
         ILogger<FileRecordQueryService> logger,
         ApplicationRepositoryFactory<FileRecordModel> repositoryFactory,
         [FromKeyedServices(nameof(FileRecordQueryService))]
         BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>> queryBatchQueue
-            )
-        {
-            _exceptionCounter = exceptionCounter;
-            _logger = logger;
-            _repositoryFactory = repositoryFactory;
-            _queryBatchQueue = queryBatchQueue;
-            _repo = _repositoryFactory.CreateRepository();
-        }
+    )
+    {
+        _exceptionCounter = exceptionCounter;
+        _logger = logger;
+        _repositoryFactory = repositoryFactory;
+        _queryBatchQueue = queryBatchQueue;
+        _repo = _repositoryFactory.CreateRepository();
+    }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        try
         {
-            try
-            {
-                await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(stoppingToken))
+            await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(stoppingToken))
+                try
                 {
-                    try
+                    foreach (var operation in arrayPoolCollection)
                     {
-                        foreach (var operation in arrayPoolCollection)
+                        if (operation == null) continue;
+                        var kind = operation.Kind;
+                        switch (kind)
                         {
-                            if (operation == null)
-                            {
-                                continue;
-                            }
-                            var kind = operation.Kind;
-                            switch (kind)
-                            {
-                                case BatchQueueOperationKind.Query:
-                                    var queryResult = await this._repo.PaginationQueryAsync(operation.Argument);
-                                    operation.SetResult(queryResult);
-                                    break;
-                                default:
-                                    break;
-                            }
+                            case BatchQueueOperationKind.Query:
+                                var queryResult = await _repo.PaginationQueryAsync(operation.Argument);
+                                operation.SetResult(queryResult);
+                                break;
                         }
-
-                    }
-                    catch (Exception ex)
-                    {
-                        _exceptionCounter.AddOrUpdate(ex);
-                        _logger.LogError(ex.ToString());
-                    }
-                    finally
-                    {
-                        arrayPoolCollection.Dispose();
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.ToString());
-            }
-
+                catch (Exception ex)
+                {
+                    _exceptionCounter.AddOrUpdate(ex);
+                    _logger.LogError(ex.ToString());
+                }
+                finally
+                {
+                    arrayPoolCollection.Dispose();
+                }
         }
-
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+        }
     }
 }

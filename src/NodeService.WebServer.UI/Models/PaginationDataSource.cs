@@ -7,11 +7,11 @@ public class PaginationDataSource<TElement, TQueryParameters>
     where TElement : class, new()
     where TQueryParameters : PaginationQueryParameters, new()
 {
-    readonly Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement>>> _queryFunc;
-    readonly Action _stateChangedAction;
+    private readonly Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement?>>> _queryFunc;
+    private readonly Action _stateChangedAction;
 
     public PaginationDataSource(
-        Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement>>> queryHandler,
+        Func<QueryParameters, CancellationToken, Task<PaginationResponse<TElement?>>> queryHandler,
         Action stateChangedAction)
     {
         _queryFunc = queryHandler;
@@ -26,11 +26,11 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     public bool IsLoading { get; set; }
 
-    public Func<TElement, Task> ItemInitializer { get; set; }
+    public Func<TElement?, Task> ItemInitializer { get; set; }
 
     public Func<Exception, Task> ExceptionHandler { get; set; }
 
-    public IEnumerable<TElement> ItemsSource { get; set; } = [];
+    public IEnumerable<TElement?> ItemsSource { get; set; } = [];
 
     public TQueryParameters QueryParameters { get; } = new();
 
@@ -40,11 +40,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     public virtual async Task RefreshAsync()
     {
-
-        if (IsLoading || (DateTime.Now - LastQueryDateTime) < MinRefreshDuration)
-        {
-            return;
-        }
+        if (IsLoading || DateTime.Now - LastQueryDateTime < MinRefreshDuration) return;
         try
         {
             LastQueryDateTime = DateTime.Now;
@@ -67,8 +63,6 @@ public class PaginationDataSource<TElement, TQueryParameters>
             IsLoading = false;
             RaiseStateChanged();
         }
-
-
     }
 
     protected void RaiseStateChanged()
@@ -76,7 +70,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
         _stateChangedAction();
     }
 
-    async Task InvokeItemInitializerAsync(IEnumerable<TElement>? itemsSource)
+    private async Task InvokeItemInitializerAsync(IEnumerable<TElement?>? itemsSource)
     {
         if (itemsSource != null && ItemInitializer != null)
             foreach (var item in itemsSource)

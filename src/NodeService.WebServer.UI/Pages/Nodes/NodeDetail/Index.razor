@@ -106,7 +106,6 @@
             }
             else
             {
-                
                 _nodePropertySnapshot = new NodePropertySnapshotModel();
                 _nodeProperties = NodePropertyModel.FromNodePropertyItems(null);
                 await _notice.Open(new NotificationConfig
@@ -128,7 +127,7 @@
 
     void GoBackNodesHomePage()
     {
-        NavigationManager.NavigateTo("/Nodes");
+        NavigationManager.NavigateTo("/nodes/list");
     }
 
     async Task QueryNodePropsAsync()

@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
@@ -10,17 +8,17 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public class NodeHealthyCheckService : BackgroundService
 {
-    readonly ExceptionCounter _exceptionCounter;
-    readonly NodeHealthyCounterDictionary _healthyCounterDict;
-    readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
-    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly NodeHealthyCounterDictionary _healthyCounterDict;
+    private readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
+    private readonly ILogger<NodeHealthyCheckService> _logger;
     private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+
+
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly IAsyncQueue<NotificationMessage> _notificationQueue;
     private readonly ApplicationRepositoryFactory<NotificationConfigModel> _notificationRepositoryFactory;
-    readonly ILogger<NodeHealthyCheckService> _logger;
-
-
-    readonly INodeSessionService _nodeSessionService;
-    readonly IAsyncQueue<NotificationMessage> _notificationQueue;
+    private readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
 
     public NodeHealthyCheckService(
         ILogger<NodeHealthyCheckService> logger,
@@ -53,13 +51,15 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    async Task CheckNodeHealthyAsync(CancellationToken stoppingToken = default)
+    private async Task CheckNodeHealthyAsync(CancellationToken stoppingToken = default)
     {
         try
         {
             using var propertyBagRepo = _propertyBagRepositoryFactory.CreateRepository();
             using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
-            var propertyBag = await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
+            var propertyBag =
+                await propertyBagRepo.FirstOrDefaultAsync(
+                    new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
             NodeHealthyCheckConfiguration? configuration;
             if (!TryReadConfiguration(propertyBag, out configuration) || configuration == null) return;
 
@@ -93,7 +93,7 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    bool TryReadConfiguration(
+    private bool TryReadConfiguration(
         Dictionary<string, object>? notificationSourceDictionary,
         out NodeHealthyCheckConfiguration? configuration)
     {
@@ -117,7 +117,7 @@ public class NodeHealthyCheckService : BackgroundService
         return configuration != null;
     }
 
-    async Task SendNodeOfflineNotificationAsync(
+    private async Task SendNodeOfflineNotificationAsync(
         NodeHealthyCheckConfiguration configuration,
         List<string> offlineNodeList,
         CancellationToken stoppingToken = default)
@@ -136,7 +136,7 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    static bool CanSendNotification(NodeHealthyCheckConfiguration configuration,
+    private static bool CanSendNotification(NodeHealthyCheckConfiguration configuration,
         NodeHealthyCounter healthCounter)
     {
         return healthCounter.SentNotificationCount > 0

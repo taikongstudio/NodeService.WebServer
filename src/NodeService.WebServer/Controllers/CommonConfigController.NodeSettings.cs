@@ -5,7 +5,7 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
-    [HttpGet("/api/commonconfig/nodesetting/")]
+    [HttpGet("/api/CommonConfig/NodeSetting/")]
     public async Task<ApiResponse<NodeSettings>> QueryNodeSettingsAsync()
     {
         var rsp = new ApiResponse<NodeSettings>();
@@ -40,7 +40,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpPost("/api/commonconfig/nodesetting/update")]
+    [HttpPost("/api/CommonConfig/NodeSetting/update")]
     public async Task<ApiResponse> UpdateNodeSettingAsync([FromBody] NodeSettings model)
     {
         var rsp = new ApiResponse();
@@ -51,7 +51,7 @@ public partial class CommonConfigController
             var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
 
             var value = JsonSerializer.Serialize(model);
-            int count = await repo.DbContext.Set<PropertyBag>()
+            var count = await repo.DbContext.Set<PropertyBag>()
                 .Where(x => x["Id"] == nameof(NodeSettings))
                 .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x["Value"], x => value));
         }

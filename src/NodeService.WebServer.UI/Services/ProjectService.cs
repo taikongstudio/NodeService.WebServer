@@ -13,7 +13,7 @@ public interface IProjectService
 
 public class ProjectService : IProjectService
 {
-    readonly HttpClient _httpClient;
+    private readonly HttpClient _httpClient;
 
     public ProjectService(HttpClient httpClient)
     {

@@ -1,13 +1,12 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.ClientUpdates
 @page "/CommonConfig/ClientUpdates"
-@using NodeService.WebServer.UI.Pages.Components
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
 <GridContent>
     <Modal Width="800"
-           Style="top:0px"
+           Style="top:0"
            Title="@_modalTitle"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
@@ -74,7 +73,7 @@
                     <Title Level="3">客户端更新配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search  Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>

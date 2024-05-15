@@ -31,8 +31,8 @@ public class TaskLogCacheDump
 
 public class TaskLogCache
 {
-    readonly LinkedList<TaskLogCachePage> _pages;
-    [JsonIgnore] long _count;
+    private readonly LinkedList<TaskLogCachePage> _pages;
+    [JsonIgnore] private long _count;
 
     public TaskLogCache(string taskId, int pageSize)
     {
@@ -45,8 +45,8 @@ public class TaskLogCache
 
     public TaskLogCache(TaskLogCacheDump dump)
     {
-        this.TaskId = dump.TaskId;
-        this.PageSize = dump.PageSize;
+        TaskId = dump.TaskId;
+        PageSize = dump.PageSize;
         PageCount = dump.PageCount;
         _count = dump.Count;
         CreationDateTimeUtc = dump.CreationDateTimeUtc;
@@ -54,7 +54,7 @@ public class TaskLogCache
         LastAccessTimeUtc = dump.LastAccessTimeUtc;
         LoadedDateTime = DateTime.UtcNow;
         IsTruncated = dump.IsTruncated;
-        this._pages = new LinkedList<TaskLogCachePage>();
+        _pages = new LinkedList<TaskLogCachePage>();
         foreach (var pageDump in dump.PageDumps)
             _pages.AddLast(new LinkedListNode<TaskLogCachePage>(new TaskLogCachePage(pageDump)));
     }
@@ -104,7 +104,7 @@ public class TaskLogCache
         }
     }
 
-    IEnumerable<LogEntry> GetPageEntries(ref TaskLogCachePage taskLogCachePage)
+    private IEnumerable<LogEntry> GetPageEntries(ref TaskLogCachePage taskLogCachePage)
     {
         LastAccessTimeUtc = DateTime.UtcNow;
         if (taskLogCachePage.IsPersistenced)
@@ -135,14 +135,14 @@ public class TaskLogCache
         }
     }
 
-    LogEntry CheckLogEntry(LogEntry logEntry)
+    private LogEntry CheckLogEntry(LogEntry logEntry)
     {
         logEntry.Index = Count;
         Interlocked.Increment(ref _count);
         return logEntry;
     }
 
-    LinkedListNode<TaskLogCachePage>? GetNode(int nodeIndex)
+    private LinkedListNode<TaskLogCachePage>? GetNode(int nodeIndex)
     {
         var current = _pages.First;
         for (var i = 0; i < nodeIndex; i++)
@@ -154,13 +154,13 @@ public class TaskLogCache
         return current;
     }
 
-    int CalculateLogEntryPageIndex(LogEntry logEntry)
+    private int CalculateLogEntryPageIndex(LogEntry logEntry)
     {
         var pageIndex = EntryIndexToPageIndex(logEntry.Index, PageSize, out _);
         return pageIndex;
     }
 
-    int EntryIndexToPageIndex(int entryIndex, int pageSize, out int pageOffset)
+    private int EntryIndexToPageIndex(int entryIndex, int pageSize, out int pageOffset)
     {
         return Math.DivRem(entryIndex, pageSize, out pageOffset);
     }
@@ -195,7 +195,7 @@ public class TaskLogCache
         return $"{TaskLogCacheManager.TaskKeyPrefix}{taskId}";
     }
 
-    TaskLogCacheDump CreateDump()
+    private TaskLogCacheDump CreateDump()
     {
         var taskLogCacheDump = new TaskLogCacheDump();
         Dump(taskLogCacheDump);

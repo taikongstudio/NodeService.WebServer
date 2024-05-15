@@ -9,7 +9,7 @@
 </style>
 
 <Flex Vertical Style="height:100%">
-    <Flex Vertical >
+    <Flex Vertical>
 
         <Space>
             @if (_loading)
@@ -17,7 +17,7 @@
                 <SpaceItem>
                     <Button Shape="@ButtonShape.Circle"
                             Type="@ButtonType.Primary"
-                            Icon="@IconType.Outline.CloseCircle"
+                            Icon="@IconType.Outline.Pause"
                             OnClick="StopAsync">
                     </Button>
                 </SpaceItem>
@@ -41,17 +41,16 @@
                 </a>
             </SpaceItem>
         </Space>
-        <AntDesign.Progress Percent=@(this._loadedLogEntriesCount / (this._totalLogEntriesCount + 0d)*100) ShowInfo=false />
+        <AntDesign.Progress Percent="@(_loadedLogEntriesCount / (_totalLogEntriesCount + 0d) * 100)" ShowInfo="false"/>
 
     </Flex>
     <Flex Vertical Style="flex:auto">
         <StandaloneCodeEditor @ref="@_viewer"
                               CssClass="taskLogViwer"
-                              OnDidInit=LoadTaskLogsAsync
-                              ConstructionOptions=EditorConstructionOptions />
+                              OnDidInit="LoadTaskLogsAsync"
+                              ConstructionOptions="EditorConstructionOptions"/>
     </Flex>
 </Flex>
-
 
 
 @code {
@@ -199,10 +198,12 @@
         {
             await _viewer.SetValue(string.Empty);
         }
+
         if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
         {
             await _cancellationTokenSource.CancelAsync();
         }
+
         TaskExecutionInstanceId = null;
         _totalLogEntriesCount = 0;
         _loadedLogEntriesCount = 0;

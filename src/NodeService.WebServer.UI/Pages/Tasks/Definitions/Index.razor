@@ -1,0 +1,239 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Tasks
+@page "/tasks/definitions"
+
+@inject ApiService ApiService
+@inject ConfirmService _confirmService
+@inject NavigationManager NavigationManager
+@inject NotificationService _notice
+
+
+<GridContent>
+    <TaskDefinitionEditor 
+        Closed="OnTaskDefinitionEditorClosed"
+        @ref="_taskDefinitionEditor"/>
+    <InvokeTaskDialog
+        TaskDefinition="@_taskDefinition"
+        @bind-Visible="@_InvokeTaskDialogVisible"/>
+
+    <Table
+        Size="TableSize.Small"
+        Loading="@_dataSource.IsLoading"
+        EnableVirtualization="false"
+        TItem="JobScheduleConfigModel"
+        DataSource="@_dataSource.ItemsSource"
+        Resizable
+        Total="@_dataSource.TotalCount"
+        OnChange="OnTableChange"
+        PageIndex="@_dataSource.PageIndex"
+        PageSize="@_dataSource.PageSize"
+        OnPageIndexChange="@_dataSource.OnPaginationEvent"
+        OnPageSizeChange="@_dataSource.OnPaginationEvent">
+        <TitleTemplate>
+            <GridRow>
+                <GridCol Span="5" Offset="18">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space >
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => _taskDefinitionEditor.ShowAsync()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                    </SpaceItem>
+                </Space>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="描述" Ellipsis Sortable Property="c => c.Description"></PropertyColumn>
+            <PropertyColumn Title="启用" Ellipsis Sortable Property="c => c.IsEnabled"></PropertyColumn>
+            <PropertyColumn Title="任务类型" Ellipsis Property="c => c.JobTypeDesc">
+                <Text>@context.JobTypeDesc?.Name</Text>
+            </PropertyColumn>
+
+            <ActionColumn Fixed="right" Width="250" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle" OnClick="() => ShowInvokeTaskDialogAsync(context)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => _taskDefinitionEditor.ShowAsync(context.CopyClone<JobScheduleConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => _taskDefinitionEditor.ShowAsync(context.JsonClone<JobScheduleConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
+                        </SpaceItem>
+
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+        </ColumnDefinitions>
+    </Table>
+</GridContent>
+
+@code {
+
+    bool _nodeTableLoading = false;
+
+    bool _InvokeTaskDialogVisible;
+
+    JobScheduleConfigModel _taskDefinition;
+
+    TaskDefinitionEditor _taskDefinitionEditor;
+
+    RoutedPaginationDataSource<JobScheduleConfigModel, PaginationQueryParameters> _dataSource;
+    PaginationDataSource<NodeInfoModel, PaginationQueryParameters> _nodeDataSource;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new RoutedPaginationDataSource<JobScheduleConfigModel, PaginationQueryParameters>(
+            NavigationManager,
+            ApiService.QueryTaskScheduleConfigurationListAsync,
+            StateHasChanged);
+        _dataSource.ItemInitializer = InitAsync;
+        _dataSource.ExceptionHandler = ExceptionHandler;
+        _nodeDataSource = new PaginationDataSource<NodeInfoModel, PaginationQueryParameters>(
+            ApiService.QueryNodeListAsync,
+            StateHasChanged
+        );
+
+        _dataSource.Request();
+
+        base.OnInitialized();
+    }
+
+    private async Task ExceptionHandler(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
+    }
+
+    async Task InitAsync(JobScheduleConfigModel model)
+    {
+        if (model == null)
+        {
+            return;
+        }
+
+        var rsp = await ApiService.QueryTaskTypeDescConfigAsync(model.Value.JobTypeDescId);
+        if (rsp.ErrorCode == 0)
+        {
+            model.Value.JobTypeDesc = rsp.Result;
+            //await BuildOptionValueEditorsAsync(model, model.OptionValueEditors);
+        }
+    }
+
+    string ConvertFilterType(string filerType)
+    {
+        switch (filerType)
+        {
+            case "exclude":
+                return "排除";
+                break;
+            case "include":
+                return "包含";
+                break;
+            default:
+                return string.Empty;
+        }
+    }
+
+    void ShowInvokeTaskDialogAsync(JobScheduleConfigModel model)
+    {
+        _InvokeTaskDialogVisible = true;
+        _taskDefinition = model;
+    }
+
+    async Task OnTaskDefinitionEditorClosed()
+    {
+        await this._dataSource.RefreshAsync();
+    }
+
+
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    {
+        var options = new ConfirmButtonOptions
+        {
+            Button1Props = new ButtonProps
+            {
+                ChildContent = "确定",
+                Type = ButtonType.Primary
+            },
+            Button2Props = new ButtonProps
+            {
+                ChildContent = "取消"
+            }
+        };
+        return _confirmService.Show(
+            content,
+            title,
+            ConfirmButtons.OKCancel,
+            ConfirmIcon.Info,
+            options);
+    }
+
+    async Task DeleteConfig(JobScheduleConfigModel model)
+    {
+        try
+        {
+            if (await ShowConfirmDialogAsync("删除确认", "确定要删除吗？") != ConfirmResult.OK)
+            {
+                return;
+            }
+
+            var apiResponse = await ApiService.RemoveAsync(model);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await _dataSource.RefreshAsync();
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
+        }
+    }
+
+
+    void OnNodeTableChange(QueryModel<NodeInfoModel> query)
+    {
+    }
+
+
+    void OnTableChange(QueryModel<JobScheduleConfigModel> query)
+    {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        _dataSource.Request();
+    }
+
+}

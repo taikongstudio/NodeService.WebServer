@@ -1,5 +1,5 @@
 @namespace NodeService.WebServer.UI.Pages.CommonConfig.PackageConfigs
-@page "/CommonConfig/PackageConfigs"
+@page "/CommonConfig/Package"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
@@ -16,7 +16,7 @@
     </Drawer>
     <Modal
         Width="800"
-        Style="top:0px"
+        Style="top:0"
         Title="@_modalTitle"
         @bind-Visible="@_editFormVisible"
         ConfirmLoading="@_editFormConfirmLoading"
@@ -98,7 +98,7 @@
                     <Title Level="3">包配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -139,7 +139,7 @@
                 <TabPane Tab="插件属性" Key="1">
                     <Space Size=@("small")>
                         <SpaceItem>
-                            <a target="_blank" href="@("/api/commonconfig/package/download/" + context.Data.Id)">下载插件</a>
+                            <a target="_blank" href="@("/api/CommonConfig/package/download/" + context.Data.Id)">下载插件</a>
                         </SpaceItem>
                         <SpaceItem>
                             <Button Type="@ButtonType.Link" OnClick="() => OpenPackageConfigJsonStringDrawer(context.Data)">查看</Button>

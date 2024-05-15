@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Models;
 
@@ -7,10 +6,10 @@ namespace NodeService.WebServer.Services.Notifications;
 
 public class NotificationService : BackgroundService
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    readonly ILogger<NotificationService> _logger;
-    readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
-    readonly ExceptionCounter _exceptionCounter;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<NotificationService> _logger;
+    private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
 
     public NotificationService(
         ExceptionCounter exceptionCounter,

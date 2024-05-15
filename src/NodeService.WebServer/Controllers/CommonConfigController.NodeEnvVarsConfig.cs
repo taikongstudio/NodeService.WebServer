@@ -2,26 +2,26 @@
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/commonconfig/nodeenvvars/addorupdate")]
+    [HttpPost("/api/CommonConfig/nodeenvvars/addorupdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] NodeEnvVarsConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/commonconfig/nodeenvvars/list")]
+    [HttpGet("/api/CommonConfig/nodeenvvars/list")]
     public Task<PaginationResponse<NodeEnvVarsConfigModel>> QueryNodeEnvVarsListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<NodeEnvVarsConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/commonconfig/nodeenvvars/{id}")]
+    [HttpGet("/api/CommonConfig/nodeenvvars/{id}")]
     public Task<ApiResponse<NodeEnvVarsConfigModel>> QueryNodeEnvVarsConfigAsync(string id)
     {
         return QueryConfigurationAsync<NodeEnvVarsConfigModel>(id);
     }
 
-    [HttpPost("/api/commonconfig/nodeenvvars/remove")]
+    [HttpPost("/api/CommonConfig/nodeenvvars/remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] NodeEnvVarsConfigModel model)
     {
         return DeleteConfigurationAsync(model);

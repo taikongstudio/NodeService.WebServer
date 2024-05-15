@@ -1,24 +1,22 @@
-﻿using Microsoft.AspNetCore.RateLimiting;
-
-namespace NodeService.WebServer.Controllers;
+﻿namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
-    [HttpGet("/api/commonconfig/windowstask/list")]
+    [HttpGet("/api/CommonConfig/windowstask/list")]
     public Task<PaginationResponse<WindowsTaskConfigModel>> QueryWindowsTasksListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<WindowsTaskConfigModel>(queryParameters);
     }
 
-    [HttpPost("/api/commonconfig/windowstask/addorupdate")]
+    [HttpPost("/api/CommonConfig/windowstask/addorupdate")]
     public Task<ApiResponse> AddOrUpdateAsync(WindowsTaskConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
 
-    [HttpPost("/api/commonconfig/windowstask/remove")]
+    [HttpPost("/api/CommonConfig/windowstask/remove")]
     public Task<ApiResponse> RemoveAsync(WindowsTaskConfigModel model)
     {
         return DeleteConfigurationAsync(model);

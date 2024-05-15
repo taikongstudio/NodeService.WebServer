@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.RateLimiting;
-using NodeService.Infrastructure.Concurrent;
+﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.FileRecords;
 
 namespace NodeService.WebServer.Controllers;
@@ -11,12 +9,14 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class FileRecordsController : Controller
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    readonly ExceptionCounter _exceptionCounter;
-    readonly ILogger<FileRecordsController> _logger;
-    readonly BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>> _queryOpBatchQueue;
-    readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _insertUpdateDeleteOpBatchQueue;
-    readonly IMemoryCache _memoryCache;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _insertUpdateDeleteOpBatchQueue;
+    private readonly ILogger<FileRecordsController> _logger;
+    private readonly IMemoryCache _memoryCache;
+
+    private readonly BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>>
+        _queryOpBatchQueue;
 
     public FileRecordsController(
         ILogger<FileRecordsController> logger,
@@ -26,7 +26,7 @@ public class FileRecordsController : Controller
         [FromKeyedServices(nameof(FileRecordInsertUpdateDeleteService))]
         BatchQueue<BatchQueueOperation<FileRecordModel, bool>> insertUpdateDeleteOpBatchQueue,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
-        IMemoryCache  memoryCache)
+        IMemoryCache memoryCache)
     {
         _dbContextFactory = dbContextFactory;
         _exceptionCounter = exceptionCounter;
@@ -45,9 +45,10 @@ public class FileRecordsController : Controller
         var apiResponse = new PaginationResponse<FileRecordModel>();
         try
         {
-            var fileRecordQueryOperation = new BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>(
-                new FileRecordSpecification(nodeId, queryParameters.Keywords, queryParameters.SortDescriptions),
-                BatchQueueOperationKind.Query);
+            var fileRecordQueryOperation =
+                new BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>(
+                    new FileRecordSpecification(nodeId, queryParameters.Keywords, queryParameters.SortDescriptions),
+                    BatchQueueOperationKind.Query);
             await _queryOpBatchQueue.SendAsync(fileRecordQueryOperation, cancellationToken);
             var queryResult = await fileRecordQueryOperation.WaitAsync(cancellationToken);
             apiResponse.SetResult(queryResult);
@@ -71,7 +72,8 @@ public class FileRecordsController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            var fileRecordOperation = new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.InsertOrUpdate);
+            var fileRecordOperation =
+                new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.InsertOrUpdate);
             await _insertUpdateDeleteOpBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
             await fileRecordOperation.WaitAsync(cancellationToken);
         }
@@ -95,7 +97,8 @@ public class FileRecordsController : Controller
 
         try
         {
-            var fileRecordOperation = new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.Delete);
+            var fileRecordOperation =
+                new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.Delete);
             await _insertUpdateDeleteOpBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
             await fileRecordOperation.WaitAsync(cancellationToken);
         }

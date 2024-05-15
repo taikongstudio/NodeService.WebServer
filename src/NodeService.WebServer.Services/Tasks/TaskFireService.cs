@@ -1,39 +1,41 @@
 ﻿using System.Threading.Channels;
-using NodeService.Infrastructure.Concurrent;
-using NodeService.Infrastructure.Data;
+using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.NodeSessions;
 
 namespace NodeService.WebServer.Services.Tasks;
 
-public class TaskExecutionInstanceInitializer
+public class TaskFireService : BackgroundService
 {
-    readonly ILogger<TaskExecutionInstanceInitializer> _logger;
-    readonly INodeSessionService _nodeSessionService;
-    readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly BatchQueue<FireTaskParameters> _fireTaskBatchQueue;
+    private readonly ILogger<TaskFireService> _logger;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly ConcurrentDictionary<string, TaskPenddingContext> _penddingContextDictionary;
+    private readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
+    private readonly IAsyncQueue<TaskCancellationParameters> _taskCancellationQueue;
+    private readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
     private readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
+    private readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
     private readonly ApplicationRepositoryFactory<JobFireConfigurationModel> _taskFireRecordRepositoryFactory;
     private readonly ApplicationRepositoryFactory<JobTypeDescConfigModel> _taskTypeDescConfigRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    readonly ConcurrentDictionary<string, TaskPenddingContext> _penddingContextDictionary;
-    readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
-    readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
-    readonly ExceptionCounter _exceptionCounter;
 
-    public TaskExecutionInstanceInitializer(
-        ILogger<TaskExecutionInstanceInitializer> logger,
-        ApplicationRepositoryFactory<JobScheduleConfigModel>  taskDefinitionRepositoryFactory,
+    public TaskFireService(
+        ILogger<TaskFireService> logger,
+        ApplicationRepositoryFactory<JobScheduleConfigModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<JobExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
         ApplicationRepositoryFactory<JobFireConfigurationModel> jobFireConfigRepositoryFactory,
         ApplicationRepositoryFactory<JobTypeDescConfigModel> taskTypeDescConfigRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
         BatchQueue<JobExecutionReportMessage> taskExecutionReportBatchQueue,
         INodeSessionService nodeSessionService,
-        ExceptionCounter exceptionCounter)
+        ExceptionCounter exceptionCounter,
+        BatchQueue<FireTaskParameters> fireTaskBatchQueue,
+        IAsyncQueue<TaskCancellationParameters> taskCancellationQueue)
     {
         _logger = logger;
         PenddingContextChannel = Channel.CreateUnbounded<TaskPenddingContext>();
@@ -53,32 +55,37 @@ public class TaskExecutionInstanceInitializer
                 EnsureOrdered = true,
                 MaxDegreeOfParallelism = Environment.ProcessorCount / 2
             });
-        Task.Run(SchedulePenddingContextAsync);
         _exceptionCounter = exceptionCounter;
+        _fireTaskBatchQueue = fireTaskBatchQueue;
+        _taskCancellationQueue = taskCancellationQueue;
     }
 
     public Channel<TaskPenddingContext> PenddingContextChannel { get; }
     public ActionBlock<TaskPenddingContext> PenddingActionBlock { get; }
 
-    async Task SchedulePenddingContextAsync()
+    private async Task SchedulePenddingContextAsync(object? state)
     {
+        if (state is not CancellationToken cancellationToken) return;
         while (true)
         {
-            await PenddingContextChannel.Reader.WaitToReadAsync();
+            await PenddingContextChannel.Reader.WaitToReadAsync(cancellationToken);
             while (PenddingContextChannel.Reader.TryRead(out var penddingContext))
-            {
-                _priorityQueue.Enqueue(penddingContext, penddingContext.FireParameters.TaskScheduleConfig.Priority);
-            }
+                _priorityQueue.Enqueue(penddingContext, penddingContext.TaskDefinition.Priority);
             while (PenddingActionBlock.InputCount < Environment.ProcessorCount / 2
-                && 
-                _priorityQueue.TryDequeue(out var penddingContext, out var _))
-            {
+                   &&
+                   _priorityQueue.TryDequeue(out var penddingContext, out var _))
                 PenddingActionBlock.Post(penddingContext);
-            }
         }
     }
 
-    async Task ProcessPenddingContextAsync(TaskPenddingContext context)
+    private async Task DispatchTaskCancellationMessages(object? state)
+    {
+        if (state is not CancellationToken cancellationToken) return;
+        await foreach (var taskCancellationParameters in _taskCancellationQueue.ReadAllAsync(cancellationToken))
+            await TryCancelAsync(taskCancellationParameters.TaskExeuctionInstanceId);
+    }
+
+    private async Task ProcessPenddingContextAsync(TaskPenddingContext context)
     {
         var readyToRun = false;
         try
@@ -86,7 +93,7 @@ public class TaskExecutionInstanceInitializer
             using var repo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
             _logger.LogInformation($"{context.Id}:Start init");
             await context.EnsureInitAsync();
-            switch (context.FireParameters.TaskScheduleConfig.ExecutionStrategy)
+            switch (context.TaskDefinition.ExecutionStrategy)
             {
                 case JobExecutionStrategy.Concurrent:
                     readyToRun = true;
@@ -153,9 +160,9 @@ public class TaskExecutionInstanceInitializer
         }
     }
 
-    public async ValueTask<bool> TryCancelAsync(string id)
+    public async ValueTask<bool> TryCancelAsync(string taskExecutionInstanceId)
     {
-        if (_penddingContextDictionary.TryGetValue(id, out var context))
+        if (_penddingContextDictionary.TryGetValue(taskExecutionInstanceId, out var context))
         {
             await context.CancelAsync();
             return true;
@@ -165,32 +172,18 @@ public class TaskExecutionInstanceInitializer
     }
 
 
-    public async Task InitAsync(FireTaskParameters parameters, CancellationToken cancellationToken = default)
+    private async Task FireTaskAsync(
+        IRepository<JobScheduleConfigModel> taskDefinitionRepo,
+        IRepository<JobExecutionInstanceModel> taskExecutionInstanceRepo,
+        IRepository<JobFireConfigurationModel> taskFireRecordRepo,
+        IRepository<JobTypeDescConfigModel> taskTypeDescConfigRepo,
+        IRepository<NodeInfoModel> nodeInfoRepo,
+        FireTaskParameters parameters,
+        JobScheduleConfigModel taskDefinition,
+        CancellationToken cancellationToken = default)
     {
         try
         {
-            using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
-            var taskDefinition = await taskDefinitionRepo.GetByIdAsync(parameters.TaskScheduleConfig.Id, cancellationToken);
-            if (taskDefinition == null) return;
-            if (taskDefinition.NodeList.Count == 0) return;
-
-            using var taskFireRecordRepo = _taskFireRecordRepositoryFactory.CreateRepository();
-
-            await taskFireRecordRepo.AddAsync(new JobFireConfigurationModel
-            {
-                Id = parameters.FireInstanceId,
-                JobScheduleConfigJsonString = taskDefinition.ToJson()
-            }, cancellationToken);
-
-            parameters.TaskScheduleConfig = taskDefinition;
-
-            using var taskTypeDescRepo = _taskTypeDescConfigRepositoryFactory.CreateRepository();
-
-            taskDefinition.JobTypeDesc = await taskTypeDescRepo.GetByIdAsync(taskDefinition.JobTypeDescId, cancellationToken);
-
-
-            using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
-
             foreach (var node in taskDefinition.NodeList)
                 try
                 {
@@ -200,6 +193,8 @@ public class TaskExecutionInstanceInitializer
                     foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
                     {
                         var taskExecutionInstance = await AddTaskExecutionInstanceAsync(
+                            taskDefinition,
+                            taskExecutionInstanceRepo,
                             nodeSessionId,
                             parameters,
                             cancellationToken);
@@ -208,8 +203,9 @@ public class TaskExecutionInstanceInitializer
                             {
                                 NodeSessionService = _nodeSessionService,
                                 NodeSessionId = nodeSessionId,
-                                FireEvent = taskExecutionInstance.ToFireEvent(parameters),
-                                FireParameters = parameters
+                                FireEvent = taskExecutionInstance.ToFireEvent(taskDefinition),
+                                FireParameters = parameters,
+                                TaskDefinition = taskDefinition
                             });
 
                         await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
@@ -228,27 +224,27 @@ public class TaskExecutionInstanceInitializer
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
-
     }
 
     public async Task<JobExecutionInstanceModel> AddTaskExecutionInstanceAsync(
-    NodeSessionId nodeSessionId,
-    FireTaskParameters parameters,
-    CancellationToken cancellationToken = default)
+        JobScheduleConfigModel taskDefinition,
+        IRepository<JobExecutionInstanceModel> taskExecutionInstanceRepo,
+        NodeSessionId nodeSessionId,
+        FireTaskParameters parameters,
+        CancellationToken cancellationToken = default)
     {
-        using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
         var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);
         var taskExecutionInstance = new JobExecutionInstanceModel
         {
             Id = Guid.NewGuid().ToString(),
-            Name = $"{nodeName} {parameters.TaskScheduleConfig.Name} {parameters.FireInstanceId}",
+            Name = $"{nodeName} {taskDefinition.Name} {parameters.FireInstanceId}",
             NodeInfoId = nodeSessionId.NodeId.Value,
             Status = JobExecutionStatus.Triggered,
             FireTimeUtc = parameters.FireTimeUtc.DateTime,
             Message = string.Empty,
             FireType = "Server",
             TriggerSource = parameters.TriggerSource,
-            JobScheduleConfigId = parameters.TaskScheduleConfig.Id,
+            JobScheduleConfigId = taskDefinition.Id,
             ParentId = parameters.ParentTaskId,
             FireInstanceId = parameters.FireInstanceId
         };
@@ -257,7 +253,7 @@ public class TaskExecutionInstanceInitializer
         var isOnline = _nodeSessionService.GetNodeStatus(nodeSessionId) == NodeStatus.Online;
         if (isOnline)
         {
-            switch (parameters.TaskScheduleConfig.ExecutionStrategy)
+            switch (taskDefinition.ExecutionStrategy)
             {
                 case JobExecutionStrategy.Concurrent:
                     taskExecutionInstance.Message = $"{nodeName}:triggered";
@@ -282,9 +278,6 @@ public class TaskExecutionInstanceInitializer
             taskExecutionInstance.Status = JobExecutionStatus.Failed;
         }
 
-
-        var taskScheduleConfigJsonString = parameters.TaskScheduleConfig.ToJson<JobScheduleConfigModel>();
-
         if (parameters.NextFireTimeUtc != null)
             taskExecutionInstance.NextFireTimeUtc = parameters.NextFireTimeUtc.Value.UtcDateTime;
         if (parameters.PreviousFireTimeUtc != null)
@@ -298,4 +291,67 @@ public class TaskExecutionInstanceInitializer
         return taskExecutionInstance;
     }
 
+    private (string TaskDefinitionId, string TaskFireInstanceId) TaskParametersGroupFunc(
+        FireTaskParameters fireTaskParameters)
+    {
+        return (fireTaskParameters.TaskDefinitionId, fireTaskParameters.FireInstanceId);
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _ = Task.Factory.StartNew(SchedulePenddingContextAsync, stoppingToken, stoppingToken);
+        _ = Task.Factory.StartNew(DispatchTaskCancellationMessages, stoppingToken, stoppingToken);
+        await foreach (var arrayPoolCollection in _fireTaskBatchQueue.ReceiveAllAsync(stoppingToken))
+            try
+            {
+                if (arrayPoolCollection.CountDefault() == 0) continue;
+                using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
+                using var taskFireRecordRepo = _taskFireRecordRepositoryFactory.CreateRepository();
+                using var taskTypeDescRepo = _taskTypeDescConfigRepositoryFactory.CreateRepository();
+                using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
+                using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
+                foreach (var fireTaskParametersGroup in arrayPoolCollection.Where(static x => x != default)
+                             .GroupBy(TaskParametersGroupFunc))
+                {
+                    var (taskDefinitionId, fireTaskInstanceId) = fireTaskParametersGroup.Key;
+
+                    var taskDefinition = await taskDefinitionRepo.GetByIdAsync(taskDefinitionId, stoppingToken);
+                    if (taskDefinition == null) continue;
+                    if (taskDefinition.NodeList.Count == 0) continue;
+
+                    await taskFireRecordRepo.AddAsync(new JobFireConfigurationModel
+                    {
+                        Id = fireTaskInstanceId,
+                        JobScheduleConfigJsonString = taskDefinition.ToJson()
+                    }, stoppingToken);
+
+
+                    taskDefinition.JobTypeDesc =
+                        await taskTypeDescRepo.GetByIdAsync(taskDefinition.JobTypeDescId, stoppingToken);
+                    foreach (var fireTaskParameters in fireTaskParametersGroup)
+                    {
+                        if (fireTaskParameters.NodeList != null && fireTaskParameters.NodeList.Count > 0)
+                            taskDefinition.NodeList = fireTaskParameters.NodeList;
+                        await FireTaskAsync(
+                            taskDefinitionRepo,
+                            taskExecutionInstanceRepo,
+                            taskFireRecordRepo,
+                            taskTypeDescRepo,
+                            nodeInfoRepo,
+                            fireTaskParameters,
+                            taskDefinition,
+                            stoppingToken);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+            finally
+            {
+                arrayPoolCollection.Dispose();
+            }
+    }
 }

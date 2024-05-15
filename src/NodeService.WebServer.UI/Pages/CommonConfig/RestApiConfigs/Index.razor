@@ -1,5 +1,5 @@
 @namespace NodeService.WebServer.UI.Pages.CommonConfig.RestApiConfigs
-@page "/CommonConfig/RestApiConfigs"
+@page "/CommonConfig/RestApi"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
@@ -9,7 +9,7 @@
 <GridContent>
     <Modal
         Width="800"
-        Style="top:0px"
+        Style="top:0"
         Title="@_modalTitle"
         @bind-Visible="@_editFormVisible"
         ConfirmLoading="@_editFormConfirmLoading"
@@ -52,7 +52,7 @@
                     <Title Level="3">RestApi配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>

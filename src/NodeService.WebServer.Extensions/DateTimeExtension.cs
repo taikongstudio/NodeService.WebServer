@@ -2,11 +2,11 @@
 
 public static class DateTimeExtension
 {
-    const int Second = 1;
-    const int Minute = 60 * Second;
-    const int Hour = 60 * Minute;
-    const int Day = 24 * Hour;
-    const int Month = 30 * Day;
+    private const int Second = 1;
+    private const int Minute = 60 * Second;
+    private const int Hour = 60 * Minute;
+    private const int Day = 24 * Hour;
+    private const int Month = 30 * Day;
 
     // todo: Need to be localized
     public static string ToFriendlyDisplay(this DateTime dateTime)

@@ -1,16 +1,15 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.FtpDownloadConfigs
-@page "/CommonConfig/FtpDownloadConfigs"
+@page "/CommonConfig/FtpDownload"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
-@using NodeService.WebServer.UI.Pages.Components
 @implements IDisposable
 
 <GridContent>
 
     <Modal Width="800"
-           Style="top:0px"
+           Style="top:0"
            Title="@_modalTitle"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
@@ -41,10 +40,10 @@
                         }
                     }
                     <Tag Class="site-tag-plus" OnClick="ShowFtpConfigSelectorDialogAsync">
-                        <Icon Type="@IconType.Outline.FolderOpen"/>
+                        <Icon Type="@IconType.Outline.Edit"/>
                     </Tag>
                     <CommonDialog @ref="_ftpConfigDialog" Closed="OnSelectFtpConfigDialogClosed">
-                        <FtpConfigSelector @ref="_ftpConfigSelector" @bind-SelectedItems="_selectedFtpConfigs" Mode="SelectionMode.Single" />
+                        <FtpConfigSelector @ref="_ftpConfigSelector" @bind-SelectedItems="_selectedFtpConfigs" Mode="SelectionMode.Single"/>
                     </CommonDialog>
                 </FormItem>
                 <FormItem Label="远程目录">
@@ -128,7 +127,7 @@
                     <Title Level="3">Ftp下载配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -228,9 +227,9 @@
         if (model == null)
         {
             _editModel = new FtpDownloadConfigModel
-                {
-                    Id = Guid.NewGuid().ToString()
-                };
+            {
+                Id = Guid.NewGuid().ToString()
+            };
             _modalTitle = "新建配置";
         }
         else

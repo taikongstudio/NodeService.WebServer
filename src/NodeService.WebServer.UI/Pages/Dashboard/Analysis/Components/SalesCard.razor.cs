@@ -6,7 +6,7 @@ namespace NodeService.WebServer.UI.Pages.Dashboard.Analysis;
 
 public partial class SalesCard
 {
-    readonly ColumnConfig _saleChartConfig = new()
+    private readonly ColumnConfig _saleChartConfig = new()
     {
         AutoFit = true,
         Padding = "auto",
@@ -14,7 +14,7 @@ public partial class SalesCard
         YField = "y"
     };
 
-    readonly ColumnConfig _visitChartConfig = new()
+    private readonly ColumnConfig _visitChartConfig = new()
     {
         AutoFit = true,
         Padding = "auto",
@@ -22,8 +22,8 @@ public partial class SalesCard
         YField = "y"
     };
 
-    IChartComponent _saleChart;
-    IChartComponent _visitChart;
+    private IChartComponent _saleChart;
+    private IChartComponent _visitChart;
 
     [Parameter]
     public SaleItem[] Items { get; set; } =
@@ -45,7 +45,7 @@ public partial class SalesCard
         if (firstRender) await OnTabChanged("1");
     }
 
-    async Task OnTabChanged(string activeKey)
+    private async Task OnTabChanged(string activeKey)
     {
         var data = await ChartService.GetSalesDataAsync();
         if (activeKey == "1")

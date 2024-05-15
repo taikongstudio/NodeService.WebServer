@@ -8,8 +8,8 @@ namespace NodeService.WebServer.Areas.Identity;
 public class RevalidatingIdentityAuthenticationStateProvider<TUser>
     : RevalidatingServerAuthenticationStateProvider where TUser : class
 {
-    readonly IdentityOptions _options;
-    readonly IServiceScopeFactory _scopeFactory;
+    private readonly IdentityOptions _options;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public RevalidatingIdentityAuthenticationStateProvider(
         ILoggerFactory loggerFactory,
@@ -42,7 +42,7 @@ public class RevalidatingIdentityAuthenticationStateProvider<TUser>
         }
     }
 
-    async Task<bool> ValidateSecurityStampAsync(UserManager<TUser> userManager, ClaimsPrincipal principal)
+    private async Task<bool> ValidateSecurityStampAsync(UserManager<TUser> userManager, ClaimsPrincipal principal)
     {
         var user = await userManager.GetUserAsync(principal);
         if (user == null) return false;

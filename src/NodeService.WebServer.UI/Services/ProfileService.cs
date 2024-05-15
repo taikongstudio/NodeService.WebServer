@@ -11,7 +11,7 @@ public interface IProfileService
 
 public class ProfileService : IProfileService
 {
-    readonly HttpClient _httpClient;
+    private readonly HttpClient _httpClient;
 
     public ProfileService(HttpClient httpClient)
     {

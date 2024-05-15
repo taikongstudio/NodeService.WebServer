@@ -9,12 +9,12 @@ public class TaskLogDatabase : IDisposable
     public const string LogColumn = "log";
     public const string TaskColumn = "task";
 
-    readonly BlockBasedTableOptions _bbto;
-    readonly ColumnFamilies _columnFamilies;
-    readonly FlushOptions _flushOptions;
-    readonly ILogger<TaskLogDatabase> _logger;
-    readonly DbOptions _options;
-    readonly RocksDb _rocksDb;
+    private readonly BlockBasedTableOptions _bbto;
+    private readonly ColumnFamilies _columnFamilies;
+    private readonly FlushOptions _flushOptions;
+    private readonly ILogger<TaskLogDatabase> _logger;
+    private readonly DbOptions _options;
+    private readonly RocksDb _rocksDb;
 
     public TaskLogDatabase(
         ILogger<TaskLogDatabase> logger
@@ -125,7 +125,7 @@ public class TaskLogDatabase : IDisposable
         return 0;
     }
 
-    string GetKey(string id, int index)
+    private string GetKey(string id, int index)
     {
         return $"{id}_Log_{index}";
     }

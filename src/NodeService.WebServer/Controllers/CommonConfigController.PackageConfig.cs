@@ -1,5 +1,5 @@
-﻿using NodeService.WebServer.Data.Repositories;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using NodeService.WebServer.Data.Repositories;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -10,14 +10,14 @@ public record class PackageConfigUploadModel : PackageConfigModel
 
 public partial class CommonConfigController
 {
-    [HttpGet("/api/commonconfig/package/list")]
+    [HttpGet("/api/CommonConfig/package/list")]
     public Task<PaginationResponse<PackageConfigModel>> QueryPackageConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<PackageConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/commonconfig/package/download/{packageId}")]
+    [HttpGet("/api/CommonConfig/package/download/{packageId}")]
     public async Task<IActionResult> DownloadPackageAsync(string packageId)
     {
         ArgumentException.ThrowIfNullOrEmpty(packageId);
@@ -49,7 +49,7 @@ public partial class CommonConfigController
         return File(fileContents, "application/octet-stream", model.FileName);
     }
 
-    [HttpPost("/api/commonconfig/package/addorupdate")]
+    [HttpPost("/api/CommonConfig/package/addorupdate")]
     [DisableRequestSizeLimit]
     public async Task<ApiResponse> AddOrUpdatePackageAsync([FromForm] PackageConfigUploadModel package)
     {
@@ -120,14 +120,14 @@ public partial class CommonConfigController
         return apiResponse;
     }
 
-    [HttpPost("/api/commonconfig/package/remove")]
+    [HttpPost("/api/CommonConfig/package/remove")]
     public Task<ApiResponse> DeletePackageConfigAsync([FromBody] PackageConfigModel model)
     {
         return DeleteConfigurationAsync(model);
     }
 
 
-    [HttpGet("/api/commonconfig/package/{id}")]
+    [HttpGet("/api/CommonConfig/package/{id}")]
     public Task<ApiResponse<PackageConfigModel>> QueryPackageConfigAsync(string id)
     {
         return QueryConfigurationAsync<PackageConfigModel>(id);

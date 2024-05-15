@@ -8,7 +8,7 @@ namespace NodeService.WebServer.UI.Pages.List;
 
 public partial class Projects
 {
-    readonly FormItemLayout _formItemLayout = new()
+    private readonly FormItemLayout _formItemLayout = new()
     {
         WrapperCol = new ColLayoutParam
         {
@@ -17,7 +17,7 @@ public partial class Projects
         }
     };
 
-    readonly ListGridType _listGridType = new()
+    private readonly ListGridType _listGridType = new()
     {
         Gutter = 16,
         Xs = 1,
@@ -28,9 +28,9 @@ public partial class Projects
         Xxl = 4
     };
 
-    readonly ListFormModel _model = new();
+    private readonly ListFormModel _model = new();
 
-    IList<ListItemDataType> _fakeList = new List<ListItemDataType>();
+    private IList<ListItemDataType> _fakeList = new List<ListItemDataType>();
 
     [Inject] public IProjectService ProjectService { get; set; }
 

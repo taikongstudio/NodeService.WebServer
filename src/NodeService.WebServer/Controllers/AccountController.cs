@@ -9,16 +9,16 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class AccountController : ControllerBase
 {
-    readonly IAccessControlService _accessControl;
+    private readonly IAccessControlService _accessControl;
+    private readonly ExceptionCounter _exceptionCounter;
 
-    readonly ILogger<AccountController> _logger;
-    readonly IMemoryCache _memoryCache;
-    readonly int _refreshTokenExpiration;
-    readonly UserManager<ApplicationUser> _userManager;
-    readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<AccountController> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly int _refreshTokenExpiration;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public AccountController(IAccessControlService accessControl,
-        ExceptionCounter  exceptionCounter,
+        ExceptionCounter exceptionCounter,
         IOptions<JwtSettings> jwtSettings,
         IMemoryCache memoryChache,
         ILogger<AccountController> logger,

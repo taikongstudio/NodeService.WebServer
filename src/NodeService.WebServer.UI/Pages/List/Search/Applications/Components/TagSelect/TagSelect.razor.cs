@@ -4,9 +4,9 @@ namespace NodeService.WebServer.UI.Pages.List;
 
 public partial class TagSelect
 {
-    readonly IList<TagSelectOption> _options = new List<TagSelectOption>();
-    bool _checkedAll;
-    bool _expand = false;
+    private readonly IList<TagSelectOption> _options = new List<TagSelectOption>();
+    private bool _checkedAll;
+    private bool _expand = false;
 
     [Parameter] public bool Expandable { get; set; }
 
@@ -37,12 +37,12 @@ public partial class TagSelect
             .If("expanded", () => _expand);
     }
 
-    void HandleExpand()
+    private void HandleExpand()
     {
         _expand = !_expand;
     }
 
-    void HandleCheckedChange(bool isChecked)
+    private void HandleCheckedChange(bool isChecked)
     {
         _checkedAll = isChecked;
         foreach (var option in _options) option.Check(_checkedAll);

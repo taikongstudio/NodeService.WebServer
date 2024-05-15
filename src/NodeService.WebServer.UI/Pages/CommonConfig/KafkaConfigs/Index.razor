@@ -1,5 +1,5 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.KafkaConfigs
-@page "/CommonConfig/KafkaConfigs"
+@page "/CommonConfig/kafka"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
@@ -9,7 +9,7 @@
 <GridContent>
     <Modal Width="800"
            Title="@_modalTitle"
-           Style="top:0px"
+           Style="top:0"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
@@ -55,7 +55,7 @@
                     <Title Level="3">Kafka配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>

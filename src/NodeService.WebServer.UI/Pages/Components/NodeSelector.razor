@@ -1,6 +1,6 @@
-﻿@using NodeService.WebServer.UI.Helpers
-@inject ApiService ApiService
+﻿@inject ApiService ApiService
 @inject NotificationService _notice
+@using NodeService.WebServer.UI.Helpers
 @inherits Selector<NodeInfoModel>
 <GridRow>
     <Button Shape="@ButtonShape.Circle"
@@ -20,15 +20,15 @@
             LabelName="@nameof(StringEntry.Name)"
             ValueName="@nameof(StringEntry.Tag)"/>
     <RadioGroup Style="margin-left:20px"
-        ValueChanged="(NodeStatus status) => OnSelectedStatusChanged(status)"
-        Value="@_dataSource.QueryParameters.Status"
-        Size="middle">
+                ValueChanged="(NodeStatus status) => OnSelectedStatusChanged(status)"
+                Value="@_dataSource.QueryParameters.Status"
+                Size="middle">
         <Radio RadioButton Value="@(NodeStatus.All)">全部状态</Radio>
         <Radio RadioButton Value="@(NodeStatus.Online)">
-            <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线" />
+            <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线"/>
         </Radio>
         <Radio RadioButton Value="@(NodeStatus.Offline)">
-            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="在线" />
+            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="在线"/>
         </Radio>
     </RadioGroup>
 
@@ -61,7 +61,7 @@
 <GridRow>
     <GridCol Flex=@("auto")>
         <Table Size="TableSize.Small"
-               OnChange="(QueryModel<NodeInfoModel> query)=>OnTableChanged(query)"
+               OnChange="(QueryModel<NodeInfoModel> query) => OnTableChanged(query)"
                OnPageIndexChange="@_dataSource.OnPaginationEvent"
                OnPageSizeChange="@_dataSource.OnPaginationEvent"
                PageSize="@_dataSource.PageSize"
@@ -74,13 +74,13 @@
                SelectedRowsChanged="(IEnumerable<NodeInfoModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
-                <Selection Key="@ctx.Id" Type="@GetSelectionType()"/>
+                <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
                 <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
-                <PropertyColumn Property="c => c.Name" Sortable Title="节点名称">
+                <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="节点名称">
                     <Badge Status="@(ctx.Status.GetBadgeStatus())" Text="@ctx.Name"></Badge>
                 </PropertyColumn>
-                <PropertyColumn Property="c => c.Profile.Usages" Sortable Title="用途"></PropertyColumn>
-                <PropertyColumn Property="c => c.Profile.IpAddress" Sortable Title="Ip地址"></PropertyColumn>
+                <PropertyColumn Property="c => c.Profile.Usages" Ellipsis Sortable Title="用途"></PropertyColumn>
+                <PropertyColumn Property="c => c.Profile.IpAddress" Ellipsis Sortable Title="Ip地址"></PropertyColumn>
             </ColumnDefinitions>
         </Table>
     </GridCol>
@@ -95,6 +95,7 @@
 
     PaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
 
+    protected override IEnumerable<NodeInfoModel> ItemsSource => _dataSource.ItemsSource;
 
     protected override void OnInitialized()
     {
@@ -174,4 +175,5 @@
 
         await _dataSource.RefreshAsync();
     }
+
 }

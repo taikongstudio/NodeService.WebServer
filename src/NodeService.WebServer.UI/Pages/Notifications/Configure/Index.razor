@@ -1,14 +1,12 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Notifications.Configure
 @page "/Notifications/Configure"
-@using NodeService.WebServer.UI.Pages.Notifications.Components
 @inject ApiService ApiService
 @inject NotificationService _notice
-@inject ConfirmService _confirmService
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
 <GridContent>
     <Modal Width="800"
-           Style="top:0px"
+           Style="top:0"
            Title="@_modalTitle"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
@@ -34,7 +32,7 @@
                         TItemValue="NotificationConfigurationType"
                         ValueChanged="OnSelectedConfigurationTypeChanged"
                         LabelName="@nameof(NotificationConfigurationTypeModel.Name)"
-                        ValueName="@nameof(NotificationConfigurationTypeModel.Type)"/>
+                        ValueName="@nameof(NotificationConfigurationTypeModel.Type)"></Select>
             </FormItem>
             @switch (_editModel.ConfigurationType)
             {
@@ -49,7 +47,7 @@
         </Form>
     </Modal>
 
-    <Table @ref="@_table" Size="TableSize.Small"
+    <Table Size="TableSize.Small"
            Loading="_loading"
            EnableVirtualization="false"
            TItem="NotificationConfigModel"
@@ -67,7 +65,7 @@
                     <Title Level="3">通知设置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -117,7 +115,6 @@
 </GridContent>
 
 @code {
-    ITable _table;
     string _modalTitle;
     bool _editFormVisible;
     bool _editFormSubmitting;

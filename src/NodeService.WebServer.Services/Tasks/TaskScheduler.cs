@@ -5,14 +5,14 @@ namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskScheduler
 {
-    readonly TaskSchedulerDictionary _jobSchedulerDictionary;
-    readonly ILogger _logger;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
+    private readonly ILogger _logger;
 
 
-    readonly ISchedulerFactory _schedulerFactory;
-    readonly IServiceProvider _serviceProvider;
-    readonly ExceptionCounter _exceptionCounter;
-    IScheduler _scheduler;
+    private readonly ISchedulerFactory _schedulerFactory;
+    private readonly IServiceProvider _serviceProvider;
+    private IScheduler _scheduler;
 
     public TaskScheduler(
         ISchedulerFactory schedulerFactory,
@@ -73,10 +73,10 @@ public class TaskScheduler
         return asyncDisposable;
     }
 
-    class AsyncDisposable : IAsyncDisposable
+    private class AsyncDisposable : IAsyncDisposable
     {
-        readonly IScheduler _scheduler;
-        JobKey _jobKey;
+        private readonly IScheduler _scheduler;
+        private JobKey _jobKey;
 
         public AsyncDisposable(IScheduler scheduler)
         {

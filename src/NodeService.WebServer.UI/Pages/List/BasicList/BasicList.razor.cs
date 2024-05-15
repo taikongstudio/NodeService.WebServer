@@ -7,9 +7,9 @@ namespace NodeService.WebServer.UI.Pages.List;
 
 public partial class BasicList
 {
-    readonly BasicListFormModel _model = new();
+    private readonly BasicListFormModel _model = new();
 
-    readonly IDictionary<string, ProgressStatus> _pStatus = new Dictionary<string, ProgressStatus>
+    private readonly IDictionary<string, ProgressStatus> _pStatus = new Dictionary<string, ProgressStatus>
     {
         { "active", ProgressStatus.Active },
         { "exception", ProgressStatus.Exception },
@@ -17,11 +17,11 @@ public partial class BasicList
         { "success", ProgressStatus.Success }
     };
 
-    ListItemDataType[] _data = { };
+    private ListItemDataType[] _data = { };
 
     [Inject] protected IProjectService ProjectService { get; set; }
 
-    void ShowModal()
+    private void ShowModal()
     {
     }
 

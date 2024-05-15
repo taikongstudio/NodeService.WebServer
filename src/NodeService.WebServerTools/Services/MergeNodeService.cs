@@ -5,8 +5,8 @@ namespace NodeService.WebServerTools.Services;
 
 public class MergeNodeService : BackgroundService
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    readonly ILogger<MergeNodeService> _logger;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ILogger<MergeNodeService> _logger;
 
     public MergeNodeService(
         ILogger<MergeNodeService> logger,

@@ -12,7 +12,8 @@
         </SpaceItem>
 
     </Space>
-    <Table @ref="@_table" Size="TableSize.Small"
+    <Table @ref="@_table"
+           Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            EnableVirtualization="false"
            TItem="NotificationRecordModel"
@@ -30,7 +31,8 @@
                     <Title Level="3">通知记录</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="18">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords"
+                            OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
         </TitleTemplate>

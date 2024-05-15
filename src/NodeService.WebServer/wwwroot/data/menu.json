@@ -23,101 +23,101 @@
     ]
   },
   {
-    "path": "/Nodes",
+    "path": "/nodes",
     "name": "节点",
     "key": "nodes",
     "icon": "node-index",
     "children": [
       {
-        "path": "/Nodes",
+        "path": "/nodes/list",
         "name": "节点列表",
-        "key": "Nodes.List"
+        "key": "nodes.list"
       },
       {
-        "path": "/Nodes/Settings",
+        "path": "/nodes/settings",
         "name": "节点设置",
-        "key": "Nodes.Settings"
+        "key": "nodes.settings"
       }
     ]
   },
   {
-    "path": "/Jobs",
-    "name": "作业",
-    "key": "jobs",
+    "path": "/tasks",
+    "name": "任务",
+    "key": "tasks",
     "icon": "schedule",
     "children": [
       {
-        "path": "/CommonConfig/JobScheduleConfigs",
-        "name": "作业调度配置",
-        "key": "CommonConfig.JobScheduleConfigs"
+        "path": "/tasks/definitions",
+        "name": "任务流定义",
+        "key": "tasks.definitions"
       },
       {
-        "path": "/Jobs/Instances",
-        "name": "作业执行实例",
-        "key": "Jobs.Instances"
+        "path": "/tasks/instances",
+        "name": "任务流实例",
+        "key": "tasks.instances"
       }
     ]
   },
   {
-    "path": "/CommonConfig",
+    "path": "/commonConfig",
     "name": "配置",
-    "key": "CommonConfig",
+    "key": "commonConfig",
     "icon": "setting",
     "children": [
       {
-        "path": "/CommonConfig/MysqlConfigs",
+        "path": "/CommonConfig/Mysql",
         "name": "MySql配置",
-        "key": "CommonConfig.MysqlConfigs"
+        "key": "commonConfig.Mysql"
       },
       {
-        "path": "/CommonConfig/FtpConfigs",
+        "path": "/CommonConfig/Ftp",
         "name": "Ftp配置",
-        "key": "CommonConfig.FtpConfigs"
+        "key": "commonConfig.Ftp"
       },
       {
-        "path": "/CommonConfig/KafkaConfigs",
+        "path": "/CommonConfig/Kafka",
         "name": "Kafka配置",
-        "key": "CommonConfig.KafkaConfigs"
+        "key": "commonConfig.Kafka"
       },
       {
         "path": "/CommonConfig/NodeEnvVars",
         "name": "节点环境变量配置",
-        "key": "CommonConfig.NodeEnvVars"
+        "key": "commonConfig.NodeEnvVars"
       },
       {
-        "path": "/CommonConfig/PackageConfigs",
+        "path": "/CommonConfig/Package",
         "name": "包配置",
-        "key": "CommonConfig.PackageConfigs"
+        "key": "commonConfig.Package"
       },
       {
-        "path": "/CommonConfig/FtpUploadConfigs",
+        "path": "/CommonConfig/FtpUpload",
         "name": "Ftp上传配置",
-        "key": "CommonConfig.FtpUploadConfigs"
+        "key": "commonConfig.FtpUpload"
       },
       {
-        "path": "/CommonConfig/FtpDownloadConfigs",
+        "path": "/CommonConfig/FtpDownload",
         "name": "Ftp下载配置",
-        "key": "CommonConfig.FtpDownloadConfigs"
+        "key": "commonConfig.FtpDownload"
       },
       {
-        "path": "/CommonConfig/RestApiConfigs",
+        "path": "/CommonConfig/RestApi",
         "name": "RestApi配置",
-        "key": "CommonConfig.RestApiConfigs"
+        "key": "commonConfig.RestApi"
       },
       {
-        "path": "/CommonConfig/WindowsTaskConfigs",
+        "path": "/CommonConfig/WindowsTask",
         "name": "Windows计划任务配置",
-        "key": "CommonConfig.WindowsTaskConfigs"
+        "key": "commonConfig.WindowsTask"
       },
       {
-        "path": "/CommonConfig/JobTypeDescConfigs",
+        "path": "/CommonConfig/JobTypeDesc",
         "name": "作业类型描述配置",
-        "key": "CommonConfig.JobTypeDescConfigs"
+        "key": "commonConfig.JobTypeDesc"
       },
       {
         "path": "/CommonConfig/ClientUpdates",
         "name": "客户端更新配置",
-        "key": "CommonConfig.ClientUpdates"
+        "key": "commonConfig.ClientUpdates"
       }
     ]
   },

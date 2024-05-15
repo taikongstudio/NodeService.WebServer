@@ -1,12 +1,12 @@
 ﻿// add a reference to System.ComponentModel.DataAnnotations DLL
 
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Sqlite.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure.Internal;
-using System.Diagnostics.CodeAnalysis;
 
 namespace NodeService.WebServer.Data;
 
@@ -91,28 +91,33 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<WindowsTaskConfigModel> WindowsTaskConfigurationDbSet { get; set; }
 
-    public override DbSet<TEntity> Set<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields | DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties | DynamicallyAccessedMemberTypes.Interfaces)] TEntity>()
+    public override DbSet<TEntity> Set<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
+                                    DynamicallyAccessedMemberTypes.NonPublicConstructors |
+                                    DynamicallyAccessedMemberTypes.PublicFields |
+                                    DynamicallyAccessedMemberTypes.NonPublicFields |
+                                    DynamicallyAccessedMemberTypes.PublicProperties |
+                                    DynamicallyAccessedMemberTypes.NonPublicProperties |
+                                    DynamicallyAccessedMemberTypes.Interfaces)]
+        TEntity>()
     {
-        if (typeof(TEntity) == typeof(PropertyBag))
-        {
-            return base.Set<PropertyBag>("PropertyBag") as DbSet<TEntity>;
-        }
+        if (typeof(TEntity) == typeof(PropertyBag)) return base.Set<PropertyBag>("PropertyBag") as DbSet<TEntity>;
         return base.Set<TEntity>();
     }
 
-    static string Serialize<T>(T? value)
+    private static string Serialize<T>(T? value)
     {
         if (value == null) return string.Empty;
         return JsonSerializer.Serialize(value);
     }
 
-    static T Deserialize<T>(string value) where T : class, new()
+    private static T Deserialize<T>(string value) where T : class, new()
     {
         if (string.IsNullOrEmpty(value)) return new T();
         return JsonSerializer.Deserialize<T>(value);
     }
 
-    static ValueComparer<IEnumerable<T>> GetEnumerableComparer<T>()
+    private static ValueComparer<IEnumerable<T>> GetEnumerableComparer<T>()
     {
         var comparer = new ValueComparer<IEnumerable<T>>(
             (r, l) => r.SequenceEqual(l),
@@ -122,7 +127,7 @@ public partial class ApplicationDbContext : DbContext
         return comparer;
     }
 
-    static ValueComparer<T> GetTypedComparer<T>() where T : IEquatable<T>
+    private static ValueComparer<T> GetTypedComparer<T>() where T : IEquatable<T>
     {
         var comparer = new ValueComparer<T>(
             (r, l) => r.Equals(l),
@@ -166,5 +171,4 @@ public partial class ApplicationDbContext : DbContext
                 break;
         }
     }
-
 }

@@ -5,9 +5,9 @@ namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskLogPersistenceService : BackgroundService
 {
-    readonly ILogger<TaskLogPersistenceService> _logger;
-    readonly TaskLogCacheManager _taskLogCacheManager;
-    readonly ExceptionCounter _exceptionCounter;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<TaskLogPersistenceService> _logger;
+    private readonly TaskLogCacheManager _taskLogCacheManager;
 
     public TaskLogPersistenceService(
         ILogger<TaskLogPersistenceService> logger,

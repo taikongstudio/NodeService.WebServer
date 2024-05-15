@@ -1,9 +1,9 @@
 ﻿using System.Text;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Controllers;
@@ -12,30 +12,33 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class JobsController : Controller
 {
-    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel>  _taskInstanceRepositoryFactory;
-    readonly ILogger<NodesController> _logger;
-    readonly IMemoryCache _memoryCache;
-    readonly INodeSessionService _nodeSessionService;
-    readonly TaskExecutionInstanceInitializer _taskExecutionInstanceInitializer;
-    readonly ExceptionCounter _exceptionCounter;
-    readonly TaskLogCacheManager _taskLogCacheManager;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<NodesController> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly IAsyncQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
+    private readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskInstanceRepositoryFactory;
+    private readonly TaskLogCacheManager _taskLogCacheManager;
 
     public JobsController(
+        IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<JobExecutionInstanceModel> taskInstanceRepositoryFactory,
         INodeSessionService nodeSessionService,
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
-        TaskExecutionInstanceInitializer taskExecutionInstanceInitializer,
-        TaskLogCacheManager taskLogCacheManager)
+        TaskLogCacheManager taskLogCacheManager,
+        IAsyncQueue<TaskCancellationParameters> taskCancellationAsyncQueue)
     {
+        _serviceProvider = serviceProvider;
         _logger = logger;
         _taskInstanceRepositoryFactory = taskInstanceRepositoryFactory;
         _nodeSessionService = nodeSessionService;
         _memoryCache = memoryCache;
         _taskLogCacheManager = taskLogCacheManager;
-        _taskExecutionInstanceInitializer = taskExecutionInstanceInitializer;
         _exceptionCounter = exceptionCounter;
+        _taskCancellationAsyncQueue = taskCancellationAsyncQueue;
     }
 
     [HttpGet("/api/jobs/instances/list")]
@@ -52,15 +55,15 @@ public class JobsController : Controller
                 queryParameters.EndDateTime = DateTime.UtcNow.Date.AddDays(1).AddSeconds(-1);
             using var repo = _taskInstanceRepositoryFactory.CreateRepository();
             var queryResult = await repo.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
-                queryParameters.Keywords,
-                queryParameters.Status,
-                queryParameters.NodeIdList,
-                queryParameters.TaskDefinitionIdList,
-                queryParameters.TaskExecutionInstanceIdList,
-                queryParameters.SortDescriptions),
+                    queryParameters.Keywords,
+                    queryParameters.Status,
+                    queryParameters.NodeIdList,
+                    queryParameters.TaskDefinitionIdList,
+                    queryParameters.TaskExecutionInstanceIdList,
+                    queryParameters.SortDescriptions),
                 queryParameters.PageSize,
                 queryParameters.PageIndex
-                );
+            );
             apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
@@ -113,7 +116,7 @@ public class JobsController : Controller
     [HttpPost("/api/jobs/instances/{id}/cancel")]
     public async Task<ApiResponse<JobExecutionInstanceModel>> CancelAsync(
         string id,
-        [FromBody] TaskCancellationParameters parameters)
+        [FromBody] TaskCancellationParameters taskCancellationParameters)
     {
         var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
         try
@@ -129,7 +132,10 @@ public class JobsController : Controller
             {
                 taskExecutionInstance.CancelTimes++;
                 await repo.SaveChangesAsync();
-                await _taskExecutionInstanceInitializer.TryCancelAsync(taskExecutionInstance.Id);
+                await _taskCancellationAsyncQueue.EnqueueAsync(new TaskCancellationParameters
+                {
+                    TaskExeuctionInstanceId = id
+                });
                 var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
                     new NodeSessionId(taskExecutionInstance.NodeInfoId),
                     taskExecutionInstance.ToCancelEvent());
@@ -186,6 +192,7 @@ public class JobsController : Controller
                     memoryStream.Position = 0;
                     return File(memoryStream, "text/plain", fileName);
                 }
+
                 var items = taskLogCache.GetEntries(
                         queryParameters.PageIndex,
                         queryParameters.PageSize)

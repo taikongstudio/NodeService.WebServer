@@ -94,7 +94,6 @@ public class FileRecordsController : Controller
                     BatchQueueOperationKind.Query);
             await _queryOpBatchQueue.SendAsync(fileRecordQueryOperation, cancellationToken);
             var queryResult = await fileRecordQueryOperation.WaitAsync(cancellationToken);
-            queryResult = new ListQueryResult<FileRecordModel>(10, 10, 1, [new FileRecordModel()]);
             apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)

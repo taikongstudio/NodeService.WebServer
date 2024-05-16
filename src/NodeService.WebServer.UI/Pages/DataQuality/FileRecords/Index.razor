@@ -7,7 +7,7 @@
 @inject NavigationManager NavigationManager
 @inject ClipboardService ClipboardService
 <GridContent>
-    <FileRecordPropertyWindow Visible="_isFileRecordPropertyWindowVisible" DataContext="_editingFileRecord" />
+    <FileRecordPropertyWindow Visible="_isFileRecordPropertyWindowVisible" DataContext="_editingFileRecord" Closed="OnFileRecordPropertyWindowClosed" />
     <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
         <NodeSelector @ref="_nodeSelector" @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple"/>
     </CommonDialog>
@@ -355,6 +355,12 @@
     {
         StateHasChanged();
         return Task.CompletedTask;
+    }
+
+    void OnFileRecordPropertyWindowClosed()
+    {
+        _isFileRecordPropertyWindowVisible = false;
+        _editingFileRecord = null;
     }
 
 }

@@ -56,6 +56,7 @@
 @code {
     [Parameter] public bool Visible { get; set; }
     [Parameter] public FileRecordModel? DataContext { get; set; }
+    [Parameter] public EventCallback Closed { get; set; }
     bool _loading;
     StandaloneCodeEditor _jsonCodeEditor;
 
@@ -70,11 +71,14 @@
 
     }
 
-    Task OnClosed()
+    async Task OnClosed()
     {
-        Visible = false;
-        this._jsonCodeEditor.Dispose();
-        return Task.CompletedTask;
+        if (Closed.HasDelegate)
+        {
+            await Closed.InvokeAsync();
+        }
+        this._jsonCodeEditor?.Dispose();
+        this.StateHasChanged();
     }
 
     private async Task InitAsync()

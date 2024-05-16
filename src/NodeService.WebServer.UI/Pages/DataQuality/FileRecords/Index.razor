@@ -27,10 +27,10 @@
            DataSource="@_dataSource.ItemsSource">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
-                <GridCol Span="4">
-                    <Title Level="3">任务实例</Title>
+                <GridCol Span="6">
+                    <Title Level="3">文件记录</Title>
                 </GridCol>
-                <GridCol Span="6" Offset="18">
+                <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
@@ -95,9 +95,9 @@
             <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox"/>
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="原始文件名称" Sortable="true" Property="c => c.OriginalFileName"></PropertyColumn>
+            <PropertyColumn Title="原始文件名称" Sortable="true" Ellipsis Property="c => c.OriginalFileName"></PropertyColumn>
             <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.State">
-                <Text>@this._stateList.FirstOrDefault(x=>x.Value==context.State)?.Value</Text>
+                <Text>@this._stateList.FirstOrDefault(x=>x.Value==context.State)?.Name</Text>
             </PropertyColumn>
             <PropertyColumn Title="原始大小"  Sortable="true" Property="c => c.Size"></PropertyColumn>
             <PropertyColumn Title="文件哈希" Sortable="true" Property="c => c.FileHashValue"></PropertyColumn>

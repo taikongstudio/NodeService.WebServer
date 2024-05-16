@@ -56,10 +56,14 @@ public class FileRecordSpecification : Specification<FileRecordModel>
         }
         if (nameFilters.HasValue)
         {
-            if (nameFilters.FilterType == DataFilterTypes.Include)
-                Query.Where(x => nameFilters.Items.Contains(x.OriginalFileName));
-            else if (nameFilters.FilterType == DataFilterTypes.Include)
-                Query.Where(x => !nameFilters.Items.Contains(x.OriginalFileName));
+            foreach (var item in nameFilters.Items)
+            {
+                if (nameFilters.FilterType == DataFilterTypes.Include)
+                    Query.Where(x => x.OriginalFileName.Contains(item));
+                else if (nameFilters.FilterType == DataFilterTypes.Exclude)
+                    Query.Where(x => !x.OriginalFileName.Contains(item));
+            }
+
         }
 
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);

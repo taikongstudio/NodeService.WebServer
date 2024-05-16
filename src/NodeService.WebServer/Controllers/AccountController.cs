@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using NodeService.Infrastructure.Identity;
 using NodeService.Infrastructure.Permissions;
+using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Controllers;
 

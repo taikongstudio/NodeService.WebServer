@@ -4,7 +4,7 @@ using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Models;
+using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.FileRecords;
 
@@ -13,7 +13,11 @@ public class FileRecordQueryService : BackgroundService
     private readonly ExceptionCounter _exceptionCounter;
     private readonly ILogger<FileRecordQueryService> _logger;
 
-    private readonly BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>>
+    private readonly BatchQueue<
+        BatchQueueOperation<(
+            FileRecordSpecification Specification,
+            PaginationInfo PaginationInfo),
+            ListQueryResult<FileRecordModel>>>
         _queryBatchQueue;
 
     private readonly IRepository<FileRecordModel> _repo;
@@ -24,7 +28,10 @@ public class FileRecordQueryService : BackgroundService
         ILogger<FileRecordQueryService> logger,
         ApplicationRepositoryFactory<FileRecordModel> repositoryFactory,
         [FromKeyedServices(nameof(FileRecordQueryService))]
-        BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>> queryBatchQueue
+        BatchQueue<BatchQueueOperation<(
+            FileRecordSpecification Specification,
+            PaginationInfo PaginationInfo),
+            ListQueryResult<FileRecordModel>>> queryBatchQueue
     )
     {
         _exceptionCounter = exceptionCounter;
@@ -39,17 +46,32 @@ public class FileRecordQueryService : BackgroundService
         try
         {
             await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(stoppingToken))
+            {
                 try
                 {
-                    foreach (var operation in arrayPoolCollection)
+                    foreach (var operation in arrayPoolCollection.Where(static x => x != null))
                     {
-                        if (operation == null) continue;
                         var kind = operation.Kind;
                         switch (kind)
                         {
                             case BatchQueueOperationKind.Query:
-                                var queryResult = await _repo.PaginationQueryAsync(operation.Argument);
-                                operation.SetResult(queryResult);
+                                try
+                                {
+                                    var queryResult = await _repo.PaginationQueryAsync(
+                                        operation.Argument.Specification,
+                                        operation.Argument.PaginationInfo);
+                                    operation.SetResult(queryResult);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _exceptionCounter.AddOrUpdate(ex);
+                                    _logger.LogError(ex.ToString());
+                                }
+                                finally
+                                {
+
+                                }
+
                                 break;
                         }
                     }
@@ -58,15 +80,17 @@ public class FileRecordQueryService : BackgroundService
                 {
                     _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
-                }
-                finally
-                {
                     arrayPoolCollection.Dispose();
                 }
+
+
+            }
+
         }
         catch (Exception ex)
         {
             _logger.LogError(ex.ToString());
         }
     }
+
 }

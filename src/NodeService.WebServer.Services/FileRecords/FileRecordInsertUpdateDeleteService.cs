@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Models;
+using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.FileRecords;
 
@@ -55,7 +55,8 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService, IDisposabl
                                 var modelFromRepo = await _repo.FirstOrDefaultAsync(
                                     new FileRecordSpecification(
                                         operation.Argument.Id,
-                                        DataFilterCollection<string>.Includes(operation.Argument.Name)),
+                                        null,
+                                        operation.Argument.Name),
                                     stoppingToken);
                                 if (modelFromRepo == null)
                                 {

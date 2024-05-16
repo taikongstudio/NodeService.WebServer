@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Models;
+using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 
 namespace NodeService.WebServer.Services.Tasks;
@@ -304,7 +304,7 @@ public class TaskFireService : BackgroundService
         await foreach (var arrayPoolCollection in _fireTaskBatchQueue.ReceiveAllAsync(stoppingToken))
             try
             {
-                if (arrayPoolCollection.CountDefault() == 0) continue;
+                if (arrayPoolCollection.CountNotDefault() == 0) continue;
                 using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
                 using var taskFireRecordRepo = _taskFireRecordRepositoryFactory.CreateRepository();
                 using var taskTypeDescRepo = _taskTypeDescConfigRepositoryFactory.CreateRepository();

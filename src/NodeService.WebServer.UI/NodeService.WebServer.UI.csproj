@@ -7,48 +7,48 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Content Remove="Pages\Nodes\List\Settings.razor"/>
+        <Content Remove="Pages\Nodes\List\Settings.razor" />
     </ItemGroup>
 
 
     <ItemGroup>
-        <SupportedPlatform Include="browser"/>
+        <SupportedPlatform Include="browser" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="CurrieTechnologies.Razor.Clipboard" Version="1.6.0"/>
-        <PackageReference Include="Quartz" Version="3.8.1"/>
-        <PackageReference Include="BlazorMonaco" Version="3.2.0"/>
-        <PackageReference Include="CronExpressionDescriptor" Version="2.33.0"/>
-        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.3"/>
-        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.3"/>
-        <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.3"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.3"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.3"/>
-        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.0"/>
-        <PackageReference Include="AntDesign.Charts" Version="0.5.1"/>
-        <PackageReference Include="AntDesign.ProLayout" Version="0.18.2"/>
-        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.5.1"/>
+        <PackageReference Include="CurrieTechnologies.Razor.Clipboard" Version="1.6.0" />
+        <PackageReference Include="Quartz" Version="3.8.1" />
+        <PackageReference Include="BlazorMonaco" Version="3.2.0" />
+        <PackageReference Include="CronExpressionDescriptor" Version="2.33.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="8.0.3" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.3" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.0" />
+        <PackageReference Include="AntDesign.Charts" Version="0.5.1" />
+        <PackageReference Include="AntDesign.ProLayout" Version="0.18.2" />
+        <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.5.1" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\..\NodeService.Infrastructure\src\NodeService.Infrastructure\NodeService.Infrastructure.csproj"/>
-        <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj"/>
-        <ProjectReference Include="..\NodeService.WebServer.Extensions\NodeService.WebServer.Extensions.csproj"/>
-        <ProjectReference Include="..\NodeService.WebServer.Models\NodeService.WebServer.Models.csproj"/>
-        <ProjectReference Include="..\NodeService.WebServer.Services\NodeService.WebServer.Services.csproj"/>
+        <ProjectReference Include="..\..\..\NodeService.Infrastructure\src\NodeService.Infrastructure\NodeService.Infrastructure.csproj" />
+        <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj" />
+        <ProjectReference Include="..\NodeService.WebServer.Extensions\NodeService.WebServer.Extensions.csproj" />
+        <ProjectReference Include="..\NodeService.WebServer.Models\NodeService.WebServer.Models.csproj" />
+        <ProjectReference Include="..\NodeService.WebServer.Services\NodeService.WebServer.Services.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <UpToDateCheckInput Remove="Pages\Nodes\List\Settings.razor"/>
+        <UpToDateCheckInput Remove="Pages\Nodes\List\Settings.razor" />
     </ItemGroup>
 
     <ItemGroup>
-        <_ContentIncludedByDefault Remove="Pages\Nodes\List\Settings.razor"/>
+        <_ContentIncludedByDefault Remove="Pages\Nodes\List\Settings.razor" />
     </ItemGroup>
 
     <ItemGroup>
-        <None Include="Pages\Nodes\Settings\Settings.razor"/>
+        <None Include="Pages\Nodes\Settings\Index.razor" />
     </ItemGroup>
 
 

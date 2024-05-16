@@ -7,18 +7,20 @@ namespace NodeService.WebServer.Services.MessageHandlers;
 public class HeartBeatResponseHandler : IMessageHandler
 {
     private readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
+    private readonly BatchQueue<NodeStatusChangeRecordModel> _nodeStatusChangeRecordBatchQueue;
     private readonly ILogger<HeartBeatResponseHandler> _logger;
     private readonly INodeSessionService _nodeSessionService;
 
     public HeartBeatResponseHandler(
-        INodeSessionService nodeSessionService,
-        IMemoryCache memoryCache,
         ILogger<HeartBeatResponseHandler> logger,
-        BatchQueue<NodeHeartBeatSessionMessage> heartBeatBatchBlock)
+        INodeSessionService nodeSessionService,
+        BatchQueue<NodeHeartBeatSessionMessage> heartBeatBatchQueue,
+        BatchQueue<NodeStatusChangeRecordModel> nodeStatusChangeRecordBatchQueue)
     {
-        _nodeSessionService = nodeSessionService;
         _logger = logger;
-        _heartBeatBatchQueue = heartBeatBatchBlock;
+        _nodeSessionService = nodeSessionService;
+        _heartBeatBatchQueue = heartBeatBatchQueue;
+        _nodeStatusChangeRecordBatchQueue = nodeStatusChangeRecordBatchQueue;
         NodeSessionId = NodeSessionId.Empty;
     }
 
@@ -29,6 +31,13 @@ public class HeartBeatResponseHandler : IMessageHandler
         if (NodeSessionId != NodeSessionId.Empty)
         {
             _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Offline);
+            await _nodeStatusChangeRecordBatchQueue.SendAsync(new NodeStatusChangeRecordModel()
+            {
+                Id = Guid.NewGuid().ToString(),
+                DateTime = DateTime.UtcNow,
+                NodeId = NodeSessionId.NodeId.Value,
+                Message = $"Offline"
+            });
             await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
             {
                 Message = null,
@@ -47,7 +56,17 @@ public class HeartBeatResponseHandler : IMessageHandler
 
     public async ValueTask HandleAsync(NodeSessionId nodeSessionId, HeartBeatResponse heartBeatResponse)
     {
-        NodeSessionId = nodeSessionId;
+        if (NodeSessionId.IsNullOrEmpty)
+        {
+            NodeSessionId = nodeSessionId;
+            await _nodeStatusChangeRecordBatchQueue.SendAsync(new NodeStatusChangeRecordModel()
+            {
+                Id = Guid.NewGuid().ToString(),
+                DateTime = DateTime.UtcNow,
+                NodeId = this.NodeSessionId.NodeId.Value,
+                Message = $"Online"
+            });
+        }
         _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);
         await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
         {

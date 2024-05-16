@@ -9,7 +9,7 @@ public partial class NodesController
         try
         {
             ArgumentNullException.ThrowIfNull(value, nameof(value));
-            using var repo = _nodeInfoRepositoryFactory.CreateRepository();
+            using var repo = _nodeInfoRepoFactory.CreateRepository();
             var nodeInfo = await repo.GetByIdAsync(nodeId);
             if (nodeInfo == null)
             {

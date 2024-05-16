@@ -8,7 +8,7 @@ public partial class NodesController
         var apiResponse = new ApiResponse<NodePropertySnapshotModel>();
         try
         {
-            using var nodeRepo = _nodeInfoRepositoryFactory.CreateRepository();
+            using var nodeRepo = _nodeInfoRepoFactory.CreateRepository();
             var nodeInfo = await nodeRepo.GetByIdAsync(nodeId);
             if (nodeInfo == null)
             {
@@ -29,7 +29,7 @@ public partial class NodesController
                 if ((model.NodeProperties == null || !model.NodeProperties.Any()) &&
                     nodeInfo.LastNodePropertySnapshotId != null)
                 {
-                    using var nodePropRepo = _nodePropertySnapshotRepositoryFactory.CreateRepository();
+                    using var nodePropRepo = _nodePropertySnapshotRepoFactory.CreateRepository();
                     model = await nodePropRepo.GetByIdAsync(nodeInfo.LastNodePropertySnapshotId);
                 }
 

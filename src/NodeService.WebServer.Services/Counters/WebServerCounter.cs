@@ -1,4 +1,4 @@
-﻿namespace NodeService.WebServer.Models;
+﻿namespace NodeService.WebServer.Services.Counters;
 
 public class WebServerCounter
 {

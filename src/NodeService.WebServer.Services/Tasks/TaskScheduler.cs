@@ -1,5 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using NodeService.WebServer.Models;
+using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.Tasks;
 

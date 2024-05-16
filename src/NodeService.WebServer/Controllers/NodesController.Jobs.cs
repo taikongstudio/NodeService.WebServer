@@ -10,7 +10,7 @@ public partial class NodesController
         var apiResponse = new ApiResponse<IEnumerable<JobScheduleConfigModel>>();
         try
         {
-            using var repository = _nodeInfoRepositoryFactory.CreateRepository();
+            using var repository = _nodeInfoRepoFactory.CreateRepository();
             var nodeInfo = await repository.GetByIdAsync(id);
             if (nodeInfo == null)
             {
@@ -41,7 +41,7 @@ public partial class NodesController
         var apiResponse = new PaginationResponse<JobExecutionInstanceModel>();
         try
         {
-            using var repository = _nodeInfoRepositoryFactory.CreateRepository();
+            using var repository = _nodeInfoRepoFactory.CreateRepository();
             var nodeInfo = await repository.GetByIdAsync(nodeId);
             if (nodeInfo == null)
             {
@@ -51,7 +51,7 @@ public partial class NodesController
             else
             {
                 queryParameters.NodeIdList = [nodeId];
-                using var repo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
+                using var repo = _taskExecutionInstanceRepoFactory.CreateRepository();
                 var queryResult = await repo.ListAsync(new TaskExecutionInstanceSpecification(
                     queryParameters.Keywords,
                     queryParameters.Status,

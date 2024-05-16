@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace NodeService.WebServer.Models;
+namespace NodeService.WebServer.Services.Counters;
 
 public class ExceptionCounter
 {
@@ -11,10 +11,14 @@ public class ExceptionCounter
         _dict = new ConcurrentDictionary<string, int>();
     }
 
-    public void AddOrUpdate(Exception exception)
+    public void AddOrUpdate(
+        Exception exception,
+        [CallerFilePath] string? filePath = null,
+        [CallerLineNumber] int lineNumber = 0,
+        [CallerMemberName] string? caller = null)
     {
-        var ex = exception.ToString();
-        _dict.AddOrUpdate(ex, 1, UpdateValueImpl);
+        var msg = $"{filePath}:{lineNumber} {caller} {exception}";
+        _dict.AddOrUpdate(msg, 1, UpdateValueImpl);
     }
 
     private int UpdateValueImpl(string key, int value)

@@ -6,6 +6,7 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
+using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -62,13 +63,13 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var count = 0;
             try
             {
-                count = arrayPoolCollection.CountDefault();
+                count = arrayPoolCollection.CountNotDefault();
                 if (count == 0) continue;
 
                 stopwatch.Start();
                 await ProcessHeartBeatMessagesAsync(arrayPoolCollection);
                 _logger.LogInformation(
-                    $"process {arrayPoolCollection.CountDefault()} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
+                    $"process {arrayPoolCollection.CountNotDefault()} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
                 _webServerCounter.HeartBeatAvailableCount = (uint)_hearBeatMessageBatchQueue.AvailableCount;
                 _webServerCounter.HeartBeatTotalProcessTimeSpan += stopwatch.Elapsed;
                 _webServerCounter.HeartBeatConsumeCount += (uint)count;
@@ -144,7 +145,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         finally
         {
             _logger.LogInformation(
-                $"Process {arrayPoolCollection.CountDefault()} messages, SaveElapsed:{stopwatch.Elapsed}");
+                $"Process {arrayPoolCollection.CountNotDefault()} messages, SaveElapsed:{stopwatch.Elapsed}");
             stopwatch.Reset();
         }
     }

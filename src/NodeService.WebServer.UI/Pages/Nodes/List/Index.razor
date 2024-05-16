@@ -12,7 +12,7 @@
     <Drawer Closable="true"
             OnClose="_ => CloseModifyNodeInfoDrawer()"
             Title='"修改节点信息"'
-            Visible="nodeInfoDrawerVisible"
+            Visible="_nodeInfoDrawerVisible"
             Width="320">
         <Template style="height:90%">
             @if (_editingNodeInfoModel == null)
@@ -85,7 +85,6 @@
     <GridRow Gutter="(8, 0)">
         <GridCol Span="24">
             <Table Loading="@_dataSource.IsLoading"
-                   @ref="_table"
                    Size="TableSize.Small"
                    EnableVirtualization="false"
                    OnChange="OnNodeTableChanged"
@@ -100,13 +99,18 @@
                    OnRowClick="OnRowClick">
                 <TitleTemplate>
                     <GridRow>
-                        <GridCol Span="4">
+                        <GridCol Span="6">
                             <Title Level="3">节点列表</Title>
                         </GridCol>
+                        <GridCol Span="6" Offset="12">
+                            <Search Placeholder="搜索节点" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.RefreshAsync" />
+                        </GridCol>
+                    </GridRow>
+                    <GridRow>
                         <GridCol Span="20" Offset="0">
                             <Space>
                                 <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryNodeListAsync"></Button>
+                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="_dataSource.RefreshAsync"></Button>
                                 </SpaceItem>
                                 <SpaceItem>
                                     <Select DataSource="@_nodeSettings.IpAddressMappings"
@@ -117,22 +121,20 @@
                                             OnSelectedItemChanged="OnSelectedAreaTag"
                                             DefaultActiveFirstOption
                                             LabelName="@nameof(StringEntry.Name)"
-                                            ValueName="@nameof(StringEntry.Tag)"/>
+                                            ValueName="@nameof(StringEntry.Tag)" />
                                 </SpaceItem>
                                 <SpaceItem>
                                     <RadioGroup Value="_nodeStatus" ValueChanged="(NodeStatus nodeStatus) => OnNodeStatusChanged(nodeStatus)" Size="middle">
                                         <Radio RadioButton Value="@(NodeStatus.All)">全部状态</Radio>
                                         <Radio RadioButton Value="@(NodeStatus.Online)">
-                                            <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线"/>
+                                            <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线" />
                                         </Radio>
                                         <Radio RadioButton Value="@(NodeStatus.Offline)">
-                                            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="在线"/>
+                                            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="在线" />
                                         </Radio>
                                     </RadioGroup>
                                 </SpaceItem>
-                                <SpaceItem>
-                                    <Search Style="width:200px" Placeholder="搜索节点" @bind-Value="@_keywords" OnSearch="OnKeywordsChanged"/>
-                                </SpaceItem>
+          
                             </Space>
                         </GridCol>
                     </GridRow>
@@ -201,22 +203,16 @@
 
 
 @code{
-    ITable _table;
-    string? _keywords;
-
     NodeStatus _nodeStatus = NodeStatus.All;
     string _selectedAreaTag = "*";
     NodeSettings _nodeSettings = new();
-
-    public List<TableFilter<string?>> areaNameFilters = [];
-
 
     RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
 
 
     Form<NodeSettings> _editForm;
 
-    bool nodeInfoDrawerVisible;
+    bool _nodeInfoDrawerVisible;
 
     string? _modifyErrorMsg;
 
@@ -235,14 +231,14 @@
             TestInfo = nodeInfo.Profile.TestInfo,
             Usages = nodeInfo.Profile.Usages
         };
-        nodeInfoDrawerVisible = true;
+        _nodeInfoDrawerVisible = true;
     }
 
     void CloseModifyNodeInfoDrawer()
     {
         _modifyErrorMsg = null;
         _editingNodeInfoModel = null;
-        nodeInfoDrawerVisible = false;
+        _nodeInfoDrawerVisible = false;
     }
 
     async Task SubmitNodeProfileAsync()
@@ -253,8 +249,8 @@
             if (apiResponse.ErrorCode == 0)
             {
                 _editingNodeInfoModel = null;
-                nodeInfoDrawerVisible = false;
-                await QueryNodeListAsync();
+                _nodeInfoDrawerVisible = false;
+                await _dataSource.RefreshAsync();
             }
             else
             {
@@ -267,32 +263,8 @@
         }
     }
 
-    void OnNodeNameChanged(MouseEventArgs e)
-    {
-    }
-
-    void OnSelectedFactoryNameChanged(string value)
-    {
-    }
-
-    bool OnFilterAreaTag(string value, string name)
-    {
-        if (name == "*")
-        {
-            return true;
-        }
-
-        return name == value;
-    }
-
     void OnRowClick(RowData<NodeInfoModel> row)
     {
-    }
-
-    async Task RefreshAsync()
-    {
-        await QueryNodeSettingsAsync();
-        await QueryNodeListAsync();
     }
 
     async Task QueryNodeSettingsAsync()
@@ -305,17 +277,6 @@
                 _nodeSettings = apiResponse.Result;
                 if (_nodeSettings.IpAddressMappings != null)
                 {
-                    areaNameFilters.Clear();
-                    foreach (var item in _nodeSettings.IpAddressMappings)
-                    {
-                        areaNameFilters.Add(new TableFilter<string?>
-                        {
-                            Selected = item.Tag == "*",
-                            Text = item.Name,
-                            Value = item.Tag
-                        });
-                    }
-
                     _selectedAreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault().Tag;
                 }
             }
@@ -338,28 +299,6 @@
         }
     }
 
-    async Task QueryNodeListAsync()
-    {
-        try
-        {
-            await _dataSource.RefreshAsync();
-        }
-        catch (Exception ex)
-        {
-            await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.Message
-            });
-        }
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await base.OnInitializedAsync();
-        await RefreshAsync();
-    }
-
     void OnNodeTableChanged(QueryModel<NodeInfoModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
@@ -376,19 +315,26 @@
         _dataSource.Request();
     }
 
-    void OnKeywordsChanged(string keywords)
-    {
-        _dataSource.PageIndex = 1;
-        _dataSource.QueryParameters.Keywords = _keywords;
-        _dataSource.Request();
-    }
-
     protected override void OnInitialized()
     {
         _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager, ApiService.QueryNodeListAsync, StateHasChanged);
         _dataSource.QueryParameters.Status = NodeStatus.All;
         _dataSource.QueryParameters.AreaTag = "*";
+        _dataSource.QueryParameters.PageIndex = 1;
+        _dataSource.QueryParameters.PageSize = 10;
+        _dataSource.Ready = QueryNodeSettingsAsync;
+        _dataSource.ExceptionHandler = OnExepction;
+        _dataSource.Request();
         base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
     }
 
     public void Dispose()

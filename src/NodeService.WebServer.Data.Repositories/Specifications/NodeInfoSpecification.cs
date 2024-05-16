@@ -37,7 +37,8 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         string? areaTag,
         NodeStatus nodeStatus,
         string? keywords,
-        IEnumerable<SortDescription>? sortDescriptions)
+        bool searchProfileProperties = true,
+        IEnumerable<SortDescription>? sortDescriptions = null)
         :
         this(
             areaTag,
@@ -45,13 +46,22 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
             sortDescriptions)
     {
         if (!string.IsNullOrEmpty(keywords))
-            Query.Where(x =>
-                x.Name.Contains(keywords) ||
-                x.Profile.IpAddress.Contains(keywords) ||
-                x.Profile.ClientVersion.Contains(keywords) ||
-                x.Profile.IpAddress.Contains(keywords) ||
-                x.Profile.Usages.Contains(keywords) ||
-                x.Profile.Remarks.Contains(keywords));
+            if (!searchProfileProperties)
+            {
+                Query.Where(x =>
+                    x.Name.Contains(keywords));
+            }
+            else
+            {
+                Query.Where(x =>
+                    x.Name.Contains(keywords) ||
+                    x.Profile.IpAddress.Contains(keywords) ||
+                    x.Profile.ClientVersion.Contains(keywords) ||
+                    x.Profile.IpAddress.Contains(keywords) ||
+                    x.Profile.Usages.Contains(keywords) ||
+                    x.Profile.Remarks.Contains(keywords));
+            }
+
     }
 
     public NodeInfoSpecification(

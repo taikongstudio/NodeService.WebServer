@@ -23,101 +23,119 @@
     ]
   },
   {
-    "path": "/nodes",
+    "path": "/Nodes",
     "name": "节点",
-    "key": "nodes",
+    "key": "Nodes",
     "icon": "node-index",
     "children": [
       {
-        "path": "/nodes/list",
+        "path": "/Nodes/List",
         "name": "节点列表",
-        "key": "nodes.list"
+        "key": "Nodes.List"
       },
       {
-        "path": "/nodes/settings",
+        "path": "/Nodes/StatusChangeRecords",
+        "name": "状态变更记录",
+        "key": "Nodes.StatusChangeRecords"
+      },
+      {
+        "path": "/Nodes/Settings",
         "name": "节点设置",
-        "key": "nodes.settings"
+        "key": "Nodes.Settings"
       }
     ]
   },
   {
-    "path": "/tasks",
+    "path": "/DataQuality",
+    "name": "数据质量",
+    "key": "DataQuality",
+    "icon": "file-sync",
+    "children": [
+      {
+        "path": "/DataQuality/FileRecords",
+        "name": "文件记录",
+        "key": "DataQuality.FileRecords"
+      }
+    ]
+  },
+  {
+    "path": "/Tasks",
     "name": "任务",
-    "key": "tasks",
+    "key": "Tasks",
     "icon": "schedule",
     "children": [
       {
-        "path": "/tasks/definitions",
+        "path": "/Tasks/Definitions",
         "name": "任务流定义",
-        "key": "tasks.definitions"
+        "key": "Tasks.Definitions"
       },
       {
-        "path": "/tasks/instances",
+        "path": "/Tasks/Instances",
         "name": "任务流实例",
-        "key": "tasks.instances"
+        "key": "Tasks.Instances"
       }
     ]
   },
   {
-    "path": "/commonConfig",
+    "path": "/CommonConfig",
     "name": "配置",
-    "key": "commonConfig",
+    "key": "CommonConfig",
     "icon": "setting",
     "children": [
       {
         "path": "/CommonConfig/Mysql",
         "name": "MySql配置",
-        "key": "commonConfig.Mysql"
+        "key": "CommonConfig.Mysql"
       },
       {
         "path": "/CommonConfig/Ftp",
         "name": "Ftp配置",
-        "key": "commonConfig.Ftp"
+        "key": "CommonConfig.Ftp"
       },
       {
         "path": "/CommonConfig/Kafka",
         "name": "Kafka配置",
-        "key": "commonConfig.Kafka"
+        "key": "CommonConfig.Kafka"
       },
       {
         "path": "/CommonConfig/NodeEnvVars",
         "name": "节点环境变量配置",
-        "key": "commonConfig.NodeEnvVars"
+        "key": "CommonConfig.NodeEnvVars"
       },
       {
         "path": "/CommonConfig/Package",
         "name": "包配置",
-        "key": "commonConfig.Package"
+        "key": "CommonConfig.Package"
       },
       {
         "path": "/CommonConfig/FtpUpload",
         "name": "Ftp上传配置",
-        "key": "commonConfig.FtpUpload"
+        "key": "CommonConfig.FtpUpload"
       },
       {
         "path": "/CommonConfig/FtpDownload",
         "name": "Ftp下载配置",
-        "key": "commonConfig.FtpDownload"
+        "key": "CommonConfig.FtpDownload"
       },
       {
         "path": "/CommonConfig/RestApi",
         "name": "RestApi配置",
-        "key": "commonConfig.RestApi"
+        "key": "CommonConfig.RestApi"
       },
       {
         "path": "/CommonConfig/WindowsTask",
         "name": "Windows计划任务配置",
-        "key": "commonConfig.WindowsTask"
+        "key": "CommonConfig.WindowsTask"
       },
       {
         "path": "/CommonConfig/JobTypeDesc",
         "name": "作业类型描述配置",
-        "key": "commonConfig.JobTypeDesc"
+        "key": "CommonConfig.JobTypeDesc"
       },
       {
         "path": "/CommonConfig/ClientUpdates",
         "name": "客户端更新配置",
-        "key": "commonConfig.ClientUpdates"
+        "key": "CommonConfig.ClientUpdates"
       }
     ]
   },

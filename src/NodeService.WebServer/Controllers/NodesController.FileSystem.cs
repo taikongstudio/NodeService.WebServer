@@ -11,7 +11,7 @@ public partial class NodesController
         var apiResponse = new ApiResponse<IEnumerable<FileSystemEntry>>();
         try
         {
-            using var dbContext = _nodeInfoRepositoryFactory.CreateRepository();
+            using var dbContext = _nodeInfoRepoFactory.CreateRepository();
             var nodeInfo = await dbContext.GetByIdAsync(nodeId);
             if (nodeInfo == null)
             {

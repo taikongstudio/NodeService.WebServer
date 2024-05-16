@@ -129,10 +129,10 @@
            OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
-                <GridCol Span="4">
+                <GridCol Span="6">
                     <Title Level="3">Ftp上传配置</Title>
                 </GridCol>
-                <GridCol Span="6" Offset="18">
+                <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>

@@ -79,7 +79,7 @@
         </Form>
     </Modal>
 
-    <Table @ref="_table"
+    <Table 
            Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            EnableVirtualization="false"
@@ -94,10 +94,10 @@
            OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
-                <GridCol Span="4">
+                <GridCol Span="6">
                     <Title Level="3">包配置</Title>
                 </GridCol>
-                <GridCol Span="6" Offset="18">
+                <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
@@ -169,8 +169,6 @@
 
 
 @code{
-    ITable _table;
-
     readonly string[] platforms =
     {
         "X64",

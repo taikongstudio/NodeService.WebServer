@@ -17,6 +17,7 @@ using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Auth;
+using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.FileRecords;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NodeSessions;
@@ -237,6 +238,7 @@ public class Program
         builder.Services.AddHostedService<FileRecordQueryService>();
         builder.Services.AddHostedService<FileRecordInsertUpdateDeleteService>();
         builder.Services.AddHostedService<TaskFireService>();
+        builder.Services.AddHostedService<NodeStatusChangeRecordService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -380,9 +382,9 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddKeyedSingleton(nameof(FileRecordQueryService),
-            new BatchQueue<BatchQueueOperation<FileRecordSpecification, ListQueryResult<FileRecordModel>>>(
+            new BatchQueue<BatchQueueOperation<(FileRecordSpecification Specification, PaginationInfo PaginationInfo), ListQueryResult<FileRecordModel>>>(
                 1024 * 2,
-                TimeSpan.FromSeconds(5)));
+                TimeSpan.FromSeconds(3)));
         builder.Services.AddKeyedSingleton(nameof(FileRecordInsertUpdateDeleteService),
             new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(
                 1024 * 2,
@@ -397,6 +399,7 @@ public class Program
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
         builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
+        builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(1024, TimeSpan.FromSeconds(3)));
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

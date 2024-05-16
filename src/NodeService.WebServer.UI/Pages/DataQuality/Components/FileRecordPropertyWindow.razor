@@ -1,0 +1,96 @@
+﻿<style type="text/css">
+.JsonCodeEditor{
+    height:300px;
+}    
+</style>
+
+<Drawer Closable="true"
+        Title='"文件记录属性"'
+        Visible="@Visible"
+        OnClose="OnClosed"
+        Width="420">
+    <Template>
+        @if (DataContext != null)
+        {
+            <Form Model="@DataContext"
+                  LabelColSpan="8"
+                  Layout="@FormLayout.Vertical"
+                  Loading="@_loading"
+                  OnFinish="OnFinish"
+                  OnFinishFailed="OnFinishFailed">
+
+                <FormItem >
+                    <Button Type="@ButtonType.Primary" HtmlType="submit">
+                        提交
+                    </Button>
+
+                    <Button Type="@ButtonType.Primary" HtmlType="reset">
+                        重置
+                    </Button>
+                </FormItem>
+
+                 <FormItem Required Label="文件哈希值">
+                    <Input @bind-Value="@DataContext.FileHashValue" Placeholder="请输入新Hash"
+                           TValue="string"></Input>
+                </FormItem>
+                <FormItem Label="压缩后文件大小">
+                    <AntDesign.InputNumber Style="width:250px" @bind-Value="@DataContext.Size" Placeholder="请输入大小" TValue="long" />
+                </FormItem>
+                <FormItem Required Label="压缩后文件哈希">
+                    <Input @bind-Value="@DataContext.CompressedFileHashValue" Placeholder="请输入压缩后Hash" TValue="string" />
+                </FormItem>
+                <FormItem Label="属性">
+                    <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_jsonCodeEditor" OnDidInit="InitAsync" CssClass="JsonCodeEditor" ConstructionOptions="BuildJsonEditorConstructionOptions" />
+
+                </FormItem>
+
+
+
+            </Form>
+        }
+
+    </Template>
+</Drawer>
+
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public FileRecordModel? DataContext { get; set; }
+    bool _loading;
+    StandaloneCodeEditor _jsonCodeEditor;
+
+
+    private async Task OnFinish(EditContext editContext)
+    {
+
+    }
+
+    private async Task OnFinishFailed(EditContext editContext)
+    {
+
+    }
+
+    Task OnClosed()
+    {
+        Visible = false;
+        this._jsonCodeEditor.Dispose();
+        return Task.CompletedTask;
+    }
+
+    private async Task InitAsync()
+    {
+        if (this.DataContext != null && !string.IsNullOrEmpty(DataContext.Properties))
+        {
+            await _jsonCodeEditor.SetValue(DataContext.Properties);
+        }
+    }
+
+    StandaloneEditorConstructionOptions BuildJsonEditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+            {
+                AutomaticLayout = true,
+                Language = "json",
+            };
+    }
+}

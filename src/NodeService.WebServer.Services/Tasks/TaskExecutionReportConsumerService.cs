@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Models;
+using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 
 namespace NodeService.WebServer.Services.Tasks;
@@ -54,7 +54,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     {
         await foreach (var arrayPoolCollection in _taskExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
         {
-            var count = arrayPoolCollection.CountDefault();
+            var count = arrayPoolCollection.CountNotDefault();
             if (count == 0) continue;
 
             var stopwatch = new Stopwatch();
@@ -246,7 +246,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         finally
         {
             _logger.LogInformation(
-                $"Process {arrayPoolCollection.CountDefault()} messages, SaveElapsed:{stopwatchSaveTimeSpan}");
+                $"Process {arrayPoolCollection.CountNotDefault()} messages, SaveElapsed:{stopwatchSaveTimeSpan}");
         }
     }
 

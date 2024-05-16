@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
-using NodeService.WebServer.Models;
+using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.Notifications;
 

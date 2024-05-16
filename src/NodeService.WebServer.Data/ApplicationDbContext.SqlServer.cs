@@ -1,4 +1,5 @@
-﻿namespace NodeService.WebServer.Data;
+﻿
+namespace NodeService.WebServer.Data;
 
 public partial class ApplicationDbContext
 {
@@ -9,11 +10,18 @@ public partial class ApplicationDbContext
         SqlServer_BuildJobExecutionInstanceModel(modelBuilder);
         SqlServer_BuildNodeInfoModel(modelBuilder);
         SqlServer_BuildNodeProfileModel(modelBuilder);
+        SqlServer_BuildNodeStatusChangeRecordModel(modelBuilder);
         SqlServer_BuildNodePropertySnapshotModel(modelBuilder);
         SqlServer_BuildFileUploadRecordModel(modelBuilder);
         SqlServer_BuildNotificationRecordModel(modelBuilder);
         SqlServer_BuildJobFireConfigurationModel(modelBuilder);
         SqlServer_BuildClientUpdateCounterModel(modelBuilder);
+    }
+
+    private void SqlServer_BuildNodeStatusChangeRecordModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<NodeStatusChangeRecordModel>()
+            .HasKey(t => t.Id);
     }
 
     private void SqlServer_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)

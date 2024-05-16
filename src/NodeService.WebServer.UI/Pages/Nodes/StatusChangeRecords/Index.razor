@@ -1,0 +1,145 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Nodes.StatusChangeRecords
+@page "/Nodes/StatusChangeRecords"
+@inject ApiService ApiService;
+@inject IMessageService _message
+@inject NotificationService _notice
+@inject NavigationManager NavigationManager
+<GridContent>
+    <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
+        <NodeSelector @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple" />
+    </CommonDialog>
+    <Table 
+           Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           EnableVirtualization="false"
+           TItem="NodeStatusChangeRecordModel"
+           Resizable
+           OnChange="OnTableChange"
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           Total="@_dataSource.TotalCount"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent"
+           DataSource="@_dataSource.ItemsSource">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="6">
+                    <Title Level="3">节点状态变更记录</Title>
+                </GridCol>
+                <GridCol Span="6" Offset="12">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords"
+                            OnSearch="@QueryAsync" />
+                </GridCol>
+            </GridRow>
+            <GridRow Wrap Style="min-height:30px">
+                <Text>节点：</Text>
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowNodeSelectorDialogAsync"></Button>
+
+                @if (_selectedNodeList != null)
+                {
+                    foreach (var item in _selectedNodeList)
+                    {
+                        <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
+                    }
+                }
+                else
+                {
+                    <Text>全部</Text>
+                }
+
+            </GridRow>
+            <GridRow>
+                <Space Wrap Style="margin-bottom:16px">
+                    <SpaceItem>
+                        <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged"/>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Type="@ButtonType.Primary" OnClick="@QueryAsync">查询</Button>
+                    </SpaceItem>
+                </Space>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="节点标志" Ellipsis Sortable Property="c => c.NodeId"></PropertyColumn>
+            <PropertyColumn Title="节点名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="时间" Sortable Property="c => c.DateTime" DefaultSortOrder="SortDirection.Descending"></PropertyColumn>
+            <PropertyColumn Title="消息" Sortable="true" Property="c => c.Message"></PropertyColumn>
+        </ColumnDefinitions>
+    </Table>
+</GridContent>
+
+@code {
+
+    bool _loading;
+    RoutedPaginationDataSource<NodeStatusChangeRecordModel, QueryNodeStatusChangeRecordParameters> _dataSource;
+
+    DateTime BeginDateTime;
+    DateTime EndDateTime;
+    IEnumerable<NodeInfoModel> _selectedNodeList = [];
+
+    CommonDialog _nodeSelectorDialog;
+
+    readonly DateTime?[] DateTimes = [DateTime.UtcNow.Date, DateTime.UtcNow.Date];
+
+    protected override void OnInitialized()
+    {
+        BeginDateTime = DateTime.Today.Date;
+        EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        DateTimes[0] = BeginDateTime;
+        DateTimes[1] = EndDateTime;
+
+        _dataSource = new RoutedPaginationDataSource<NodeStatusChangeRecordModel, QueryNodeStatusChangeRecordParameters>(NavigationManager, ApiService.QueryNodeStatusChangeRecordListAsync, StateHasChanged);
+        _dataSource.PageIndex = 1;
+        _dataSource.PageSize = 10;
+        _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
+        _dataSource.QueryParameters.EndDateTime = EndDateTime;
+        _dataSource.Request();
+        base.OnInitialized();
+    }
+
+    void OnTableChange(QueryModel<NodeStatusChangeRecordModel> query)
+    {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        _dataSource.Request();
+    }
+
+    void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
+    {
+        BeginDateTime = e.Dates[0] ?? DateTime.Today.Date;
+        EndDateTime = e.Dates[1] ?? DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
+        _dataSource.QueryParameters.EndDateTime = EndDateTime;
+    }
+
+    Task OnDialogClosed()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    async Task ShowNodeSelectorDialogAsync()
+    {
+        await _nodeSelectorDialog.ShowAsync();
+    }
+
+    async Task QueryAsync()
+    {
+        _dataSource.QueryParameters.NodeIdList.Clear();
+        if (_selectedNodeList != null)
+        {
+            _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
+        }
+        await _dataSource.RefreshAsync();
+    }
+}

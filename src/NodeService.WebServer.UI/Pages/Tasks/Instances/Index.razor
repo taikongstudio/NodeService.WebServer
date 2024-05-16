@@ -13,14 +13,13 @@
         <TaskExecutionInstanceLogViewer TaskExecutionInstanceId="@_taskExecutionInstanceId"/>
     </CommonDialog>
     <CommonDialog Closed="OnDialogClosed" @ref="_taskDefinitionSelectorDialog">
-        <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="_selectedTaskDefinitionList" Mode="SelectionMode.Multiple"/>
+        <TaskDefinitionSelector @bind-SelectedItems="_selectedTaskDefinitionList" Mode="SelectionMode.Multiple"/>
     </CommonDialog>
     <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
-        <NodeSelector @ref="_nodeSelector" @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple"/>
+        <NodeSelector @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple"/>
     </CommonDialog>
 
     <Table Size="TableSize.Small"
-           @ref="_table"
            Loading="@_dataSource.IsLoading"
            ScrollX="1500px"
            Resizable
@@ -35,10 +34,10 @@
            DataSource="@_dataSource.ItemsSource">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
-                <GridCol Span="4">
+                <GridCol Span="6">
                     <Title Level="3">任务实例</Title>
                 </GridCol>
-                <GridCol Span="6" Offset="18">
+                <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
                 </GridCol>
             </GridRow>
@@ -216,13 +215,9 @@
         public string Name { get; set; }
     }
 
-    ITable _table;
     CommonDialog _nodeSelectorDialog;
     CommonDialog _taskDefinitionSelectorDialog;
     CommonDialog _taskLogViewerDialog;
-    TaskDefinitionSelector _taskDefinitionSelector;
-    NodeSelector _nodeSelector;
-    TaskExecutionInstanceLogViewer _taskLogViewer;
 
     DateTime BeginDateTime;
     DateTime EndDateTime;

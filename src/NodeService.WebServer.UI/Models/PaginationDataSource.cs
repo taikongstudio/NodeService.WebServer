@@ -30,6 +30,10 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     public Func<Exception, Task> ExceptionHandler { get; set; }
 
+    public Func<Task> Ready { get; set; }
+
+    public Func<Task> Completed { get; set; }
+
     public IEnumerable<TElement?> ItemsSource { get; set; } = [];
 
     public TQueryParameters QueryParameters { get; } = new();
@@ -47,16 +51,29 @@ public class PaginationDataSource<TElement, TQueryParameters>
             IsLoading = true;
             RaiseStateChanged();
             QueryParameters.QueryStrategy = QueryStrategy.QueryPreferred;
+            if (Ready != null)
+            {
+                await Ready();
+
+            }
             var rsp = await _queryFunc.Invoke(QueryParameters, default);
             PageSize = rsp.PageSize;
             PageIndex = rsp.PageIndex;
             TotalCount = Math.Max(rsp.TotalCount, rsp.PageSize);
             await InvokeItemInitializerAsync(rsp.Result);
             ItemsSource = rsp.Result ?? [];
+            if (Completed != null)
+            {
+                await Completed();
+            }
         }
         catch (Exception ex)
         {
-            ExceptionHandler?.Invoke(ex);
+            if (ExceptionHandler != null)
+            {
+                await ExceptionHandler(ex);
+            }
+
         }
         finally
         {

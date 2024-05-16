@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Data;
+﻿
+
+namespace NodeService.WebServer.Data;
 
 public partial class ApplicationDbContext
 {
@@ -8,12 +10,19 @@ public partial class ApplicationDbContext
         MySql_BuildConfigurationModels(modelBuilder);
         MySql_BuildNodeInfoModel(modelBuilder);
         MySql_BuildNodeProfileModel(modelBuilder);
+        MySql_BuildNodeStatusChangeRecordModel(modelBuilder);
         MySql_BuildNodePropertySnapshotModel(modelBuilder);
         MySql_BuildJobExecutionInstanceModel(modelBuilder);
         MySql_BuildFileUploadRecordModel(modelBuilder);
         MySql_BuildNotificationRecordModel(modelBuilder);
         MySql_BuildJobFireConfigurationModel(modelBuilder);
         MySql_BuildClientUpdateCounterModel(modelBuilder);
+    }
+
+    private void MySql_BuildNodeStatusChangeRecordModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<NodeStatusChangeRecordModel>()
+            .HasKey(t => t.Id);
     }
 
     private void MySql_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)

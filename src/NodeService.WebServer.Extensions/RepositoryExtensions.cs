@@ -1,19 +1,29 @@
 ﻿using Ardalis.Specification;
 using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.DataModels;
+using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data;
 
 namespace NodeService.WebServer.Extensions;
 
 public static class RepositoryExtensions
 {
+    public static Task<ListQueryResult<T>> PaginationQueryAsync<T>(
+    this IRepository<T> repository,
+    ISpecification<T> specification,
+    PaginationInfo paginationInfo,
+    CancellationToken cancellationToken = default)
+    where T : class, IAggregateRoot
+    {
+        return PaginationQueryAsync(repository, specification, paginationInfo.PageSize, paginationInfo.PageIndex, cancellationToken);
+    }
     public static async Task<ListQueryResult<T>> PaginationQueryAsync<T>(
-        this IRepository<T> repository,
-        ISpecification<T> specification,
-        int pageSize = 0,
-        int pageIndex = 0,
-        CancellationToken cancellationToken = default)
-        where T : class, IAggregateRoot
+    this IRepository<T> repository,
+    ISpecification<T> specification,
+    int pageSize = 0,
+    int pageIndex = 0,
+    CancellationToken cancellationToken = default)
+    where T : class, IAggregateRoot
     {
         ArgumentNullException.ThrowIfNull(nameof(repository));
         ArgumentNullException.ThrowIfNull(nameof(specification));

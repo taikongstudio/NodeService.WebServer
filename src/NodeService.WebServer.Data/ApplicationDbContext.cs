@@ -91,6 +91,8 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<WindowsTaskConfigModel> WindowsTaskConfigurationDbSet { get; set; }
 
+    public DbSet<NodeStatusChangeRecordModel> NodeStatusChangeRecordDbSet {  get; set; }
+
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
                                     DynamicallyAccessedMemberTypes.NonPublicConstructors |

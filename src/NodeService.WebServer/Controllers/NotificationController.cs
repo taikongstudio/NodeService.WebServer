@@ -22,7 +22,7 @@ public class NotificationController : Controller
         _exceptionCounter = exceptionCounter;
     }
 
-    [HttpGet("/api/notification/record/list")]
+    [HttpGet("/api/Notification/Records/List")]
     public async Task<PaginationResponse<NotificationRecordModel>> QueryNotificationRecordListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {

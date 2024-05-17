@@ -100,7 +100,7 @@
                 <Text>@this._stateList.FirstOrDefault(x=>x.Value==context.State)?.Name</Text>
             </PropertyColumn>
             <PropertyColumn Title="原始大小"  Sortable="true" Property="c => c.Size"></PropertyColumn>
-            <PropertyColumn Title="文件哈希" Sortable="true" Property="c => c.FileHashValue"></PropertyColumn>
+            <PropertyColumn Title="文件哈希" Ellipsis Sortable="true" Property="c => c.FileHashValue"></PropertyColumn>
             <PropertyColumn Title="创建时间"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
             <PropertyColumn Title="修改时间"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ModifiedDateTime"></PropertyColumn>
 
@@ -222,7 +222,7 @@
 
                 paginationQueryParameters.PageSize = pageSize;
                 paginationQueryParameters.PageIndex = pageIndex;
-                var rsp = await ApiService.QueryFileRecordCategoriesAsync(paginationQueryParameters);
+                var rsp = await ApiService.QueryFileRecordCategoryListAsync(paginationQueryParameters);
                 if (rsp.ErrorCode == 0)
                 {
                     if (rsp.TotalCount == 0 || rsp.TotalCount == categoryList.Count - 1)

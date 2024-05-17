@@ -18,9 +18,14 @@ public class EfRepository<T> :
 
     public DbContext DbContext => _dbContext;
 
+    public TimeSpan LastSaveChangesTimeSpan { get; private set; }
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        Stopwatch stopwatch = Stopwatch.StartNew();
         LastSaveChangesCount = await base.SaveChangesAsync(cancellationToken);
+        stopwatch.Stop();
+        LastSaveChangesTimeSpan = stopwatch.Elapsed;
         return LastSaveChangesCount;
     }
 

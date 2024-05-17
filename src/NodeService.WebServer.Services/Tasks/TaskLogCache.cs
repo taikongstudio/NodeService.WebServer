@@ -104,6 +104,24 @@ public class TaskLogCache
         }
     }
 
+    public IEnumerable<LogEntry> GetEntries()
+    {
+        if (IsTruncated) yield break;
+        var currentPageIndex = 0;
+        lock (_pages)
+        {
+            while (true)
+            {
+                var node = GetNode(currentPageIndex);
+                if (node == null) yield break;
+                foreach (var logEntry in GetPageEntries(ref node.ValueRef))
+                    yield return logEntry;
+                currentPageIndex++;
+                if (currentPageIndex >= _pages.Count) break;
+            }
+        }
+    }
+
     private IEnumerable<LogEntry> GetPageEntries(ref TaskLogCachePage taskLogCachePage)
     {
         LastAccessTimeUtc = DateTime.UtcNow;

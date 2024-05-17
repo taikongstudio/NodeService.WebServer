@@ -148,9 +148,9 @@
                         break;
                 }
             </PropertyColumn>
-            <PropertyColumn Title="触发时间" SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
-            <PropertyColumn Title="开始时间" SorterMultiple="2" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
-            <PropertyColumn Title="结束时间" SorterMultiple="3" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="触发时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="开始时间" Ellipsis SorterMultiple="2" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
+            <PropertyColumn Title="结束时间" Ellipsis SorterMultiple="3" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
             <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.Message"></PropertyColumn>
             <ActionColumn Fixed="right" Width="200" Title="操作">
                 <CellRender Context="cellData">
@@ -182,7 +182,7 @@
                             </Button>
                         </SpaceItem>
                         <SpaceItem>
-                            <a href="@($"/api/jobs/instances/{context.Id}/log")" target="_blank">
+                            <a href="@($"/api/Tasks/Instances/{context.Id}/Log")" target="_blank">
                                 <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Download">
                                 </Button>
                             </a>
@@ -426,7 +426,7 @@
             return;
         }
 
-        await ClipboardService.WriteTextAsync($"{ApiService.HttpClient.BaseAddress}tasks/instances/{value}/log");
+        await ClipboardService.WriteTextAsync($"{ApiService.HttpClient.BaseAddress}Tasks/Instances/{value}/Log");
         await _notice.Open(new NotificationConfig
         {
             Message = "提示",
@@ -466,7 +466,7 @@
         {
             TaskExecutionInstanceId = null;
             var uri = NavigationManager.BaseUri;
-            NavigationManager.NavigateTo($"{uri}tasks/instances");
+            NavigationManager.NavigateTo($"{uri}Tasks/Instances");
         }
     }
 

@@ -43,7 +43,7 @@ public partial class NodesController : Controller
         _exceptionCounter = exceptionCounter;
     }
 
-    [HttpGet("/api/nodes/list")]
+    [HttpGet("/api/Nodes/List")]
     public async Task<PaginationResponse<NodeInfoModel>> QueryNodeListAsync(
         [FromQuery] QueryNodeListParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -86,7 +86,7 @@ public partial class NodesController : Controller
     }
 
 
-    [HttpGet("/api/nodes/{id}")]
+    [HttpGet("/api/Nodes/{id}")]
     public async Task<ApiResponse<NodeInfoModel>> QueryNodeInfoAsync(string id)
     {
         var apiResponse = new ApiResponse<NodeInfoModel>();

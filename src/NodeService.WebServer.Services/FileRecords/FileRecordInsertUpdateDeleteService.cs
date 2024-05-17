@@ -7,12 +7,11 @@ using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.FileRecords;
 
-public class FileRecordInsertUpdateDeleteService : BackgroundService, IDisposable
+public class FileRecordInsertUpdateDeleteService : BackgroundService
 {
     private readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _cudBatchQueue;
     private readonly ExceptionCounter _exceptionCounter;
     private readonly ILogger<FileRecordQueryService> _logger;
-    private readonly IRepository<FileRecordModel> _repo;
     private readonly ApplicationRepositoryFactory<FileRecordModel> _repositoryFactory;
 
     public FileRecordInsertUpdateDeleteService(
@@ -27,13 +26,6 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService, IDisposabl
         _exceptionCounter = exceptionCounter;
         _repositoryFactory = repositoryFactory;
         _cudBatchQueue = cudBatchQueue;
-        _repo = _repositoryFactory.CreateRepository();
-    }
-
-    public override void Dispose()
-    {
-        _repo.Dispose();
-        base.Dispose();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -43,6 +35,11 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService, IDisposabl
             await foreach (var arrayPoolCollection in _cudBatchQueue.ReceiveAllAsync(stoppingToken))
                 try
                 {
+                    if (arrayPoolCollection.CountNotDefault() == 0)
+                    {
+                        continue;
+                    }
+                    using var repo = _repositoryFactory.CreateRepository();
                     foreach (var operation in arrayPoolCollection.Where(static x => x != null))
                     {
                         if (operation == null) continue;
@@ -52,7 +49,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService, IDisposabl
                             case BatchQueueOperationKind.None:
                                 break;
                             case BatchQueueOperationKind.InsertOrUpdate:
-                                var modelFromRepo = await _repo.FirstOrDefaultAsync(
+                                var modelFromRepo = await repo.FirstOrDefaultAsync(
                                     new FileRecordSpecification(
                                         operation.Argument.Id,
                                         null,
@@ -60,7 +57,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService, IDisposabl
                                     stoppingToken);
                                 if (modelFromRepo == null)
                                 {
-                                    await _repo.AddAsync(operation.Argument);
+                                    await repo.AddAsync(operation.Argument);
                                 }
                                 else
                                 {
@@ -72,16 +69,15 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService, IDisposabl
                                     modelFromRepo.CompressedSize = operation.Argument.CompressedSize;
                                     modelFromRepo.CompressedFileHashValue = operation.Argument.CompressedFileHashValue;
                                     modelFromRepo.FileHashValue = operation.Argument.FileHashValue;
-                                    await _repo.SaveChangesAsync(stoppingToken);
+                                    await repo.SaveChangesAsync(stoppingToken);
                                 }
-
-                                _logger.LogInformation($"Add or update SaveChanges:{_repo.LastSaveChangesCount}");
+                                _logger.LogInformation($"Add or update SaveChanges:{repo.LastSaveChangesCount} {repo.LastSaveChangesTimeSpan}");
 
                                 operation.SetResult(true);
                                 break;
                             case BatchQueueOperationKind.Delete:
-                                await _repo.DeleteAsync(operation.Argument);
-                                _logger.LogInformation($"Delete SaveChanges:{_repo.LastSaveChangesCount}");
+                                await repo.DeleteAsync(operation.Argument);
+                                _logger.LogInformation($"Delete SaveChanges:{repo.LastSaveChangesCount} {repo.LastSaveChangesTimeSpan}");
                                 operation.SetResult(true);
                                 break;
                         }

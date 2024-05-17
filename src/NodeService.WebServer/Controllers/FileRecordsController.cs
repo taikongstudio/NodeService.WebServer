@@ -37,43 +37,7 @@ public class FileRecordsController : Controller
         _insertUpdateDeleteOpBatchQueue = insertUpdateDeleteOpBatchQueue;
     }
 
-    [HttpGet("/api/filerecords/{nodeId}/list")]
-    public async Task<PaginationResponse<FileRecordModel>> QueryNodeFileListAsync(
-        string nodeId,
-        [FromQuery] QueryFileRecordListParameters queryParameters,
-        CancellationToken cancellationToken = default)
-    {
-        var apiResponse = new PaginationResponse<FileRecordModel>();
-        try
-        {
-            var fileRecordQueryOperation =
-                new BatchQueueOperation<(FileRecordSpecification Specification, PaginationInfo PaginationInfo), ListQueryResult<FileRecordModel>>(
-                    (
-                    new FileRecordSpecification(nodeId,
-                        queryParameters.Category,
-                        queryParameters.Keywords,
-                        queryParameters.SortDescriptions), 
-                    new PaginationInfo(
-                        queryParameters.PageIndex,
-                        queryParameters.PageSize)
-                    ),
-                    BatchQueueOperationKind.Query);
-            await _queryOpBatchQueue.SendAsync(fileRecordQueryOperation, cancellationToken);
-            var queryResult = await fileRecordQueryOperation.WaitAsync(cancellationToken);
-            apiResponse.SetResult(queryResult);
-        }
-        catch (Exception ex)
-        {
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
-            apiResponse.ErrorCode = ex.HResult;
-            apiResponse.Message = ex.ToString();
-        }
-
-        return apiResponse;
-    }
-
-    [HttpGet("/api/filerecords/list")]
+    [HttpGet("/api/FileRecords/List")]
     public async Task<PaginationResponse<FileRecordModel>> QueryNodeFileListAsync(
     [FromQuery] QueryFileRecordListParameters queryParameters,
     CancellationToken cancellationToken = default)
@@ -107,7 +71,7 @@ public class FileRecordsController : Controller
         return apiResponse;
     }
 
-    [HttpGet("/api/filerecords/categories")]
+    [HttpGet("/api/FileRecords/Categories/List")]
     public async Task<PaginationResponse<string>> QueryCategoriesListAsync(
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -123,8 +87,8 @@ public class FileRecordsController : Controller
                 .Select(x => x.Key);
 
             var categories = await queryable.Skip(startIndex)
-                .Take(queryParameters.PageSize).ToArrayAsync();
-            apiResponse.TotalCount = await queryable.CountAsync();
+                .Take(queryParameters.PageSize).ToArrayAsync(cancellationToken);
+            apiResponse.TotalCount = await queryable.CountAsync(cancellationToken);
             apiResponse.PageSize = queryParameters.PageIndex;
             apiResponse.PageIndex = queryParameters.PageSize;
             apiResponse.SetResult(categories);
@@ -140,7 +104,7 @@ public class FileRecordsController : Controller
         return apiResponse;
     }
 
-    [HttpPost("/api/filerecords/{nodeId}/addorupdate")]
+    [HttpPost("/api/FileRecords/AddOrUpdate")]
     public async Task<ApiResponse> AddOrUpdateAsync(
         [FromBody] FileRecordModel model,
         CancellationToken cancellationToken = default)
@@ -164,7 +128,7 @@ public class FileRecordsController : Controller
         return apiResponse;
     }
 
-    [HttpPost("/api/filerecords/{nodeId}/remove")]
+    [HttpPost("/api/FileRecords/Remove")]
     public async Task<ApiResponse> RemoveAsync(
         [FromBody] FileRecordModel model,
         CancellationToken cancellationToken = default)

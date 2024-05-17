@@ -5,13 +5,13 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/CommonConfig/notification/addorupdate")]
+    [HttpPost("/api/CommonConfig/notification/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] NotificationConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/CommonConfig/notification/list")]
+    [HttpGet("/api/CommonConfig/notification/List")]
     public Task<PaginationResponse<NotificationConfigModel>> QueryNotificationConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
@@ -24,13 +24,13 @@ public partial class CommonConfigController
         return QueryConfigurationAsync<NotificationConfigModel>(id);
     }
 
-    [HttpPost("/api/CommonConfig/notification/remove")]
+    [HttpPost("/api/CommonConfig/notification/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] NotificationConfigModel model)
     {
         return DeleteConfigurationAsync(model);
     }
 
-    [HttpPost("/api/CommonConfig/notification/{id}/invoke")]
+    [HttpPost("/api/CommonConfig/notification/{id}/Invoke")]
     public async Task<ApiResponse> InvokeAsync(string id, [FromBody] InvokeNotificationParameters parameters)
     {
         var rsp = await QueryNotificationConfigAsync(id);

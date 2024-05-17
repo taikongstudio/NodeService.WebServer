@@ -5,28 +5,32 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
-    [HttpGet("/api/CommonConfig/NodeSetting/")]
+    [HttpGet("/api/CommonConfig/NodeSettings/")]
     public async Task<ApiResponse<NodeSettings>> QueryNodeSettingsAsync()
     {
         var rsp = new ApiResponse<NodeSettings>();
         try
         {
             NodeSettings? result = null;
-            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            using var repo = repoFactory.CreateRepository();
-            var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
-            if (propertyBag == null)
+            if (!_memoryCache.TryGetValue<NodeSettings>(nameof(NodeSettings), out result))
             {
-                result = new NodeSettings();
-                propertyBag = new PropertyBag();
-                propertyBag.Add("Id", "NodeSettings");
-                propertyBag.Add("Value", JsonSerializer.Serialize(result));
-                propertyBag.Add("CreatedDate", DateTime.UtcNow);
-                await repo.AddAsync(propertyBag);
-            }
-            else
-            {
-                result = JsonSerializer.Deserialize<NodeSettings>(propertyBag["Value"] as string);
+                var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+                using var repo = repoFactory.CreateRepository();
+                var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
+                if (propertyBag == null)
+                {
+                    result = new NodeSettings();
+                    propertyBag = new PropertyBag();
+                    propertyBag.Add("Id", "NodeSettings");
+                    propertyBag.Add("Value", JsonSerializer.Serialize(result));
+                    propertyBag.Add("CreatedDate", DateTime.UtcNow);
+                    await repo.AddAsync(propertyBag);
+                }
+                else
+                {
+                    result = JsonSerializer.Deserialize<NodeSettings>(propertyBag["Value"] as string);
+                }
+                _memoryCache.Set(nameof(NodeSettings), result);
             }
 
             rsp.SetResult(result);
@@ -40,7 +44,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpPost("/api/CommonConfig/NodeSetting/update")]
+    [HttpPost("/api/CommonConfig/NodeSettings/Update")]
     public async Task<ApiResponse> UpdateNodeSettingAsync([FromBody] NodeSettings model)
     {
         var rsp = new ApiResponse();
@@ -54,6 +58,7 @@ public partial class CommonConfigController
             var count = await repo.DbContext.Set<PropertyBag>()
                 .Where(x => x["Id"] == nameof(NodeSettings))
                 .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x["Value"], x => value));
+            _memoryCache.Remove(nameof(NodeSettings));
         }
         catch (Exception ex)
         {

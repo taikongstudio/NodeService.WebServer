@@ -2,13 +2,13 @@
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/CommonConfig/jobtypedesc/addorupdate")]
+    [HttpPost("/api/CommonConfig/jobtypedesc/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] JobTypeDescConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/CommonConfig/jobtypedesc/list")]
+    [HttpGet("/api/CommonConfig/jobtypedesc/List")]
     public Task<PaginationResponse<JobTypeDescConfigModel>> QueryJobTypeDescConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
@@ -16,7 +16,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/jobtypedesc/remove")]
+    [HttpPost("/api/CommonConfig/jobtypedesc/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] JobTypeDescConfigModel model)
     {
         return DeleteConfigurationAsync(model);

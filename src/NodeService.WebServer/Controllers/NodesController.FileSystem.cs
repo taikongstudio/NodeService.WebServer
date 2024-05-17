@@ -4,7 +4,7 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class NodesController
 {
-    [HttpGet("/api/nodes/{nodeId}/filesystem/{**path}")]
+    [HttpGet("/api/Nodes/{nodeId}/filesystem/{**path}")]
     public async Task<ApiResponse<IEnumerable<FileSystemEntry>>> ListDirectoryAsync(string nodeId, string path,
         [FromQuery] string? searchpattern)
     {

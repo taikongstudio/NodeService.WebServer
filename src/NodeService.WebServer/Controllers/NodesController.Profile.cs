@@ -2,7 +2,7 @@
 
 public partial class NodesController
 {
-    [HttpPost("/api/nodes/{nodeId}/profile/update")]
+    [HttpPost("/api/Nodes/{nodeId}/Profile/Update")]
     public async Task<ApiResponse<bool>> UpdateNodeInfoAsync(string nodeId, [FromBody] UpdateNodeProfileModel value)
     {
         var apiResponse = new ApiResponse<bool>();

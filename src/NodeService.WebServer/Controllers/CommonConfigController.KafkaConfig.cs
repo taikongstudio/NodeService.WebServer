@@ -2,13 +2,13 @@
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/CommonConfig/kafka/addorupdate")]
+    [HttpPost("/api/CommonConfig/kafka/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] KafkaConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/CommonConfig/kafka/list")]
+    [HttpGet("/api/CommonConfig/kafka/List")]
     public Task<PaginationResponse<KafkaConfigModel>> QueryKafkaConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
@@ -22,7 +22,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/kafka/remove")]
+    [HttpPost("/api/CommonConfig/kafka/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] KafkaConfigModel kafkaConfig)
     {
         return DeleteConfigurationAsync(kafkaConfig);

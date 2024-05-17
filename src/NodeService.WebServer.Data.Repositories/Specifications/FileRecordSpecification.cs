@@ -59,9 +59,13 @@ public class FileRecordSpecification : Specification<FileRecordModel>
             foreach (var item in nameFilters.Items)
             {
                 if (nameFilters.FilterType == DataFilterTypes.Include)
-                    Query.Where(x => x.OriginalFileName.Contains(item));
+                {
+                    Query.Where(x => x.OriginalFileName.Contains(item) || x.Name == item);
+                }
                 else if (nameFilters.FilterType == DataFilterTypes.Exclude)
-                    Query.Where(x => !x.OriginalFileName.Contains(item));
+                {
+                    Query.Where(x => !x.OriginalFileName.Contains(item) && x.Name != item);
+                }
             }
 
         }

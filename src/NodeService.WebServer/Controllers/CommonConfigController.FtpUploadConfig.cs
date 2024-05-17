@@ -2,14 +2,14 @@
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/CommonConfig/ftpupload/addorupdate")]
+    [HttpPost("/api/CommonConfig/ftpupload/AddOrUpdate")]
     public Task<ApiResponse>
         AddOrUpdateAsync([FromBody] FtpUploadConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/CommonConfig/ftpupload/list")]
+    [HttpGet("/api/CommonConfig/ftpupload/List")]
     public Task<PaginationResponse<FtpUploadConfigModel>> QueryFtpUploadConfigAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
@@ -29,7 +29,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/ftpupload/remove")]
+    [HttpPost("/api/CommonConfig/ftpupload/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] FtpUploadConfigModel model)
     {
         return DeleteConfigurationAsync(model);

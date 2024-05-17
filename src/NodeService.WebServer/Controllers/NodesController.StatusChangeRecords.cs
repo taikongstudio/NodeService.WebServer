@@ -4,7 +4,7 @@ namespace NodeService.WebServer.Controllers
 {
     public partial class NodesController
     {
-        [HttpGet("//api/nodes/statuschangerecord/list")]
+        [HttpGet("/api/Nodes/StatusChangeRecords/List")]
         public async Task<PaginationResponse<NodeStatusChangeRecordModel>> QueryNodeStatusChangeRecordListAsync(
             [FromQuery] QueryNodeStatusChangeRecordParameters queryParameters)
         {

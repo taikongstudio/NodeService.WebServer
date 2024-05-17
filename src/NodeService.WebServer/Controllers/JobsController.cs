@@ -42,7 +42,7 @@ public class JobsController : Controller
         _taskCancellationAsyncQueue = taskCancellationAsyncQueue;
     }
 
-    [HttpGet("/api/jobs/instances/list")]
+    [HttpGet("/api/Tasks/Instances/List")]
     public async Task<PaginationResponse<JobExecutionInstanceModel>> QueryTaskExecutionInstanceListAsync(
         [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters
     )
@@ -78,7 +78,7 @@ public class JobsController : Controller
         return apiResponse;
     }
 
-    [HttpGet("/api/jobs/instances/{id}/reinvoke")]
+    [HttpGet("/api/Tasks/Instances/{id}/Reinvoke")]
     public async Task<ApiResponse<JobExecutionInstanceModel>> ReinvokeAsync(string id)
     {
         var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
@@ -114,7 +114,7 @@ public class JobsController : Controller
         return apiResponse;
     }
 
-    [HttpPost("/api/jobs/instances/{id}/cancel")]
+    [HttpPost("/api/Tasks/Instances/{id}/Cancel")]
     public async Task<ApiResponse<JobExecutionInstanceModel>> CancelAsync(
         string id,
         [FromBody] TaskCancellationParameters taskCancellationParameters)
@@ -154,7 +154,7 @@ public class JobsController : Controller
     }
 
 
-    [HttpGet("/api/jobs/instances/{taskId}/log")]
+    [HttpGet("/api/Tasks/Instances/{taskId}/log")]
     public async Task<IActionResult> QueryTaskLogAsync(
         string taskId,
         [FromQuery] PaginationQueryParameters queryParameters)
@@ -180,11 +180,9 @@ public class JobsController : Controller
                         fileName = $"{taskId}.log";
                     else
                         fileName = $"{taskExecutionInstance.Name}.log";
-                    var result = taskLogCache.GetEntries(
-                        queryParameters.PageIndex,
-                        queryParameters.PageSize);
+                    var result = taskLogCache.GetEntries();
                     var memoryStream = new MemoryStream();
-                    using var streamWriter = new StreamWriter(memoryStream, Encoding.UTF8, leaveOpen: true);
+                    using var streamWriter = new StreamWriter(memoryStream, leaveOpen: true);
 
                     foreach (var logEntry in result)
                         streamWriter.WriteLine(

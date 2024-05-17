@@ -2,7 +2,7 @@
 
 public partial class NodesController
 {
-    [HttpGet("/api/nodes/{nodeId}/props")]
+    [HttpGet("/api/Nodes/{nodeId}/props")]
     public async Task<ApiResponse<NodePropertySnapshotModel>> QueryNodePropsAsync(string nodeId)
     {
         var apiResponse = new ApiResponse<NodePropertySnapshotModel>();

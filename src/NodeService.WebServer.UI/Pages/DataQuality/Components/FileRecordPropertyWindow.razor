@@ -1,4 +1,7 @@
-﻿<style type="text/css">
+﻿@inject ApiService ApiService
+@inject NotificationService _notice
+@inject IMessageService _message
+<style type="text/css">
 .JsonCodeEditor{
     height:300px;
 }    
@@ -63,12 +66,36 @@
 
     private async Task OnFinish(EditContext editContext)
     {
+        try
+        {
+            var rsp = await ApiService.AddOrUpdateAsync(this.DataContext);
+            if (rsp.ErrorCode == 0)
+            {
+                await _message.Info("更新文件记录成功");
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = rsp.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
 
     }
 
-    private async Task OnFinishFailed(EditContext editContext)
+    Task OnFinishFailed(EditContext editContext)
     {
-
+        return Task.CompletedTask;
     }
 
     async Task OnClosed()

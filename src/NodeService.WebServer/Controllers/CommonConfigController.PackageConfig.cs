@@ -10,14 +10,14 @@ public record class PackageConfigUploadModel : PackageConfigModel
 
 public partial class CommonConfigController
 {
-    [HttpGet("/api/CommonConfig/package/list")]
+    [HttpGet("/api/CommonConfig/Package/List")]
     public Task<PaginationResponse<PackageConfigModel>> QueryPackageConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<PackageConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/CommonConfig/package/download/{packageId}")]
+    [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
     public async Task<IActionResult> DownloadPackageAsync(string packageId)
     {
         ArgumentException.ThrowIfNullOrEmpty(packageId);
@@ -49,7 +49,7 @@ public partial class CommonConfigController
         return File(fileContents, "application/octet-stream", model.FileName);
     }
 
-    [HttpPost("/api/CommonConfig/package/addorupdate")]
+    [HttpPost("/api/CommonConfig/Package/AddOrUpdate")]
     [DisableRequestSizeLimit]
     public async Task<ApiResponse> AddOrUpdatePackageAsync([FromForm] PackageConfigUploadModel package)
     {
@@ -120,14 +120,14 @@ public partial class CommonConfigController
         return apiResponse;
     }
 
-    [HttpPost("/api/CommonConfig/package/remove")]
+    [HttpPost("/api/CommonConfig/Package/Remove")]
     public Task<ApiResponse> DeletePackageConfigAsync([FromBody] PackageConfigModel model)
     {
         return DeleteConfigurationAsync(model);
     }
 
 
-    [HttpGet("/api/CommonConfig/package/{id}")]
+    [HttpGet("/api/CommonConfig/Package/{id}")]
     public Task<ApiResponse<PackageConfigModel>> QueryPackageConfigAsync(string id)
     {
         return QueryConfigurationAsync<PackageConfigModel>(id);

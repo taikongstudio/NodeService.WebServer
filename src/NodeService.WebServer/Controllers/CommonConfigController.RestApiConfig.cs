@@ -2,13 +2,13 @@
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/CommonConfig/restapi/addorupdate")]
+    [HttpPost("/api/CommonConfig/restapi/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] RestApiConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/CommonConfig/restapi/list")]
+    [HttpGet("/api/CommonConfig/restapi/List")]
     public Task<PaginationResponse<RestApiConfigModel>> QueryRestApiConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
@@ -22,7 +22,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/restapi/remove")]
+    [HttpPost("/api/CommonConfig/restapi/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] RestApiConfigModel model)
     {
         return DeleteConfigurationAsync(model);

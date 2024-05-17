@@ -4,7 +4,7 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/CommonConfig/jobschedule/addorupdate")]
+    [HttpPost("/api/CommonConfig/JobSchedule/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] JobScheduleConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model, AddOrUpdateTaskDefinitionAsync);
@@ -18,7 +18,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/jobschedule/{taskDefinitionId}/invoke")]
+    [HttpPost("/api/CommonConfig/JobSchedule/{taskDefinitionId}/Invoke")]
     public async Task<ApiResponse> InvokeJobScheduleAsync(string taskDefinitionId,
         [FromBody] InvokeTaskParameters invokeTaskParameters)
     {
@@ -47,21 +47,21 @@ public partial class CommonConfigController
     }
 
 
-    [HttpGet("/api/CommonConfig/jobschedule/list")]
+    [HttpGet("/api/CommonConfig/JobSchedule/List")]
     public Task<PaginationResponse<JobScheduleConfigModel>> QueryTaskDefinitionListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<JobScheduleConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/CommonConfig/jobschedule/{id}")]
+    [HttpGet("/api/CommonConfig/JobSchedule/{id}")]
     public Task<ApiResponse<JobScheduleConfigModel>> QueryTaskDefinitionAsync(string id)
     {
         return QueryConfigurationAsync<JobScheduleConfigModel>(id);
     }
 
 
-    [HttpPost("/api/CommonConfig/jobschedule/remove")]
+    [HttpPost("/api/CommonConfig/JobSchedule/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] JobScheduleConfigModel model)
     {
         return DeleteConfigurationAsync(model, RemoveTaskDefinitionAsync);

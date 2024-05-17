@@ -4,7 +4,7 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class NodesController
 {
-    [HttpGet("/api/nodes/{id}/jobs/list")]
+    [HttpGet("/api/Nodes/{id}/jobs/List")]
     public async Task<ApiResponse<IEnumerable<JobScheduleConfigModel>>> GetNodeTaskListAsync(string id)
     {
         var apiResponse = new ApiResponse<IEnumerable<JobScheduleConfigModel>>();
@@ -34,7 +34,7 @@ public partial class NodesController
     }
 
 
-    [HttpGet("/api/nodes/{nodeId}/jobs/instances/list")]
+    [HttpGet("/api/Nodes/{nodeId}/jobs/instances/List")]
     public async Task<PaginationResponse<JobExecutionInstanceModel>> GetNodeTaskInstancesAsync(string nodeId,
         [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters)
     {

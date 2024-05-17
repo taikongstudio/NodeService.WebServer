@@ -31,7 +31,7 @@ public partial class ClientUpdateController : Controller
         _exceptionCounter = exceptionCounter;
     }
 
-    [HttpGet("/api/clientupdate/getupdate")]
+    [HttpGet("/api/clientupdate/GetUpdate")]
     public async Task<ApiResponse<ClientUpdateConfigModel>> GetUpdateAsync([FromQuery] string? name)
     {
         var apiResponse = new ApiResponse<ClientUpdateConfigModel>();
@@ -103,7 +103,7 @@ public partial class ClientUpdateController : Controller
         return apiResponse;
     }
 
-    [HttpPost("/api/clientupdate/addorupdate")]
+    [HttpPost("/api/clientupdate/AddOrUpdate")]
     public async Task<ApiResponse> AddOrUpdateAsync([FromBody] ClientUpdateConfigModel model)
     {
         var apiResponse = new ApiResponse();
@@ -143,7 +143,7 @@ public partial class ClientUpdateController : Controller
         return apiResponse;
     }
 
-    [HttpGet("/api/clientupdate/list")]
+    [HttpGet("/api/clientupdate/List")]
     public async Task<PaginationResponse<ClientUpdateConfigModel>> QueryClientUpdateListAsync(
         [FromQuery] PaginationQueryParameters queryParameters
     )
@@ -172,7 +172,7 @@ public partial class ClientUpdateController : Controller
     }
 
 
-    [HttpPost("/api/clientupdate/remove")]
+    [HttpPost("/api/clientupdate/Remove")]
     public async Task<ApiResponse> RemoveAsync([FromBody] ClientUpdateConfigModel model)
     {
         var apiResponse = new ApiResponse();

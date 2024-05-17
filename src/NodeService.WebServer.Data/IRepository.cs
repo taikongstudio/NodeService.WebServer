@@ -10,5 +10,7 @@ public interface IRepository<T> :
 {
     public int LastSaveChangesCount { get; }
 
+    public TimeSpan LastSaveChangesTimeSpan { get; }
+
     public DbContext DbContext { get; }
 }

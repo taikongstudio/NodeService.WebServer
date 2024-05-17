@@ -84,7 +84,6 @@ public class HeartBeatRequestProducerService : BackgroundService
             if (nodeSessionId.NodeId.IsNullOrEmpty) continue;
             if (_nodeSessionService.GetNodeStatus(nodeSessionId) != NodeStatus.Online)
             {
-                TryAbortConnection(nodeSessionId);
                 continue;
             }
 

@@ -106,7 +106,7 @@ namespace NodeService.WebServer.Services.DataQuality
                             {
                                 continue;
                             }
-                            string key = $"{nodeInfo.Id}-{dateTime}";
+                            string key = $"{nodeInfo.Id}-{dateTime:yyyyMMdd}";
                             var report = await statisticsRecordRepo.FirstOrDefaultAsync(
                                 new DataQualityStatisticsSpecification(key, dateTime),
                                 cancellationToken);
@@ -115,6 +115,7 @@ namespace NodeService.WebServer.Services.DataQuality
                                 report = new DataQualityNodeStatisticsRecordModel()
                                 {
                                     Id = key,
+                                    NodeId = nodeInfo.Id,
                                     CreationDateTime = dateTime,
                                     Name = nodeInfo.Name,
                                 };
@@ -127,13 +128,13 @@ namespace NodeService.WebServer.Services.DataQuality
                                 entry = new DataQualityNodeStatisticsEntry()
                                 {
                                     Name = statisticsDefinition.Name,
-                                    Value = item.sampling_rate,
+                                    Value = ((double?)item.sampling_rate),
                                 };
                                 report.Value.Entries.Add(entry);
                             }
                             else
                             {
-                                entry.Value = item.sampling_rate;
+                                entry.Value = (double?)item.sampling_rate;
                             }
                             updateRecordList.Add(report);
 
@@ -147,7 +148,6 @@ namespace NodeService.WebServer.Services.DataQuality
                         {
                             await statisticsRecordRepo.UpdateRangeAsync(updateRecordList, cancellationToken);
                         }
-
                     }
                     catch (Exception ex)
                     {

@@ -17,7 +17,10 @@ namespace NodeService.WebServer.Controllers
             {
                 using var recordRepo = _nodeStatisticsRecordRepoFactory.CreateRepository();
                 var queryResult = await recordRepo.PaginationQueryAsync(
-                    new DataQualityStatisticsSpecification(queryParameters.BeginDateTime, queryParameters.EndDateTime),
+                    new DataQualityStatisticsSpecification(
+                        queryParameters.BeginDateTime,
+                        queryParameters.EndDateTime,
+                        DataFilterCollection<string>.Includes(queryParameters.NodeIdList)),
                     new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
                     cancellationToken);
                 apiResponse.SetResult(queryResult);
@@ -32,6 +35,32 @@ namespace NodeService.WebServer.Controllers
 
             return apiResponse;
         }
+
+    //    [HttpGet("/api/DataQuality/Statistics/Summary")]
+    //    public async Task<PaginationResponse<DataQualityNodeStatisticsRecordModel>> QueryDataQualityNodeStatisticsReportListAsync(
+    //[FromQuery] QueryParameters queryParameters,
+    //CancellationToken cancellationToken = default)
+    //    {
+    //        var apiResponse = new PaginationResponse<DataQualityNodeStatisticsRecordModel>();
+    //        try
+    //        {
+    //            using var recordRepo = _nodeStatisticsRecordRepoFactory.CreateRepository();
+    //            var queryResult = await recordRepo.PaginationQueryAsync(
+    //                new DataQualityStatisticsSpecification(queryParameters.BeginDateTime, queryParameters.EndDateTime),
+    //                new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
+    //                cancellationToken);
+    //            apiResponse.SetResult(queryResult);
+    //        }
+    //        catch (Exception ex)
+    //        {
+    //            _exceptionCounter.AddOrUpdate(ex);
+    //            _logger.LogError(ex.ToString());
+    //            apiResponse.ErrorCode = ex.HResult;
+    //            apiResponse.Message = ex.ToString();
+    //        }
+
+    //        return apiResponse;
+    //    }
 
     }
 }

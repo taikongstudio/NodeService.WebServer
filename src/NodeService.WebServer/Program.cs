@@ -241,6 +241,7 @@ public class Program
         builder.Services.AddHostedService<TaskFireService>();
         builder.Services.AddHostedService<NodeStatusChangeRecordService>();
         builder.Services.AddHostedService<DataQualityStatisticsService>();
+        builder.Services.AddHostedService<DataQualityAlarmService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)

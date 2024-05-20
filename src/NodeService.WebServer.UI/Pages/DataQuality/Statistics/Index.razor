@@ -15,7 +15,6 @@
 
     <Table Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
-           ScrollX="2000px"
            Resizable
            Total="@_dataSource.TotalCount"
            EnableVirtualization="false"
@@ -58,7 +57,7 @@
                     <SpaceItem>
                         <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged" />
                     </SpaceItem>
-                    <SpaceItem>
+@*                     <SpaceItem>
                         <Select TItem="CategoryModel"
                                 TItemValue="string"
                                 DataSource="@_categories"
@@ -70,9 +69,9 @@
                                 Style="width:200px">
                         </Select>
                         <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryCategoriesAsync"></Button>
-                    </SpaceItem>
+                    </SpaceItem> *@
                     <SpaceItem>
-                        <Button Type="@ButtonType.Primary" OnClick="QueryTaskExecutionInstanceListAsync">查询</Button>
+                        <Button Type="@ButtonType.Primary" OnClick="QueryNodeStatisticsRecordListAsync">查询</Button>
                     </SpaceItem>
 
                 </Space>
@@ -80,10 +79,36 @@
         </TitleTemplate>
         <ColumnDefinitions>
             <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox" />
-            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
-            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="创建时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
-            <PropertyColumn Title="修改时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ModifiedDateTime"></PropertyColumn>
+            <PropertyColumn Title="标志" Width="150px" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Width="150px" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="创建时间" Width="100px" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="修改时间" Width="100px" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ModifiedDateTime"></PropertyColumn>
+            <PropertyColumn Title="进度"  Property="c => c.Value.Entries">
+                @if (context.Value.Entries != null)
+                {
+                    <Descriptions Bordered Size="small" Column="1">
+                        @foreach (var item in context.Value.Entries)
+                        {
+                            <DescriptionsItem LabelStyle="width:100px" Title="@item.Name">
+
+                                @if (item.Value == null)
+                                {
+                                    <AntDesign.Progress Style="z-index:0;display:block" Percent=0 ShowInfo="true" Status="ProgressStatus.Exception" />
+                                }
+                                else if (item.Value.Value < 1)
+                                {
+                                    <AntDesign.Progress Style="z-index:0;display:block" Percent=@((double)item.Value.Value*100) Status="ProgressStatus.Normal" ShowInfo="true" />
+                                }
+                                else if (item.Value.Value == 1)
+                                {
+                                    <AntDesign.Progress Style="z-index:0;display:block" Percent=@((double)item.Value.Value*100) Status="ProgressStatus.Success" ShowInfo="true" />
+                                }
+                            </DescriptionsItem>
+                        }
+
+                    </Descriptions>
+                }
+            </PropertyColumn>
 
         </ColumnDefinitions>
     </Table>
@@ -126,28 +151,24 @@
             NavigationManager,
             ApiService.QueryDataQualityStatisticsNodeReportListAsync,
             StateHasChanged);
-        base.OnInitialized();
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
         _categories.Add(new CategoryModel() { Name = "全部分类" });
         _stateList.Add(new FileRecordStateModel { Value = FileRecordState.None, Name = "全部" });
         _stateList.Add(new FileRecordStateModel { Value = FileRecordState.Stat, Name = "统计" });
         _stateList.Add(new FileRecordStateModel { Value = FileRecordState.Uploaded, Name = "已上传" });
         _stateList.Add(new FileRecordStateModel { Value = FileRecordState.Processed, Name = "已处理" });
-        BeginDateTime = DateTime.Today.Date;
-        EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        BeginDateTime = DateTime.Today.Date.AddDays(-1);
+        EndDateTime = DateTime.Today.Date.AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
-        await base.OnInitializedAsync();
+        _dataSource.Request();
+        base.OnInitialized();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            await QueryTaskExecutionInstanceListAsync();
+            await QueryNodeStatisticsRecordListAsync();
         }
 
         await base.OnAfterRenderAsync(firstRender);
@@ -215,7 +236,7 @@
         }
     }
 
-    async Task QueryTaskExecutionInstanceListAsync()
+    async Task QueryNodeStatisticsRecordListAsync()
     {
         try
         {
@@ -238,14 +259,6 @@
                     Message = "错误提示",
                     Description = ex.ToString()
                 });
-        }
-    }
-
-    async void OnCategoryDropdownVisibleChanged(bool visible)
-    {
-        if (visible)
-        {
-            await this.QueryCategoriesAsync();
         }
     }
 

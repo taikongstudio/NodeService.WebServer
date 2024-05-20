@@ -14,9 +14,23 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
             Query.Where(x => x.CreationDateTime == dateTime);
         }
 
-        public DataQualityStatisticsSpecification(DateTime beginDateTime, DateTime endDateTime)
+        public DataQualityStatisticsSpecification(
+            DateTime beginDateTime,
+            DateTime endDateTime,
+            DataFilterCollection<string> idFilters = default)
         {
             Query.Where(x => x.CreationDateTime >= beginDateTime && x.CreationDateTime <= endDateTime);
+            if (idFilters.HasValue)
+            {
+                if (idFilters.FilterType == DataFilterTypes.Include)
+                {
+                    Query.Where(x => idFilters.Items.Contains(x.NodeId));
+                }
+                else if (idFilters.FilterType == DataFilterTypes.Exclude)
+                {
+                    Query.Where(x => !idFilters.Items.Contains(x.NodeId));
+                }
+            }
         }
     }
 }

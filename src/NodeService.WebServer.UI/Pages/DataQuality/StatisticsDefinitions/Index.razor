@@ -33,6 +33,9 @@
             <FormItem Label="启用">
                 <Switch @bind-Checked="@context.IsEnabled" />
             </FormItem>
+            <FormItem Label="节点">
+                <NodeSelector @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple" />
+            </FormItem>
             <FormItem Required Label="数据库配置">
                 @if (_selectedMySqlConfigs != null)
                 {
@@ -130,6 +133,11 @@
     MysqlConfigSelector _mySqlConfigSelector;
     IEnumerable<DatabaseConfigModel> _selectedMySqlConfigs;
 
+    CommonDialog _nodeSelectorDialog;
+    NodeSelector _nodeSelector;
+
+    IEnumerable<NodeInfoModel> _selectedNodeList = [];
+
 
     bool _loading;
 
@@ -169,6 +177,8 @@
         try
         {
             _editModel.Value.Scripts = await _scriptsEditor.GetValue();
+            _editModel.Value.NodeList.Clear();
+            _editModel.Value.NodeList.AddRange(this._selectedNodeList.Select(x => new StringEntry(x.Id, x.Name)));
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
@@ -178,19 +188,19 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = apiResponse.Message
-                });
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = ex.ToString()
-            });
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
         }
         finally
         {

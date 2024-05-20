@@ -9,8 +9,8 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         string ipAddress)
     {
         Query.AsSplitQuery();
-        Query.Where(x => x.Name == name)
-            .Where(x => x.Profile.IpAddress == ipAddress);
+        Query.Where(x => x.Name == name || x.Profile.IpAddress == ipAddress);
+        Query.OrderByDescending(x => x.Profile.ServerUpdateTimeUtc);
     }
 
     public NodeInfoSpecification(

@@ -186,7 +186,7 @@ public class ManagementController : Controller
                             .FirstOrDefault(x => x.Value == OptionValueType.FtpConfigurationListValue).Name,
                         Tag = OptionValueType.FtpConfigurationListValue.ToString()
                     });
-                else if (propertyInfo.PropertyType.BaseType == typeof(MysqlConfigModel))
+                else if (propertyInfo.PropertyType.BaseType == typeof(DatabaseConfigModel))
                     model.OptionValueEditors.Add(new StringEntry
                     {
                         Id = Guid.NewGuid().ToString(),
@@ -195,7 +195,7 @@ public class ManagementController : Controller
                             .FirstOrDefault(x => x.Value == OptionValueType.MysqlConfigurationValue).Name,
                         Tag = OptionValueType.MysqlConfigurationValue.ToString()
                     });
-                else if (propertyInfo.PropertyType.IsAssignableTo(typeof(IEnumerable<MysqlConfigModel>)))
+                else if (propertyInfo.PropertyType.IsAssignableTo(typeof(IEnumerable<DatabaseConfigModel>)))
                     model.OptionValueEditors.Add(new StringEntry
                     {
                         Id = Guid.NewGuid().ToString(),

@@ -497,7 +497,7 @@
                     optionEditors.TryAdd(optionEditor.Name, ftpConfigurationEditor);
                     break;
                 case OptionValueType.MysqlConfigurationValue:
-                    var mysqlConfigurationEditor = new MysqlConfigurationEditor(await model.Options.ReadOptionValueAsync<MysqlConfigModel>(optionEditor.Name, ApiService.GetMyConfigAsync));
+                    var mysqlConfigurationEditor = new MysqlConfigurationEditor(await model.Options.ReadOptionValueAsync<DatabaseConfigModel>(optionEditor.Name, ApiService.GetMyConfigAsync));
                     optionEditors.TryAdd(optionEditor.Name, mysqlConfigurationEditor);
                     break;
                 case OptionValueType.KafkaConfigurationValue:

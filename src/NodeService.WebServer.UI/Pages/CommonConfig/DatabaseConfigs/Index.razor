@@ -1,5 +1,5 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.MysqlConfigs
-@page "/CommonConfig/Mysql"
+@page "/CommonConfig/Database/"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
@@ -27,6 +27,16 @@
             <FormItem Label="描述">
                 <Input @bind-Value="@context.Description"/>
             </FormItem>
+            <FormItem Required Label="提供者">
+                <Select DataSource="@_databaseProviders"
+                        @bind-value="@context.Value.Provider"
+                        TItem="StringEntry"
+                        AutoFocus
+                        DefaultActiveFirstOption
+                        TItemValue="string"
+                        LabelName="@nameof(StringEntry.Name)"
+                        ValueName="@nameof(StringEntry.Value)" />
+            </FormItem>
             <FormItem Required Label="主机名称">
                 <Input @bind-Value="@context.Host"/>
             </FormItem>
@@ -45,11 +55,11 @@
         </Form>
     </Modal>
 
-    <Table @ref="_table"
+    <Table 
            Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            EnableVirtualization="false"
-           TItem="MysqlConfigModel"
+           TItem="DatabaseConfigModel"
            OnChange="OnTableChange"
            DataSource="@_dataSource.ItemsSource"
            Resizable
@@ -61,7 +71,7 @@
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
-                    <Title Level="3">Mysql配置</Title>
+                    <Title Level="3">数据库配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
@@ -93,10 +103,10 @@
                 <CellRender Context="cellData">
                     <Space>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<MysqlConfigModel>())"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<DatabaseConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<MysqlConfigModel>())"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<DatabaseConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
@@ -110,33 +120,39 @@
 </GridContent>
 
 @code {
-    ITable _table;
     string _modalTitle;
     bool _editFormVisible;
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
-    Form<MysqlConfigModel> _editForm;
-    MysqlConfigModel _editModel = new();
+    Form<DatabaseConfigModel> _editForm;
+    DatabaseConfigModel _editModel = new();
 
-    RoutedPaginationDataSource<MysqlConfigModel, PaginationQueryParameters> _dataSource;
+    RoutedPaginationDataSource<DatabaseConfigModel, PaginationQueryParameters> _dataSource;
+
+    private List<StringEntry> _databaseProviders;
 
 
     protected override void OnInitialized()
     {
-        _dataSource = new RoutedPaginationDataSource<MysqlConfigModel, PaginationQueryParameters>(
+        _databaseProviders = new List<StringEntry>()
+        {
+            new StringEntry("MySql","MySql"),
+            new StringEntry("SqlServer","SqlServer"),
+        };
+        _dataSource = new RoutedPaginationDataSource<DatabaseConfigModel, PaginationQueryParameters>(
             NavigationManager,
-            ApiService.QueryMysqlConfigurationListAsync,
+            ApiService.QueryDatabaseConfigurationListAsync,
             StateHasChanged);
         _dataSource.Request();
         base.OnInitialized();
     }
 
-    void ShowEditForm(MysqlConfigModel? model = null)
+    void ShowEditForm(DatabaseConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
         {
-            _editModel = new MysqlConfigModel
+            _editModel = new DatabaseConfigModel
             {
                 Id = Guid.NewGuid().ToString()
             };
@@ -213,7 +229,7 @@
             options);
     }
 
-    async Task DeleteConfig(MysqlConfigModel model)
+    async Task DeleteConfig(DatabaseConfigModel model)
     {
         try
         {
@@ -260,7 +276,7 @@
     }
 
 
-    void OnTableChange(QueryModel<MysqlConfigModel> query)
+    void OnTableChange(QueryModel<DatabaseConfigModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)

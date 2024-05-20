@@ -18,6 +18,7 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataQuality;
 using NodeService.WebServer.Services.FileRecords;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NodeSessions;
@@ -239,6 +240,7 @@ public class Program
         builder.Services.AddHostedService<FileRecordInsertUpdateDeleteService>();
         builder.Services.AddHostedService<TaskFireService>();
         builder.Services.AddHostedService<NodeStatusChangeRecordService>();
+        builder.Services.AddHostedService<DataQualityStatisticsService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -459,5 +461,6 @@ public class Program
                         mySqlOptionBuilder.EnableStringComparisonTranslations();
                     }));
         }
+
     }
 }

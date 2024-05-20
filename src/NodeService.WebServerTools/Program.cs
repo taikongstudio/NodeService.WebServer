@@ -34,7 +34,7 @@ internal class Program
     private static void Configure(HostApplicationBuilder builder)
     {
         ConfigureDbContext(builder);
-        builder.Services.AddHostedService<AnalysisLogService>();
+        builder.Services.AddHostedService<MergeNodeService>();
         builder.Services.AddSingleton<HttpClient>(sp =>
         {
             return new HttpClient

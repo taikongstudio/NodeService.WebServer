@@ -2,7 +2,7 @@
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class CommonConfigSpecification<T> : Specification<T> where T : ConfigurationModel
+public class CommonConfigSpecification<T> : Specification<T> where T : JsonBasedDataModel
 {
     public CommonConfigSpecification(
         string? keywords,

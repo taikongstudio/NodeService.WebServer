@@ -1,13 +1,21 @@
-﻿@namespace NodeService.WebServer.UI.Pages.Notifications.Configure
-@page "/Notifications/Configure"
-@inject ApiService ApiService
+﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.DataQualityStatisticsDefinitions
+@page "/DataQuality/StatisticsDefinitions"
 @inject NotificationService _notice
+@inject ApiService ApiService
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
+@implements IDisposable
+
+<style type="text/css">
+    .ScriptsEditor {
+        height: 300px;
+    }
+</style>
+
 <GridContent>
     <Modal Width="800"
-           Style="top:0"
            Title="@_modalTitle"
+           Style="top:0"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
            OnOk="@HandleEditFormOk"
@@ -19,38 +27,43 @@
               OnFinish="OnEditFormFinish"
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
-            <FormItem Label="配置名称">
+            <FormItem Label="名称">
                 <Input @bind-Value="@context.Name"/>
             </FormItem>
-            <FormItem Label="启动">
-                <Switch @bind-Value="@context.IsEnabled"/>
+            <FormItem Label="启用">
+                <Switch @bind-Checked="@context.IsEnabled" />
             </FormItem>
-            <FormItem Label="配置类型">
-                <Select DataSource="@_types"
-                        Value="@_editModel.ConfigurationType"
-                        TItem="NotificationConfigurationTypeModel"
-                        TItemValue="NotificationConfigurationType"
-                        ValueChanged="OnSelectedConfigurationTypeChanged"
-                        LabelName="@nameof(NotificationConfigurationTypeModel.Name)"
-                        ValueName="@nameof(NotificationConfigurationTypeModel.Type)"></Select>
+            <FormItem Required Label="数据库配置">
+                @if (_selectedMySqlConfigs != null)
+                {
+                    foreach (var item in _selectedMySqlConfigs)
+                    {
+                        <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
+                        break;
+                    }
+                }
+                <Tag Class="site-tag-plus" OnClick="ShowMySqlConfigSelectorDialogAsync">
+                    <Icon Type="@IconType.Outline.Edit" />
+                </Tag>
+                <CommonDialog @ref="_mySqlConfigDialog" Closed="OnSelectMySqlConfigDialogClosed">
+                    <MysqlConfigSelector @ref="_mySqlConfigSelector" @bind-SelectedItems="_selectedMySqlConfigs" Mode="SelectionMode.Single" />
+                </CommonDialog>
             </FormItem>
-            @switch (_editModel.ConfigurationType)
-            {
-                case NotificationConfigurationType.Email:
-                    <EmailNotification Configuration="@(context.Value.GetCurrentOptions<EmailNotificationOptions>())"/>
-                    break;
-                case NotificationConfigurationType.Lark:
-                    <LarkNotification Configuration="@(context.Value.GetCurrentOptions<LarkNotificationOptions>())"/>
-                    break;
-            }
-
+            <FormItem Required Label="脚本">
+                <StandaloneCodeEditor @ref="@_scriptsEditor"
+                                      CssClass="ScriptsEditor"
+                                      OnDidInit="ScriptEditorInitAsync"
+                                      ConstructionOptions="BuildScriptsEditorConstructionOptions" />
+            </FormItem>
         </Form>
     </Modal>
 
-    <Table Size="TableSize.Small"
-           Loading="_loading"
+    <Table @ref="_table"
+           ScrollX="1000px"
+           Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
            EnableVirtualization="false"
-           TItem="NotificationConfigModel"
+           TItem="DataQualityStatisticsDefinitionModel"
            Resizable
            OnChange="OnTableChange"
            DataSource="@_dataSource.ItemsSource"
@@ -62,7 +75,7 @@
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
-                    <Title Level="3">通知设置</Title>
+                    <Title Level="3">统计定义</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
@@ -82,104 +95,72 @@
         <ColumnDefinitions>
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="创建时间" Sortable="true" Property="c => c.CreationDateTime"></PropertyColumn>
-            <PropertyColumn Title="修改时间" Sortable="true" Property="c => c.ModifiedDateTime"></PropertyColumn>
+            <PropertyColumn Title="脚本" Ellipsis Sortable="true" Property="c => c.Value.Scripts"></PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<NotificationConfigModel>())"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<DataQualityStatisticsDefinitionModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<NotificationConfigModel>())"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<DataQualityStatisticsDefinitionModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
-                        <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Notification" OnClick="() => TestNotificationAsync(context)"></Button>
-                        </SpaceItem>
+
                     </Space>
                 </CellRender>
             </ActionColumn>
         </ColumnDefinitions>
-        <ExpandTemplate>
-            <Tabs Animated>
-                <TabPane Tab="参数" Key="1">
-
-
-                </TabPane>
-            </Tabs>
-        </ExpandTemplate>
     </Table>
 </GridContent>
 
 @code {
+    ITable _table;
     string _modalTitle;
     bool _editFormVisible;
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
+    Form<DataQualityStatisticsDefinitionModel> _editForm;
+    DataQualityStatisticsDefinitionModel _editModel = new();
+    StandaloneCodeEditor _scriptsEditor;
 
-    class NotificationConfigurationTypeModel
-    {
-        public NotificationConfigurationType Type { get; set; }
-        public string Name { get; set; }
-    }
+    CommonDialog _mySqlConfigDialog;
+    MysqlConfigSelector _mySqlConfigSelector;
+    IEnumerable<DatabaseConfigModel> _selectedMySqlConfigs;
 
-    List<NotificationConfigurationTypeModel> _types = [];
-
-    Form<NotificationConfigModel> _editForm;
-    NotificationConfigModel _editModel = new();
 
     bool _loading;
-    RoutedPaginationDataSource<NotificationConfigModel, PaginationQueryParameters> _dataSource;
+
+    RoutedPaginationDataSource<DataQualityStatisticsDefinitionModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
-        _types = new List<NotificationConfigurationTypeModel>
-        {
-            new()
-            {
-                Type = NotificationConfigurationType.NotSet,
-                Name = "未设置"
-            },
-            new()
-            {
-                Type = NotificationConfigurationType.Email,
-                Name = "邮件"
-            },
-            new()
-            {
-                Type = NotificationConfigurationType.Lark,
-                Name = "飞书"
-            }
-        };
-
-        _dataSource = new RoutedPaginationDataSource<NotificationConfigModel, PaginationQueryParameters>(
+        _dataSource = new RoutedPaginationDataSource<DataQualityStatisticsDefinitionModel, PaginationQueryParameters>(
             NavigationManager,
-            ApiService.QueryNotificationConfigListAsync,
+            ApiService.QueryDataQualityStatisticsDefinitionListAsync,
             StateHasChanged);
-
+        _dataSource.ItemInitializer = InitializeMySqlConfigAsync;
         _dataSource.Request();
-
         base.OnInitialized();
     }
 
-    void ShowEditForm(NotificationConfigModel? model = null)
+    void ShowEditForm(DataQualityStatisticsDefinitionModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
         {
-            _editModel = new NotificationConfigModel
+            _editModel = new DataQualityStatisticsDefinitionModel
             {
                 Id = Guid.NewGuid().ToString()
             };
-            _modalTitle = "编辑配置";
+            _modalTitle = "新建配置";
         }
         else
         {
             _editModel = model;
-            _modalTitle = "新建配置";
+            _modalTitle = "编辑配置";
         }
     }
 
@@ -187,11 +168,12 @@
     {
         try
         {
+            _editModel.Value.Scripts = await _scriptsEditor.GetValue();
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                _editFormVisible = false;
                 await _dataSource.RefreshAsync();
+                _editFormVisible = false;
             }
             else
             {
@@ -207,7 +189,7 @@
             await _notice.Open(new NotificationConfig
             {
                 Message = "错误提示",
-                Description = ex.Message
+                Description = ex.ToString()
             });
         }
         finally
@@ -246,7 +228,7 @@
             options);
     }
 
-    async Task DeleteConfig(NotificationConfigModel model)
+    async Task DeleteConfig(DataQualityStatisticsDefinitionModel model)
     {
         try
         {
@@ -282,7 +264,6 @@
 
     void HandleEditFormCancel(MouseEventArgs e)
     {
-        _editFormSubmitting = false;
         _editFormVisible = false;
     }
 
@@ -293,30 +274,7 @@
         _editForm.Submit();
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        _loading = true;
-        await QueryConfigurationListAsync();
-        _loading = false;
-    }
-
-    async Task QueryConfigurationListAsync()
-    {
-        try
-        {
-            await _dataSource.RefreshAsync();
-        }
-        catch (Exception ex)
-        {
-            await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = ex.ToString()
-            });
-        }
-    }
-
-    void OnTableChange(QueryModel<NotificationConfigModel> query)
+    void OnTableChange(QueryModel<DataQualityStatisticsDefinitionModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
@@ -328,22 +286,60 @@
 
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
+
         _dataSource.Request();
-    }
-
-    void OnSelectedConfigurationTypeChanged(NotificationConfigurationType configurationType)
-    {
-        _editModel.Value.ConfigurationType = configurationType;
-    }
-
-    async Task TestNotificationAsync(NotificationConfigModel model)
-    {
-        await ApiService.InvokeNotificationAsync(model.Id, new InvokeNotificationParameters("test", "test"));
     }
 
     public void Dispose()
     {
         _dataSource.Dispose();
+    }
+
+    private async Task ScriptEditorInitAsync()
+    {
+        if (this._editModel != null && !string.IsNullOrEmpty(_editModel.Value.Scripts))
+        {
+            await _scriptsEditor.SetValue(_editModel.Value.Scripts);
+        }
+    }
+
+    StandaloneEditorConstructionOptions BuildScriptsEditorConstructionOptions(StandaloneCodeEditor editor)
+    {
+        return new StandaloneEditorConstructionOptions
+            {
+                AutomaticLayout = true,
+                Language = "sql",
+            };
+    }
+
+    async Task ShowMySqlConfigSelectorDialogAsync()
+    {
+        _editModel.Value.DatabaseConfigId = null;
+        await _mySqlConfigDialog.ShowAsync();
+    }
+
+
+    Task OnSelectMySqlConfigDialogClosed()
+    {
+        _editModel.Value.DatabaseConfigId = _selectedMySqlConfigs.FirstOrDefault()?.Id;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    async Task InitializeMySqlConfigAsync(DataQualityStatisticsDefinitionModel model)
+    {
+        if (model == null || model.Value == null)
+        {
+            return;
+        }
+        if (!string.IsNullOrEmpty(model.Value.DatabaseConfigId))
+        {
+            var rsp = await ApiService.QueryDatabaseConfigAsync(model.Value.DatabaseConfigId);
+            if (rsp.ErrorCode == 0)
+            {
+                model.Value.DatabaseConfig = rsp.Result;
+            }
+        }
     }
 
 }

@@ -10,14 +10,6 @@ using Pomelo.EntityFrameworkCore.MySql.Infrastructure.Internal;
 
 namespace NodeService.WebServer.Data;
 
-public enum DatabaseProviderType
-{
-    Unknown,
-    MySql,
-    SqlServer,
-    Sqlite
-}
-
 public partial class ApplicationDbContext : DbContext
 {
     public static readonly LoggerFactory DebugLoggerFactory = new(new[]
@@ -63,7 +55,7 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<KafkaConfigModel> KafkaConfigurationDbSet { get; set; }
 
-    public DbSet<MysqlConfigModel> MysqlConfigurationDbSet { get; set; }
+    public DbSet<DatabaseConfigModel> MysqlConfigurationDbSet { get; set; }
 
     public DbSet<FtpUploadConfigModel> FtpUploadConfigurationDbSet { get; set; }
 
@@ -92,6 +84,10 @@ public partial class ApplicationDbContext : DbContext
     public DbSet<WindowsTaskConfigModel> WindowsTaskConfigurationDbSet { get; set; }
 
     public DbSet<NodeStatusChangeRecordModel> NodeStatusChangeRecordDbSet {  get; set; }
+
+    public DbSet<DataQualityStatisticsDefinitionModel> DataQualityStatisticsDefinitionDbSet { get; set; }
+
+    public DbSet<DataQualityNodeStatisticsRecordModel> DataQualityNodeStatisticsReportDbSet {  get; set; }
 
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |

@@ -1,5 +1,5 @@
 ﻿@inject ApiService ApiService
-@inherits Selector<MysqlConfigModel>
+@inherits Selector<DatabaseConfigModel>
 
 <GridRow>
     <div style="margin:5px 0px;padding:5px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
@@ -21,7 +21,7 @@
 <GridRow>
     <GridCol Flex=@("auto")>
         <Table Size="TableSize.Small"
-               OnChange="(QueryModel<MysqlConfigModel> query) => OnTableChanged(query)"
+               OnChange="(QueryModel<DatabaseConfigModel> query) => OnTableChanged(query)"
                OnPageIndexChange="@_dataSource.OnPaginationEvent"
                OnPageSizeChange="@_dataSource.OnPaginationEvent"
                PageSize="@_dataSource.PageSize"
@@ -30,7 +30,7 @@
                Loading="@_dataSource.IsLoading"
                DataSource="@_dataSource.ItemsSource"
                SelectedRows="@SelectedItems"
-               SelectedRowsChanged="(IEnumerable<MysqlConfigModel> items) => OnSelectedItemsChanged(items)"
+               SelectedRowsChanged="(IEnumerable<DatabaseConfigModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
                 <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
@@ -44,13 +44,13 @@
 
 @code {
 
-    PaginationDataSource<MysqlConfigModel, PaginationQueryParameters> _dataSource;
+    PaginationDataSource<DatabaseConfigModel, PaginationQueryParameters> _dataSource;
 
-    protected override IEnumerable<MysqlConfigModel> ItemsSource => _dataSource.ItemsSource;
+    protected override IEnumerable<DatabaseConfigModel> ItemsSource => _dataSource.ItemsSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new PaginationDataSource<MysqlConfigModel, PaginationQueryParameters>(ApiService.QueryMysqlConfigurationListAsync, StateHasChanged);
+        _dataSource = new PaginationDataSource<DatabaseConfigModel, PaginationQueryParameters>(ApiService.QueryDatabaseConfigurationListAsync, StateHasChanged);
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
 
@@ -65,7 +65,7 @@
         await _dataSource.RefreshAsync();
     }
 
-    async Task OnTableChanged(QueryModel<MysqlConfigModel> query)
+    async Task OnTableChanged(QueryModel<DatabaseConfigModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)

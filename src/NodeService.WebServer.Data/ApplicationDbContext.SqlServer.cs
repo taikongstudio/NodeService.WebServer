@@ -1,4 +1,5 @@
 ﻿
+
 namespace NodeService.WebServer.Data;
 
 public partial class ApplicationDbContext
@@ -6,16 +7,23 @@ public partial class ApplicationDbContext
     private void SqlServer_BuildModels(ModelBuilder modelBuilder)
     {
         SqlServer_BuildClientUpdateInfoModel(modelBuilder);
-        SqlServer_BuildConfigurationModels(modelBuilder);
+        SqlServer_BuildJsonBasedConfigurationModels(modelBuilder);
         SqlServer_BuildJobExecutionInstanceModel(modelBuilder);
         SqlServer_BuildNodeInfoModel(modelBuilder);
         SqlServer_BuildNodeProfileModel(modelBuilder);
         SqlServer_BuildNodeStatusChangeRecordModel(modelBuilder);
         SqlServer_BuildNodePropertySnapshotModel(modelBuilder);
-        SqlServer_BuildFileUploadRecordModel(modelBuilder);
+        SqlServer_BuildFileRecordModel(modelBuilder);
+        SqlServer_BuildNodeStatisticsRecordModel(modelBuilder);
         SqlServer_BuildNotificationRecordModel(modelBuilder);
         SqlServer_BuildJobFireConfigurationModel(modelBuilder);
         SqlServer_BuildClientUpdateCounterModel(modelBuilder);
+    }
+
+    private void SqlServer_BuildNodeStatisticsRecordModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<DataQualityNodeStatisticsRecordModel>()
+            .HasKey(t => t.Id);
     }
 
     private void SqlServer_BuildNodeStatusChangeRecordModel(ModelBuilder modelBuilder)
@@ -31,9 +39,9 @@ public partial class ApplicationDbContext
             entityBuilder.HasKey(nameof(ClientUpdateCounterModel.Id));
             modelBuilder.Entity<ClientUpdateCounterModel>()
                 .Property(x => x.Counters)
-                .HasConversion(x => Serialize(x), x => Deserialize<List<CategoryModel>>(x))
+                .HasConversion(x => Serialize(x), x => Deserialize<List<ClientUpdateCategoryModel>>(x))
                 .Metadata
-                .SetValueComparer(GetEnumerableComparer<CategoryModel>());
+                .SetValueComparer(GetEnumerableComparer<ClientUpdateCategoryModel>());
         });
     }
 
@@ -53,7 +61,7 @@ public partial class ApplicationDbContext
         });
     }
 
-    private void SqlServer_BuildFileUploadRecordModel(ModelBuilder modelBuilder)
+    private void SqlServer_BuildFileRecordModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FileRecordModel>()
             .HasKey(t => new { t.Id, t.Name });
@@ -127,7 +135,7 @@ public partial class ApplicationDbContext
             .AutoInclude();
     }
 
-    private static void SqlServer_BuildConfigurationModels(ModelBuilder modelBuilder)
+    private static void SqlServer_BuildJsonBasedConfigurationModels(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FtpConfigModel>(builder =>
         {
@@ -183,7 +191,7 @@ public partial class ApplicationDbContext
                 });
         });
 
-        modelBuilder.Entity<MysqlConfigModel>(builder =>
+        modelBuilder.Entity<DatabaseConfigModel>(builder =>
         {
             builder.OwnsOne(
                 model => model.Value, ownedNavigationBuilder => { ownedNavigationBuilder.ToJson(); });
@@ -277,6 +285,12 @@ public partial class ApplicationDbContext
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<KeyValuePair<NotificationConfigurationType, object>>());
                 });
+        });
+
+        modelBuilder.Entity<DataQualityStatisticsDefinitionModel>(builder =>
+        {
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder => { ownedNavigationBuilder.ToJson(); });
         });
     }
 }

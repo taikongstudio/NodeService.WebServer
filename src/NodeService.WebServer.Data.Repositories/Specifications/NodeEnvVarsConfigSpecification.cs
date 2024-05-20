@@ -2,7 +2,7 @@
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class NodeEnvVarsConfigSpecification : Specification<MysqlConfigModel>
+public class NodeEnvVarsConfigSpecification : Specification<DatabaseConfigModel>
 {
     public NodeEnvVarsConfigSpecification(
         string? keywords,

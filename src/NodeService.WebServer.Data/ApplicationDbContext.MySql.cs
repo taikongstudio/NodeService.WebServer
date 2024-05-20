@@ -1,22 +1,35 @@
-﻿
-
-namespace NodeService.WebServer.Data;
+﻿namespace NodeService.WebServer.Data;
 
 public partial class ApplicationDbContext
 {
     private void MySql_BuildModels(ModelBuilder modelBuilder)
     {
         MySql_BuildClientUpdateInfoModel(modelBuilder);
-        MySql_BuildConfigurationModels(modelBuilder);
+        MySql_BuildJsonBasedConfigurationModels(modelBuilder);
         MySql_BuildNodeInfoModel(modelBuilder);
         MySql_BuildNodeProfileModel(modelBuilder);
         MySql_BuildNodeStatusChangeRecordModel(modelBuilder);
         MySql_BuildNodePropertySnapshotModel(modelBuilder);
         MySql_BuildJobExecutionInstanceModel(modelBuilder);
-        MySql_BuildFileUploadRecordModel(modelBuilder);
+        MySql_BuildFileRecordModel(modelBuilder);
+        Mysql_BuildNodeStatisticsRecordModel(modelBuilder);
         MySql_BuildNotificationRecordModel(modelBuilder);
         MySql_BuildJobFireConfigurationModel(modelBuilder);
         MySql_BuildClientUpdateCounterModel(modelBuilder);
+    }
+
+    private void Mysql_BuildNodeStatisticsRecordModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<DataQualityNodeStatisticsRecordModel>()
+            .HasKey(t => t.Id);
+
+        modelBuilder.Entity<DataQualityNodeStatisticsRecordModel>(builder =>
+        {
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<DataQualityNodeStatisticsRecord>(v, (JsonSerializerOptions)null));
+        });
     }
 
     private void MySql_BuildNodeStatusChangeRecordModel(ModelBuilder modelBuilder)
@@ -32,9 +45,9 @@ public partial class ApplicationDbContext
 
         modelBuilder.Entity<ClientUpdateCounterModel>()
             .Property(x => x.Counters)
-            .HasConversion(x => Serialize(x), x => Deserialize<List<CategoryModel>>(x))
+            .HasConversion(x => Serialize(x), x => Deserialize<List<ClientUpdateCategoryModel>>(x))
             .Metadata
-            .SetValueComparer(GetEnumerableComparer<CategoryModel>());
+            .SetValueComparer(GetEnumerableComparer<ClientUpdateCategoryModel>());
     }
 
     private void MySql_BuildNotificationRecordModel(ModelBuilder modelBuilder)
@@ -53,7 +66,7 @@ public partial class ApplicationDbContext
         });
     }
 
-    private void MySql_BuildFileUploadRecordModel(ModelBuilder modelBuilder)
+    private void MySql_BuildFileRecordModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FileRecordModel>()
             .HasKey(t => new { t.Id, t.Name });
@@ -128,7 +141,7 @@ public partial class ApplicationDbContext
             .AutoInclude();
     }
 
-    private static void MySql_BuildConfigurationModels(ModelBuilder modelBuilder)
+    private static void MySql_BuildJsonBasedConfigurationModels(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FtpConfigModel>(builder =>
         {
@@ -170,12 +183,12 @@ public partial class ApplicationDbContext
                     v => JsonSerializer.Deserialize<KafkaConfiguration>(v, (JsonSerializerOptions)null));
         });
 
-        modelBuilder.Entity<MysqlConfigModel>(builder =>
+        modelBuilder.Entity<DatabaseConfigModel>(builder =>
         {
             builder.Property(x => x.Value)
                 .HasColumnType("json").HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<MysqlConfiguration>(v, (JsonSerializerOptions)null));
+                    v => JsonSerializer.Deserialize<DatabaseConfiguration>(v, (JsonSerializerOptions)null));
         });
 
         modelBuilder.Entity<JobScheduleConfigModel>(builder =>
@@ -191,7 +204,7 @@ public partial class ApplicationDbContext
             builder.Property(x => x.Value)
                 .HasColumnType("json").HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<JobTypeDescConfiguration>(v, (JsonSerializerOptions)null));
+                    v => JsonSerializer.Deserialize<TaskTypeDescConfiguration>(v, (JsonSerializerOptions)null));
         });
 
         modelBuilder.Entity<RestApiConfigModel>(builder =>
@@ -224,6 +237,14 @@ public partial class ApplicationDbContext
                 .HasColumnType("json").HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<WindowsTaskDefintionConfiguration>(v, (JsonSerializerOptions)null));
+        });
+
+        modelBuilder.Entity<DataQualityStatisticsDefinitionModel>(builder =>
+        {
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<DataQualityStatisticsDefinition>(v, (JsonSerializerOptions)null));
         });
     }
 }

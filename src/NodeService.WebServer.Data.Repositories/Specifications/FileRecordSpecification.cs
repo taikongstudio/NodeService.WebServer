@@ -13,7 +13,7 @@ public class FileRecordSpecification : Specification<FileRecordModel>
     {
         if (!string.IsNullOrEmpty(nodeId)) Query.Where(x => x.Id == nodeId);
         if (!string.IsNullOrEmpty(category)) Query.Where(x => x.Category == category);
-        if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.OriginalFileName.Contains(keywords));
+        if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.OriginalFileName.Contains(keywords) || x.Name == keywords);
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 

@@ -38,7 +38,7 @@ public partial class CommonConfigController : Controller
     }
 
     private async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(PaginationQueryParameters queryParameters)
-        where T : ConfigurationModel, new()
+        where T : JsonBasedDataModel, new()
     {
         var apiResponse = new PaginationResponse<T>();
 
@@ -93,7 +93,7 @@ public partial class CommonConfigController : Controller
     }
 
     private async Task<ApiResponse<T>> QueryConfigurationAsync<T>(string id, Func<T?, Task>? func = null)
-        where T : ConfigurationModel
+        where T : JsonBasedDataModel
     {
         var apiResponse = new ApiResponse<T>();
         try
@@ -115,7 +115,7 @@ public partial class CommonConfigController : Controller
     }
 
     private async Task<ApiResponse> DeleteConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
-        where T : ConfigurationModel
+        where T : JsonBasedDataModel
     {
         var apiResponse = new ApiResponse();
         try
@@ -136,7 +136,7 @@ public partial class CommonConfigController : Controller
     }
 
     private async Task<ApiResponse> AddOrUpdateConfigurationAsync<T>(T model, Func<T, Task>? changesFunc = null)
-        where T : ConfigurationModel
+        where T : JsonBasedDataModel
     {
         var apiResponse = new ApiResponse();
         try

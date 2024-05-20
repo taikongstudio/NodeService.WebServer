@@ -49,36 +49,11 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
                             case BatchQueueOperationKind.None:
                                 break;
                             case BatchQueueOperationKind.InsertOrUpdate:
-                                var modelFromRepo = await repo.FirstOrDefaultAsync(
-                                    new FileRecordSpecification(
-                                        operation.Argument.Id,
-                                        null,
-                                        operation.Argument.Name),
-                                    stoppingToken);
-                                if (modelFromRepo == null)
-                                {
-                                    await repo.AddAsync(operation.Argument);
-                                }
-                                else
-                                {
-                                    modelFromRepo.Category = operation.Argument.Category;
-                                    modelFromRepo.State = operation.Argument.State;
-                                    modelFromRepo.Size = operation.Argument.Size;
-                                    modelFromRepo.Properties = operation.Argument.Properties;
-                                    modelFromRepo.OriginalFileName = operation.Argument.OriginalFileName;
-                                    modelFromRepo.CompressedSize = operation.Argument.CompressedSize;
-                                    modelFromRepo.CompressedFileHashValue = operation.Argument.CompressedFileHashValue;
-                                    modelFromRepo.FileHashValue = operation.Argument.FileHashValue;
-                                    await repo.SaveChangesAsync(stoppingToken);
-                                }
-                                _logger.LogInformation($"Add or update SaveChanges:{repo.LastSaveChangesCount} {repo.LastSaveChangesTimeSpan}");
+                                await InsertOrUpdateAsync(repo, operation, stoppingToken);
 
-                                operation.SetResult(true);
                                 break;
                             case BatchQueueOperationKind.Delete:
-                                await repo.DeleteAsync(operation.Argument);
-                                _logger.LogInformation($"Delete SaveChanges:{repo.LastSaveChangesCount} {repo.LastSaveChangesTimeSpan}");
-                                operation.SetResult(true);
+                                await DeleteAsync(repo, operation);
                                 break;
                         }
                     }
@@ -97,5 +72,68 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
         {
             _logger.LogError(ex.ToString());
         }
+    }
+
+    private async Task DeleteAsync(IRepository<FileRecordModel> repo, BatchQueueOperation<FileRecordModel, bool>? operation)
+    {
+        try
+        {
+            await repo.DeleteAsync(operation.Argument);
+            _logger.LogInformation($"Delete SaveChanges:{repo.LastSaveChangesCount} {repo.LastSaveChangesTimeSpan}");
+            operation.SetResult(true);
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+        finally
+        {
+            repo.DbContext.ChangeTracker.Clear();
+        }
+
+
+    }
+
+    private async Task InsertOrUpdateAsync(IRepository<FileRecordModel> repo, BatchQueueOperation<FileRecordModel, bool>? operation, CancellationToken stoppingToken)
+    {
+        try
+        {
+            var modelFromRepo = await repo.FirstOrDefaultAsync(
+                 new FileRecordSpecification(
+                     operation.Argument.Id,
+                     null,
+                     operation.Argument.Name),
+                 stoppingToken);
+            if (modelFromRepo == null)
+            {
+                await repo.AddAsync(operation.Argument);
+            }
+            else
+            {
+                modelFromRepo.Category = operation.Argument.Category;
+                modelFromRepo.State = operation.Argument.State;
+                modelFromRepo.Size = operation.Argument.Size;
+                modelFromRepo.Properties = operation.Argument.Properties;
+                modelFromRepo.OriginalFileName = operation.Argument.OriginalFileName;
+                modelFromRepo.CompressedSize = operation.Argument.CompressedSize;
+                modelFromRepo.CompressedFileHashValue = operation.Argument.CompressedFileHashValue;
+                modelFromRepo.FileHashValue = operation.Argument.FileHashValue;
+                modelFromRepo.CreationDateTime = operation.Argument.CreationDateTime;
+                modelFromRepo.ModifiedDateTime = operation.Argument.ModifiedDateTime;
+                await repo.SaveChangesAsync(stoppingToken);
+            }
+            operation.SetResult(true);
+        }
+        catch (Exception ex)
+        {
+            operation.SetException(ex);
+        }
+        finally
+        {
+            repo.DbContext.ChangeTracker.Clear();
+        }
+
+        _logger.LogInformation($"Add or update SaveChanges:{repo.LastSaveChangesCount} {repo.LastSaveChangesTimeSpan}");
     }
 }

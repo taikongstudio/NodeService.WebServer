@@ -1,0 +1,294 @@
+﻿@namespace NodeService.WebServer.UI.Pages.DataQuality.Statistics
+@page "/DataQuality/Statistics"
+@using NodeService.WebServer.Models
+@using NodeService.WebServer.UI.Pages.DataQuality.Components
+
+@inject ApiService ApiService
+@inject NotificationService _notice
+@inject NavigationManager NavigationManager
+@inject ClipboardService ClipboardService
+<GridContent>
+  
+    <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
+        <NodeSelector @ref="_nodeSelector" @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple" />
+    </CommonDialog>
+
+    <Table Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           ScrollX="2000px"
+           Resizable
+           Total="@_dataSource.TotalCount"
+           EnableVirtualization="false"
+           PageSize="@_dataSource.PageSize"
+           PageIndex="@_dataSource.PageIndex"
+           OnChange="OnTableChange"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           TItem="DataQualityNodeStatisticsRecordModel"
+           DataSource="@_dataSource.ItemsSource">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="6">
+                    <Title Level="3">数据质量分析</Title>
+                </GridCol>
+                <GridCol Span="6" Offset="12">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                </GridCol>
+            </GridRow>
+            <GridRow Wrap Style="min-height:30px">
+                <Text>节点：</Text>
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowNodeSelectorDialogAsync"></Button>
+
+                @if (_selectedNodeList != null)
+                {
+                    foreach (var item in _selectedNodeList)
+                    {
+                        <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
+                    }
+                }
+                else
+                {
+                    <Text>全部</Text>
+                }
+
+            </GridRow>
+
+            <GridRow>
+                <Space Wrap Style="margin-bottom:16px">
+                    <SpaceItem>
+                        <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged" />
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Select TItem="CategoryModel"
+                                TItemValue="string"
+                                DataSource="@_categories"
+                                @bind-Value="@_selectedCategory"
+                                LabelName="@nameof(CategoryModel.Name)"
+                                ValueName="@nameof(CategoryModel.Value)"
+                                Placeholder="选择分类"
+                                DefaultActiveFirstOption="true"
+                                Style="width:200px">
+                        </Select>
+                        <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryCategoriesAsync"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Type="@ButtonType.Primary" OnClick="QueryTaskExecutionInstanceListAsync">查询</Button>
+                    </SpaceItem>
+
+                </Space>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+            <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox" />
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="创建时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="修改时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ModifiedDateTime"></PropertyColumn>
+
+        </ColumnDefinitions>
+    </Table>
+</GridContent>
+
+@code {
+
+
+
+    CommonDialog _nodeSelectorDialog;
+    NodeSelector _nodeSelector;
+
+    DateTime BeginDateTime;
+    DateTime EndDateTime;
+
+    readonly DateTime?[] DateTimes = [DateTime.UtcNow.Date, DateTime.UtcNow.Date];
+
+    string? _selectedCategory;
+
+    RoutedPaginationDataSource<DataQualityNodeStatisticsRecordModel, QueryDataQualityNodeStatisticsReportParameters> _dataSource;
+
+
+    readonly List<FileRecordStateModel> _stateList = [];
+
+    IEnumerable<NodeInfoModel> _selectedNodeList = [];
+
+    List<CategoryModel> _categories = [];
+
+
+    FileRecordState _selectedState;
+
+    FileRecordModel? _editingFileRecord;
+
+    bool _isFileRecordPropertyWindowVisible;
+
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new RoutedPaginationDataSource<DataQualityNodeStatisticsRecordModel, QueryDataQualityNodeStatisticsReportParameters>(
+            NavigationManager,
+            ApiService.QueryDataQualityStatisticsNodeReportListAsync,
+            StateHasChanged);
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories.Add(new CategoryModel() { Name = "全部分类" });
+        _stateList.Add(new FileRecordStateModel { Value = FileRecordState.None, Name = "全部" });
+        _stateList.Add(new FileRecordStateModel { Value = FileRecordState.Stat, Name = "统计" });
+        _stateList.Add(new FileRecordStateModel { Value = FileRecordState.Uploaded, Name = "已上传" });
+        _stateList.Add(new FileRecordStateModel { Value = FileRecordState.Processed, Name = "已处理" });
+        BeginDateTime = DateTime.Today.Date;
+        EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        DateTimes[0] = BeginDateTime;
+        DateTimes[1] = EndDateTime;
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await QueryTaskExecutionInstanceListAsync();
+        }
+
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
+    {
+        BeginDateTime = e.Dates[0] ?? DateTime.Today.Date;
+        EndDateTime = e.Dates[1] ?? DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+    }
+
+    async Task QueryCategoriesAsync()
+    {
+        try
+        {
+            PaginationQueryParameters paginationQueryParameters = new PaginationQueryParameters();
+            List<CategoryModel> categoryList = new List<CategoryModel>();
+            categoryList.Add(new CategoryModel()
+                {
+                    Name = "全部分类"
+                });
+            int pageIndex = 1;
+            int pageSize = 20;
+            while (true)
+            {
+
+                paginationQueryParameters.PageSize = pageSize;
+                paginationQueryParameters.PageIndex = pageIndex;
+                var rsp = await ApiService.QueryDataQualityStatisticsDefinitionListAsync(paginationQueryParameters);
+                if (rsp.ErrorCode == 0)
+                {
+                    if (rsp.TotalCount == 0 || rsp.TotalCount == categoryList.Count - 1)
+                    {
+                        break;
+                    }
+                    categoryList.AddRange(rsp.Result.Select(x => new CategoryModel()
+                        {
+                            Name = x.Name,
+                            Value = x.Name,
+                        }));
+                    pageIndex++;
+                }
+                else
+                {
+                    await _notice.Open(new NotificationConfig
+                        {
+                            Message = "错误提示",
+                            Description = rsp.Message
+                        });
+                    break;
+                }
+
+            }
+
+            _categories = categoryList;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    async Task QueryTaskExecutionInstanceListAsync()
+    {
+        try
+        {
+            _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
+            _dataSource.QueryParameters.EndDateTime = EndDateTime;
+            _dataSource.QueryParameters.NodeIdList.Clear();
+            _dataSource.QueryParameters.PageIndex = 1;
+            _dataSource.QueryParameters.PageSize = 10;
+            if (_selectedNodeList != null)
+            {
+                _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
+            }
+
+            _dataSource.ForceRequest();
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    async void OnCategoryDropdownVisibleChanged(bool visible)
+    {
+        if (visible)
+        {
+            await this.QueryCategoriesAsync();
+        }
+    }
+
+    void OnSelectedStateChanged(FileRecordStateModel? status)
+    {
+    }
+
+    void OnSelectedCategoryChanged(CategoryModel? category)
+    {
+    }
+
+    void OnTableChange(QueryModel<DataQualityNodeStatisticsRecordModel> query)
+    {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        _dataSource.Request();
+    }
+
+    async Task ShowNodeSelectorDialogAsync()
+    {
+        await _nodeSelectorDialog.ShowAsync();
+    }
+
+
+    Task OnDialogClosed()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    void OnFileRecordPropertyWindowClosed()
+    {
+        _isFileRecordPropertyWindowVisible = false;
+        _editingFileRecord = null;
+    }
+
+}

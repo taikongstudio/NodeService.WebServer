@@ -60,6 +60,10 @@ namespace NodeService.WebServer.Services.NodeSessions
                             {
                                 record.Name = nodeInfo.Name;
                             }
+                            else
+                            {
+                                record.Name = "<Unknown>";
+                            }
                         }
 
                     }

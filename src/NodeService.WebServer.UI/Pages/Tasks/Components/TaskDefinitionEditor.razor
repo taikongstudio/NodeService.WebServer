@@ -189,19 +189,19 @@
                     break;
                 case OptionValueType.FtpConfigurationValue:
                     var ftpConfigurationEditor = editorBase as FtpConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, ftpConfigurationEditor.SelectedItems.FirstOrDefault());
+                    _taskDefinition.Options.TryAdd(key, ftpConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.MysqlConfigurationValue:
                     var mysqlEditor = editorBase as MysqlConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, mysqlEditor.SelectedItems.FirstOrDefault());
+                    _taskDefinition.Options.TryAdd(key, mysqlEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.KafkaConfigurationValue:
                     var kafkaEditor = editorBase as KafkaConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, kafkaEditor.SelectedItems.FirstOrDefault());
+                    _taskDefinition.Options.TryAdd(key, kafkaEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.PackageConfigurationValue:
                     var packageConfigurationEditor = editorBase as PackageConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, packageConfigurationEditor.SelectedItems.FirstOrDefault());
+                    _taskDefinition.Options.TryAdd(key, packageConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.PackageConfigurationListValue:
                     var packageConfigurationListEditor = editorBase as PackageConfigurationListEditor;
@@ -209,7 +209,7 @@
                     break;
                 case OptionValueType.NodeEnvVarsConfigurationValue:
                     var nodeEnvVarsConfigurationEditor = editorBase as NodeEnvVarsConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationEditor.SelectedItems.FirstOrDefault());
+                    _taskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.NodeEnvVarsConfigurationListValue:
                     var nodeEnvVarsConfigurationListEditor = editorBase as NodeEnvVarsConfigurationListEditor;
@@ -223,7 +223,7 @@
                     break;
                 case OptionValueType.FtpUploadConfigurationValue:
                     var ftpUploadConfigurationEditor = editorBase as FtpUploadConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, ftpUploadConfigurationEditor.SelectedItems.FirstOrDefault());
+                    _taskDefinition.Options.TryAdd(key, ftpUploadConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.FtpUploadConfigurationListValue:
                     var ftpUploadConfigurationListEditor = editorBase as FtpUploadConfigurationListEditor;
@@ -231,7 +231,7 @@
                     break;
                 case OptionValueType.RestApiConfigurationValue:
                     var restApiConfigurationEditor = editorBase as RestApiConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, restApiConfigurationEditor.SelectedItems.FirstOrDefault());
+                    _taskDefinition.Options.TryAdd(key, restApiConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.RestApiConfigurationListValue:
                     var restApiConfigurationListEditor = editorBase as RestApiConfigurationListEditor;
@@ -448,109 +448,116 @@
             {
                 continue;
             }
-
-            switch (optionEditorType)
+            try
             {
-                case OptionValueType.TextValue:
+                switch (optionEditorType)
+                {
+                    case OptionValueType.TextValue:
 
-                    optionEditors.TryAdd(optionEditor.Name,
-                        new TextValueEditor(model.Options.ReadOptionValue<string>(optionEditor.Name)));
-                    break;
-                case OptionValueType.NumberValue:
-                    optionEditors.TryAdd(optionEditor.Name,
-                        new NumberValueEditor(model.Options.ReadOptionValue<double>(optionEditor.Name)));
-                    break;
-                case OptionValueType.BooleanValue:
-                    optionEditors.TryAdd(optionEditor.Name,
-                        new BooleanValueEditor(model.Options.ReadOptionValue<bool>(optionEditor.Name)));
-                    break;
-                case OptionValueType.TextArrayValue:
-                    optionEditors.TryAdd(optionEditor.Name,
-                        new TextArrayValueEditor(model.Options.ReadOptionListValues(optionEditor.Name, static x => x.ToStringEntry())));
-                    break;
-                case OptionValueType.PythonCodeValue:
-                    optionEditors.TryAdd(optionEditor.Name,
-                        new PythonCodeEditor(model.Options.ReadOptionValue<string>(optionEditor.Name)));
-                    break;
-                case OptionValueType.BatchScriptValue:
-                    optionEditors.TryAdd(optionEditor.Name,
-                        new BatchScriptCodeEditor(model.Options.ReadOptionValue<string>(optionEditor.Name)));
-                    break;
-                case OptionValueType.FtpConfigurationListValue:
-                    var ftpConfigurationListEditor = new FtpConfigurationListEditor(
-                        await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetFtpConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name,
+                            new TextValueEditor(model.Options.ReadOptionValue<string>(optionEditor.Name)));
+                        break;
+                    case OptionValueType.NumberValue:
+                        optionEditors.TryAdd(optionEditor.Name,
+                            new NumberValueEditor(model.Options.ReadOptionValue<double>(optionEditor.Name)));
+                        break;
+                    case OptionValueType.BooleanValue:
+                        optionEditors.TryAdd(optionEditor.Name,
+                            new BooleanValueEditor(model.Options.ReadOptionValue<bool>(optionEditor.Name)));
+                        break;
+                    case OptionValueType.TextArrayValue:
+                        optionEditors.TryAdd(optionEditor.Name,
+                            new TextArrayValueEditor(model.Options.ReadOptionListValues(optionEditor.Name, static x => x.ToStringEntry())));
+                        break;
+                    case OptionValueType.PythonCodeValue:
+                        optionEditors.TryAdd(optionEditor.Name,
+                            new PythonCodeEditor(model.Options.ReadOptionValue<string>(optionEditor.Name)));
+                        break;
+                    case OptionValueType.BatchScriptValue:
+                        optionEditors.TryAdd(optionEditor.Name,
+                            new BatchScriptCodeEditor(model.Options.ReadOptionValue<string>(optionEditor.Name)));
+                        break;
+                    case OptionValueType.FtpConfigurationListValue:
+                        var ftpConfigurationListEditor = new FtpConfigurationListEditor(
+                            await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetFtpConfigAsync));
 
-                    optionEditors.TryAdd(optionEditor.Name, ftpConfigurationListEditor);
-                    break;
-                case OptionValueType.MysqlConfigurationListValue:
-                    var mysqlConfigurationListEditor = new MysqlConfigurationListEditor(
-                        await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetMyConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, mysqlConfigurationListEditor);
-                    break;
-                case OptionValueType.KafkaConfigurationListValue:
-                    var kafkaConfigurationListEditor = new KafkaConfigurationListEditor(
-                        await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetKafkaConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, kafkaConfigurationListEditor);
-                    break;
-                case OptionValueType.FtpConfigurationValue:
-                    var ftpConfigurationEditor = new FtpConfigurationEditor(await model.Options.ReadOptionValueAsync<FtpConfigModel>(optionEditor.Name, ApiService.GetFtpConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, ftpConfigurationEditor);
-                    break;
-                case OptionValueType.MysqlConfigurationValue:
-                    var mysqlConfigurationEditor = new MysqlConfigurationEditor(await model.Options.ReadOptionValueAsync<DatabaseConfigModel>(optionEditor.Name, ApiService.GetMyConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, mysqlConfigurationEditor);
-                    break;
-                case OptionValueType.KafkaConfigurationValue:
-                    var kafkaConfigurationEditor = new KafkaConfigurationEditor(await model.Options.ReadOptionValueAsync<KafkaConfigModel>(optionEditor.Name, ApiService.GetKafkaConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, kafkaConfigurationEditor);
-                    break;
-                case OptionValueType.FtpUploadConfigurationValue:
-                    var ftpUploadConfigurationEditor = new FtpUploadConfigurationEditor(await model.Options.ReadOptionValueAsync<FtpUploadConfigModel>(optionEditor.Name, ApiService.GetFtpUploadConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, ftpUploadConfigurationEditor);
-                    break;
-                case OptionValueType.FtpUploadConfigurationListValue:
-                    var ftpUploadConfigurationListEditor = new FtpUploadConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetFtpUploadConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, ftpUploadConfigurationListEditor);
-                    break;
-                case OptionValueType.LogUploadConfigurationValue:
+                        optionEditors.TryAdd(optionEditor.Name, ftpConfigurationListEditor);
+                        break;
+                    case OptionValueType.MysqlConfigurationListValue:
+                        var mysqlConfigurationListEditor = new MysqlConfigurationListEditor(
+                            await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetMyConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, mysqlConfigurationListEditor);
+                        break;
+                    case OptionValueType.KafkaConfigurationListValue:
+                        var kafkaConfigurationListEditor = new KafkaConfigurationListEditor(
+                            await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetKafkaConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, kafkaConfigurationListEditor);
+                        break;
+                    case OptionValueType.FtpConfigurationValue:
+                        var ftpConfigurationEditor = new FtpConfigurationEditor(await model.Options.ReadOptionValueAsync<FtpConfigModel>(optionEditor.Name, ApiService.GetFtpConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, ftpConfigurationEditor);
+                        break;
+                    case OptionValueType.MysqlConfigurationValue:
+                        var mysqlConfigurationEditor = new MysqlConfigurationEditor(await model.Options.ReadOptionValueAsync<DatabaseConfigModel>(optionEditor.Name, ApiService.GetMyConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, mysqlConfigurationEditor);
+                        break;
+                    case OptionValueType.KafkaConfigurationValue:
+                        var kafkaConfigurationEditor = new KafkaConfigurationEditor(await model.Options.ReadOptionValueAsync<KafkaConfigModel>(optionEditor.Name, ApiService.GetKafkaConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, kafkaConfigurationEditor);
+                        break;
+                    case OptionValueType.FtpUploadConfigurationValue:
+                        var ftpUploadConfigurationEditor = new FtpUploadConfigurationEditor(await model.Options.ReadOptionValueAsync<FtpUploadConfigModel>(optionEditor.Name, ApiService.GetFtpUploadConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, ftpUploadConfigurationEditor);
+                        break;
+                    case OptionValueType.FtpUploadConfigurationListValue:
+                        var ftpUploadConfigurationListEditor = new FtpUploadConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetFtpUploadConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, ftpUploadConfigurationListEditor);
+                        break;
+                    case OptionValueType.LogUploadConfigurationValue:
 
-                    break;
-                case OptionValueType.LogUploadConfigurationListValue:
+                        break;
+                    case OptionValueType.LogUploadConfigurationListValue:
 
-                    break;
-                case OptionValueType.NodeEnvVarsConfigurationValue:
-                    var localDirectoryMappingConfigurationEditor = new NodeEnvVarsConfigurationEditor(await model.Options.ReadOptionValueAsync<NodeEnvVarsConfigModel>(optionEditor.Name, ApiService.GetNodeEnvVarsConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, localDirectoryMappingConfigurationEditor);
-                    break;
-                case OptionValueType.NodeEnvVarsConfigurationListValue:
-                    var localDirectoryMappingConfigurationListEditor = new NodeEnvVarsConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetNodeEnvVarsConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, localDirectoryMappingConfigurationListEditor);
-                    break;
-                case OptionValueType.PackageConfigurationValue:
-                    var packageConfigurationEditor = new PackageConfigurationEditor(await model.Options.ReadOptionValueAsync<PackageConfigModel>(optionEditor.Name, ApiService.GetPackageConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, packageConfigurationEditor);
-                    break;
-                case OptionValueType.PackageConfigurationListValue:
-                    var packageConfigurationListEditor = new PackageConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetPackageConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, packageConfigurationListEditor);
-                    break;
-                case OptionValueType.RestApiConfigurationValue:
-                    var restApiConfigurationEditor = new RestApiConfigurationEditor(await model.Options.ReadOptionValueAsync<RestApiConfigModel>(optionEditor.Name, ApiService.GetRestApiConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, restApiConfigurationEditor);
-                    break;
-                case OptionValueType.RestApiConfigurationListValue:
-                    var restApiConfigurationListEditor = new RestApiConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetRestApiConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, restApiConfigurationListEditor);
-                    break;
-                case OptionValueType.FtpDownloadConfigurationValue:
-                    var ftpDownloadConfigurationEditor = new FtpDownloadConfigurationEditor(await model.Options.ReadOptionValueAsync<FtpDownloadConfigModel>(optionEditor.Name, ApiService.GetFtpDownloadConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, ftpDownloadConfigurationEditor);
-                    break;
-                case OptionValueType.FtpDownloadConfigurationListValue:
-                    var ftpDownloadConfigurationListEditor = new FtpDownloadConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetFtpDownloadConfigAsync));
-                    optionEditors.TryAdd(optionEditor.Name, ftpDownloadConfigurationListEditor);
-                    break;
+                        break;
+                    case OptionValueType.NodeEnvVarsConfigurationValue:
+                        var localDirectoryMappingConfigurationEditor = new NodeEnvVarsConfigurationEditor(await model.Options.ReadOptionValueAsync<NodeEnvVarsConfigModel>(optionEditor.Name, ApiService.GetNodeEnvVarsConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, localDirectoryMappingConfigurationEditor);
+                        break;
+                    case OptionValueType.NodeEnvVarsConfigurationListValue:
+                        var localDirectoryMappingConfigurationListEditor = new NodeEnvVarsConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetNodeEnvVarsConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, localDirectoryMappingConfigurationListEditor);
+                        break;
+                    case OptionValueType.PackageConfigurationValue:
+                        var packageConfigurationEditor = new PackageConfigurationEditor(await model.Options.ReadOptionValueAsync<PackageConfigModel>(optionEditor.Name, ApiService.GetPackageConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, packageConfigurationEditor);
+                        break;
+                    case OptionValueType.PackageConfigurationListValue:
+                        var packageConfigurationListEditor = new PackageConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetPackageConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, packageConfigurationListEditor);
+                        break;
+                    case OptionValueType.RestApiConfigurationValue:
+                        var restApiConfigurationEditor = new RestApiConfigurationEditor(await model.Options.ReadOptionValueAsync<RestApiConfigModel>(optionEditor.Name, ApiService.GetRestApiConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, restApiConfigurationEditor);
+                        break;
+                    case OptionValueType.RestApiConfigurationListValue:
+                        var restApiConfigurationListEditor = new RestApiConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetRestApiConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, restApiConfigurationListEditor);
+                        break;
+                    case OptionValueType.FtpDownloadConfigurationValue:
+                        var ftpDownloadConfigurationEditor = new FtpDownloadConfigurationEditor(await model.Options.ReadOptionValueAsync<FtpDownloadConfigModel>(optionEditor.Name, ApiService.GetFtpDownloadConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, ftpDownloadConfigurationEditor);
+                        break;
+                    case OptionValueType.FtpDownloadConfigurationListValue:
+                        var ftpDownloadConfigurationListEditor = new FtpDownloadConfigurationListEditor(await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetFtpDownloadConfigAsync));
+                        optionEditors.TryAdd(optionEditor.Name, ftpDownloadConfigurationListEditor);
+                        break;
+                }
             }
+            catch (Exception ex)
+            {
+                
+            }
+
         }
     }
 

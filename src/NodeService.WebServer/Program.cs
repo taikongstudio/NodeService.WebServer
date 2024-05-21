@@ -216,13 +216,13 @@ public class Program
 
     private static void ConfigureRateLimiter(WebApplicationBuilder builder)
     {
-        var concurrencyRateLimitPolicy = "Concurrency";
+        var concurrencyRateLimitPolicy = "PackageDownloadConcurrency";
 
         builder.Services.AddRateLimiter(options => options
             .AddConcurrencyLimiter(concurrencyRateLimitPolicy, options =>
             {
-                options.PermitLimit = 1;
-                options.QueueProcessingOrder = QueueProcessingOrder.NewestFirst;
+                options.PermitLimit = 5;
+                options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                 options.QueueLimit = 10000;
             }));
     }
@@ -382,12 +382,12 @@ public class Program
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
         builder.Services
             .AddSingleton<IAsyncQueue<TaskCancellationParameters>, AsyncQueue<TaskCancellationParameters>>();
-        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
-        builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(10)));
         builder.Services.AddKeyedSingleton(nameof(FileRecordQueryService),
             new BatchQueue<BatchQueueOperation<(FileRecordSpecification Specification, PaginationInfo PaginationInfo), ListQueryResult<FileRecordModel>>>(
                 1024 * 2,
-                TimeSpan.FromSeconds(3)));
+                TimeSpan.FromSeconds(5)));
         builder.Services.AddKeyedSingleton(nameof(FileRecordInsertUpdateDeleteService),
             new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(
                 1024 * 2,

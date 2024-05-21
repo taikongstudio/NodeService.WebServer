@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.AspNetCore.RateLimiting;
 using NodeService.WebServer.Data.Repositories;
 
 namespace NodeService.WebServer.Controllers;
@@ -17,6 +18,7 @@ public partial class CommonConfigController
         return QueryConfigurationListAsync<PackageConfigModel>(queryParameters);
     }
 
+    [EnableRateLimiting("PackageDownloadConcurrency")]
     [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
     public async Task<IActionResult> DownloadPackageAsync(string packageId)
     {

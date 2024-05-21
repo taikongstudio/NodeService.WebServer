@@ -143,7 +143,15 @@ public class FtpVirtualFileSystem : VirtualFileSystemBase
 
     public override void Dispose()
     {
-        _client.Dispose();
+        try
+        {
+            _client.Dispose();
+        }
+        catch (Exception ex)
+        {
+
+        }
+
     }
 
     public override ValueTask<bool> DownloadStream(string path, Stream stream,

@@ -1,9 +1,9 @@
 ﻿using AntDesign;
 using NodeService.Infrastructure.DataModels;
 
-namespace NodeService.WebServer.UI.Helpers;
+namespace NodeService.WebServer.UI.Extensions;
 
-public static class NodeStatusHelper
+public static class NodeStatusExtensions
 {
     public static string GetBadgeStatus(this NodeStatus status)
     {

@@ -1,5 +1,6 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.DataQualityStatisticsDefinitions
 @page "/DataQuality/StatisticsDefinitions"
+@using NodeService.WebServer.UI.Extensions
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
@@ -34,12 +35,12 @@
                 <Switch @bind-Checked="@context.IsEnabled" />
             </FormItem>
             <FormItem Label="节点">
-                <NodeSelector @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple" />
+                <NodeSelector @bind-SelectedItems="_selectedNodes" Mode="SelectionMode.Multiple" />
             </FormItem>
             <FormItem Required Label="数据库配置">
-                @if (_selectedMySqlConfigs != null)
+                @if (_selectedDatabaseConfigs != null)
                 {
-                    foreach (var item in _selectedMySqlConfigs)
+                    foreach (var item in _selectedDatabaseConfigs)
                     {
                         <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
                         break;
@@ -49,7 +50,7 @@
                     <Icon Type="@IconType.Outline.Edit" />
                 </Tag>
                 <CommonDialog @ref="_mySqlConfigDialog" Closed="OnSelectMySqlConfigDialogClosed">
-                    <MysqlConfigSelector @ref="_mySqlConfigSelector" @bind-SelectedItems="_selectedMySqlConfigs" Mode="SelectionMode.Single" />
+                    <MysqlConfigSelector @ref="_mySqlConfigSelector" @bind-SelectedItems="_selectedDatabaseConfigs" Mode="SelectionMode.Single" />
                 </CommonDialog>
             </FormItem>
             <FormItem Required Label="脚本">
@@ -131,12 +132,12 @@
 
     CommonDialog _mySqlConfigDialog;
     MysqlConfigSelector _mySqlConfigSelector;
-    IEnumerable<DatabaseConfigModel> _selectedMySqlConfigs;
+    IEnumerable<DatabaseConfigModel> _selectedDatabaseConfigs;
 
     CommonDialog _nodeSelectorDialog;
     NodeSelector _nodeSelector;
 
-    IEnumerable<NodeInfoModel> _selectedNodeList = [];
+    IEnumerable<NodeInfoModel> _selectedNodes = [];
 
 
     bool _loading;
@@ -149,36 +150,52 @@
             NavigationManager,
             ApiService.QueryDataQualityStatisticsDefinitionListAsync,
             StateHasChanged);
-        _dataSource.ItemInitializer = InitializeMySqlConfigAsync;
+        _dataSource.ItemInitializer = InitializeDatabaseConfigAsync;
         _dataSource.Request();
         base.OnInitialized();
     }
 
-    void ShowEditForm(DataQualityStatisticsDefinitionModel? model = null)
+    async Task ShowEditForm(DataQualityStatisticsDefinitionModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
         {
             _editModel = new DataQualityStatisticsDefinitionModel
-            {
-                Id = Guid.NewGuid().ToString()
-            };
+                {
+                    Id = Guid.NewGuid().ToString()
+                };
             _modalTitle = "新建配置";
         }
         else
         {
             _editModel = model;
             _modalTitle = "编辑配置";
+            _selectedNodes = await _editModel.Value.NodeList.LoadNodeListAsync(ApiService);
+            var databaseConfig = await ApiService.GetDatabaseConfigAsync(_editModel.Value.DatabaseConfigId);
+            if (databaseConfig == null)
+            {
+                _selectedDatabaseConfigs = [];
+            }
+            else
+            {
+                _selectedDatabaseConfigs = [databaseConfig];
+            }
+
         }
     }
+
 
     async Task OnEditFormFinish(EditContext editContext)
     {
         try
         {
-            _editModel.Value.Scripts = await _scriptsEditor.GetValue();
-            _editModel.Value.NodeList.Clear();
-            _editModel.Value.NodeList.AddRange(this._selectedNodeList.Select(x => new StringEntry(x.Id, x.Name)));
+            _editModel.Scripts = await _scriptsEditor.GetValue();
+            if (_editModel.NodeList == null)
+            {
+                _editModel.NodeList = new List<StringEntry>();
+            }
+            _editModel.NodeList.Clear();
+            _editModel.NodeList.AddRange(this._selectedNodes.Select(x => new StringEntry(x.Name, x.Id)));
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
@@ -331,12 +348,12 @@
 
     Task OnSelectMySqlConfigDialogClosed()
     {
-        _editModel.Value.DatabaseConfigId = _selectedMySqlConfigs.FirstOrDefault()?.Id;
+        _editModel.Value.DatabaseConfigId = _selectedDatabaseConfigs.FirstOrDefault()?.Id;
         StateHasChanged();
         return Task.CompletedTask;
     }
 
-    async Task InitializeMySqlConfigAsync(DataQualityStatisticsDefinitionModel model)
+    async Task InitializeDatabaseConfigAsync(DataQualityStatisticsDefinitionModel model)
     {
         if (model == null || model.Value == null)
         {

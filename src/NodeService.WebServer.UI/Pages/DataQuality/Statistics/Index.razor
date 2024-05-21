@@ -13,6 +13,8 @@
         <NodeSelector @ref="_nodeSelector" @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple" />
     </CommonDialog>
 
+
+
     <Table Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            Resizable
@@ -180,61 +182,7 @@
         EndDateTime = e.Dates[1] ?? DateTime.Today.AddDays(1).Date.AddSeconds(-1);
     }
 
-    async Task QueryCategoriesAsync()
-    {
-        try
-        {
-            PaginationQueryParameters paginationQueryParameters = new PaginationQueryParameters();
-            List<CategoryModel> categoryList = new List<CategoryModel>();
-            categoryList.Add(new CategoryModel()
-                {
-                    Name = "全部分类"
-                });
-            int pageIndex = 1;
-            int pageSize = 20;
-            while (true)
-            {
 
-                paginationQueryParameters.PageSize = pageSize;
-                paginationQueryParameters.PageIndex = pageIndex;
-                var rsp = await ApiService.QueryDataQualityStatisticsDefinitionListAsync(paginationQueryParameters);
-                if (rsp.ErrorCode == 0)
-                {
-                    if (rsp.TotalCount == 0 || rsp.TotalCount == categoryList.Count - 1)
-                    {
-                        break;
-                    }
-                    categoryList.AddRange(rsp.Result.Select(x => new CategoryModel()
-                        {
-                            Name = x.Name,
-                            Value = x.Name,
-                        }));
-                    pageIndex++;
-                }
-                else
-                {
-                    await _notice.Open(new NotificationConfig
-                        {
-                            Message = "错误提示",
-                            Description = rsp.Message
-                        });
-                    break;
-                }
-
-            }
-
-            _categories = categoryList;
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
-        }
-    }
 
     async Task QueryNodeStatisticsRecordListAsync()
     {

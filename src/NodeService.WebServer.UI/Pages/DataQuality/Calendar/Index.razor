@@ -1,0 +1,226 @@
+﻿@namespace NodeService.WebServer.UI.Pages.DataQuality.Calendar
+@page "/DataQuality/Calendar"
+@using NodeService.WebServer.Models
+@inject ApiService ApiService
+@inject NotificationService _notice
+@inject NavigationManager NavigationManager
+<GridRow>
+    <Space>
+        <SpaceItem>
+            <Text>指标分类：</Text>
+        </SpaceItem>
+        <SpaceItem>
+            <Select TItem="DataQualityStatisticsDefinitionModel"
+                    TItemValue="DataQualityStatisticsDefinitionModel"
+                    DataSource="@_categories"
+                    @bind-Value="@_selectedCategory"
+                    LabelName="@nameof(DataQualityStatisticsDefinitionModel.Name)"
+                    Placeholder="选择分类"
+                    DefaultActiveFirstOption="true"
+                    Style="width:200px">
+            </Select>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="QueryCategoriesAsync"></Button>
+        </SpaceItem>
+    </Space>
+
+
+
+</GridRow>
+
+
+<Calendar DateCellRender="DateCellRender" MonthCellRender="MonthCellRender"  OnChange="OnSelectedDateChangedAsync" />
+
+@code
+{
+    DataQualityStatisticsDefinitionModel? _selectedCategory;
+
+    IEnumerable<DataQualityStatisticsDefinitionModel> _categories = [];
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new RoutedPaginationDataSource<DataQualityCalendarEntry, QueryDataQualityStatisticsCalendarParameters>(
+        NavigationManager,
+        ApiService.QueryDataQualityCalendarEntryListAsync,
+        StateHasChanged);
+        _dataSource.Completed = OnDataSourceCompleted;
+        base.OnInitialized();
+    }
+
+    private Task OnDataSourceCompleted()
+    {
+        return Task.CompletedTask;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await QueryCategoriesAsync();
+        await QueryNodeStatisticsRecordListAsync(DateTime.Today);
+        await base.OnInitializedAsync();
+    }
+
+    RoutedPaginationDataSource<DataQualityCalendarEntry, QueryDataQualityStatisticsCalendarParameters> _dataSource;
+
+    private async Task OnSelectedDateChangedAsync(DateTime dateTime)
+    {
+        await QueryNodeStatisticsRecordListAsync(dateTime);
+    }
+
+    async Task QueryNodeStatisticsRecordListAsync(DateTime dateTime)
+    {
+        try
+        {
+            if (_selectedCategory == null)
+            {
+                return;
+            }
+            _dataSource.QueryParameters.Name = _selectedCategory.Name;
+            _dataSource.QueryParameters.BeginDateTime = new DateTime(dateTime.Year, dateTime.Month, 1, 0, 0, 0);
+            _dataSource.QueryParameters.EndDateTime = new DateTime(dateTime.Year, dateTime.Month + 1, 1, 0, 0, 0).AddSeconds(-1);
+            _dataSource.QueryParameters.PageIndex = 1;
+            _dataSource.QueryParameters.PageSize = 40;
+            _dataSource.ForceRequest();
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    async Task QueryCategoriesAsync()
+    {
+        try
+        {
+            PaginationQueryParameters paginationQueryParameters = new PaginationQueryParameters();
+            List<DataQualityStatisticsDefinitionModel> categoryList = new List<DataQualityStatisticsDefinitionModel>();
+            int pageIndex = 1;
+            int pageSize = 20;
+            while (true)
+            {
+                paginationQueryParameters.PageSize = pageSize;
+                paginationQueryParameters.PageIndex = pageIndex;
+                var rsp = await ApiService.QueryDataQualityStatisticsDefinitionListAsync(paginationQueryParameters);
+                if (rsp.ErrorCode == 0)
+                {
+                    if (rsp.TotalCount == 0 || rsp.TotalCount == categoryList.Count)
+                    {
+                        break;
+                    }
+                    categoryList.AddRange(rsp.Result);
+                    pageIndex++;
+                }
+                else
+                {
+                    await _notice.Open(new NotificationConfig
+                            {
+                                Message = "错误提示",
+                                Description = rsp.Message
+                            });
+                    break;
+                }
+
+            }
+
+            _categories = categoryList;
+            _selectedCategory = _categories.FirstOrDefault();
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = ex.ToString()
+                    });
+        }
+    }
+
+    class ListData
+    {
+        public string type;
+        public string content;
+    }
+
+    private DataQualityCalendarEntry GetData(DateTime value)
+    {
+        foreach (var item in _dataSource.ItemsSource)
+        {
+            if (item.DateTime.Date == value.Date)
+            {
+                return item;
+            }
+        }
+        return new DataQualityCalendarEntry()
+            {
+                IsEmpty = true
+            };
+    }
+
+    private RenderFragment DateCellRender(DateTime value) {
+        if (value > DateTime.Today.Date)
+        {
+            return @<Template></Template>;
+        }
+        var entry = GetData(value);
+        if (entry.IsEmpty)
+        {
+            return@<Template>
+            <Alert  Type="@AlertType.Error" ShowIcon="true">无数据</Alert>
+            </Template>
+    ;
+        }
+        return @<Template>
+                    <ul class="events">
+                        <li>
+                         <Badge Size="small" Status="@BadgeStatus.Success" Text="@($"完成 {entry.CompletedCount}")" />
+                        </li>
+                        <li>
+                            <Badge Size="small" Status="@BadgeStatus.Processing" Text="@($"{(value.Date==DateTime.Today.Date?"进行中":"未完成")} {entry.InprogressCount}")" />
+                        </li>
+                        <li>
+                            <Badge Size="small" Status="@BadgeStatus.Error" Text="@($"错误 {entry.FaultCount}")" />
+                        </li>
+                    </ul>
+                </Template>;
+    }
+
+    private RenderFragment MonthCellRender(DateTime value) {
+
+        return @<Template>
+                    <div className="notes-month">
+                        <section></section>
+                        <span></span>
+                    </div>
+        </Template>;
+    }
+}
+
+<Style>
+    .events {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+        .events .ant-badge-status {
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+            text-overflow: ellipsis;
+            font-size: 12px;
+        }
+
+    .notes-month {
+        text-align: center;
+        font-size: 28px;
+    }
+
+        .notes-month section {
+            font-size: 28px;
+        }
+</Style>

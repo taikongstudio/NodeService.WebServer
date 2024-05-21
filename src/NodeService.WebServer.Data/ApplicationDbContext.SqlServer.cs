@@ -22,8 +22,18 @@ public partial class ApplicationDbContext
 
     private void SqlServer_BuildNodeStatisticsRecordModel(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<DataQualityNodeStatisticsRecordModel>()
-            .HasKey(t => t.Id);
+        modelBuilder.Entity<DataQualityNodeStatisticsRecordModel>(builder =>
+
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder.Property(x => x.Entries)
+                        .HasConversion(x => Serialize(x),
+                            x => Deserialize<List<DataQualityNodeStatisticsEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<DataQualityNodeStatisticsEntry>());
+                }));
     }
 
     private void SqlServer_BuildNodeStatusChangeRecordModel(ModelBuilder modelBuilder)
@@ -290,7 +300,15 @@ public partial class ApplicationDbContext
         modelBuilder.Entity<DataQualityStatisticsDefinitionModel>(builder =>
         {
             builder.OwnsOne(
-                model => model.Value, ownedNavigationBuilder => { ownedNavigationBuilder.ToJson(); });
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder.Property(x => x.NodeList)
+                        .HasConversion(x => Serialize(x),
+                            x => Deserialize<List<StringEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<StringEntry>());
+                });
         });
     }
 }

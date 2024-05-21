@@ -268,7 +268,6 @@
     {
         try
         {
-            //_selectedJobSchduleConfigList = items;
             var model = items.FirstOrDefault();
             _loading = true;
             if (model == null)
@@ -321,62 +320,11 @@
             _modalTitle = "编辑配置";
             _taskDefinition = model;
             await OnSelectedTaskTypeDescChanged([model.Value.JobTypeDesc]);
-            _selectedNodes = await InitSelectedNodeInfoListAsync();
+            _selectedNodes = await model.Value.NodeList.LoadNodeListAsync(ApiService);
         }
 
         _loading = false;
     }
-
-    async Task<IEnumerable<NodeInfoModel>> InitSelectedNodeInfoListAsync()
-    {
-        var nodeList = new List<NodeInfoModel>();
-        var queryPageIndex = 0;
-        var queryPageSize = 50;
-        while (true)
-        {
-            var idList = _taskDefinition.NodeList
-                .Skip(queryPageIndex * queryPageSize)
-                .Take(queryPageSize)
-                .Select(x => x.Value)
-                .ToList();
-            if (idList.Count == 0)
-            {
-                break;
-            }
-
-            queryPageIndex++;
-            var pageIndex = 0;
-            var pageSize = 50;
-            var count = 0;
-            while (true)
-            {
-                pageIndex++;
-                var rsp = await ApiService.QueryNodeListAsync(new QueryNodeListParameters
-                {
-                    AreaTag = "*",
-                    Status = NodeStatus.All,
-                    IdList = idList,
-                    PageIndex = pageIndex,
-                    PageSize = pageSize
-                });
-
-                if (rsp.ErrorCode == 0 && rsp.Result != null)
-                {
-                    nodeList.AddRange(rsp.Result);
-                    count += rsp.Result.Count();
-                }
-
-                if (rsp.TotalCount == count)
-                {
-                    break;
-                }
-            }
-        }
-
-
-        return nodeList;
-    }
-
 
     async Task OnEditFormFinish(EditContext editContext)
     {
@@ -485,7 +433,7 @@
                         break;
                     case OptionValueType.MysqlConfigurationListValue:
                         var mysqlConfigurationListEditor = new MysqlConfigurationListEditor(
-                            await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetMyConfigAsync));
+                            await model.Options.ReadOptionListValuesAsync(optionEditor.Name, ApiService.GetDatabaseConfigAsync));
                         optionEditors.TryAdd(optionEditor.Name, mysqlConfigurationListEditor);
                         break;
                     case OptionValueType.KafkaConfigurationListValue:
@@ -498,7 +446,7 @@
                         optionEditors.TryAdd(optionEditor.Name, ftpConfigurationEditor);
                         break;
                     case OptionValueType.MysqlConfigurationValue:
-                        var mysqlConfigurationEditor = new MysqlConfigurationEditor(await model.Options.ReadOptionValueAsync<DatabaseConfigModel>(optionEditor.Name, ApiService.GetMyConfigAsync));
+                        var mysqlConfigurationEditor = new MysqlConfigurationEditor(await model.Options.ReadOptionValueAsync<DatabaseConfigModel>(optionEditor.Name, ApiService.GetDatabaseConfigAsync));
                         optionEditors.TryAdd(optionEditor.Name, mysqlConfigurationEditor);
                         break;
                     case OptionValueType.KafkaConfigurationValue:

@@ -52,6 +52,11 @@
     "icon": "file-sync",
     "children": [
       {
+        "path": "/DataQuality/Calendar",
+        "name": "数据质量日历",
+        "key": "DataQuality.Calendar"
+      },
+      {
         "path": "/DataQuality/Statistics",
         "name": "数据质量分析",
         "key": "DataQuality.Statistics"

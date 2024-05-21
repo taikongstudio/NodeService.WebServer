@@ -1,19 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-using MySqlConnector;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.Tasks;
-using Org.BouncyCastle.Utilities.Net;
-using System;
-using System.Collections.Generic;
-using System.Composition;
-using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.DataQuality
 {

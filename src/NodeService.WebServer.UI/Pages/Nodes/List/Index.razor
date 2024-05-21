@@ -125,12 +125,12 @@
                                 </SpaceItem>
                                 <SpaceItem>
                                     <RadioGroup Value="_nodeStatus" ValueChanged="(NodeStatus nodeStatus) => OnNodeStatusChanged(nodeStatus)" Size="middle">
-                                        <Radio RadioButton Value="@(NodeStatus.All)">全部状态</Radio>
+                                        <Radio RadioButton Value="@(NodeStatus.All)">全部</Radio>
                                         <Radio RadioButton Value="@(NodeStatus.Online)">
                                             <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线" />
                                         </Radio>
                                         <Radio RadioButton Value="@(NodeStatus.Offline)">
-                                            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="在线" />
+                                            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="离线" />
                                         </Radio>
                                     </RadioGroup>
                                 </SpaceItem>

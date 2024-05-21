@@ -39,14 +39,24 @@ public partial class ClientUpdateController : Controller
         {
             ClientUpdateConfigModel? clientUpdateConfig = null;
             if (string.IsNullOrEmpty(name)) return apiResponse;
+
+            var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
+            var updateKey = $"ClientUpdateEnabled:{ipAddress}";
+            if (!_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
+            {
+                return apiResponse;
+            }
+
+
+
             var key = $"ClientUpdateConfig:{name}";
-            await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(1000, 1000)));
+            await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(10, 20)));
             if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue) || cacheValue == null)
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 1000)));
+                await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(10, 20)));
                 if (!_memoryCache.TryGetValue(key, out cacheValue) || cacheValue == null)
                 {
-                    await Task.Delay(TimeSpan.FromMilliseconds(Random.Shared.Next(100, 1000)));
+                    await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(10, 20)));
                     await using var repo = _clientUpdateRepoFactory.CreateRepository();
 
                     cacheValue =
@@ -64,7 +74,6 @@ public partial class ClientUpdateController : Controller
                 clientUpdateConfig.DnsFilters.Any())
             {
                 await using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-                var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
 
                 var dataFilterType = DataFilterTypes.None;
 
@@ -76,7 +85,7 @@ public partial class ClientUpdateController : Controller
                 var nodeList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.All,
-                    DataFilterCollection<string>.Empty,
+                    default,
                     new DataFilterCollection<string>(
                         dataFilterType,
                         clientUpdateConfig.DnsFilters.Select(x => x.Value))));

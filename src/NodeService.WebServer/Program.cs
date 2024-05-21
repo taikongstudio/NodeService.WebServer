@@ -17,6 +17,7 @@ using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Auth;
+using NodeService.WebServer.Services.ClientUpdate;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
 using NodeService.WebServer.Services.FileRecords;
@@ -221,7 +222,7 @@ public class Program
         builder.Services.AddRateLimiter(options => options
             .AddConcurrencyLimiter(concurrencyRateLimitPolicy, options =>
             {
-                options.PermitLimit = 5;
+                options.PermitLimit = 1;
                 options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                 options.QueueLimit = 10000;
             }));
@@ -242,6 +243,7 @@ public class Program
         builder.Services.AddHostedService<NodeStatusChangeRecordService>();
         builder.Services.AddHostedService<DataQualityStatisticsService>();
         builder.Services.AddHostedService<DataQualityAlarmService>();
+        builder.Services.AddHostedService<ClientUpdateQueueService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)

@@ -18,7 +18,7 @@ public partial class CommonConfigController
         return QueryConfigurationListAsync<PackageConfigModel>(queryParameters);
     }
 
-    [EnableRateLimiting("PackageDownloadConcurrency")]
+
     [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
     public async Task<IActionResult> DownloadPackageAsync(string packageId)
     {

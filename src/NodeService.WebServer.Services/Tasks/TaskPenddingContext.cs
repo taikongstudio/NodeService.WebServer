@@ -88,7 +88,7 @@ public class TaskPenddingContext : IAsyncDisposable
         {
             _cancelTokenSource = new CancellationTokenSource();
             _cancelTokenSource.CancelAfter(
-                TimeSpan.FromSeconds(Math.Max(30, TaskDefinition.PenddingLimitTimeSeconds)));
+                TimeSpan.FromSeconds(Math.Max(60 * 10, TaskDefinition.PenddingLimitTimeSeconds)));
             CancellationToken = _cancelTokenSource.Token;
         }
 

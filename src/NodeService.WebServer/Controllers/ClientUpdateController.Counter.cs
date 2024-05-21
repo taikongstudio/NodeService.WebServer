@@ -11,6 +11,7 @@ public partial class ClientUpdateController
         var apiResponse = new ApiResponse<bool>();
         try
         {
+            return apiResponse;
             using var repo = _clientUpdateCounterRepoFactory.CreateRepository();
             var counter = await repo.FirstOrDefaultAsync(new ClientUpdateCounterSpecification(
                 model.ClientUpdateConfigId,

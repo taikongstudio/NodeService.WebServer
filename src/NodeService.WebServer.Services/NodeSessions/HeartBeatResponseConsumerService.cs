@@ -132,9 +132,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     $"process heartbeat {hearBeatSessionMessage.NodeSessionId} spent:{stopwatch.Elapsed}");
                 stopwatch.Reset();
             }
-
-            await nodeInfoRepo.UpdateRangeAsync(nodeList, cancellationToken);
             stopwatch.Start();
+            await nodeInfoRepo.UpdateRangeAsync(nodeList, cancellationToken);
             stopwatch.Stop();
         }
         catch (Exception ex)

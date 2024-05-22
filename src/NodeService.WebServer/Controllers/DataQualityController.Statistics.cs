@@ -46,40 +46,34 @@ namespace NodeService.WebServer.Controllers
             {
                 using var recordRepo = _nodeStatisticsRecordRepoFactory.CreateRepository();
                 using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+
                 var queryResult = await recordRepo.PaginationQueryAsync(
                     new DataQualityStatisticsSpecification(
                         queryParameters.BeginDateTime,
                         queryParameters.EndDateTime),
-                    new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
+                    0, 0,
                     cancellationToken);
 
                 List<DataQualityCalendarEntry> calendarEntries = new List<DataQualityCalendarEntry>();
 
-                foreach (var group in queryResult.Items.GroupBy(static x => x.NodeId))
+                foreach (var dateTimeGroups in queryResult.Items.GroupBy(static x => x.DateTime))
                 {
-                    if (group.Key == null)
+                    var dateTime = dateTimeGroups.Key;
+                    var calendarEntry = new DataQualityCalendarEntry()
                     {
-                        continue;
-                    }
-                    var nodeInfo = await nodeInfoRepo.GetByIdAsync(group.Key, cancellationToken);
-                    if (nodeInfo == null)
+                        DateTime = dateTime,
+                    };
+                    calendarEntries.Add(calendarEntry);
+                    foreach (var record in dateTimeGroups)
                     {
-                        continue;
-                    }
-                    foreach (var item in group)
-                    {
-                        var calendarEntry = new DataQualityCalendarEntry()
+                        foreach (var entry in record.Entries)
                         {
-                            DateTime = item.DateTime,
-                            Entries = item.Entries.Where(x => x.Name == queryParameters.Name).Select(x =>
+                            if (entry.Name != queryParameters.Name)
                             {
-                                x.NodeName = nodeInfo.Name;
-                                return x;
-                            }),
-                        };
-                        calendarEntries.Add(calendarEntry);
-                        foreach (var entry in calendarEntry.Entries)
-                        {
+                                continue;
+                            }
+                            entry.NodeName = record.Name;
+                            calendarEntry.Entries.Add(entry);
                             if (entry.Value == null)
                             {
                                 calendarEntry.FaultCount++;
@@ -97,8 +91,8 @@ namespace NodeService.WebServer.Controllers
                                 }
                             }
                         }
-
                     }
+
                 }
 
                 apiResponse.SetResult(calendarEntries);

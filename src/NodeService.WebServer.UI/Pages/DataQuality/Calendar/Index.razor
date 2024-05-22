@@ -1,10 +1,16 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.DataQuality.Calendar
 @page "/DataQuality/Calendar"
+@using Microsoft.Extensions.Caching.Memory
 @using NodeService.WebServer.Models
+@using NodeService.WebServer.UI.Pages.DataQuality.Calendar.Components
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
+
+<CalendarDateWindow IsVisible="@_isDrawerVisible" DataContext="@_entry" Closed="@OnCalendarDateWindowClosed" />
+
 <GridRow>
+
     <Space>
         <SpaceItem>
             <Text>指标分类：</Text>
@@ -34,6 +40,9 @@
 
 @code
 {
+    bool _isDrawerVisible;
+    DataQualityCalendarEntry _entry;
+
     DataQualityStatisticsDefinitionModel? _selectedCategory;
 
     IEnumerable<DataQualityStatisticsDefinitionModel> _categories = [];
@@ -75,11 +84,17 @@
             {
                 return;
             }
+            var previousDateTime = dateTime.AddMonths(-1);
+            var nextDateTime = dateTime.AddMonths(1);
             _dataSource.QueryParameters.Name = _selectedCategory.Name;
-            _dataSource.QueryParameters.BeginDateTime = new DateTime(dateTime.Year, dateTime.Month, 1, 0, 0, 0);
-            _dataSource.QueryParameters.EndDateTime = new DateTime(dateTime.Year, dateTime.Month + 1, 1, 0, 0, 0).AddSeconds(-1);
+
+            _dataSource.QueryParameters.BeginDateTime = new DateTime(previousDateTime.Year, previousDateTime.Month, 1, 0, 0, 0);
+            _dataSource.QueryParameters.EndDateTime = new DateTime(
+                nextDateTime.Year,
+                nextDateTime.Month,
+                DateTime.DaysInMonth(nextDateTime.Year, nextDateTime.Month), 0, 0, 0).AddSeconds(-1);
             _dataSource.QueryParameters.PageIndex = 1;
-            _dataSource.QueryParameters.PageSize = 40;
+            _dataSource.QueryParameters.PageSize = 100;
             _dataSource.ForceRequest();
         }
         catch (Exception ex)
@@ -146,7 +161,7 @@
         public string content;
     }
 
-    private DataQualityCalendarEntry GetData(DateTime value)
+    private DataQualityCalendarEntry? GetData(DateTime value)
     {
         foreach (var item in _dataSource.ItemsSource)
         {
@@ -155,10 +170,7 @@
                 return item;
             }
         }
-        return new DataQualityCalendarEntry()
-            {
-                IsEmpty = true
-            };
+        return null;
     }
 
     private RenderFragment DateCellRender(DateTime value) {
@@ -167,23 +179,27 @@
             return @<Template></Template>;
         }
         var entry = GetData(value);
-        if (entry.IsEmpty)
+        if (entry == null)
         {
-            return@<Template>
-            <Alert  Type="@AlertType.Error" ShowIcon="true">无数据</Alert>
-            </Template>
-    ;
+            return@<Template><Skeleton Active="true"></Skeleton></Template>;
+        }
+        if (entry.Entries.Count == 0)
+        {
+            return @<Template><Alert  Type="@AlertType.Error" ShowIcon="true">无数据</Alert></Template>;
         }
         return @<Template>
                     <ul class="events">
                         <li>
-                         <Badge Size="small" Status="@BadgeStatus.Success" Text="@($"完成 {entry.CompletedCount}")" />
+                            <Badge Size="small" Status="@BadgeStatus.Success" Text="@($"完成 {entry.CompletedCount}")" />
                         </li>
                         <li>
                             <Badge Size="small" Status="@BadgeStatus.Processing" Text="@($"{(value.Date==DateTime.Today.Date?"进行中":"未完成")} {entry.InprogressCount}")" />
                         </li>
                         <li>
                             <Badge Size="small" Status="@BadgeStatus.Error" Text="@($"错误 {entry.FaultCount}")" />
+                        </li>
+                        <li>
+                            <Button Size="small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Table" OnClick="()=>ShowCalendarDateWindow(entry)"></Button>
                         </li>
                     </ul>
                 </Template>;
@@ -196,8 +212,22 @@
                         <section></section>
                         <span></span>
                     </div>
-        </Template>;
+        </Template>
+    ;
     }
+
+    private void ShowCalendarDateWindow(DataQualityCalendarEntry entry)
+    {
+        _isDrawerVisible = true;
+        _entry = entry;
+    }
+
+    void OnCalendarDateWindowClosed()
+    {
+        _isDrawerVisible = false;
+        _entry = null;
+    }
+
 }
 
 <Style>
@@ -207,20 +237,28 @@
         padding: 0;
     }
 
-        .events .ant-badge-status {
-            overflow: hidden;
-            white-space: nowrap;
-            width: 100%;
-            text-overflow: ellipsis;
-            font-size: 12px;
-        }
+    .events li{
+        line-height: 1.2
+    }
+
+    .events .ant-badge-status {
+        overflow: hidden;
+        white-space: nowrap;
+        width: 100%;
+        text-overflow: ellipsis;
+        font-size: 12px;
+    }
+
+    .events .ant-badge-status span{
+        font-size:12px;
+    }
 
     .notes-month {
         text-align: center;
         font-size: 28px;
     }
 
-        .notes-month section {
-            font-size: 28px;
-        }
+    .notes-month section {
+        font-size: 28px;
+    }
 </Style>

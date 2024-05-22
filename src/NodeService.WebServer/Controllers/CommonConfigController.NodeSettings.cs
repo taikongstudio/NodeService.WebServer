@@ -15,8 +15,8 @@ public partial class CommonConfigController
             if (!_memoryCache.TryGetValue<NodeSettings>(nameof(NodeSettings), out result))
             {
                 var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-                using var repo = repoFactory.CreateRepository();
-                var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
+                using var propertyBagRepo = repoFactory.CreateRepository();
+                var propertyBag = await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
                 if (propertyBag == null)
                 {
                     result = new NodeSettings();
@@ -24,7 +24,7 @@ public partial class CommonConfigController
                     propertyBag.Add("Id", "NodeSettings");
                     propertyBag.Add("Value", JsonSerializer.Serialize(result));
                     propertyBag.Add("CreatedDate", DateTime.UtcNow);
-                    await repo.AddAsync(propertyBag);
+                    await propertyBagRepo.AddAsync(propertyBag);
                 }
                 else
                 {

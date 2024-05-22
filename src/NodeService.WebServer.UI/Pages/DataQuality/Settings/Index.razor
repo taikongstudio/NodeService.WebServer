@@ -1,0 +1,106 @@
+﻿@namespace NodeService.WebServer.UI.Pages.DataQuality.Settings
+@page "/DataQuality/Settings"
+@inject ApiService ApiService;
+@inject IMessageService _message
+@inject NotificationService _notice
+<GridContent>
+    
+    <Form Model="@_settings" Size="@AntSizeLDSType.Default"
+          LabelColSpan="4"
+          Layout="@FormLayout.Horizontal"
+          WrapperColSpan="20"
+          OnFinish="OnEditFormFinish"
+          OnFinishFailed="OnEditFormFinishFailed"
+          >
+       <FormItem>
+            <Button Type="@ButtonType.Primary" HtmlType="submit">
+                保存
+            </Button>
+       </FormItem>
+        <FormItem Label="启用">
+            <Switch @bind-Value="@context.IsEnabled" />
+        </FormItem>
+        <FormItem Label="数据质量分析起点时间">
+            <DatePicker @bind-Value="@context.StatisticsLimitDate" />
+        </FormItem>
+    </Form>
+</GridContent>
+
+@code {
+    DataQualitySettings _settings = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await QueryDataQualitySettingsAsync();
+        await base.OnInitializedAsync();
+    }
+
+    async Task QueryDataQualitySettingsAsync()
+    {
+        try
+        {
+            var apiResponse = await ApiService.QueryDataQualitySettingsAsync();
+            if (apiResponse.ErrorCode == 0)
+            {
+                _settings = apiResponse.Result;
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+
+    async Task SaveAsync()
+    {
+        try
+        {
+            var apiResponse = await ApiService.UpdateDataQualitySettingsAsync(_settings);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await QueryDataQualitySettingsAsync();
+                await _message.Info("更新设置成功");
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.Message
+                });
+        }
+    }
+
+    Task OnEditFormFinish(EditContext editContext)
+    {
+        return SaveAsync();
+    }
+
+    void OnEditFormFinishFailed(EditContext editContext)
+    {
+
+    }
+
+}

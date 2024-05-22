@@ -1,0 +1,76 @@
+﻿<Drawer Closable="true"
+        Title="@("统计")"
+        Visible="@IsVisible"
+        Width="420"
+        OnClose="OnClosed">
+    <Template>
+        @if (DataContext != null)
+        {
+            <Search Placeholder="搜索" @bind-Value="@_keywords" OnSearch="@OnSearch" />
+
+            <Table @ref="_table"
+                       Size="TableSize.Small"
+                       EnableVirtualization="false"
+                       OnChange="@OnChange"
+                       TItem="DataQualityNodeStatisticsEntry"
+                       DataSource="@Filter()">
+                        <PropertyColumn Title="节点名称" Ellipsis Sortable Property="c => c.NodeName"></PropertyColumn>
+                        <PropertyColumn Title="进度" Ellipsis Sortable Property="c => c.Value">
+
+                            @if (context.Value==null)
+                            {
+                        <Badge Size="small" Status="@BadgeStatus.Error" Text="错误" />
+                            }else if(context.Value.GetValueOrDefault()==1)
+                            {
+                                <Badge Size="small" Status="@BadgeStatus.Success" Text="100%" />
+                            }
+                            else if (context.Value.GetValueOrDefault() < 1 && context.Value.GetValueOrDefault() >=0)
+                            {
+                                <Badge Size="small" Status="@BadgeStatus.Processing" Text="@((context.Value.GetValueOrDefault()*100).ToString("p2"))" />
+                            }
+                        </PropertyColumn>
+                        <PropertyColumn Title="备注" Ellipsis Sortable Property="c => c.Message"></PropertyColumn>
+                   </Table>
+        }
+
+    </Template>
+</Drawer>
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public DataQualityCalendarEntry DataContext { get; set; }
+    [Parameter] public EventCallback Closed { get; set; }
+
+    string _keywords;
+
+    ITable _table;
+
+    IEnumerable<DataQualityNodeStatisticsEntry> _entries = [];
+
+    async Task OnClosed()
+    {
+        if (Closed.HasDelegate)
+        {
+            await Closed.InvokeAsync();
+        }
+        this.StateHasChanged();
+    }
+
+    void OnSearch(string keywords)
+    {
+        _table.ReloadData();
+    }
+
+    void OnChange(QueryModel<DataQualityNodeStatisticsEntry> query)
+    {
+
+    }
+
+    private IEnumerable<DataQualityNodeStatisticsEntry> Filter()
+    {
+        if (string.IsNullOrEmpty(_keywords))
+        {
+            return DataContext.Entries;
+        }
+        return DataContext.Entries.Where(x => x.NodeName != null && x.NodeName.Contains(_keywords, StringComparison.OrdinalIgnoreCase));
+    }
+}

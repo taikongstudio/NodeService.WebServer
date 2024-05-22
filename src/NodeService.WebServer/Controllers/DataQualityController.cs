@@ -16,6 +16,7 @@ public partial class DataQualityController : Controller
     readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _insertUpdateDeleteOpBatchQueue;
     readonly ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel> _nodeStatisticsRecordRepoFactory;
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    private readonly IServiceProvider _serviceProvider;
     readonly ILogger<DataQualityController> _logger;
     readonly IMemoryCache _memoryCache;
 
@@ -25,6 +26,7 @@ public partial class DataQualityController : Controller
     public DataQualityController(
         ILogger<DataQualityController> logger,
         ExceptionCounter exceptionCounter,
+        IServiceProvider serviceProvider,
         [FromKeyedServices(nameof(FileRecordQueryService))]
         BatchQueue<BatchQueueOperation<(FileRecordSpecification Specification, PaginationInfo PaginationInfo), ListQueryResult<FileRecordModel>>> queryOpBatchQueue,
         [FromKeyedServices(nameof(FileRecordInsertUpdateDeleteService))]
@@ -42,6 +44,7 @@ public partial class DataQualityController : Controller
         _insertUpdateDeleteOpBatchQueue = insertUpdateDeleteOpBatchQueue;
         _nodeStatisticsRecordRepoFactory = nodeStatisticsRecordRepoFactory;
         _nodeInfoRepoFactory = nodeInfoRepoFactory;
+        _serviceProvider = serviceProvider;
     }
 
 

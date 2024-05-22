@@ -73,7 +73,7 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<FileRecordModel> FileRecordsDbSet { get; set; }
 
-    public DbSet<PropertyBag> PropertyBagDbSet { get; set; }
+    public DbSet<PropertyBag> PropertyBagDbSet => Set<PropertyBag>(nameof(PropertyBag));
 
     public DbSet<NotificationConfigModel> NotificationConfigurationsDbSet { get; set; }
 

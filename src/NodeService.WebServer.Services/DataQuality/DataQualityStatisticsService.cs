@@ -1,9 +1,11 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Google.Protobuf.WellKnownTypes;
+using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
+using System.Composition;
 
 namespace NodeService.WebServer.Services.DataQuality
 {
@@ -53,9 +55,14 @@ namespace NodeService.WebServer.Services.DataQuality
                         await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
                         continue;
                     }
-                    var ipNodeInfoMapping = new ConcurrentDictionary<string, NodeInfoModel>();
-                    while (dateTime > _dataQualitySettings.StatisticsLimitDate)
+                    while (dateTime >= _dataQualitySettings.StatisticsLimitDate)
                     {
+                        await RefreshNodeSettingsAsync(stoppingToken);
+                        if (_dataQualitySettings == null || !_dataQualitySettings.IsEnabled)
+                        {
+                            break;
+                        }
+                        var ipNodeInfoMapping = new ConcurrentDictionary<string, NodeInfoModel>(StringComparer.OrdinalIgnoreCase);
                         await StatisticsDateAysnc(dateTime, ipNodeInfoMapping, stoppingToken);
                         await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
                         dateTime = dateTime.AddDays(-1);
@@ -68,9 +75,7 @@ namespace NodeService.WebServer.Services.DataQuality
                     _logger.LogError(ex.ToString());
                 }
 
-
-
-                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
             }
         }
 
@@ -88,7 +93,7 @@ namespace NodeService.WebServer.Services.DataQuality
 
         private async Task StatisticsDateAysnc(
             DateTime dateTime,
-            ConcurrentDictionary<string, NodeInfoModel> ipNamesMapping,
+            ConcurrentDictionary<string, NodeInfoModel> nodeMapping,
             CancellationToken cancellationToken = default)
         {
             try
@@ -123,72 +128,101 @@ namespace NodeService.WebServer.Services.DataQuality
                         {
                             continue;
                         }
-                        //if (!_memoryCache.TryGetValue<DataQuanlityStatisticsServiceStatus>(nameof(DataQuanlityStatisticsServiceStatus), out var status))
-                        //{
-                        //    status = new DataQuanlityStatisticsServiceStatus();
-                        //    status.IsRunning = true;
-                        //    status.Message = $"正在分析指标：{statisticsDefinition.Name}，{dateTime:yyyy-MM-dd}的数据";
-                        //    _memoryCache.Set(status, TimeSpan.FromMinutes(1));
-                        //}
                         using var dbContext = new DataQualityStatisticsDbContext(databaseProviderType, connectionString);
                         var querable = dbContext.Database.SqlQueryRaw<DataQualityNodeStatisticsItem>(
-                            statisticsDefinition.Scripts);
+                            statisticsDefinition.Scripts, dateTime);
                         var results = await querable.ToListAsync(cancellationToken);
                         List<DataQualityNodeStatisticsRecordModel> addRecordList = [];
                         List<DataQualityNodeStatisticsRecordModel> updateRecordList = [];
-                        foreach (var item in results)
+                        List<NodeInfoModel> nodeList = [];
+                        if (statisticsDefinition.NodeList != null && statisticsDefinition.NodeList.Count > 0)
                         {
-                            string ipAddress = item.ip;
-                            if (ipAddress == "127.0.0.1")
+                            nodeList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
+                               AreaTags.Any,
+                               NodeStatus.All,
+                               DataFilterCollection<string>.Includes(statisticsDefinition.NodeList.Select(x => x.Value))), cancellationToken);
+                        }
+                        var groups = results.GroupBy(x => x.name);
+
+                        foreach (var nodeGroup in groups)
+                        {
+                            var name = nodeGroup.Key;
+                            var item = nodeGroup.LastOrDefault();
+                            if (item == null || name == null)
                             {
-                                ipAddress = "::1";
+                                continue;
                             }
-                            if (!ipNamesMapping.TryGetValue(ipAddress, out var nodeInfo))
+                            if (item.dt.Date != dateTime)
                             {
-                                nodeInfo = await nodeInfoRepo.FirstOrDefaultAsync(
-                                        new NodeInfoSpecification(null, ipAddress),
-                                        cancellationToken);
-                                if (nodeInfo == null)
+                                continue;
+                            }
+                            NodeInfoModel? nodeInfo = null;
+                            if (name != null)
+                            {
+                                if (!nodeMapping.TryGetValue(name, out nodeInfo))
                                 {
-                                    continue;
+                                    nodeInfo = await nodeInfoRepo.FirstOrDefaultAsync(
+                                            new NodeInfoSpecification(name, null),
+                                            cancellationToken);
+                                    if (nodeInfo == null)
+                                    {
+                                        continue;
+                                    }
+                                    nodeMapping.AddOrUpdate(name, nodeInfo, (key, oldValue) => nodeInfo);
                                 }
-                                ipNamesMapping.AddOrUpdate(ipAddress, nodeInfo, (key, oldValue) => nodeInfo);
+                            }
+
+                            if (nodeInfo == null)
+                            {
+                                continue;
                             }
                             _logger.LogInformation($"{dateTime}=>{statisticsDefinition.Name}=>{nodeInfo.Name}");
-                            string key = $"{nodeInfo.Id}-{dateTime:yyyyMMdd}";
-                            var report = await statisticsRecordRepo.FirstOrDefaultAsync(
-                                new DataQualityStatisticsSpecification(key, dateTime),
+                            var value = (double?)item.sampling_rate;
+                            await AddOrUpdateReportAsync(
+                                dateTime,
+                                statisticsRecordRepo,
+                                statisticsDefinition.Name,
+                                nodeInfo,
+                                value,
+                                addRecordList,
+                                updateRecordList,
+                                item.message,
                                 cancellationToken);
-                            if (report == null)
-                            {
-                                report = new DataQualityNodeStatisticsRecordModel()
-                                {
-                                    Id = key,
-                                    NodeId = nodeInfo.Id,
-                                    CreationDateTime = dateTime,
-                                    Name = nodeInfo.Name,
-                                };
-                                addRecordList.Add(report);
-                            }
-                            report.DateTime = dateTime;
-                            var entry = report.Value.Entries.FirstOrDefault(x => x.Name == statisticsDefinition.Name);
-                            if (entry == null)
-                            {
-                                entry = new DataQualityNodeStatisticsEntry()
-                                {
-                                    Name = statisticsDefinition.Name,
-                                    Value = ((double?)item.sampling_rate),
-                                };
-                                report.Value.Entries.Add(entry);
-                            }
-                            else
-                            {
-                                entry.Value = (double?)item.sampling_rate;
-                            }
-                            updateRecordList.Add(report);
-
 
                         }
+
+                        if (nodeList.Count > 0)
+                        {
+                            foreach (var nodeInfo in nodeList)
+                            {
+                                bool found = false;
+                                foreach (var item in groups)
+                                {
+                                    var name = item.Key;
+                                    if (nodeInfo.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                if (!found)
+                                {
+                                    await AddOrUpdateReportAsync(
+                                        dateTime,
+                                        statisticsRecordRepo,
+                                        statisticsDefinition.Name,
+                                        nodeInfo,
+                                        null,
+                                        addRecordList,
+                                        updateRecordList,
+                                        "no data",
+                                        cancellationToken);
+
+
+                                }
+                            }
+                        }
+
                         if (addRecordList.Count > 0)
                         {
                             await statisticsRecordRepo.AddRangeAsync(addRecordList, cancellationToken);
@@ -203,6 +237,10 @@ namespace NodeService.WebServer.Services.DataQuality
                         _exceptionCounter.AddOrUpdate(ex);
                         _logger.LogError(ex.ToString());
                     }
+                    finally
+                    {
+                        statisticsRecordRepo.DbContext.ChangeTracker.Clear();
+                    }
 
 
                 }
@@ -214,5 +252,64 @@ namespace NodeService.WebServer.Services.DataQuality
             }
         }
 
+        private async Task AddOrUpdateReportAsync(
+            DateTime dateTime,
+            IRepository<DataQualityNodeStatisticsRecordModel> statisticsRecordRepo,
+            string name,
+            NodeInfoModel nodeInfo,
+            double? value,
+            List<DataQualityNodeStatisticsRecordModel> addRecordList,
+            List<DataQualityNodeStatisticsRecordModel> updateRecordList,
+            string? message,
+            CancellationToken cancellationToken = default)
+        {
+            string key = $"{nodeInfo.Id}-{dateTime:yyyyMMdd}";
+            var report = await statisticsRecordRepo.FirstOrDefaultAsync(
+                new DataQualityStatisticsSpecification(key, dateTime),
+                cancellationToken);
+            if (report == null)
+            {
+                report = new DataQualityNodeStatisticsRecordModel()
+                {
+                    Id = key,
+                    NodeId = nodeInfo.Id,
+                    CreationDateTime = dateTime,
+                    Name = nodeInfo.Name,
+                };
+                addRecordList.Add(report);
+            }
+            report.DateTime = dateTime;
+            AddOrUpdateEntry(
+                report,
+                name,
+                value,
+                message);
+            updateRecordList.Add(report);
+        }
+
+        private static void AddOrUpdateEntry(DataQualityNodeStatisticsRecordModel report, string key, double? samplingRate, string? message = null)
+        {
+            var entry = report.Value.Entries.FirstOrDefault(x => x.Name == key);
+            var value = samplingRate;
+            if (value < 0)
+            {
+                value = null;
+            }
+            if (entry == null)
+            {
+                entry = new DataQualityNodeStatisticsEntry()
+                {
+                    Name = key,
+                    Value = value,
+                    Message = message
+                };
+                report.Value.Entries.Add(entry);
+            }
+            else
+            {
+                entry.Value = value;
+                entry.Message = message;
+            }
+        }
     }
 }

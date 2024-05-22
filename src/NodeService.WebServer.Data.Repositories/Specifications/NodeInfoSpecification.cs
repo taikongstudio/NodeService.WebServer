@@ -5,8 +5,8 @@ namespace NodeService.WebServer.Data.Repositories.Specifications;
 public class NodeInfoSpecification : Specification<NodeInfoModel>
 {
     public NodeInfoSpecification(
-        string name,
-        string ipAddress)
+        string? name,
+        string? ipAddress)
     {
         Query.AsSplitQuery();
         Query.Where(x => x.Name == name || x.Profile.IpAddress == ipAddress);

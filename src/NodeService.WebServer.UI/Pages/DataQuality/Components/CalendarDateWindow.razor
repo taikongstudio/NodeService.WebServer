@@ -1,7 +1,7 @@
 ﻿<Drawer Closable="true"
-        Title="@("统计")"
+        Title="@($"查看{DataContext?.DateTime.ToString("yyyy-MM-dd")}统计")"
         Visible="@IsVisible"
-        Width="420"
+        Width="520"
         OnClose="OnClosed">
     <Template>
         @if (DataContext != null)

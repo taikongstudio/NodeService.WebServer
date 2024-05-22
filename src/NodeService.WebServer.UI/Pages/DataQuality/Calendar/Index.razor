@@ -2,7 +2,7 @@
 @page "/DataQuality/Calendar"
 @using Microsoft.Extensions.Caching.Memory
 @using NodeService.WebServer.Models
-@using NodeService.WebServer.UI.Pages.DataQuality.Calendar.Components
+@using NodeService.WebServer.UI.Pages.DataQuality.Components
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
@@ -19,10 +19,11 @@
             <Select TItem="DataQualityStatisticsDefinitionModel"
                     TItemValue="DataQualityStatisticsDefinitionModel"
                     DataSource="@_categories"
-                    @bind-Value="@_selectedCategory"
+                    Value="@_selectedCategory"
                     LabelName="@nameof(DataQualityStatisticsDefinitionModel.Name)"
                     Placeholder="选择分类"
                     DefaultActiveFirstOption="true"
+                    OnSelectedItemChanged="OnSelectedCategoryChanged"
                     Style="width:200px">
             </Select>
         </SpaceItem>
@@ -41,6 +42,7 @@
 @code
 {
     bool _isDrawerVisible;
+    DateTime _selectedDate;
     DataQualityCalendarEntry _entry;
 
     DataQualityStatisticsDefinitionModel? _selectedCategory;
@@ -62,10 +64,16 @@
         return Task.CompletedTask;
     }
 
+    private async Task OnSelectedCategoryChanged(DataQualityStatisticsDefinitionModel? selectedCategory)
+    {
+        _selectedCategory = selectedCategory;
+        await QueryNodeStatisticsRecordListAsync(_selectedDate);
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await QueryCategoriesAsync();
-        await QueryNodeStatisticsRecordListAsync(DateTime.Today);
+        await QueryNodeStatisticsRecordListAsync(DateTime.Today.Date);
         await base.OnInitializedAsync();
     }
 
@@ -84,6 +92,7 @@
             {
                 return;
             }
+            _selectedDate = dateTime;
             var previousDateTime = dateTime.AddMonths(-1);
             var nextDateTime = dateTime.AddMonths(1);
             _dataSource.QueryParameters.Name = _selectedCategory.Name;

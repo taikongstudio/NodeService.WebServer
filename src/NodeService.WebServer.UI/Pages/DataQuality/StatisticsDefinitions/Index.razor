@@ -46,10 +46,10 @@
                         break;
                     }
                 }
-                <Tag Class="site-tag-plus" OnClick="ShowMySqlConfigSelectorDialogAsync">
+                <Tag Class="site-tag-plus" OnClick="ShowDatabaseConfigSelectorDialogAsync">
                     <Icon Type="@IconType.Outline.Edit" />
                 </Tag>
-                <CommonDialog @ref="_mySqlConfigDialog" Closed="OnSelectMySqlConfigDialogClosed">
+                <CommonDialog @ref="_mySqlConfigDialog" Closed="OnSelectDatabaseConfigDialogClosed">
                     <MysqlConfigSelector @ref="_mySqlConfigSelector" @bind-SelectedItems="_selectedDatabaseConfigs" Mode="SelectionMode.Single" />
                 </CommonDialog>
             </FormItem>
@@ -339,14 +339,14 @@
             };
     }
 
-    async Task ShowMySqlConfigSelectorDialogAsync()
+    async Task ShowDatabaseConfigSelectorDialogAsync()
     {
         _editModel.Value.DatabaseConfigId = null;
         await _mySqlConfigDialog.ShowAsync();
     }
 
 
-    Task OnSelectMySqlConfigDialogClosed()
+    Task OnSelectDatabaseConfigDialogClosed()
     {
         _editModel.Value.DatabaseConfigId = _selectedDatabaseConfigs.FirstOrDefault()?.Id;
         StateHasChanged();

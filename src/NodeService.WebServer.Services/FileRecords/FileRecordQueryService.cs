@@ -20,7 +20,6 @@ public class FileRecordQueryService : BackgroundService
             ListQueryResult<FileRecordModel>>>
         _queryBatchQueue;
 
-    private readonly IRepository<FileRecordModel> _repo;
     private readonly ApplicationRepositoryFactory<FileRecordModel> _repositoryFactory;
 
     public FileRecordQueryService(
@@ -38,7 +37,6 @@ public class FileRecordQueryService : BackgroundService
         _logger = logger;
         _repositoryFactory = repositoryFactory;
         _queryBatchQueue = queryBatchQueue;
-        _repo = _repositoryFactory.CreateRepository();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -47,8 +45,15 @@ public class FileRecordQueryService : BackgroundService
         {
             await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(stoppingToken))
             {
+                int count = arrayPoolCollection.CountNotDefault();
+                if (count == 0)
+                {
+                    continue;
+                }
+
                 try
                 {
+                    using var repo = _repositoryFactory.CreateRepository();
                     foreach (var operation in arrayPoolCollection.Where(static x => x != null))
                     {
                         var kind = operation.Kind;
@@ -57,7 +62,7 @@ public class FileRecordQueryService : BackgroundService
                             case BatchQueueOperationKind.Query:
                                 try
                                 {
-                                    var queryResult = await _repo.PaginationQueryAsync(
+                                    var queryResult = await repo.PaginationQueryAsync(
                                         operation.Argument.Specification,
                                         operation.Argument.PaginationInfo);
                                     operation.SetResult(queryResult);
@@ -71,7 +76,6 @@ public class FileRecordQueryService : BackgroundService
                                 {
 
                                 }
-
                                 break;
                         }
                     }

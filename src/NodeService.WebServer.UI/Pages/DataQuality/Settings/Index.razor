@@ -20,6 +20,9 @@
         <FormItem Label="启用">
             <Switch @bind-Value="@context.IsEnabled" />
         </FormItem>
+        <FormItem Label="分析间隔（分钟）">
+            <AntDesign.InputNumber Min="1" @bind-Value="@context.DurationMinutes" />
+        </FormItem>
         <FormItem Label="数据质量分析起点时间">
             <DatePicker @bind-Value="@context.StatisticsLimitDate" />
         </FormItem>

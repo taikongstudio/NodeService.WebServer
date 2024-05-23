@@ -78,8 +78,20 @@ namespace NodeService.WebServer.Services.DataQuality
                     _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
                 }
-
-                await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                int durationMinutes = 0;
+                if (_dataQualitySettings == null)
+                {
+                    durationMinutes = 60 * 4;
+                }
+                else
+                {
+                    durationMinutes = _dataQualitySettings.DurationMinutes;
+                }
+                if (durationMinutes < 1)
+                {
+                    durationMinutes = 10;
+                }
+                await Task.Delay(TimeSpan.FromMinutes(durationMinutes), stoppingToken);
             }
         }
 

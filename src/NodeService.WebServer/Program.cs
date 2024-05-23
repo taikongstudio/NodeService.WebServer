@@ -413,7 +413,7 @@ public class Program
         builder.Services.AddSingleton(new
             BatchQueue<BatchQueueOperation<CommonConfigBatchQueueOperationParameters, ListQueryResult<object>>>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new
-            BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>>(64, TimeSpan.FromSeconds(5)));
+            BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>>(2096, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(64, TimeSpan.FromMinutes(30)));
     }
 

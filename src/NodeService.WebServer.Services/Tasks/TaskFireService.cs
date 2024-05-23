@@ -71,10 +71,14 @@ public class TaskFireService : BackgroundService
             await PenddingContextChannel.Reader.WaitToReadAsync(cancellationToken);
             while (PenddingContextChannel.Reader.TryRead(out var penddingContext))
                 _priorityQueue.Enqueue(penddingContext, penddingContext.TaskDefinition.Priority);
-            while (PenddingActionBlock.InputCount < 1000
+            while (_priorityQueue.Count > 0)
+            {
+                while (PenddingActionBlock.InputCount < 128
                    &&
                    _priorityQueue.TryDequeue(out var penddingContext, out var _))
-                PenddingActionBlock.Post(penddingContext);
+                    PenddingActionBlock.Post(penddingContext);
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+            }
         }
     }
 

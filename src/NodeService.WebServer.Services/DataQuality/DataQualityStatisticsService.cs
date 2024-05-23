@@ -1,5 +1,6 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Hosting;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
@@ -17,6 +18,7 @@ namespace NodeService.WebServer.Services.DataQuality
         readonly ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel> _statisticsRecordRepoFactory;
         private readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepoFactory;
         private readonly IMemoryCache _memoryCache;
+        private readonly BatchQueue<DataQualityAlarmMessage> _alarmMessageBatchQueue;
         readonly ILogger<DataQualityStatisticsService> _logger;
         readonly ExceptionCounter _exceptionCounter;
         private DataQualitySettings? _dataQualitySettings;
@@ -29,7 +31,8 @@ namespace NodeService.WebServer.Services.DataQuality
             ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel> statisticsRecordRepoFactory,
             ApplicationRepositoryFactory<PropertyBag> propertyBagRepoFactory,
             ExceptionCounter exceptionCounter,
-            IMemoryCache memoryCache
+            IMemoryCache memoryCache,
+            BatchQueue<DataQualityAlarmMessage> alarmMessageBatchQueue
             )
         {
             _logger = logger;
@@ -40,6 +43,7 @@ namespace NodeService.WebServer.Services.DataQuality
             _statisticsRecordRepoFactory = statisticsRecordRepoFactory;
             _propertyBagRepoFactory = propertyBagRepoFactory;
             _memoryCache = memoryCache;
+            _alarmMessageBatchQueue = alarmMessageBatchQueue;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -230,6 +234,21 @@ namespace NodeService.WebServer.Services.DataQuality
                         if (updateRecordList.Count > 0)
                         {
                             await statisticsRecordRepo.UpdateRangeAsync(updateRecordList, cancellationToken);
+                        }
+                        foreach (var record in addRecordList.Union(updateRecordList).Distinct())
+                        {
+                            foreach (var entry in record.Entries)
+                            {
+                                if (entry.Value == null || entry.Value != 1)
+                                {
+                                    DataQualityAlarmMessage dataQualityAlarmMessage = new DataQualityAlarmMessage();
+                                    dataQualityAlarmMessage.MachineName = record.Name;
+                                    dataQualityAlarmMessage.DataSource = entry.Name;
+                                    dataQualityAlarmMessage.Message = entry.Message;
+                                    dataQualityAlarmMessage.DateTime = dateTime;
+                                    await _alarmMessageBatchQueue.SendAsync(dataQualityAlarmMessage);
+                                }
+                            }
                         }
                     }
                     catch (Exception ex)

@@ -52,5 +52,11 @@
         <None Include="Pages\Nodes\Settings\Index.razor" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Content Update="Pages\Notifications\Components\DataQualityCheck.razor">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </Content>
+    </ItemGroup>
+
 
 </Project>

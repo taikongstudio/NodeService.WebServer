@@ -17,13 +17,14 @@ using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Auth;
-using NodeService.WebServer.Services.ClientUpdate;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
 using NodeService.WebServer.Services.FileRecords;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
+using NodeService.WebServer.Services.Queries;
+using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.UI.Services;
 using OpenTelemetry.Metrics;
@@ -247,6 +248,7 @@ public class Program
         builder.Services.AddHostedService<DataQualityStatisticsService>();
         builder.Services.AddHostedService<DataQualityAlarmService>();
         builder.Services.AddHostedService<ClientUpdateQueueService>();
+        builder.Services.AddHostedService<CommonConfigBatchQueryQueueService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -408,6 +410,11 @@ public class Program
         builder.Services.AddSingleton<WebServerCounter>();
         builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
         builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(1024, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(new
+            BatchQueue<BatchQueueOperation<CommonConfigBatchQueueOperationParameters, ListQueryResult<object>>>(64, TimeSpan.FromSeconds(1)));
+        builder.Services.AddSingleton(new
+            BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>>(64, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(64, TimeSpan.FromMinutes(30)));
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

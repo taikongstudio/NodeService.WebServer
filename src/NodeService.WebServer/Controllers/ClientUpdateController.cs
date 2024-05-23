@@ -1,6 +1,8 @@
-﻿using NodeService.WebServer.Data.Repositories;
+﻿using NodeService.Infrastructure.Concurrent;
+using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.QueryOptimize;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -11,6 +13,7 @@ public partial class ClientUpdateController : Controller
     private readonly ApplicationRepositoryFactory<ClientUpdateCounterModel> _clientUpdateCounterRepoFactory;
     private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
     private readonly ExceptionCounter _exceptionCounter;
+    private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>> _batchQueue;
     private readonly ILogger<ClientUpdateController> _logger;
     private readonly IMemoryCache _memoryCache;
     private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
@@ -21,6 +24,7 @@ public partial class ClientUpdateController : Controller
         ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<ClientUpdateCounterModel> clientUpdateCounterRepoFactory,
+        BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>> batchQueue,
         IMemoryCache memoryCache)
     {
         _logger = logger;
@@ -29,77 +33,24 @@ public partial class ClientUpdateController : Controller
         _clientUpdateCounterRepoFactory = clientUpdateCounterRepoFactory;
         _memoryCache = memoryCache;
         _exceptionCounter = exceptionCounter;
+        _batchQueue = batchQueue;
     }
 
     [HttpGet("/api/clientupdate/GetUpdate")]
-    public async Task<ApiResponse<ClientUpdateConfigModel>> GetUpdateAsync([FromQuery] string? name)
+    public async Task<ApiResponse<ClientUpdateConfigModel>> GetUpdateAsync(
+        [FromQuery] string? name,
+        CancellationToken cancellationToken = default)
     {
         var apiResponse = new ApiResponse<ClientUpdateConfigModel>();
         try
         {
-            ClientUpdateConfigModel? clientUpdateConfig = null;
             if (string.IsNullOrEmpty(name)) return apiResponse;
-
             var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
-            var updateKey = $"ClientUpdateEnabled:{ipAddress}";
-            if (!_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
-            {
-                return apiResponse;
-            }
-
-
-
-            var key = $"ClientUpdateConfig:{name}";
-            await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(10, 20)));
-            if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue) || cacheValue == null)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(10, 20)));
-                if (!_memoryCache.TryGetValue(key, out cacheValue) || cacheValue == null)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(Random.Shared.Next(10, 20)));
-                    await using var repo = _clientUpdateRepoFactory.CreateRepository();
-
-                    cacheValue =
-                        await repo.FirstOrDefaultAsync(
-                            new ClientUpdateConfigSpecification(ClientUpdateStatus.Public, name));
-
-                    if (cacheValue != null) _memoryCache.Set(key, cacheValue, TimeSpan.FromMinutes(1));
-                }
-            }
-
-            if (cacheValue != null) clientUpdateConfig = cacheValue;
-
-
-            if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null &&
-                clientUpdateConfig.DnsFilters.Any())
-            {
-                await using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-
-                var dataFilterType = DataFilterTypes.None;
-
-                if (clientUpdateConfig.DnsFilterType.Equals("include", StringComparison.OrdinalIgnoreCase))
-                    dataFilterType = DataFilterTypes.Include;
-
-                else if (clientUpdateConfig.DnsFilterType.Equals("exclude", StringComparison.OrdinalIgnoreCase))
-                    dataFilterType = DataFilterTypes.Exclude;
-                var nodeList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
-                    AreaTags.Any,
-                    NodeStatus.All,
-                    default,
-                    new DataFilterCollection<string>(
-                        dataFilterType,
-                        clientUpdateConfig.DnsFilters.Select(x => x.Value))));
-                if (nodeList.Count != 0)
-                {
-                    if (dataFilterType == DataFilterTypes.Include)
-                        apiResponse.SetResult(clientUpdateConfig);
-                    else if (dataFilterType == DataFilterTypes.Exclude) apiResponse.SetResult(null);
-                }
-            }
-            else
-            {
-                apiResponse.SetResult(clientUpdateConfig);
-            }
+            var paramters = new ClientUpdateBatchQueueOperationParameters(name, ipAddress);
+            var batchQueueOperation = new BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>(paramters, BatchQueueOperationKind.Query);
+            await _batchQueue.SendAsync(batchQueueOperation);
+            var clientUpdateConfig = await batchQueueOperation.WaitAsync(cancellationToken);
+            apiResponse.SetResult(clientUpdateConfig);
         }
         catch (Exception ex)
         {

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
@@ -63,11 +64,11 @@ public class NodeHealthyCheckService : BackgroundService
             NodeHealthyCheckConfiguration? configuration;
             if (!TryReadConfiguration(propertyBag, out configuration) || configuration == null) return;
 
-            List<string> offlineNodeList = [];
+            List<NodeInfoModel> offlineNodeList = [];
             var nodeInfoList = await nodeInfoRepo.ListAsync();
             foreach (var nodeInfo in nodeInfoList)
             {
-                if (offlineNodeList.Contains(nodeInfo.Name)) continue;
+                if (offlineNodeList.Contains(nodeInfo)) continue;
                 if (nodeInfo.Status == NodeStatus.Offline
                     &&
                     DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc >
@@ -78,7 +79,7 @@ public class NodeHealthyCheckService : BackgroundService
                     {
                         healthCounter.LastSentNotificationDateTimeUtc = DateTime.UtcNow;
                         healthCounter.SentNotificationCount++;
-                        offlineNodeList.Add(nodeInfo.Name);
+                        offlineNodeList.Add(nodeInfo);
                     }
                 }
             }
@@ -119,18 +120,27 @@ public class NodeHealthyCheckService : BackgroundService
 
     private async Task SendNodeOfflineNotificationAsync(
         NodeHealthyCheckConfiguration configuration,
-        List<string> offlineNodeList,
+        List<NodeInfoModel> offlineNodeList,
         CancellationToken stoppingToken = default)
     {
-        var offlineNodeNames = string.Join(",", offlineNodeList);
-        var repo = _notificationRepositoryFactory.CreateRepository();
+
+        using var repo = _notificationRepositoryFactory.CreateRepository();
+
+        StringBuilder stringBuilder = new StringBuilder();
+        foreach (var item in offlineNodeList.Where(static x => x != null).OrderBy(static x => x.Profile.ServerUpdateTimeUtc))
+        {
+            stringBuilder.Append($"<tr><td>{item.Profile.ServerUpdateTimeUtc}</td><td>{item.Name}</td><td>离线</td></tr>");
+        }
+        var content = configuration.ContentFormat.Replace("{0}", stringBuilder.ToString());
+
+
         foreach (var entry in configuration.Configurations)
         {
-            var notificationConfig = await repo.GetByIdAsync(entry.Id);
+            var notificationConfig = await repo.GetByIdAsync(entry.Value, stoppingToken);
             if (notificationConfig == null || !notificationConfig.IsEnabled) continue;
             await _notificationQueue.EnqueueAsync(
                 new NotificationMessage(configuration.Subject,
-                    string.Format(configuration.ContentFormat, offlineNodeNames),
+                    content,
                     notificationConfig.Value),
                 stoppingToken);
         }

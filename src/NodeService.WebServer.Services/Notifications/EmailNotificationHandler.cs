@@ -18,7 +18,10 @@ public class EmailNotificationHandler
         {
             if (emailOptionsValue is JsonElement jsonElement)
             {
-                options = jsonElement.Deserialize<EmailNotificationOptions>();
+                options = jsonElement.Deserialize<EmailNotificationOptions>(new JsonSerializerOptions()
+                {
+                    PropertyNameCaseInsensitive = true
+                });
             }
             else
             {
@@ -41,7 +44,7 @@ public class EmailNotificationHandler
             Sender = new MailboxAddress(options.Sender,
                 options.UserName),
             Subject = notificationMessage.Subject,
-            Body = new TextPart(TextFormat.Plain)
+            Body = new TextPart(TextFormat.Html)
             {
                 Text = notificationMessage.Message
             }

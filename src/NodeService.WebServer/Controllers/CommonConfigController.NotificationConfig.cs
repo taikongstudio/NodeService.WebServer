@@ -5,32 +5,32 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/CommonConfig/notification/AddOrUpdate")]
+    [HttpPost("/api/CommonConfig/Notification/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] NotificationConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/CommonConfig/notification/List")]
+    [HttpGet("/api/CommonConfig/Notification/List")]
     public Task<PaginationResponse<NotificationConfigModel>> QueryNotificationConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<NotificationConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/CommonConfig/notification/{id}")]
+    [HttpGet("/api/CommonConfig/Notification/{id}")]
     public Task<ApiResponse<NotificationConfigModel>> QueryNotificationConfigAsync(string id)
     {
         return QueryConfigurationAsync<NotificationConfigModel>(id);
     }
 
-    [HttpPost("/api/CommonConfig/notification/Remove")]
+    [HttpPost("/api/CommonConfig/Notification/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] NotificationConfigModel model)
     {
         return DeleteConfigurationAsync(model);
     }
 
-    [HttpPost("/api/CommonConfig/notification/{id}/Invoke")]
+    [HttpPost("/api/CommonConfig/Notification/{id}/Invoke")]
     public async Task<ApiResponse> InvokeAsync(string id, [FromBody] InvokeNotificationParameters parameters)
     {
         var rsp = await QueryNotificationConfigAsync(id);
@@ -49,7 +49,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpGet("/api/CommonConfig/NotificationSource/nodehealthycheck")]
+    [HttpGet("/api/CommonConfig/NotificationSource/NodeHealthyCheck")]
     public async Task<ApiResponse<NodeHealthyCheckConfiguration>> QueryNodeHealthyCheckConfigurationAsync()
     {
         var rsp = new ApiResponse<NodeHealthyCheckConfiguration>();
@@ -85,7 +85,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpPost("/api/CommonConfig/NotificationSource/nodehealthycheck/update")]
+    [HttpPost("/api/CommonConfig/NotificationSource/NodeHealthyCheck/Update")]
     public async Task<ApiResponse> UpdateNodeHealthyCheckConfigurationAsync(
         [FromBody] NodeHealthyCheckConfiguration model)
     {
@@ -96,6 +96,65 @@ public partial class CommonConfigController
             using var repo = repoFactory.CreateRepository();
             var propertyBag =
                 await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
+            propertyBag["Value"] = JsonSerializer.Serialize(model);
+            await repo.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.ToString();
+        }
+
+        return rsp;
+    }
+
+    [HttpGet("/api/CommonConfig/NotificationSource/DataQualityCheck")]
+    public async Task<ApiResponse<DataQualityCheckConfiguration>> QueryDataQualityCheckConfigurationAsync()
+    {
+        var rsp = new ApiResponse<DataQualityCheckConfiguration>();
+        try
+        {
+            DataQualityCheckConfiguration? result = null;
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+            using var repo = repoFactory.CreateRepository();
+            var propertyBag =
+                await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.DataQualityCheck));
+            if (propertyBag == null)
+            {
+                result = new DataQualityCheckConfiguration();
+                propertyBag = new PropertyBag();
+                propertyBag.Add("Id", NotificationSources.DataQualityCheck);
+                propertyBag.Add("Value", JsonSerializer.Serialize(result));
+                propertyBag["CreatedDate"] = DateTime.UtcNow;
+                await repo.AddAsync(propertyBag);
+            }
+            else
+            {
+                result = JsonSerializer.Deserialize<DataQualityCheckConfiguration>(propertyBag["Value"] as string);
+            }
+
+            rsp.SetResult(result);
+        }
+        catch (Exception ex)
+        {
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.ToString();
+        }
+
+        return rsp;
+    }
+
+    [HttpPost("/api/CommonConfig/NotificationSource/DataQualityCheck/Update")]
+    public async Task<ApiResponse> UpdateDataQualityCheckConfigurationAsync(
+        [FromBody] DataQualityCheckConfiguration model)
+    {
+        var rsp = new ApiResponse();
+        try
+        {
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+            using var repo = repoFactory.CreateRepository();
+            var propertyBag =
+                await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.DataQualityCheck));
             propertyBag["Value"] = JsonSerializer.Serialize(model);
             await repo.SaveChangesAsync();
         }

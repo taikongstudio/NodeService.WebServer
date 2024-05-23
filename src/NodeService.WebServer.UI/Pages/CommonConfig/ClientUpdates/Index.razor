@@ -48,10 +48,7 @@
                 </RadioGroup>
             </FormItem>
             <FormItem Label="Dns过滤">
-                <StringEntryTable @ref="_nodesTable"
-                                  NameTitle="备注"
-                                  ValueTitle="节点名称"
-                                  ItemsSource="@context.DnsFilters"/>
+                <NodeSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="_selectedNodes" />
             </FormItem>
         </Form>
     </Modal>
@@ -104,33 +101,11 @@
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
-                        @if (cellData.RowData.Expanded)
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.FullscreenExit" OnClick="() => cellData.RowData.Expanded = false"></Button>
-                            </SpaceItem>
-                        }
-                        else
-                        {
-                            <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Fullscreen" OnClick="() => cellData.RowData.Expanded = true"></Button>
-                            </SpaceItem>
-                        }
 
                     </Space>
                 </CellRender>
             </ActionColumn>
         </ColumnDefinitions>
-        <ExpandTemplate>
-            <Tabs Animated>
-                <TabPane Tab="@($"Dns{ConvertFilterType(context.Data.DnsFilterType)}列表")" Key="1">
-                    <StringEntryTable ItemsSource="@context.Data.DnsFilters"
-                                      NameTitle="备注"
-                                      ValueTitle="Dns"
-                                      IsEditable="false"/>
-                </TabPane>
-            </Tabs>
-        </ExpandTemplate>
     </Table>
 </GridContent>
 
@@ -143,6 +118,7 @@
     Form<ClientUpdateConfigModel> _editForm;
     ClientUpdateConfigModel _editModel = new();
     IEnumerable<PackageConfigModel> _selectedPackageConfigs;
+    IEnumerable<NodeInfoModel> _selectedNodes;
 
     bool _loading;
     RoutedPaginationDataSource<ClientUpdateConfigModel, PaginationQueryParameters> _dataSource;
@@ -165,6 +141,7 @@
             _editModel = model;
             var packageConfig = await ApiService.GetPackageConfigAsync(model.PackageConfigId);
             _selectedPackageConfigs = packageConfig == null ? [] : [packageConfig];
+            _selectedNodes = await _editModel.DnsFilters.LoadNodeListAsync(ApiService);
             _modalTitle = "新建客户端更新配置";
         }
 
@@ -175,6 +152,12 @@
     {
         try
         {
+            if (_editModel.DnsFilters == null)
+            {
+                _editModel.DnsFilters = new List<StringEntry>();
+            }
+            _editModel.DnsFilters.Clear();
+            _editModel.DnsFilters.AddRange(_selectedNodes.Select(x => new StringEntry(x.Name, x.Id)));
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {

@@ -1,0 +1,151 @@
+﻿@inject ApiService ApiService
+@inject NotificationService _notice
+@inject IMessageService _message
+
+<Form Model="@_editModel" Size="@AntSizeLDSType.Default"
+      LabelColSpan="4"
+      Loading="_loading"
+      Layout="@FormLayout.Horizontal"
+      WrapperColSpan="20"
+      OnFinish="HandleEditFormFinished"
+      OnFinishFailed="HandleEditFormFailed"
+      @ref="@_editForm">
+    <FormItem Required Label="启用">
+        <Switch @bind-Value="@context.IsEnabled" />
+    </FormItem>
+    <FormItem Label="通知间隔（分钟）">
+        <AntDesign.InputNumber Min="1" @bind-Value="@context.NotificationDuration" />
+    </FormItem>
+    <FormItem Required Label="主题">
+        <Input @bind-Value="@context.Subject"/>
+    </FormItem>
+
+    <FormItem Required Label="内容格式">
+        <TextArea Style="height:400px" @bind-Value="@context.ContentFormat" />
+    </FormItem>
+    <FormItem Label="配置类型">
+
+        <NotificationConfigSelector @bind-SelectedItems="_selectedNotificationConfigs" />
+    </FormItem>
+
+    <FormItem WrapperColOffset="4" WrapperColSpan="20">
+        <Button Type="@ButtonType.Primary" HtmlType="submit">
+            保存
+        </Button>
+    </FormItem>
+
+</Form>
+
+@code {
+    bool _editFormSubmitting = false;
+    bool _loading = false;
+    string _selectedNotificationId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _loading = true;
+        await QueryConfigurationAsync();
+        _loading = false;
+    }
+
+    Form<DataQualityCheckConfiguration> _editForm;
+
+    DataQualityCheckConfiguration _editModel = new();
+    IEnumerable<NotificationConfigModel> _selectedNotificationConfigs = [];
+
+    async Task QueryConfigurationAsync()
+    {
+        try
+        {
+            var rsp = await ApiService.QueryDataQualityCheckConfigurationAsync();
+            if (rsp.ErrorCode == 0)
+            {
+                _editModel = rsp.Result;
+                _selectedNotificationConfigs = await InitSelectedNotificationConfigAsync(rsp.Result.Configurations);
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = rsp.Message
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
+        }
+    }
+
+    async Task<IEnumerable<NotificationConfigModel>> InitSelectedNotificationConfigAsync(IEnumerable<StringEntry> items)
+    {
+        var list = new List<NotificationConfigModel>();
+        foreach (var item in items)
+        {
+            var rsp = await ApiService.QueryNotificationConfigAsync(item.Value);
+            if (rsp.ErrorCode == 0)
+            {
+                list.Add(rsp.Result);
+            }
+
+            break;
+        }
+
+        return list;
+    }
+
+    void HandleEditFormFailed(EditContext editContext)
+    {
+        _editFormSubmitting = false;
+    }
+
+
+    async void HandleEditFormFinished(EditContext editContext)
+    {
+        try
+        {
+            _editModel.Configurations.Clear();
+            _editModel.Configurations.AddRange(
+                _selectedNotificationConfigs.Select(x =>
+                    new StringEntry
+                    {
+                        Name = x.Name,
+                        Value = x.Id
+                    }));
+
+            var rsp = await ApiService.UpdateDataQualityCheckConfigurationAsync(_editModel);
+            if (rsp.ErrorCode == 0)
+            {
+                await _message.Info("保存成功");
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = rsp.Message
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
+        }
+        finally
+        {
+            _editFormSubmitting = true;
+        }
+    }
+
+
+}

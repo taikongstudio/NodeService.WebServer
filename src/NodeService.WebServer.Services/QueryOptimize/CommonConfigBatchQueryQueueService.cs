@@ -50,9 +50,9 @@ namespace NodeService.WebServer.Services.Queries
                 {
                     continue;
                 }
+                Stopwatch stopwatch = Stopwatch.StartNew();
                 try
                 {
-
                     foreach (var batchQueueOperationGroup in arrayPoolCollection.Where(static x => x != null)
                                                                                 .OrderByDescending(x => x.Priority)
                                                                                 .GroupBy(x => x.Argument))
@@ -115,6 +115,8 @@ namespace NodeService.WebServer.Services.Queries
                 finally
                 {
                     arrayPoolCollection.Dispose();
+                    stopwatch.Stop();
+                    _logger.LogInformation($"{count} requests,Ellapsed{stopwatch.Elapsed}");
                 }
             }
         }

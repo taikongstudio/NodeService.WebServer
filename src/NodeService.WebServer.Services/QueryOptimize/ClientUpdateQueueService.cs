@@ -112,6 +112,7 @@ namespace NodeService.WebServer.Services.Queries
                 {
                     continue;
                 }
+                Stopwatch stopwatch = Stopwatch.StartNew();
                 try
                 {
 
@@ -161,6 +162,8 @@ namespace NodeService.WebServer.Services.Queries
                 finally
                 {
                     arrayPoolCollection.Dispose();
+                    stopwatch.Stop();
+                    _logger.LogInformation($"{count} requests,Ellapsed{stopwatch.Elapsed}");
                 }
             }
 

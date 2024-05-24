@@ -5,7 +5,7 @@
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
 @inject NotificationService _notice
-
+@implements IDisposable
 
 <GridContent>
     <TaskDefinitionEditor 
@@ -241,4 +241,8 @@
         _dataSource.Request();
     }
 
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
 }

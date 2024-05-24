@@ -7,6 +7,7 @@
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
 @inject ModalService _modalService
+@implements IDisposable
 
 <CalendarDateWindow IsVisible="@_isDrawerVisible" DataContext="@_entry" Closed="@OnCalendarDateWindowClosed" />
 
@@ -266,6 +267,11 @@
     {
         _isDrawerVisible = false;
         _entry = null;
+    }
+
+    public void Dispose()
+    {
+        this._dataSource.Dispose();
     }
 
 }

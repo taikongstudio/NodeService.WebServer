@@ -4,6 +4,7 @@
 @inject IMessageService _message
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
+@implements IDisposable
 <GridContent>
     <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
         <NodeSelector @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple" />
@@ -141,5 +142,10 @@
             _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
         }
         await _dataSource.RefreshAsync();
+    }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
     }
 }

@@ -4,6 +4,7 @@
 @inject NotificationService _notice
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
+@implements IDisposable
 <GridContent>
 
     <Space Style="margin-bottom:16px">
@@ -103,5 +104,9 @@
         _dataSource.Request();
     }
 
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
 
 }

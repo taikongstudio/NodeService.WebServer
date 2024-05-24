@@ -7,6 +7,7 @@
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
 @inject ClipboardService ClipboardService
+@implements IDisposable
 <GridContent>
   
     <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
@@ -252,4 +253,8 @@
         _editingFileRecord = null;
     }
 
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
 }

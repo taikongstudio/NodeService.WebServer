@@ -15,6 +15,7 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
     private readonly NavigationManager _navigationManager;
     private string _currentQuery;
     private string _uri;
+    private long _disposed;
 
     public RoutedPaginationDataSource(
         NavigationManager navigationManager,
@@ -30,10 +31,15 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
     {
         _navigationManager.LocationChanged -= NavigationManager_LocationChanged;
         _locaitionChangingToken.Dispose();
+        Interlocked.Exchange(ref _disposed, 1);
     }
 
     private async void NavigationManager_LocationChanged(object? sender, LocationChangedEventArgs e)
     {
+        if (Interlocked.Read(ref _disposed) == 1)
+        {
+            return;
+        }
         await RefreshAsync();
     }
 

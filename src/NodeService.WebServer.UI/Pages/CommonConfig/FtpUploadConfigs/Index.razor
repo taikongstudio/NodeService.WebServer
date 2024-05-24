@@ -238,7 +238,7 @@
         }
     }
 
-    async void ShowEditForm(FtpUploadConfigModel? model = null)
+    async Task ShowEditForm(FtpUploadConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
@@ -274,7 +274,7 @@
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                _dataSource.ForceRequest();
+                await _dataSource.RefreshAsync();
                 _editFormVisible = false;
             }
             else

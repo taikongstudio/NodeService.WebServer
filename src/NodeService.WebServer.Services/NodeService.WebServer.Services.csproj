@@ -31,9 +31,4 @@
         <ProjectReference Include="..\NodeService.WebServer.Models\NodeService.WebServer.Models.csproj" />
     </ItemGroup>
 
-
-    <ItemGroup>
-      <Folder Include="FileRecords\" />
-    </ItemGroup>
-
 </Project>

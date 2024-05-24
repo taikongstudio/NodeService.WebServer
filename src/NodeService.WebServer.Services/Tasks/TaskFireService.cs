@@ -157,7 +157,8 @@ public class TaskFireService : BackgroundService
                 Message = new JobExecutionReport
                 {
                     Id = context.Id,
-                    Status = JobExecutionStatus.PenddingTimeout
+                    Status = JobExecutionStatus.PenddingTimeout,
+                    Message = "排队超时"
                 }
             });
             _logger.LogInformation($"{context.Id}:SendAsync PenddingTimeout");

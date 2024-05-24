@@ -6,6 +6,7 @@
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
+@inject ModalService _modalService
 
 <CalendarDateWindow IsVisible="@_isDrawerVisible" DataContext="@_entry" Closed="@OnCalendarDateWindowClosed" />
 
@@ -44,6 +45,7 @@
     bool _isDrawerVisible;
     DateTime _selectedDate;
     DataQualityCalendarEntry _entry;
+    ConfirmRef _modelRef;
 
     DataQualityStatisticsDefinitionModel? _selectedCategory;
 
@@ -56,12 +58,41 @@
         ApiService.QueryDataQualityCalendarEntryListAsync,
         StateHasChanged);
         _dataSource.Completed = OnDataSourceCompleted;
+        _dataSource.ExceptionHandler = ExecptionHandler;
+        _dataSource.Ready = ReadyAsync;
         base.OnInitialized();
     }
 
-    private Task OnDataSourceCompleted()
+    private async Task ExecptionHandler(Exception ex)
     {
+        if (this._modelRef != null)
+        {
+            await _modalService.DestroyConfirmAsync(_modelRef);
+        }
+    }
+
+    private Task ReadyAsync()
+    {
+        RenderFragment content =@<Icon Type="loading" Theme="outline" Style="font-size: 24px" Spin />  ;
+        var props = new ConfirmOptions()
+            {
+                Title = "正在加载",
+                Content = content,
+                OkButtonProps = new ButtonProps()
+                {
+                    Disabled = true
+                },
+            };
+        _modelRef = _modalService.Info(props);
         return Task.CompletedTask;
+    }
+
+    private async Task OnDataSourceCompleted()
+    {
+        if (_modelRef != null)
+        {
+            await _modalService.DestroyConfirmAsync(_modelRef);
+        }
     }
 
     private async Task OnSelectedCategoryChanged(DataQualityStatisticsDefinitionModel? selectedCategory)

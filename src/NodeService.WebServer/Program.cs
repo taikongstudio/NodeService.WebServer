@@ -19,11 +19,9 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
-using NodeService.WebServer.Services.FileRecords;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
-using NodeService.WebServer.Services.Queries;
 using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.UI.Services;
@@ -392,7 +390,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(10)));
         builder.Services.AddKeyedSingleton(nameof(FileRecordQueryService),
-            new BatchQueue<BatchQueueOperation<(FileRecordSpecification Specification, PaginationInfo PaginationInfo), ListQueryResult<FileRecordModel>>>(
+            new BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>(
                 1024 * 2,
                 TimeSpan.FromSeconds(5)));
         builder.Services.AddKeyedSingleton(nameof(FileRecordInsertUpdateDeleteService),
@@ -411,9 +409,9 @@ public class Program
         builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
         builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(1024, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new
-            BatchQueue<BatchQueueOperation<CommonConfigBatchQueueOperationParameters, ListQueryResult<object>>>(64, TimeSpan.FromSeconds(1)));
+            BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>(64, TimeSpan.FromMilliseconds(100)));
         builder.Services.AddSingleton(new
-            BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>>(2096, TimeSpan.FromSeconds(3)));
+            BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(2096, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(64, TimeSpan.FromMinutes(30)));
     }
 

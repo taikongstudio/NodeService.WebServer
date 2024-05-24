@@ -183,7 +183,7 @@
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
     bool _loading;
-    string _fileError = string.Empty;
+    string _fileError;
     Form<PackageConfigModel> _editForm;
     PackageConfigModel _editModel = new();
     readonly List<UploadFileItem> _uploadFileItems = new();
@@ -270,9 +270,10 @@
     {
         try
         {
+            _editFormVisible = true;
             _editFormConfirmLoading = true;
             _loading = true;
-            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel, _file.OpenReadStream(1024 * 1024 * 200));
+            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel, _file?.OpenReadStream(1024 * 1024 * 200));
             if (apiResponse.ErrorCode == 0)
             {
                 await _dataSource.RefreshAsync();

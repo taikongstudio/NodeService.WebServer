@@ -222,7 +222,9 @@
 
     List<StringEntry> _nameList;
 
-    async Task InitAsync(FtpUploadConfigModel model)
+    async ValueTask InitAsync(
+        FtpUploadConfigModel model,
+        CancellationToken cancellationToken = default)
     {
         if (model == null)
         {

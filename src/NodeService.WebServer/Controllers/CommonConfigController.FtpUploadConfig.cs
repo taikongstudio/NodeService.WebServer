@@ -19,7 +19,7 @@ public partial class CommonConfigController
     [HttpGet("/api/CommonConfig/ftpupload/{id}")]
     public Task<ApiResponse<FtpUploadConfigModel>> QueryFtpUploadConfigAsync(string id)
     {
-        return QueryConfigurationAsync<FtpUploadConfigModel>(id, FindFtpConfigAsync);
+        return QueryConfigurationAsync<FtpUploadConfigModel>(id);
 
         async Task FindFtpConfigAsync(FtpUploadConfigModel? ftpUploadConfig)
         {

@@ -6,14 +6,13 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.QueryOptimize;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.Queries
+namespace NodeService.WebServer.Services.QueryOptimize
 {
     public class ClientUpdateQueueService : BackgroundService
     {
@@ -22,14 +21,14 @@ namespace NodeService.WebServer.Services.Queries
         private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
         private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
         private readonly ExceptionCounter _exceptionCounter;
-        private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>> _batchQueue;
+        private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> _batchQueue;
 
         public ClientUpdateQueueService(
             ILogger<ClientUpdateQueueService> logger,
             ExceptionCounter exceptionCounter,
             ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
             ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
-            BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>> batchQueue,
+            BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> batchQueue,
             IMemoryCache memoryCache
             )
         {

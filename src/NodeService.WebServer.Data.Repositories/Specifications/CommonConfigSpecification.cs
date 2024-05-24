@@ -11,4 +11,20 @@ public class CommonConfigSpecification<T> : Specification<T> where T : ModelBase
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
+
+    public CommonConfigSpecification(
+    DataFilterCollection<string> idFilters)
+    {
+        if (idFilters.HasValue)
+        {
+            if (idFilters.FilterType == DataFilterTypes.Include)
+            {
+                this.Query.Where(x => idFilters.Items.Contains(x.Id));
+            }
+            else if (idFilters.FilterType == DataFilterTypes.Exclude)
+            {
+                this.Query.Where(x => !idFilters.Items.Contains(x.Id));
+            }
+        }
+    }
 }

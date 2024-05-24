@@ -26,7 +26,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     public bool IsLoading { get; set; }
 
-    public Func<TElement?, Task> ItemInitializer { get; set; }
+    public Func<TElement?,CancellationToken, ValueTask> ItemInitializer { get; set; }
 
     public Func<Exception, Task> ExceptionHandler { get; set; }
 
@@ -90,8 +90,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
     private async Task InvokeItemInitializerAsync(IEnumerable<TElement?>? itemsSource)
     {
         if (itemsSource != null && ItemInitializer != null)
-            foreach (var item in itemsSource)
-                await ItemInitializer.Invoke(item);
+            await Parallel.ForEachAsync(itemsSource, ItemInitializer);
     }
 
 

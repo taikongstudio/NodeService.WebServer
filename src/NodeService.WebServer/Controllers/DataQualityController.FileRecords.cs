@@ -1,6 +1,7 @@
 ﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Services.QueryOptimize;
 
 namespace NodeService.WebServer.Controllers
 {
@@ -14,17 +15,9 @@ namespace NodeService.WebServer.Controllers
             var apiResponse = new PaginationResponse<FileRecordModel>();
             try
             {
-
-
-
                 var fileRecordQueryOperation =
-                    new BatchQueueOperation<(FileRecordSpecification Specification, PaginationInfo PaginationInfo), ListQueryResult<FileRecordModel>>(
-                        (new FileRecordSpecification(
-                           queryParameters.Category,
-                           queryParameters.State,
-                           DataFilterCollection<string>.Includes(queryParameters.NodeIdList),
-                           DataFilterCollection<string>.Includes(string.IsNullOrEmpty(queryParameters.Keywords) ? [] : [queryParameters.Keywords]),
-                           queryParameters.SortDescriptions),
+                    new BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>(
+                        new FileRecordBatchQueryParameters(queryParameters,
                         new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize)
                         ),
                         BatchQueueOperationKind.Query);

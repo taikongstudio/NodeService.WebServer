@@ -13,7 +13,7 @@ public partial class ClientUpdateController : Controller
     private readonly ApplicationRepositoryFactory<ClientUpdateCounterModel> _clientUpdateCounterRepoFactory;
     private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
     private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>> _batchQueue;
+    private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> _batchQueue;
     private readonly ILogger<ClientUpdateController> _logger;
     private readonly IMemoryCache _memoryCache;
     private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
@@ -24,7 +24,7 @@ public partial class ClientUpdateController : Controller
         ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<ClientUpdateCounterModel> clientUpdateCounterRepoFactory,
-        BatchQueue<BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>> batchQueue,
+        BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> batchQueue,
         IMemoryCache memoryCache)
     {
         _logger = logger;
@@ -46,8 +46,8 @@ public partial class ClientUpdateController : Controller
         {
             if (string.IsNullOrEmpty(name)) return apiResponse;
             var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
-            var paramters = new ClientUpdateBatchQueueOperationParameters(name, ipAddress);
-            var batchQueueOperation = new BatchQueueOperation<ClientUpdateBatchQueueOperationParameters, ClientUpdateConfigModel>(paramters, BatchQueueOperationKind.Query);
+            var paramters = new ClientUpdateBatchQueryParameters(name, ipAddress);
+            var batchQueueOperation = new BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>(paramters, BatchQueueOperationKind.Query);
             await _batchQueue.SendAsync(batchQueueOperation);
             var clientUpdateConfig = await batchQueueOperation.WaitAsync(cancellationToken);
             apiResponse.SetResult(clientUpdateConfig);

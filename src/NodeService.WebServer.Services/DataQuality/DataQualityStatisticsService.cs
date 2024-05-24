@@ -1,12 +1,8 @@
-﻿using Google.Protobuf.WellKnownTypes;
-using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Concurrent;
-using NodeService.Infrastructure.DataModels;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using System.Composition;
 
 namespace NodeService.WebServer.Services.DataQuality
 {

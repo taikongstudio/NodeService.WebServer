@@ -8,6 +8,12 @@
             Type="primary"
             Style="margin-left:8px;margin-right:8px">
     </Button>
+    <Button Shape="@ButtonShape.Circle"
+            Icon="@IconType.Outline.Clear"
+            OnClick="UnSelectAll"
+            Type="primary"
+            Style="margin-left:8px;margin-right:8px">
+    </Button>
     <Select DataSource="@_nodeSettings.IpAddressMappings"
             Value="@_dataSource.QueryParameters.AreaTag"
             OnSelectedItemChanged="OnSelectedAreaTagChanged"
@@ -104,6 +110,11 @@
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
         base.OnInitialized();
+    }
+
+    private void UnSelectAll()
+    {
+        this.SelectedItems = [];
     }
 
     protected override async Task OnInitializedAsync()

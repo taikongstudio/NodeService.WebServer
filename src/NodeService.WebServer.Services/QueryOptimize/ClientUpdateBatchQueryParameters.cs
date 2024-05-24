@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.QueryOptimize
 {
-    public class ClientUpdateBatchQueueOperationParameters
+    public class ClientUpdateBatchQueryParameters
     {
-        public ClientUpdateBatchQueueOperationParameters(string name, string ipAddress)
+        public ClientUpdateBatchQueryParameters(string name, string ipAddress)
         {
             Name = name;
             IpAddress = ipAddress;

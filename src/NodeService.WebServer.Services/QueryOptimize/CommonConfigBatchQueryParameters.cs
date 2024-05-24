@@ -4,17 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.Queries
+namespace NodeService.WebServer.Services.QueryOptimize
 {
-    public record class CommonConfigBatchQueueOperationParameters
+    public record class CommonConfigBatchQueryParameters
     {
-        public CommonConfigBatchQueueOperationParameters(Type type, PaginationQueryParameters queryParameters)
+        public CommonConfigBatchQueryParameters(Type type, PaginationQueryParameters queryParameters)
         {
             QueryParameters = queryParameters;
             Type = type;
         }
 
-        public CommonConfigBatchQueueOperationParameters(Type type, string id)
+        public CommonConfigBatchQueryParameters(Type type, string id)
         {
             Id = id;
             Type = type;
@@ -23,6 +23,6 @@ namespace NodeService.WebServer.Services.Queries
         public PaginationQueryParameters? QueryParameters { get; private set; }
 
         public string? Id { get; private set; }
-        public System.Type Type { get; private set; }
+        public Type Type { get; private set; }
     }
 }

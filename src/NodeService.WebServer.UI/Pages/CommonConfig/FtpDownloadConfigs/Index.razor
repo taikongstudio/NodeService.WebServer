@@ -195,12 +195,14 @@
             NavigationManager,
             ApiService.QueryFtpDownloadConfigurationListAsync,
             StateHasChanged);
-        _dataSource.ItemInitializer = InitializeFtpDownloadConfigAsync;
+        _dataSource.ItemInitializer = InitAsync;
         _dataSource.Request();
         base.OnInitialized();
     }
 
-    async Task InitializeFtpDownloadConfigAsync(FtpDownloadConfigModel model)
+    async ValueTask InitAsync(
+        FtpDownloadConfigModel model,
+        CancellationToken cancellationToken = default)
     {
         if (model == null)
         {

@@ -5,7 +5,7 @@ using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.Queries;
+using NodeService.WebServer.Services.QueryOptimize;
 using System.Threading;
 
 namespace NodeService.WebServer.Controllers;
@@ -15,7 +15,7 @@ namespace NodeService.WebServer.Controllers;
 public partial class CommonConfigController : Controller
 {
     private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<BatchQueueOperation<CommonConfigBatchQueueOperationParameters, ListQueryResult<object>>> _batchQueue;
+    private readonly BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> _batchQueue;
     private readonly ILogger<CommonConfigController> _logger;
     private readonly IMemoryCache _memoryCache;
     private readonly INodeSessionService _nodeSessionService;
@@ -31,7 +31,7 @@ public partial class CommonConfigController : Controller
         IServiceProvider serviceProvider,
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationMessageQueue,
-        BatchQueue<BatchQueueOperation<CommonConfigBatchQueueOperationParameters, ListQueryResult<object>>> batchQueue
+        BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> batchQueue
         )
     {
         _logger = logger;
@@ -53,8 +53,16 @@ public partial class CommonConfigController : Controller
         {
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
             ListQueryResult<T> result = default;
-            var paramters = new CommonConfigBatchQueueOperationParameters(typeof(T), queryParameters);
-            var op = new BatchQueueOperation<CommonConfigBatchQueueOperationParameters, ListQueryResult<object>>(paramters, BatchQueueOperationKind.Query);
+            var paramters = new CommonConfigBatchQueryParameters(typeof(T), queryParameters);
+            var priority = queryParameters.QueryStrategy == QueryStrategy.QueryPreferred
+                ?
+                BatchQueueOperationPriority.High
+                :
+                BatchQueueOperationPriority.Mormal;
+            var op = new BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>(
+                paramters,
+                BatchQueueOperationKind.Query,
+                priority);
             await _batchQueue.SendAsync(op);
             var queryResult = await op.WaitAsync(cancellationToken);
             if (queryResult.HasValue)
@@ -89,8 +97,8 @@ public partial class CommonConfigController : Controller
         {
             _logger.LogInformation($"{typeof(T)}:{id}");
             ListQueryResult<T> result = default;
-            var paramters = new CommonConfigBatchQueueOperationParameters(typeof(T), id);
-            var op = new BatchQueueOperation<CommonConfigBatchQueueOperationParameters, ListQueryResult<object>>(paramters, BatchQueueOperationKind.Query);
+            var paramters = new CommonConfigBatchQueryParameters(typeof(T), id);
+            var op = new BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>(paramters, BatchQueueOperationKind.Query);
             await _batchQueue.SendAsync(op);
             var queryResult = await op.WaitAsync(cancellationToken);
             if (queryResult.HasValue)

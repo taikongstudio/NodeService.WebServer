@@ -58,37 +58,42 @@ public partial class CommonConfigController
         var apiResponse = new ApiResponse();
         try
         {
-            using var virtualFileSystem = _serviceProvider.GetService<IVirtualFileSystem>();
             ArgumentNullException.ThrowIfNull(package.Name);
             ArgumentNullException.ThrowIfNull(package.Platform);
             ArgumentNullException.ThrowIfNull(package.Version);
-            ArgumentNullException.ThrowIfNull(package.File);
             ArgumentNullException.ThrowIfNull(package.Hash);
-            var fileName = Guid.NewGuid().ToString("N");
-            var remotePath = Path.Combine(_webServerOptions.GetPackagePath(package.Id), fileName);
-            await virtualFileSystem.ConnectAsync();
-            var stream = package.File.OpenReadStream();
-            if (!ZipArchiveHelper.TryRead(stream, out var zipArchive))
+            if (package.File != null)
             {
-                apiResponse.ErrorCode = -1;
-                apiResponse.Message = "not a zip package";
-                return apiResponse;
+                using var virtualFileSystem = _serviceProvider.GetService<IVirtualFileSystem>();
+                var fileName = Guid.NewGuid().ToString("N");
+                var remotePath = Path.Combine(_webServerOptions.GetPackagePath(package.Id), fileName);
+                await virtualFileSystem.ConnectAsync();
+                var stream = package.File.OpenReadStream();
+                if (!ZipArchiveHelper.TryRead(stream, out var zipArchive))
+                {
+                    apiResponse.ErrorCode = -1;
+                    apiResponse.Message = "not a zip package";
+                    return apiResponse;
+                }
+
+                if (!zipArchive.Entries.Any(ZipArchiveHelper.HasPackageKey))
+                {
+                    apiResponse.ErrorCode = -1;
+                    apiResponse.Message = "Invalid package";
+                    return apiResponse;
+                }
+
+                stream.Position = 0;
+                if (!await virtualFileSystem.UploadStream(remotePath, stream))
+                {
+                    apiResponse.ErrorCode = -1;
+                    apiResponse.Message = "Upload stream fail";
+                    return apiResponse;
+                }
+                package.DownloadUrl = remotePath;
+
             }
 
-            if (!zipArchive.Entries.Any(ZipArchiveHelper.HasPackageKey))
-            {
-                apiResponse.ErrorCode = -1;
-                apiResponse.Message = "Invalid package";
-                return apiResponse;
-            }
-
-            stream.Position = 0;
-            if (!await virtualFileSystem.UploadStream(remotePath, stream))
-            {
-                apiResponse.ErrorCode = -1;
-                apiResponse.Message = "Upload stream fail";
-                return apiResponse;
-            }
 
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PackageConfigModel>>();
             using var repo = repoFactory.CreateRepository();
@@ -100,15 +105,20 @@ public partial class CommonConfigController
             }
             else
             {
+                using var virtualFileSystem = _serviceProvider.GetService<IVirtualFileSystem>();
                 var packageCacheKey = $"Package:{model.DownloadUrl}";
                 _memoryCache.Remove(packageCacheKey);
                 if (model.DownloadUrl != null) await virtualFileSystem.DeleteFileAsync(model.DownloadUrl);
                 model.With(package);
+
             }
 
-            model.FileName = package.File.FileName;
-            model.FileSize = package.File.Length;
-            model.DownloadUrl = remotePath;
+            if (package.File != null)
+            {
+                model.DownloadUrl = package.DownloadUrl;
+                model.FileName = package.File.FileName;
+                model.FileSize = package.File.Length;
+            }
             await repo.SaveChangesAsync();
         }
         catch (Exception ex)

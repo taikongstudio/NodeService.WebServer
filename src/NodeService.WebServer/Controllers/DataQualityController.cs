@@ -3,7 +3,8 @@ using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.FileRecords;
+using NodeService.WebServer.Services.DataQuality;
+using NodeService.WebServer.Services.QueryOptimize;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -20,7 +21,7 @@ public partial class DataQualityController : Controller
     readonly ILogger<DataQualityController> _logger;
     readonly IMemoryCache _memoryCache;
 
-    private readonly BatchQueue<BatchQueueOperation<(FileRecordSpecification Specification, PaginationInfo PaginationInfo), ListQueryResult<FileRecordModel>>>
+    private readonly BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>
         _queryOpBatchQueue;
 
     public DataQualityController(
@@ -28,7 +29,7 @@ public partial class DataQualityController : Controller
         ExceptionCounter exceptionCounter,
         IServiceProvider serviceProvider,
         [FromKeyedServices(nameof(FileRecordQueryService))]
-        BatchQueue<BatchQueueOperation<(FileRecordSpecification Specification, PaginationInfo PaginationInfo), ListQueryResult<FileRecordModel>>> queryOpBatchQueue,
+        BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>> queryOpBatchQueue,
         [FromKeyedServices(nameof(FileRecordInsertUpdateDeleteService))]
         BatchQueue<BatchQueueOperation<FileRecordModel, bool>> insertUpdateDeleteOpBatchQueue,
         ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel> nodeStatisticsRecordRepoFactory,

@@ -150,7 +150,7 @@
             NavigationManager,
             ApiService.QueryDataQualityStatisticsDefinitionListAsync,
             StateHasChanged);
-        _dataSource.ItemInitializer = InitializeDatabaseConfigAsync;
+        _dataSource.ItemInitializer = InitAsync;
         _dataSource.Request();
         base.OnInitialized();
     }
@@ -353,7 +353,9 @@
         return Task.CompletedTask;
     }
 
-    async Task InitializeDatabaseConfigAsync(DataQualityStatisticsDefinitionModel model)
+    async ValueTask InitAsync(
+        DataQualityStatisticsDefinitionModel model,
+        CancellationToken cancellationToken=default)
     {
         if (model == null || model.Value == null)
         {

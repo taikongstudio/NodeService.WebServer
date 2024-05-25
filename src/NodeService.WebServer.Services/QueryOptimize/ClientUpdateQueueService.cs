@@ -46,7 +46,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
             while (!stoppingToken.IsCancellationRequested)
             {
                 await QueueAsync(stoppingToken);
-                await Task.Delay(TimeSpan.FromSeconds(30));
+                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
             }
         }
 
@@ -127,11 +127,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
                             {
                                 var ipAddress = op.Argument.IpAddress;
                                 var updateKey = CreateKey(ipAddress);
-                                if (!_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
-                                {
-                                    op.SetResult(null);
-                                }
-                                else
+                                if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
                                 {
                                     if (clientUpdateConfig == null)
                                     {
@@ -139,6 +135,10 @@ namespace NodeService.WebServer.Services.QueryOptimize
                                     }
                                     clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
                                     op.SetResult(clientUpdateConfig);
+                                }
+                                else
+                                {
+                                    op.SetResult(null);
                                 }
                             }
                             catch (Exception ex)

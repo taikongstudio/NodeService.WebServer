@@ -73,10 +73,10 @@
                 {
                     <FormItem Label="文件处理方式">
                         <RadioGroup @bind-Value="@context.FtpFileExists">
-                            <Radio RadioButton Value="@FtpFileExists.Skip">跳过</Radio>
-                            <Radio RadioButton Value="@FtpFileExists.Overwrite">覆盖</Radio>
-                            <Radio RadioButton Value="@FtpFileExists.Resume">恢复</Radio>
-                            <Radio RadioButton Value="@FtpFileExists.AddToEnd">追加</Radio>
+                            <Radio RadioButton Value="@FileExists.Skip">跳过</Radio>
+                            <Radio RadioButton Value="@FileExists.Overwrite">覆盖</Radio>
+                            <Radio RadioButton Value="@FileExists.Resume">恢复</Radio>
+                            <Radio RadioButton Value="@FileExists.AddToEnd">追加</Radio>
                         </RadioGroup>
                         <br/>
                         <Text>本地文件时间和服务器文件时间差异</Text>

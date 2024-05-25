@@ -121,38 +121,41 @@ namespace NodeService.WebServer.Services.QueryOptimize
                 try
                 {
                     var type = batchQueueOperationGroup.Key;
-                    var idList = batchQueueOperationGroup.Select(x => x.Argument.Id);
+                    var idList = batchQueueOperationGroup.Select(static x => x.Argument.Id);
                     _logger.LogInformation($"{type}:{string.Join(",", idList)}");
-
-                    var key = $"{type}-{nameof(CreateQueryByIdListLambda)}";
-                    if (!_funcDict.TryGetValue(key, out var func))
+                    if (idList == null || !idList.Any())
                     {
-                        var expr = CreateQueryByIdListLambda(type);
-                        func = expr.Compile();
-                        _funcDict.TryAdd(key, func);
-                    }
-                    var task = ((Func<IEnumerable<string>, Task<ListQueryResult<object>>>)func).Invoke(idList);
-                    var queryResult = await task;
-                    foreach (var op in batchQueueOperationGroup)
-                    {
-                        if (queryResult.HasValue)
-                        {
-                            ModelBase? result = QueryResultItems(queryResult, op.Argument.Id);
-                            if (result == null)
-                            {
-                                op.SetResult(default);
-                            }
-                            else
-                            {
-                                op.SetResult(new ListQueryResult<object>(1, 1, 1, [result]));
-                            }
-
-                        }
-                        else
+                        foreach (var op in batchQueueOperationGroup)
                         {
                             op.SetResult(default);
                         }
                     }
+                    else
+                    {
+                        var key = $"{type}-{nameof(CreateQueryByIdListLambda)}";
+                        if (!_funcDict.TryGetValue(key, out var func))
+                        {
+                            var expr = CreateQueryByIdListLambda(type);
+                            func = expr.Compile();
+                            _funcDict.TryAdd(key, func);
+                        }
+                        var task = ((Func<IEnumerable<string>, Task<ListQueryResult<object>>>)func).Invoke(idList);
+                        var queryResult = await task;
+                        bool hasValue = queryResult.HasValue;
+                        foreach (var op in batchQueueOperationGroup)
+                        {
+                            if (hasValue && TryFindItem(queryResult.Items, op.Argument.Id, out var result))
+                            {
+                                op.SetResult(new ListQueryResult<object>(1, 1, 1, [result]));
+
+                            }
+                            else
+                            {
+                                op.SetResult(default);
+                            }
+                        }
+                    }
+
                 }
                 catch (Exception ex)
                 {
@@ -164,17 +167,15 @@ namespace NodeService.WebServer.Services.QueryOptimize
                     _logger.LogError(ex.ToString());
                 }
 
-
-
             }
         }
 
-        private static ModelBase? QueryResultItems(
-            ListQueryResult<object> queryResult, 
-            string id)
+        private static bool TryFindItem(
+            IEnumerable<object> items,
+            string id, out ModelBase? result)
         {
-            ModelBase? result = null;
-            foreach (var item in queryResult.Items)
+            result = null;
+            foreach (var item in items)
             {
                 if (item is not ModelBase model)
                 {
@@ -187,7 +188,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
                 }
             }
 
-            return result;
+            return result != null;
         }
 
         Expression<Func<PaginationQueryParameters, Task<ListQueryResult<object?>>>> CreateQueryByParameterLambda(Type type)

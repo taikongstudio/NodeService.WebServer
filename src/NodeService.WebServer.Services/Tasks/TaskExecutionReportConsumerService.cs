@@ -1,8 +1,10 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.EntityFrameworkCore.Query;
+using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
+using System.Linq.Expressions;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -54,8 +56,6 @@ public class TaskExecutionReportConsumerService : BackgroundService
     {
         await foreach (var arrayPoolCollection in _taskExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
         {
-            var count = arrayPoolCollection.CountNotDefault();
-            if (count == 0) continue;
 
             var stopwatch = new Stopwatch();
 
@@ -65,11 +65,11 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 await ProcessTaskExecutionReportsAsync(arrayPoolCollection, stoppingToken);
                 stopwatch.Stop();
                 _logger.LogInformation(
-                    $"process {count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
+                    $"process {arrayPoolCollection.Count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
                 _webServerCounter.TaskExecutionReportAvailableCount =
                     (uint)_taskExecutionReportBatchQueue.AvailableCount;
                 _webServerCounter.TaskExecutionReportTotalTimeSpan += stopwatch.Elapsed;
-                _webServerCounter.TaskExecutionReportConsumeCount += (uint)count;
+                _webServerCounter.TaskExecutionReportConsumeCount += (uint)arrayPoolCollection.Count;
                 stopwatch.Reset();
             }
             catch (Exception ex)
@@ -80,7 +80,6 @@ public class TaskExecutionReportConsumerService : BackgroundService
             finally
             {
                 stopwatch.Reset();
-                arrayPoolCollection.Dispose();
             }
         }
     }
@@ -217,18 +216,18 @@ public class TaskExecutionReportConsumerService : BackgroundService
                         .Where(x => x.Id == taskId)
                         .ExecuteUpdateAsync(
                             setPropertyCalls =>
-                                setPropertyCalls.SetProperty(
-                                        task => task.Status,
-                                        task => taskExecutionStatus)
-                                    .SetProperty(
-                                        task => task.Message,
-                                        task => messsage)
-                                    .SetProperty(
-                                        task => task.ExecutionBeginTimeUtc,
-                                        task => executionBeginTime)
-                                    .SetProperty(
-                                        task => task.ExecutionEndTimeUtc,
-                                        task => executionEndTime),
+                            setPropertyCalls.SetProperty(
+                                    task => task.Status,
+                                    taskExecutionStatus)
+                                .SetProperty(
+                                    task => task.Message,
+                                    messsage)
+                                .SetProperty(
+                                    task => task.ExecutionBeginTimeUtc,
+                                    executionBeginTime)
+                                .SetProperty(
+                                    task => task.ExecutionEndTimeUtc,
+                                    executionEndTime),
                             stoppingToken);
 
                     stopwatchSave.Stop();
@@ -246,7 +245,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         finally
         {
             _logger.LogInformation(
-                $"Process {arrayPoolCollection.CountNotDefault()} messages, SaveElapsed:{stopwatchSaveTimeSpan}");
+                $"Process {arrayPoolCollection.Count} messages, SaveElapsed:{stopwatchSaveTimeSpan}");
         }
     }
 
@@ -263,20 +262,21 @@ public class TaskExecutionReportConsumerService : BackgroundService
         if (taskExecutionInstance == null) return;
         using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
         var cacheKey = $"{nameof(JobScheduleConfigModel)}:{taskExecutionInstance.JobScheduleConfigId}";
-        if (!_memoryCache.TryGetValue<JobScheduleConfigModel>(cacheKey, out var taskScheduleConfig))
+        if (!_memoryCache.TryGetValue<JobScheduleConfigModel>(cacheKey, out var taskDefinition))
         {
-            taskScheduleConfig =
+            taskDefinition =
                 await taskDefinitionRepo.GetByIdAsync(taskExecutionInstance.JobScheduleConfigId, cancellationToken);
-            _memoryCache.Set(cacheKey, taskScheduleConfig, TimeSpan.FromMinutes(30));
+            _memoryCache.Set(cacheKey, taskDefinition, TimeSpan.FromMinutes(30));
         }
 
-        if (taskScheduleConfig == null) return;
-        if (taskScheduleConfig.ExecutionLimitTimeSeconds <= 0) return;
+        if (taskDefinition == null || taskDefinition.ExecutionLimitTimeSeconds <= 0) return;
+
         var key = new TaskSchedulerKey(
             taskExecutionInstance.Id,
-            TaskTriggerSource.Manual);
+            TaskTriggerSource.Manual,
+            nameof(TaskExecutionTimeLimitJob));
         await _taskScheduler.ScheduleAsync<TaskExecutionTimeLimitJob>(key,
-            TriggerBuilderHelper.BuildDelayTrigger(TimeSpan.FromSeconds(taskScheduleConfig.ExecutionLimitTimeSeconds)),
+            TriggerBuilderHelper.BuildDelayTrigger(TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds)),
             new Dictionary<string, object?>
             {
                 {
@@ -296,7 +296,11 @@ public class TaskExecutionReportConsumerService : BackgroundService
             var report = message.GetMessage();
 
 
-            var taskSchedulerKey = new TaskSchedulerKey(taskExecutionInstance.Id, TaskTriggerSource.Schedule);
+            var taskSchedulerKey = new TaskSchedulerKey(
+                taskExecutionInstance.Id,
+                TaskTriggerSource.Schedule,
+                nameof(TaskExecutionTimeLimitJob)
+                );
             switch (report.Status)
             {
                 case JobExecutionStatus.Unknown:

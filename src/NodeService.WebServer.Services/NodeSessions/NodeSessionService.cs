@@ -108,18 +108,17 @@ public class NodeSessionService : INodeSessionService
             cancellationToken);
     }
 
-    public async Task<JobExecutionEventResponse?> SendJobExecutionEventAsync(
+    public async Task<JobExecutionEventResponse?> SendTaskExecutionEventAsync(
         NodeSessionId nodeSessionId,
         JobExecutionEventRequest taskExecutionEventRequest,
         CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(nodeSessionId);
         ArgumentNullException.ThrowIfNull(taskExecutionEventRequest);
         var subscribeEvent = new SubscribeEvent
         {
             RequestId = taskExecutionEventRequest.RequestId,
             Timeout = TimeSpan.FromSeconds(30),
-            Topic = "job",
+            Topic = "task",
             JobExecutionEventRequest = taskExecutionEventRequest
         };
         var rsp = await this.SendMessageAsync<SubscribeEvent, JobExecutionEventResponse>(
@@ -127,6 +126,26 @@ public class NodeSessionService : INodeSessionService
             subscribeEvent,
             cancellationToken);
         return rsp;
+    }
+
+    public async ValueTask PostTaskExecutionEventAsync(
+    NodeSessionId nodeSessionId,
+    JobExecutionEventRequest taskExecutionEventRequest,
+    CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(taskExecutionEventRequest);
+        var subscribeEvent = new SubscribeEvent
+        {
+            RequestId = taskExecutionEventRequest.RequestId,
+            Timeout = TimeSpan.FromSeconds(30),
+            Topic = "task",
+            JobExecutionEventRequest = taskExecutionEventRequest
+        };
+
+        await this.PostMessageAsync<SubscribeEvent>(
+            nodeSessionId,
+            subscribeEvent,
+            cancellationToken);
     }
 
     public IEnumerable<NodeSessionId> EnumNodeSessions(NodeId nodeId)

@@ -25,7 +25,6 @@ public class FileRecordQueryService : BackgroundService
         ExceptionCounter exceptionCounter,
         ILogger<FileRecordQueryService> logger,
         ApplicationRepositoryFactory<FileRecordModel> repositoryFactory,
-        [FromKeyedServices(nameof(FileRecordQueryService))]
         BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters,
             ListQueryResult<FileRecordModel>>> queryBatchQueue
     )
@@ -38,63 +37,50 @@ public class FileRecordQueryService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        try
+        await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(stoppingToken))
         {
-            await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(stoppingToken))
+
+            try
             {
-                int count = arrayPoolCollection.CountNotDefault();
-                if (count == 0)
+                using var repo = _repositoryFactory.CreateRepository();
+                foreach (var argumentGroup in arrayPoolCollection
+                    .Where(static x => x.Kind == BatchQueueOperationKind.Query)
+                    .GroupBy(x => x.Argument))
                 {
-                    continue;
-                }
-
-                try
-                {
-                    using var repo = _repositoryFactory.CreateRepository();
-                    foreach (var argumentGroup in arrayPoolCollection
-                        .Where(static x => x != null && x.Kind == BatchQueueOperationKind.Query)
-                        .GroupBy(x => x.Argument))
+                    var argument = argumentGroup.Key;
+                    try
                     {
-                        var argument = argumentGroup.Key;
-                        try
-                        {
-                            var queryResult = await QueryAsync(repo, argument);
+                        var queryResult = await QueryAsync(repo, argument);
 
-                            foreach (var op in argumentGroup)
-                            {
-                                op.SetResult(queryResult);
-                            }
-                        }
-                        catch (Exception ex)
+                        foreach (var op in argumentGroup)
                         {
-                            foreach (var op in argumentGroup)
-                            {
-                                op.SetException(ex);
-                            }
-                            _exceptionCounter.AddOrUpdate(ex);
-                            _logger.LogError(ex.ToString());
+                            op.SetResult(queryResult);
                         }
-
                     }
-                }
-                catch (Exception ex)
-                {
-                    _exceptionCounter.AddOrUpdate(ex);
-                    _logger.LogError(ex.ToString());
+                    catch (Exception ex)
+                    {
+                        foreach (var op in argumentGroup)
+                        {
+                            op.SetException(ex);
+                        }
+                        _exceptionCounter.AddOrUpdate(ex);
+                        _logger.LogError(ex.ToString());
+                    }
 
                 }
-                finally
-                {
-                    arrayPoolCollection.Dispose();
-                }
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
 
+            }
+            finally
+            {
 
             }
 
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.ToString());
+
         }
     }
 

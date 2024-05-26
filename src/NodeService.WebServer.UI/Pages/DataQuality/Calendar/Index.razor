@@ -9,7 +9,7 @@
 @inject ModalService _modalService
 @implements IDisposable
 
-<CalendarDateWindow IsVisible="@_isDrawerVisible" DataContext="@_entry" Closed="@OnCalendarDateWindowClosed" />
+<CalendarDetailWindow IsVisible="@_isDetailWindowVisible" DataContext="@_entry" Closed="@OnCalendarDetailWindowClosed" />
 
 <GridRow>
 
@@ -43,7 +43,7 @@
 
 @code
 {
-    bool _isDrawerVisible;
+    bool _isDetailWindowVisible;
     DateTime _selectedDate;
     DataQualityCalendarEntry _entry;
     ConfirmRef _modelRef;
@@ -222,7 +222,7 @@
         var entry = GetData(value);
         if (entry == null)
         {
-            return@<Template><Skeleton Active="true"></Skeleton></Template>;
+            return @<Template><Spin /></Template>;
         }
         if (entry.Entries.Count == 0)
         {
@@ -240,7 +240,7 @@
                             <Badge Size="small" Status="@BadgeStatus.Error" Text="@($"错误 {entry.FaultCount}")" />
                         </li>
                         <li>
-                            <Button Size="small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Table" OnClick="()=>ShowCalendarDateWindow(entry)"></Button>
+                            <Button Size="small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Table" OnClick="()=>ShowCalendarDetailWindow(entry)"></Button>
                         </li>
                     </ul>
                 </Template>;
@@ -257,15 +257,15 @@
     ;
     }
 
-    private void ShowCalendarDateWindow(DataQualityCalendarEntry entry)
+    private void ShowCalendarDetailWindow(DataQualityCalendarEntry entry)
     {
-        _isDrawerVisible = true;
+        _isDetailWindowVisible = true;
         _entry = entry;
     }
 
-    void OnCalendarDateWindowClosed()
+    void OnCalendarDetailWindowClosed()
     {
-        _isDrawerVisible = false;
+        _isDetailWindowVisible = false;
         _entry = null;
     }
 

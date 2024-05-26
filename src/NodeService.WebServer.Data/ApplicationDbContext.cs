@@ -26,7 +26,8 @@ public partial class ApplicationDbContext : DbContext
                 ProviderType = DatabaseProviderType.MySql;
             else if (extension is SqlServerOptionsExtension)
                 ProviderType = DatabaseProviderType.SqlServer;
-            else if (extension is SqliteOptionsExtension) ProviderType = DatabaseProviderType.Sqlite;
+            else if (extension is SqliteOptionsExtension) 
+                ProviderType = DatabaseProviderType.Sqlite;
         }
     }
 

@@ -1,4 +1,5 @@
 ﻿using NodeService.WebServer.Extensions;
+using System.Linq;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
@@ -20,5 +21,57 @@ public class TaskExecutionInstanceSpecification : Specification<JobExecutionInst
         if (taskExecutionIdList != null && taskExecutionIdList.Any())
             Query.Where(x => taskExecutionIdList.Contains(x.Id));
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
+    }
+
+    public TaskExecutionInstanceSpecification(
+    DataFilterCollection<JobExecutionStatus> statusFilters,
+    DataFilterCollection<string> nodeIdFilters,
+    DataFilterCollection<string> taskDefinitionIdFilters,
+    DataFilterCollection<string> taskExecutionInstanceIdFilters)
+    {
+        if (statusFilters.HasValue)
+        {
+            if (statusFilters.FilterType == DataFilterTypes.Include)
+            {
+                Query.Where(x => statusFilters.Items.Contains(x.Status));
+            }
+            else if (statusFilters.FilterType == DataFilterTypes.Exclude)
+            {
+                Query.Where(x => !statusFilters.Items.Contains(x.Status));
+            }
+        }
+        if (nodeIdFilters.HasValue)
+        {
+            if (nodeIdFilters.FilterType == DataFilterTypes.Include)
+            {
+                Query.Where(x => nodeIdFilters.Items.Contains(x.NodeInfoId));
+            }
+            else if (nodeIdFilters.FilterType == DataFilterTypes.Exclude)
+            {
+                Query.Where(x => !nodeIdFilters.Items.Contains(x.NodeInfoId));
+            }
+        }
+        if (taskDefinitionIdFilters.HasValue)
+        {
+            if (nodeIdFilters.FilterType == DataFilterTypes.Include)
+            {
+                Query.Where(x => nodeIdFilters.Items.Contains(x.JobScheduleConfigId));
+            }
+            else if (nodeIdFilters.FilterType == DataFilterTypes.Exclude)
+            {
+                Query.Where(x => !nodeIdFilters.Items.Contains(x.JobScheduleConfigId));
+            }
+        }
+        if (taskExecutionInstanceIdFilters.HasValue)
+        {
+            if (nodeIdFilters.FilterType == DataFilterTypes.Include)
+            {
+                Query.Where(x => nodeIdFilters.Items.Contains(x.Id));
+            }
+            else if (nodeIdFilters.FilterType == DataFilterTypes.Exclude)
+            {
+                Query.Where(x => !nodeIdFilters.Items.Contains(x.Id));
+            }
+        }
     }
 }

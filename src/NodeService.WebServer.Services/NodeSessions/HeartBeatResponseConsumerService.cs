@@ -12,18 +12,18 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public class HeartBeatResponseConsumerService : BackgroundService
 {
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
-    private readonly ILogger<HeartBeatResponseConsumerService> _logger;
-    private readonly IMemoryCache _memoryCache;
-    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertyRepositoryFactory;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
-    private readonly WebServerCounter _webServerCounter;
-    private readonly WebServerOptions _webServerOptions;
-    private NodeSettings _nodeSettings;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
+    readonly ILogger<HeartBeatResponseConsumerService> _logger;
+    readonly IMemoryCache _memoryCache;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertyRepositoryFactory;
+    readonly INodeSessionService _nodeSessionService;
+    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
+    readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
+    readonly WebServerCounter _webServerCounter;
+    readonly WebServerOptions _webServerOptions;
+    NodeSettings _nodeSettings;
 
     public HeartBeatResponseConsumerService(
         ExceptionCounter exceptionCounter,
@@ -60,16 +60,13 @@ public class HeartBeatResponseConsumerService : BackgroundService
         await foreach (var arrayPoolCollection in _hearBeatMessageBatchQueue.ReceiveAllAsync(stoppingToken))
         {
             var stopwatch = new Stopwatch();
-            var count = 0;
+            var count = arrayPoolCollection.Count;
             try
             {
-                count = arrayPoolCollection.CountNotDefault();
-                if (count == 0) continue;
-
                 stopwatch.Start();
                 await ProcessHeartBeatMessagesAsync(arrayPoolCollection);
                 _logger.LogInformation(
-                    $"process {arrayPoolCollection.CountNotDefault()} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
+                    $"process {arrayPoolCollection.Count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
                 _webServerCounter.HeartBeatAvailableCount = (uint)_hearBeatMessageBatchQueue.AvailableCount;
                 _webServerCounter.HeartBeatTotalProcessTimeSpan += stopwatch.Elapsed;
                 _webServerCounter.HeartBeatConsumeCount += (uint)count;
@@ -84,7 +81,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 _logger.LogInformation(
                     $"process {count} messages, spent:{stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
                 stopwatch.Reset();
-                arrayPoolCollection.Dispose();
             }
         }
     }
@@ -144,7 +140,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         finally
         {
             _logger.LogInformation(
-                $"Process {arrayPoolCollection.CountNotDefault()} messages, SaveElapsed:{stopwatch.Elapsed}");
+                $"Process {arrayPoolCollection.Count} messages, SaveElapsed:{stopwatch.Elapsed}");
             stopwatch.Reset();
         }
     }

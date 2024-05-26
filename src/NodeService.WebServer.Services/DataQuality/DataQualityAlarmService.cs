@@ -42,11 +42,6 @@ namespace NodeService.WebServer.Services.DataQuality
         {
             await foreach (var arrayPoolCollection in _alarmMessageBatchQueue.ReceiveAllAsync(stoppingToken))
             {
-                var count = arrayPoolCollection.CountNotDefault();
-                if (count == 0)
-                {
-                    continue;
-                }
                 try
                 {
                     using var propertyBagRepo = _propertyBagRepoFactory.CreateRepository();
@@ -97,7 +92,7 @@ namespace NodeService.WebServer.Services.DataQuality
                 }
                 finally
                 {
-                    arrayPoolCollection.Dispose();
+
                 }
             }
         }

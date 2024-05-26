@@ -44,9 +44,7 @@ public class TaskScheduler
             var jobType = typeof(T);
             IDictionary<string, object?> props = new Dictionary<string, object?>
             {
-                { nameof(JobBase.Logger), _serviceProvider.GetService<ILogger<T>>() },
                 { nameof(JobBase.Properties), properties },
-                { nameof(JobBase.ServiceProvider), _serviceProvider },
                 { nameof(JobBase.TriggerSource), jobSchedulerKey.TriggerSource },
                 {
                     nameof(JobBase.AsyncDispoable), jobSchedulerKey.TriggerSource

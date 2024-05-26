@@ -18,7 +18,7 @@ public class JobsController : Controller
     private readonly IMemoryCache _memoryCache;
     private readonly INodeSessionService _nodeSessionService;
     private readonly IServiceProvider _serviceProvider;
-    private readonly IAsyncQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
+    private readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
     private readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskInstanceRepositoryFactory;
     private readonly TaskLogCacheManager _taskLogCacheManager;
 
@@ -30,7 +30,7 @@ public class JobsController : Controller
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
         TaskLogCacheManager taskLogCacheManager,
-        IAsyncQueue<TaskCancellationParameters> taskCancellationAsyncQueue)
+        BatchQueue<TaskCancellationParameters> taskCancellationAsyncQueue)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -98,7 +98,7 @@ public class JobsController : Controller
                 var nodeId = new NodeId(id);
                 foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
                 {
-                    var rsp = await _nodeSessionService.SendJobExecutionEventAsync(nodeSessionId,
+                    var rsp = await _nodeSessionService.SendTaskExecutionEventAsync(nodeSessionId,
                         taskExecutionInstance.ToReinvokeEvent());
                 }
             }
@@ -122,25 +122,10 @@ public class JobsController : Controller
         var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
         try
         {
-            using var repo = _taskInstanceRepositoryFactory.CreateRepository();
-            var taskExecutionInstance = await repo.GetByIdAsync(id);
-            if (taskExecutionInstance == null)
+            await _taskCancellationAsyncQueue.SendAsync(new TaskCancellationParameters
             {
-                apiResponse.ErrorCode = -1;
-                apiResponse.Message = "invalid task execution instance id";
-            }
-            else
-            {
-                taskExecutionInstance.CancelTimes++;
-                await repo.SaveChangesAsync();
-                await _taskCancellationAsyncQueue.EnqueueAsync(new TaskCancellationParameters
-                {
-                    TaskExeuctionInstanceId = id
-                });
-                var rsp = await _nodeSessionService.SendJobExecutionEventAsync(
-                    new NodeSessionId(taskExecutionInstance.NodeInfoId),
-                    taskExecutionInstance.ToCancelEvent());
-            }
+                TaskExeuctionInstanceId = id
+            });
         }
         catch (Exception ex)
         {

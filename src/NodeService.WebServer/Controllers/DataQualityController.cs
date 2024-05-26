@@ -28,9 +28,7 @@ public partial class DataQualityController : Controller
         ILogger<DataQualityController> logger,
         ExceptionCounter exceptionCounter,
         IServiceProvider serviceProvider,
-        [FromKeyedServices(nameof(FileRecordQueryService))]
         BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>> queryOpBatchQueue,
-        [FromKeyedServices(nameof(FileRecordInsertUpdateDeleteService))]
         BatchQueue<BatchQueueOperation<FileRecordModel, bool>> insertUpdateDeleteOpBatchQueue,
         ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel> nodeStatisticsRecordRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,

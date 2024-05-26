@@ -45,11 +45,6 @@ namespace NodeService.WebServer.Services.QueryOptimize
         {
             await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(stoppingToken))
             {
-                int count = arrayPoolCollection.CountNotDefault();
-                if (count == 0)
-                {
-                    continue;
-                }
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 try
                 {
@@ -65,9 +60,8 @@ namespace NodeService.WebServer.Services.QueryOptimize
                 }
                 finally
                 {
-                    arrayPoolCollection.Dispose();
                     stopwatch.Stop();
-                    _logger.LogInformation($"{count} requests,Ellapsed{stopwatch.Elapsed}");
+                    _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed{stopwatch.Elapsed}");
                 }
             }
         }

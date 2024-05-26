@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
+using Quartz.Spi;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -39,6 +40,7 @@ public class TaskScheduleService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         Scheduler = await _schedulerFactory.GetScheduler(stoppingToken);
+        Scheduler.JobFactory = _serviceProvider.GetService<IJobFactory>();
         if (!Scheduler.IsStarted) await Scheduler.Start(stoppingToken);
         await ScheduleTasksAsync(stoppingToken);
         while (!stoppingToken.IsCancellationRequested)
@@ -71,13 +73,14 @@ public class TaskScheduleService : BackgroundService
 
         var taskSchedulerKey = new TaskSchedulerKey(
             taskScheduleMessage.TaskDefinitionId,
-            taskScheduleMessage.TriggerSource);
+            taskScheduleMessage.TriggerSource,
+            nameof(FireTaskJob));
         if (_taskSchedulerDictionary.TryGetValue(taskSchedulerKey, out var asyncDisposable))
         {
             await asyncDisposable.DisposeAsync();
             if (!taskDefinition.IsEnabled || taskScheduleMessage.IsCancellationRequested)
             {
-                _taskSchedulerDictionary.TryRemove(taskSchedulerKey, out _);
+                await CancelTaskAsync(taskScheduleMessage.TaskDefinitionId);
                 return;
             }
 
@@ -99,9 +102,9 @@ public class TaskScheduleService : BackgroundService
 
     private async ValueTask CancelTaskAsync(string key)
     {
-        for (var i = TaskTriggerSource.Schedule; i < TaskTriggerSource.Max - 1; i++)
+        for (var triggerSource = TaskTriggerSource.Schedule; triggerSource < TaskTriggerSource.Max - 1; triggerSource++)
         {
-            var taskSchedulerKey = new TaskSchedulerKey(key, TaskTriggerSource.Schedule);
+            var taskSchedulerKey = new TaskSchedulerKey(key, triggerSource, nameof(FireTaskJob));
             if (_taskSchedulerDictionary.TryRemove(taskSchedulerKey, out var asyncDisposable))
                 await asyncDisposable.DisposeAsync();
         }

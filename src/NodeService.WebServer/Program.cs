@@ -26,6 +26,7 @@ using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.UI.Services;
 using OpenTelemetry.Metrics;
+using Quartz.Spi;
 using TaskScheduler = NodeService.WebServer.Services.Tasks.TaskScheduler;
 
 public class Program
@@ -247,6 +248,7 @@ public class Program
         builder.Services.AddHostedService<DataQualityAlarmService>();
         builder.Services.AddHostedService<ClientUpdateQueueService>();
         builder.Services.AddHostedService<CommonConfigBatchQueryQueueService>();
+        builder.Services.AddHostedService<TaskCancellationQueueService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -326,6 +328,9 @@ public class Program
                 return messageHandlerDictionary;
             }
         );
+
+        builder.Services.AddTransient<TaskExecutionTimeLimitJob>();
+        builder.Services.AddTransient<FireTaskJob>();
     }
 
     private static void ConfigureAuthentication(WebApplicationBuilder builder)
@@ -380,39 +385,32 @@ public class Program
     private static void ConfigureSingleton(WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
-        builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
-        builder.Services.AddSingleton<IAsyncQueue<TaskLogDatabase>, AsyncQueue<TaskLogDatabase>>();
-        builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>, AsyncQueue<JobExecutionEventRequest>>();
-        builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>, AsyncQueue<TaskScheduleMessage>>();
-        builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
-        builder.Services
-            .AddSingleton<IAsyncQueue<TaskCancellationParameters>, AsyncQueue<TaskCancellationParameters>>();
-        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024 * 2, TimeSpan.FromSeconds(5)));
-        builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(10)));
-        builder.Services.AddKeyedSingleton(nameof(FileRecordQueryService),
-            new BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>(
-                1024 * 2,
-                TimeSpan.FromSeconds(5)));
-        builder.Services.AddKeyedSingleton(nameof(FileRecordInsertUpdateDeleteService),
-            new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(
-                1024 * 2,
-                TimeSpan.FromSeconds(5)));
-        builder.Services.AddSingleton(
-            new BatchQueue<FireTaskParameters>(Environment.ProcessorCount, TimeSpan.FromSeconds(1)));
-        builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
         builder.Services.AddSingleton<TaskLogDatabase>();
         builder.Services.AddSingleton<TaskScheduler>();
         builder.Services.AddSingleton<TaskLogCacheManager>();
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
+        builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
+        builder.Services.AddSingleton<IAsyncQueue<TaskLogDatabase>, AsyncQueue<TaskLogDatabase>>();
+        builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>, AsyncQueue<JobExecutionEventRequest>>();
+        builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>, AsyncQueue<TaskScheduleMessage>>();
+        builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
+        builder.Services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
+        builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
+        builder.Services.AddSingleton<IJobFactory, JobFactory>();
         builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
+        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(10)));
+        builder.Services.AddSingleton(new BatchQueue<FireTaskParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(1024, TimeSpan.FromSeconds(3)));
-        builder.Services.AddSingleton(new
-            BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>(64, TimeSpan.FromMilliseconds(100)));
-        builder.Services.AddSingleton(new
-            BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(2096, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(64, TimeSpan.FromMinutes(30)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>(1024 * 2, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>(64, TimeSpan.FromMilliseconds(100)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(1024 * 2, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(64, TimeSpan.FromSeconds(1)));
+
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

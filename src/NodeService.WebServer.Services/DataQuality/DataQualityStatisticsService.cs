@@ -77,7 +77,7 @@ namespace NodeService.WebServer.Services.DataQuality
                 int durationMinutes = 0;
                 if (_dataQualitySettings == null)
                 {
-                    durationMinutes = 60 * 4;
+                    durationMinutes = 10;
                 }
                 else
                 {

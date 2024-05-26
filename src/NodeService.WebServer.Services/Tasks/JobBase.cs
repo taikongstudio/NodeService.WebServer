@@ -2,12 +2,17 @@
 
 public abstract class JobBase : IJob, IAsyncDisposable
 {
+    public JobBase(IServiceProvider serviceProvider)
+    {
+        this.ServiceProvider = serviceProvider;
+    }
+
     public IAsyncDisposable? AsyncDispoable { get; set; }
 
 
-    public required ILogger Logger { get; set; }
+    public ILogger Logger { get; protected set; }
 
-    public required IServiceProvider ServiceProvider { get; set; }
+    public IServiceProvider ServiceProvider { get; private set; }
 
 
     public TaskTriggerSource TriggerSource { get; set; }

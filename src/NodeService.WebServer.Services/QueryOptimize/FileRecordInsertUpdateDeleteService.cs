@@ -19,7 +19,6 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
         ILogger<FileRecordQueryService> logger,
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<FileRecordModel> repositoryFactory,
-        [FromKeyedServices(nameof(FileRecordInsertUpdateDeleteService))]
         BatchQueue<BatchQueueOperation<FileRecordModel, bool>> cudBatchQueue
     )
     {
@@ -31,47 +30,38 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        try
+        await foreach (var arrayPoolCollection in _cudBatchQueue.ReceiveAllAsync(stoppingToken))
         {
-            await foreach (var arrayPoolCollection in _cudBatchQueue.ReceiveAllAsync(stoppingToken))
-                try
+            try
+            {
+                using var repo = _repositoryFactory.CreateRepository();
+                foreach (var operation in arrayPoolCollection.Where(static x => x != null))
                 {
-                    if (arrayPoolCollection.CountNotDefault() == 0)
+                    if (operation == null) continue;
+                    var kind = operation.Kind;
+                    switch (kind)
                     {
-                        continue;
-                    }
-                    using var repo = _repositoryFactory.CreateRepository();
-                    foreach (var operation in arrayPoolCollection.Where(static x => x != null))
-                    {
-                        if (operation == null) continue;
-                        var kind = operation.Kind;
-                        switch (kind)
-                        {
-                            case BatchQueueOperationKind.None:
-                                break;
-                            case BatchQueueOperationKind.InsertOrUpdate:
-                                await InsertOrUpdateAsync(repo, operation, stoppingToken);
+                        case BatchQueueOperationKind.None:
+                            break;
+                        case BatchQueueOperationKind.InsertOrUpdate:
+                            await InsertOrUpdateAsync(repo, operation, stoppingToken);
 
-                                break;
-                            case BatchQueueOperationKind.Delete:
-                                await DeleteAsync(repo, operation);
-                                break;
-                        }
+                            break;
+                        case BatchQueueOperationKind.Delete:
+                            await DeleteAsync(repo, operation);
+                            break;
                     }
                 }
-                catch (Exception ex)
-                {
-                    _exceptionCounter.AddOrUpdate(ex);
-                    _logger.LogError(ex.ToString());
-                }
-                finally
-                {
-                    arrayPoolCollection.Dispose();
-                }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.ToString());
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+            finally
+            {
+
+            }
         }
     }
 

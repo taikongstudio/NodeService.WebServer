@@ -70,13 +70,13 @@ public class TaskPenddingContext : IAsyncDisposable
             if (queryResult.IsEmpty) return true;
             foreach (var taskExecutionInstance in queryResult.Items)
             {
-                var rsp = await NodeSessionService.SendJobExecutionEventAsync(
+                await NodeSessionService.PostTaskExecutionEventAsync(
                     NodeSessionId,
                     taskExecutionInstance.ToCancelEvent(),
                     CancellationToken);
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken);
         }
 
         return false;
@@ -107,7 +107,7 @@ public class TaskPenddingContext : IAsyncDisposable
                     Status = JobExecutionStatus.Running
                 });
             if (!queryResult.HasValue) break;
-            await Task.Delay(TimeSpan.FromSeconds(5), CancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken);
         }
 
         return true;

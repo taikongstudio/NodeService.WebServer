@@ -106,16 +106,11 @@ namespace NodeService.WebServer.Services.QueryOptimize
 
             await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(stoppingToken))
             {
-                var count = arrayPoolCollection.CountNotDefault();
-                if (count == 0)
-                {
-                    continue;
-                }
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 try
                 {
 
-                    foreach (var nameGroup in arrayPoolCollection.Where(static x => x != null).GroupBy(static x => x.Argument.Name))
+                    foreach (var nameGroup in arrayPoolCollection.GroupBy(static x => x.Argument.Name))
                     {
                         var name = nameGroup.Key;
 
@@ -160,9 +155,8 @@ namespace NodeService.WebServer.Services.QueryOptimize
                 }
                 finally
                 {
-                    arrayPoolCollection.Dispose();
                     stopwatch.Stop();
-                    _logger.LogInformation($"{count} requests,Ellapsed{stopwatch.Elapsed}");
+                    _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed{stopwatch.Elapsed}");
                 }
             }
 

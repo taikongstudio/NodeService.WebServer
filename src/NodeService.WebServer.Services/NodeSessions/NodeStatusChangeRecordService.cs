@@ -43,14 +43,10 @@ namespace NodeService.WebServer.Services.NodeSessions
             {
                 try
                 {
-                    if (arrayPoolCollection.CountNotDefault() == 0)
-                    {
-                        continue;
-                    }
                     using var recordRepo = _recordRepoFactory.CreateRepository();
                     using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
                     recordRepo.DbContext.ChangeTracker.AutoDetectChangesEnabled = false;
-                    foreach (var recordGroup in arrayPoolCollection.Where(static x => x != null).GroupBy(static x => x.NodeId))
+                    foreach (var recordGroup in arrayPoolCollection.GroupBy(static x => x.NodeId))
                     {
                         var nodeId = recordGroup.Key;
                         var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId);
@@ -67,7 +63,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                         }
 
                     }
-                    await recordRepo.AddRangeAsync(arrayPoolCollection.Where(static x => x != null));
+                    await recordRepo.AddRangeAsync(arrayPoolCollection);
                 }
                 catch (Exception ex)
                 {
@@ -75,7 +71,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                 }
                 finally
                 {
-                    arrayPoolCollection.Dispose();
+
                 }
             }
         }

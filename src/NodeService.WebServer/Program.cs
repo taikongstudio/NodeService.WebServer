@@ -273,20 +273,20 @@ public class Program
                 ftpServerConfig.Port);
         });
 
-        builder.Services.AddScoped(serviceProvider =>
-        {
-            var httpsEndpointUrl = builder.Configuration.GetValue<string>("Kestrel:Endpoints:MyHttpsEndpoint:Url");
-            var requestUri = new Uri(httpsEndpointUrl);
-            var handler = new HttpClientHandler();
-            handler.ServerCertificateCustomValidationCallback =
-                HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
-            var channel = GrpcChannel.ForAddress(requestUri, new GrpcChannelOptions
-            {
-                HttpHandler = handler,
-                Credentials = ChannelCredentials.SecureSsl
-            });
-            return new FileSystem.FileSystemClient(channel);
-        });
+        //builder.Services.AddScoped(serviceProvider =>
+        //{
+        //    var httpsEndpointUrl = builder.Configuration.GetValue<string>("Kestrel:Endpoints:MyHttpsEndpoint:Url");
+        //    var requestUri = new Uri(httpsEndpointUrl);
+        //    var handler = new HttpClientHandler();
+        //    handler.ServerCertificateCustomValidationCallback =
+        //        HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        //    var channel = GrpcChannel.ForAddress(requestUri, new GrpcChannelOptions
+        //    {
+        //        HttpHandler = handler,
+        //        Credentials = ChannelCredentials.SecureSsl
+        //    });
+        //    return new FileSystem.FileSystemClient(channel);
+        //});
 
         builder.Services.AddScoped<IVirtualFileSystem>(serviceProvider =>
         {
@@ -323,7 +323,8 @@ public class Program
                 var messageHandlerDictionary = new MessageHandlerDictionary
                 {
                     { HeartBeatResponse.Descriptor, sp.GetService<HeartBeatResponseHandler>() },
-                    { JobExecutionReport.Descriptor, sp.GetService<TaskExecutionReportHandler>() }
+                    { JobExecutionReport.Descriptor, sp.GetService<TaskExecutionReportHandler>() },
+                    //{ FileSystemBulkOperationReport.Descriptor, sp.GetService<FileSystemOperationReportHandler>() },
                 };
                 return messageHandlerDictionary;
             }

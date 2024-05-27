@@ -6,7 +6,7 @@ public partial class NodesController
 {
     [HttpGet("/api/Nodes/{nodeId}/filesystem/{**path}")]
     public async Task<ApiResponse<IEnumerable<FileSystemEntry>>> ListDirectoryAsync(string nodeId, string path,
-        [FromQuery] string? searchpattern)
+        [FromQuery] string? searchPattern)
     {
         var apiResponse = new ApiResponse<IEnumerable<FileSystemEntry>>();
         try
@@ -26,7 +26,7 @@ public partial class NodesController
                     IncludeSubDirectories = false,
                     Directory = path,
                     RequestId = requestId,
-                    SearchPattern = searchpattern,
+                    SearchPattern = searchPattern,
                     Timeout = TimeSpan.FromSeconds(60)
                 };
                 var rsp = await _nodeSessionService

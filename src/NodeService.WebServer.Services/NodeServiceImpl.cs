@@ -1,3 +1,4 @@
+using Azure;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -59,16 +60,15 @@ public class NodeServiceImpl : NodeServiceBase
         if (nodeInfo == null)
         {
             nodeInfo = NodeInfoModel.Create(nodeId, nodeName);
-            var nodeProfile =
-                await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileSpecification(nodeName), cancellationToken);
+            var nodeProfile = await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileSpecification(nodeName), cancellationToken);
             if (nodeProfile != null)
             {
                 var oldNodeInfo = await nodeInfoRepo.GetByIdAsync(nodeProfile.NodeInfoId, cancellationToken);
-                if (oldNodeInfo != null) await nodeInfoRepo.DeleteAsync(oldNodeInfo);
+                if (oldNodeInfo != null) await nodeInfoRepo.DeleteAsync(oldNodeInfo, cancellationToken);
                 nodeProfile.NodeInfoId = nodeId;
                 nodeInfo.ProfileId = nodeProfile.Id;
             }
-
+            nodeInfo.Status = NodeStatus.Online;
             await nodeInfoRepo.AddAsync(nodeInfo, cancellationToken);
         }
 
@@ -76,8 +76,10 @@ public class NodeServiceImpl : NodeServiceBase
     }
 
 
-    public override async Task Subscribe(SubscribeRequest subscribeRequest,
-        IServerStreamWriter<SubscribeEvent> responseStream, ServerCallContext context)
+    public override async Task Subscribe(
+        SubscribeRequest subscribeRequest,
+        IServerStreamWriter<SubscribeEvent> responseStream,
+        ServerCallContext context)
     {
         var httpContext = context.GetHttpContext();
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
@@ -91,7 +93,7 @@ public class NodeServiceImpl : NodeServiceBase
             _nodeSessionService.UpdateNodeName(nodeSessionId, nodeClientHeaders.HostName);
             _nodeSessionService.SetHttpContext(nodeSessionId, httpContext);
             var inputQueue = _nodeSessionService.GetInputQueue(nodeSessionId);
-            _ = Task.Run(async () =>
+            _ = Task.Factory.StartNew(async () =>
             {
                 try
                 {
@@ -118,8 +120,10 @@ public class NodeServiceImpl : NodeServiceBase
         }
     }
 
-    private async Task DispatchSubscribeEvents(NodeSessionId nodeContextId,
-        IServerStreamWriter<SubscribeEvent> responseStream, ServerCallContext context)
+    private async Task DispatchSubscribeEvents(
+        NodeSessionId nodeContextId,
+        IServerStreamWriter<SubscribeEvent> responseStream,
+        ServerCallContext context)
     {
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
         var outputQueue = _nodeSessionService.GetOutputQueue(nodeContextId);
@@ -143,92 +147,87 @@ public class NodeServiceImpl : NodeServiceBase
         }
     }
 
-    public override async Task<Empty> SendFileSystemListDirectoryResponse(FileSystemListDirectoryResponse response,
+    public override async Task<Empty> SendFileSystemListDirectoryResponse(
+        FileSystemListDirectoryResponse response,
         ServerCallContext context)
     {
         var httpContext = context.GetHttpContext();
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
         var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-        _logger.LogInformation(response.ToString());
         await _nodeSessionService.WriteResponseAsync(nodeSessionId, response);
         return new Empty();
     }
 
-    public override async Task<Empty> SendFileSystemListDriveResponse(FileSystemListDriveResponse response,
+    public override async Task<Empty> SendFileSystemListDriveResponse(
+        FileSystemListDriveResponse response,
         ServerCallContext context)
     {
         var httpContext = context.GetHttpContext();
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
         var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-        _logger.LogInformation(response.ToString());
         await _nodeSessionService.WriteResponseAsync(nodeSessionId, response);
         return new Empty();
     }
 
-    public override async Task<Empty> SendHeartBeatResponse(HeartBeatResponse response, ServerCallContext context)
-    {
-        var httpContext = context.GetHttpContext();
-        var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
-        var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-        if (!nodeSessionId.NodeId.IsNullOrEmpty)
-            await _nodeSessionService.WriteHeartBeatResponseAsync(nodeSessionId, response);
-        return new Empty();
-    }
-
-    public override async Task<Empty> SendFileSystemBulkOperationReport(FileSystemBulkOperationReport request,
+    public override async Task<Empty> SendHeartBeatResponse(
+        HeartBeatResponse response,
         ServerCallContext context)
     {
         var httpContext = context.GetHttpContext();
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
         var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-        _logger.LogInformation(request.ToString());
-        await _nodeSessionService.PostMessageAsync(nodeSessionId, request);
+        await _nodeSessionService.WriteHeartBeatResponseAsync(nodeSessionId, response);
         return new Empty();
     }
 
-    public override async Task<Empty> SendFileSystemBulkOperationResponse(FileSystemBulkOperationResponse response,
+    public override async Task<Empty> SendFileSystemBulkOperationReport(IAsyncStreamReader<FileSystemBulkOperationReport> requestStream, ServerCallContext context)
+    {
+        var httpContext = context.GetHttpContext();
+        var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
+        var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
+        await foreach (var report in requestStream.ReadAllAsync(context.CancellationToken))
+        {
+            await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(report, context.CancellationToken);
+        }
+        return new Empty();
+    }
+
+    public override async Task<Empty> SendFileSystemBulkOperationResponse(
+        FileSystemBulkOperationResponse response,
         ServerCallContext context)
     {
         var httpContext = context.GetHttpContext();
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
         var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-        _logger.LogInformation(response.ToString());
         await _nodeSessionService.WriteResponseAsync(nodeSessionId, response);
         return new Empty();
     }
 
-    public override async Task<Empty> SendJobExecutionEventResponse(JobExecutionEventResponse response,
+    public override async Task<Empty> SendJobExecutionEventResponse(
+        JobExecutionEventResponse response,
         ServerCallContext context)
     {
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
         var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-
         await _nodeSessionService.WriteResponseAsync(nodeSessionId, response);
         return new Empty();
     }
 
 
-    public override async Task<Empty> SendJobExecutionReport(IAsyncStreamReader<JobExecutionReport> requestStream,
+    public override async Task<Empty> SendJobExecutionReport(
+        IAsyncStreamReader<JobExecutionReport> requestStream,
         ServerCallContext context)
     {
         try
         {
             var httpContext = context.GetHttpContext();
             var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
-            while (await requestStream.MoveNext(context.CancellationToken))
-                try
-                {
-                    var report = requestStream.Current;
-                    var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
+            await foreach (var report in requestStream.ReadAllAsync(context.CancellationToken))
+            {
+                var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
+                await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(report, context.CancellationToken);
+            }
 
-                    await _nodeSessionService.GetInputQueue(nodeSessionId)
-                        .EnqueueAsync(report, context.CancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _exceptionCounter.AddOrUpdate(ex);
-                    _logger.LogError(ex.ToString());
-                }
         }
         catch (Exception ex)
         {

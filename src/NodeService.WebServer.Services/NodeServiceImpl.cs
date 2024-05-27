@@ -180,15 +180,12 @@ public class NodeServiceImpl : NodeServiceBase
         return new Empty();
     }
 
-    public override async Task<Empty> SendFileSystemBulkOperationReport(IAsyncStreamReader<FileSystemBulkOperationReport> requestStream, ServerCallContext context)
+    public override async Task<Empty> SendFileSystemBulkOperationReport(FileSystemBulkOperationReport request, ServerCallContext context)
     {
         var httpContext = context.GetHttpContext();
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
         var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-        await foreach (var report in requestStream.ReadAllAsync(context.CancellationToken))
-        {
-            await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(report, context.CancellationToken);
-        }
+        await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(request, context.CancellationToken);
         return new Empty();
     }
 

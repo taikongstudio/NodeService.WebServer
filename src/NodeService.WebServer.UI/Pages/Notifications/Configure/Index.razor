@@ -48,7 +48,7 @@
     </Modal>
 
     <Table Size="TableSize.Small"
-           Loading="_loading"
+           Loading="_dataSource.IsLoading"
            EnableVirtualization="false"
            TItem="NotificationConfigModel"
            Resizable
@@ -65,7 +65,7 @@
                     <Title Level="3">通知设置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -74,7 +74,7 @@
                         <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
                     </SpaceItem>
                     <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.QueryAsync"></Button>
                     </SpaceItem>
                 </Space>
             </GridRow>
@@ -131,7 +131,6 @@
     Form<NotificationConfigModel> _editForm;
     NotificationConfigModel _editModel = new();
 
-    bool _loading;
     RoutedPaginationDataSource<NotificationConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
@@ -156,13 +155,27 @@
         };
 
         _dataSource = new RoutedPaginationDataSource<NotificationConfigModel, PaginationQueryParameters>(
-            NavigationManager,
+            NavigationManager.BaseUri,
             ApiService.QueryNotificationConfigListAsync,
             StateHasChanged);
 
-        _dataSource.Request();
-
+        _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
     }
 
     void ShowEditForm(NotificationConfigModel? model = null)
@@ -191,7 +204,7 @@
             if (apiResponse.ErrorCode == 0)
             {
                 _editFormVisible = false;
-                await _dataSource.RefreshAsync();
+                await _dataSource.QueryAsync();
             }
             else
             {
@@ -258,7 +271,7 @@
             var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                await _dataSource.RefreshAsync();
+                await _dataSource.QueryAsync();
             }
             else
             {
@@ -293,28 +306,6 @@
         _editForm.Submit();
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        _loading = true;
-        await QueryConfigurationListAsync();
-        _loading = false;
-    }
-
-    async Task QueryConfigurationListAsync()
-    {
-        try
-        {
-            await _dataSource.RefreshAsync();
-        }
-        catch (Exception ex)
-        {
-            await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = ex.ToString()
-            });
-        }
-    }
 
     void OnTableChange(QueryModel<NotificationConfigModel> query)
     {
@@ -328,7 +319,7 @@
 
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
     void OnSelectedConfigurationTypeChanged(NotificationConfigurationType configurationType)

@@ -34,7 +34,7 @@
                     <Title Level="3">任务流定义</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync" />
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -43,7 +43,7 @@
                         <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => _taskDefinitionEditor.ShowAsync()"></Button>
                     </SpaceItem>
                     <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.QueryAsync"></Button>
                     </SpaceItem>
                 </Space>
             </GridRow>
@@ -96,28 +96,31 @@
     protected override void OnInitialized()
     {
         _dataSource = new RoutedPaginationDataSource<JobScheduleConfigModel, PaginationQueryParameters>(
-            NavigationManager,
+            NavigationManager.BaseUri,
             ApiService.QueryTaskScheduleConfigurationListAsync,
             StateHasChanged);
         _dataSource.ItemInitializer = InitAsync;
-        _dataSource.ExceptionHandler = ExceptionHandler;
         _nodeDataSource = new PaginationDataSource<NodeInfoModel, PaginationQueryParameters>(
             ApiService.QueryNodeListAsync,
             StateHasChanged
         );
-
-        _dataSource.Request();
-
+        _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
     }
 
-    private async Task ExceptionHandler(Exception ex)
+    async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
             {
-                Message = "错误提示",
+                Message = "加载失败",
                 Description = ex.ToString()
             });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
     }
 
     async ValueTask InitAsync(
@@ -160,7 +163,7 @@
 
     async Task OnTaskDefinitionEditorClosed()
     {
-        await this._dataSource.RefreshAsync();
+        await this._dataSource.QueryAsync();
     }
 
 
@@ -198,7 +201,7 @@
             var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                await _dataSource.RefreshAsync();
+                await _dataSource.QueryAsync();
             }
             else
             {
@@ -238,7 +241,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
     public void Dispose()

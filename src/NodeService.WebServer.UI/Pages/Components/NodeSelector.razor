@@ -4,7 +4,7 @@
 <GridRow>
     <Button Shape="@ButtonShape.Circle"
             Icon="@IconType.Outline.Reload"
-            OnClick="_dataSource.RefreshAsync"
+            OnClick="_dataSource.QueryAsync"
             Type="primary"
             Style="margin-left:8px;margin-right:8px">
     </Button>
@@ -61,7 +61,7 @@
 
 <GridRow>
 
-    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.RefreshAsync"/>
+    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.QueryAsync"/>
 </GridRow>
 <GridRow>
     <GridCol Flex=@("auto")>
@@ -109,7 +109,17 @@
         _dataSource.QueryParameters.Status = NodeStatus.All;
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
+        _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
     }
 
     private void UnSelectAll()
@@ -124,7 +134,7 @@
         _dataSource.QueryParameters.Status = NodeStatus.All;
         _dataSource.QueryParameters.Keywords = null;
         _dataSource.QueryParameters.PageIndex = 1;
-        await _dataSource.RefreshAsync();
+        await _dataSource.QueryAsync();
         await base.OnInitializedAsync();
     }
 
@@ -160,13 +170,13 @@
     async Task OnSelectedAreaTagChanged(StringEntry value)
     {
         _dataSource.QueryParameters.AreaTag = value?.Tag;
-        await _dataSource.RefreshAsync();
+        await _dataSource.QueryAsync();
     }
 
     async Task OnSelectedStatusChanged(NodeStatus status)
     {
         _dataSource.QueryParameters.Status = status;
-        await _dataSource.RefreshAsync();
+        await _dataSource.QueryAsync();
     }
 
 
@@ -183,7 +193,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        await _dataSource.RefreshAsync();
+        await _dataSource.QueryAsync();
     }
 
 }

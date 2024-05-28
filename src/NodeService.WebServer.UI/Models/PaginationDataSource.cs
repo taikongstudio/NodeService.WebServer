@@ -42,7 +42,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     public TimeSpan MinRefreshDuration { get; set; } = TimeSpan.FromSeconds(0.5);
 
-    public virtual async Task RefreshAsync()
+    public virtual async Task QueryAsync()
     {
         if (IsLoading || DateTime.Now - LastQueryDateTime < MinRefreshDuration) return;
         try
@@ -98,6 +98,6 @@ public class PaginationDataSource<TElement, TQueryParameters>
     {
         QueryParameters.PageIndex = e.Page;
         QueryParameters.PageSize = e.PageSize;
-        await RefreshAsync();
+        await QueryAsync();
     }
 }

@@ -102,14 +102,14 @@
                             <Title Level="3">节点列表</Title>
                         </GridCol>
                         <GridCol Span="6" Offset="12">
-                            <Search Placeholder="搜索节点" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.RefreshAsync" />
+                            <Search Placeholder="搜索节点" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.QueryAsync" />
                         </GridCol>
                     </GridRow>
                     <GridRow>
                         <GridCol Span="20" Offset="0">
                             <Space>
                                 <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="_dataSource.RefreshAsync"></Button>
+                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="_dataSource.QueryAsync"></Button>
                                 </SpaceItem>
                                 <SpaceItem>
                                     <Select DataSource="@_nodeSettings.IpAddressMappings"
@@ -249,7 +249,7 @@
             {
                 _editingNodeInfoModel = null;
                 _nodeInfoDrawerVisible = false;
-                await _dataSource.RefreshAsync();
+                await _dataSource.QueryAsync();
             }
             else
             {
@@ -311,19 +311,18 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
     protected override void OnInitialized()
     {
-        _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager, ApiService.QueryNodeListAsync, StateHasChanged);
+        _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager.BaseUri, ApiService.QueryNodeListAsync, StateHasChanged);
         _dataSource.QueryParameters.Status = NodeStatus.All;
         _dataSource.QueryParameters.AreaTag = "*";
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
         _dataSource.Ready = QueryNodeSettingsAsync;
         _dataSource.ExceptionHandler = OnExepction;
-        _dataSource.Request();
         base.OnInitialized();
     }
 
@@ -336,6 +335,14 @@
             });
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
+    }
+
+
+
     public void Dispose()
     {
         _dataSource.Dispose();
@@ -345,7 +352,7 @@
     {
         _dataSource.PageIndex = 1;
         _dataSource.QueryParameters.AreaTag = entry.Tag;
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
     void OnNodeStatusChanged(NodeStatus nodeStatus)
@@ -353,7 +360,7 @@
         _nodeStatus = nodeStatus;
         _dataSource.PageIndex = 1;
         _dataSource.QueryParameters.Status = nodeStatus;
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
 }

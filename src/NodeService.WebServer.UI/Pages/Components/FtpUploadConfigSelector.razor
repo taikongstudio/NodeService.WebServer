@@ -1,4 +1,5 @@
 ﻿@inject ApiService ApiService
+@inject NotificationService _notice
 @inherits Selector<FtpUploadConfigModel>
 
 <GridRow>
@@ -16,7 +17,7 @@
 </GridRow>
 
 <GridRow>
-    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.RefreshAsync"/>
+    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.QueryAsync"/>
 </GridRow>
 <GridRow>
     <GridCol Flex=@("auto")>
@@ -54,14 +55,24 @@
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
 
+        _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
     }
 
     protected override async Task OnInitializedAsync()
     {
         _dataSource.QueryParameters.Keywords = null;
         _dataSource.QueryParameters.PageIndex = 1;
-        await _dataSource.RefreshAsync();
+        await _dataSource.QueryAsync();
         await base.OnInitializedAsync();
     }
 
@@ -78,7 +89,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        await _dataSource.RefreshAsync();
+        await _dataSource.QueryAsync();
     }
 
 }

@@ -90,13 +90,28 @@
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
 
-        _dataSource = new RoutedPaginationDataSource<NodeStatusChangeRecordModel, QueryNodeStatusChangeRecordParameters>(NavigationManager, ApiService.QueryNodeStatusChangeRecordListAsync, StateHasChanged);
+        _dataSource = new RoutedPaginationDataSource<NodeStatusChangeRecordModel, QueryNodeStatusChangeRecordParameters>(NavigationManager.BaseUri, ApiService.QueryNodeStatusChangeRecordListAsync, StateHasChanged);
         _dataSource.PageIndex = 1;
         _dataSource.PageSize = 10;
         _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
         _dataSource.QueryParameters.EndDateTime = EndDateTime;
-        _dataSource.Request();
+        _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
     }
 
     void OnTableChange(QueryModel<NodeStatusChangeRecordModel> query)
@@ -112,7 +127,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
     void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
@@ -141,7 +156,7 @@
         {
             _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
         }
-        await _dataSource.RefreshAsync();
+        await _dataSource.QueryAsync();
     }
 
     public void Dispose()

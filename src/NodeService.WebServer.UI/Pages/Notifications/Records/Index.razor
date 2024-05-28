@@ -9,7 +9,7 @@
 
     <Space Style="margin-bottom:16px">
         <SpaceItem>
-            <Button Type="@ButtonType.Primary" OnClick="@_dataSource.RefreshAsync">刷新</Button>
+            <Button Type="@ButtonType.Primary" OnClick="@_dataSource.QueryAsync">刷新</Button>
         </SpaceItem>
 
     </Space>
@@ -33,7 +33,7 @@
                 </GridCol>
                 <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords"
-                            OnSearch="@_dataSource.RefreshAsync"/>
+                            OnSearch="@_dataSource.QueryAsync"/>
                 </GridCol>
             </GridRow>
         </TitleTemplate>
@@ -81,11 +81,26 @@
 
     protected override void OnInitialized()
     {
-        base.OnInitialized();
-        _dataSource = new RoutedPaginationDataSource<NotificationRecordModel, PaginationQueryParameters>(NavigationManager, ApiService.QueryNotificationRecordListAsync, StateHasChanged);
+        _dataSource = new RoutedPaginationDataSource<NotificationRecordModel, PaginationQueryParameters>(NavigationManager.BaseUri, ApiService.QueryNotificationRecordListAsync, StateHasChanged);
         _dataSource.PageIndex = 1;
         _dataSource.PageSize = 10;
-        _dataSource.Request();
+        _dataSource.ExceptionHandler = OnExepction;
+        base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
     }
 
     void OnTableChange(QueryModel<NotificationRecordModel> query)
@@ -101,7 +116,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
     public void Dispose()

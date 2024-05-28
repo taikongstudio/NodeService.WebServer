@@ -39,7 +39,7 @@
                     <Title Level="3">任务流实例</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow Wrap Style="min-height:30px">
@@ -244,13 +244,23 @@
 
     protected override void OnInitialized()
     {
-        _dataSource = new RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
+        _dataSource = new RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
+        _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
     }
 
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
+
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Unknown, Name = "全部" });
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Triggered, Name = "已触发" });
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Pendding, Name = "等待中" });
@@ -264,6 +274,8 @@
         EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -312,7 +324,7 @@
                 _dataSource.QueryParameters.Status = _selectedStatus;
             }
 
-            _dataSource.ForceRequest();
+            _dataSource.ForceRequestAsync();
         }
         catch (Exception ex)
         {
@@ -382,7 +394,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
     async Task ShowTaskLogViewerDialogAsync(string value)

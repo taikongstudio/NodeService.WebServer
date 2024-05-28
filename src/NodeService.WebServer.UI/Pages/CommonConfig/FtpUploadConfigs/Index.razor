@@ -10,6 +10,7 @@
 
     <Modal Width="800"
            Title="@_modalTitle"
+           MaskClosable="false"
            Style="top:0"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
@@ -133,7 +134,7 @@
                     <Title Level="3">Ftp上传配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -142,7 +143,7 @@
                         <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
                     </SpaceItem>
                     <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.QueryAsync"></Button>
                     </SpaceItem>
                 </Space>
             </GridRow>
@@ -202,25 +203,41 @@
     FtpConfigSelector _ftpConfigSelector;
     IEnumerable<FtpConfigModel> _selectedFtpConfigs;
 
+    List<StringEntry> _nameList;
+
 
     RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters>(
-            NavigationManager,
-            ApiService.QueryFtpUploadConfigurationListAsync,
-            StateHasChanged);
-        _dataSource.ItemInitializer = InitAsync;
-        _dataSource.Request();
         _nameList =
         [
             new StringEntry { Name = "包含", Value = "include" }, new StringEntry { Name = "排除", Value = "exclude" }
         ];
+        _dataSource = new RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters>(
+            NavigationManager.BaseUri,
+            ApiService.QueryFtpUploadConfigurationListAsync,
+            StateHasChanged);
+        _dataSource.ItemInitializer = InitAsync;
+        _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
     }
 
-    List<StringEntry> _nameList;
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
+    }
+
 
     async ValueTask InitAsync(
         FtpUploadConfigModel model,
@@ -274,7 +291,7 @@
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                await _dataSource.RefreshAsync();
+                await _dataSource.QueryAsync();
                 _editFormVisible = false;
             }
             else
@@ -348,7 +365,7 @@
             var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                await _dataSource.RefreshAsync();
+                await _dataSource.QueryAsync();
             }
             else
             {
@@ -396,7 +413,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
     async Task ShowFtpConfigSelectorDialogAsync()

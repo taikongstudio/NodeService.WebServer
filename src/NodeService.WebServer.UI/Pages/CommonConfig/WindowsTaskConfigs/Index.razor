@@ -14,6 +14,7 @@
 </style>
 <GridContent>
     <Modal Width="800"
+           MaskClosable="false"
            Style="top:0"
            Maximizable
            DefaultMaximized
@@ -64,7 +65,7 @@
                     <Title Level="3">Windows计划任务配置</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RefreshAsync"/>
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -73,7 +74,7 @@
                         <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
                     </SpaceItem>
                     <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.RefreshAsync"></Button>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.QueryAsync"></Button>
                     </SpaceItem>
                 </Space>
             </GridRow>
@@ -127,11 +128,26 @@
     protected override void OnInitialized()
     {
         _dataSource = new RoutedPaginationDataSource<WindowsTaskConfigModel, PaginationQueryParameters>(
-            NavigationManager,
+            NavigationManager.BaseUri,
             ApiService.QueryWindowsTaskConfigListAsync,
             StateHasChanged);
-        _dataSource.Request();
+        _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
     }
 
     async Task InitXmlEditorAsync()
@@ -191,7 +207,7 @@
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
-                await _dataSource.RefreshAsync();
+                await _dataSource.QueryAsync();
                 _editFormVisible = false;
             }
             else
@@ -259,7 +275,7 @@
             var apiResponse = await ApiService.RemoveAsync(model);
             if (apiResponse.ErrorCode == 0)
             {
-                await _dataSource.RefreshAsync();
+                await _dataSource.QueryAsync();
             }
             else
             {
@@ -307,7 +323,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.Request();
+        _dataSource.RequestAsync();
     }
 
     StandaloneEditorConstructionOptions EditorConstructionOptions(StandaloneCodeEditor editor)

@@ -55,21 +55,34 @@
     protected override void OnInitialized()
     {
         _dataSource = new RoutedPaginationDataSource<DataQualityCalendarEntry, QueryDataQualityStatisticsCalendarParameters>(
-        NavigationManager,
+        NavigationManager.BaseUri,
         ApiService.QueryDataQualityCalendarEntryListAsync,
         StateHasChanged);
         _dataSource.Completed = OnDataSourceCompleted;
-        _dataSource.ExceptionHandler = ExecptionHandler;
         _dataSource.Ready = ReadyAsync;
+        _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
     }
 
-    private async Task ExecptionHandler(Exception ex)
+    async Task OnExepction(Exception ex)
     {
         if (this._modelRef != null)
         {
             await _modalService.DestroyConfirmAsync(_modelRef);
         }
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await QueryCategoriesAsync();
+        await QueryNodeStatisticsRecordListAsync(DateTime.Today.Date);
+        await base.OnInitializedAsync();
     }
 
     private Task ReadyAsync()
@@ -102,12 +115,6 @@
         await QueryNodeStatisticsRecordListAsync(_selectedDate);
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        await QueryCategoriesAsync();
-        await QueryNodeStatisticsRecordListAsync(DateTime.Today.Date);
-        await base.OnInitializedAsync();
-    }
 
     RoutedPaginationDataSource<DataQualityCalendarEntry, QueryDataQualityStatisticsCalendarParameters> _dataSource;
 
@@ -136,7 +143,7 @@
                 DateTime.DaysInMonth(nextDateTime.Year, nextDateTime.Month), 0, 0, 0).AddSeconds(-1);
             _dataSource.QueryParameters.PageIndex = 1;
             _dataSource.QueryParameters.PageSize = 100;
-            _dataSource.ForceRequest();
+            await _dataSource.ForceRequestAsync();
         }
         catch (Exception ex)
         {

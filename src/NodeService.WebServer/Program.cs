@@ -405,7 +405,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(10)));
         builder.Services.AddSingleton(new BatchQueue<FireTaskParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(1024, TimeSpan.FromSeconds(3)));
-        builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(64, TimeSpan.FromMinutes(30)));
+        builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(1024, TimeSpan.FromMinutes(30)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>(1024 * 2, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>(64, TimeSpan.FromMilliseconds(100)));

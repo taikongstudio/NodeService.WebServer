@@ -233,7 +233,19 @@
         }
         if (entry.Entries.Count == 0)
         {
-            return @<Template><Alert  Type="@AlertType.Error" ShowIcon="true">无数据</Alert></Template>;
+            return @<Template>
+        <ul class="events">
+            <li>
+                <Badge Size="small" Status="@BadgeStatus.Success" Text="@($"完成 --")" />
+            </li>
+            <li>
+                <Badge Size="small" Status="@BadgeStatus.Processing" Text="@($"{(value.Date==DateTime.Today.Date?"进行中":"未完成")} --")" />
+            </li>
+            <li>
+                <Badge Size="small" Status="@BadgeStatus.Error" Text="@($"错误 --")" />
+            </li>
+        </ul>
+    </Template>;
         }
         return @<Template>
                     <ul class="events">

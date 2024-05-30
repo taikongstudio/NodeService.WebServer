@@ -40,6 +40,7 @@ namespace NodeService.WebServer.Services.DataQuality
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+
             await foreach (var arrayPoolCollection in _alarmMessageBatchQueue.ReceiveAllAsync(stoppingToken))
             {
                 try
@@ -48,8 +49,21 @@ namespace NodeService.WebServer.Services.DataQuality
                     var propertyBag = await propertyBagRepo.FirstOrDefaultAsync(
                     new PropertyBagSpecification(NotificationSources.DataQualityCheck));
                     DataQualityCheckConfiguration? configuration;
-                    if (!TryReadConfiguration(propertyBag, out configuration) || configuration == null || !configuration.IsEnabled)
+
+                    while (true)
+                    {
+                        if (!TryReadConfiguration(propertyBag, out configuration) || configuration == null || !configuration.IsEnabled)
+                            continue;
+                        if (TimeOnly.FromDateTime(DateTime.Now) >= configuration.NotificationTime)
+                        {
+                            break;
+                        }
+                        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                    }
+                    if (configuration == null)
+                    {
                         continue;
+                    }
                     if (_alarmMessageBatchQueue.TriggerBatchPeriod.TotalMinutes != configuration.NotificationDuration)
                     {
                         _alarmMessageBatchQueue.SetTriggerBatchPeriod(TimeSpan.FromMinutes(configuration.NotificationDuration));

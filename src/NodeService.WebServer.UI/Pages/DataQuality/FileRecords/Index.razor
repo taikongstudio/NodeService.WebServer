@@ -321,7 +321,7 @@
     {
     }
 
-    void OnTableChange(QueryModel<FileRecordModel> query)
+    async Task OnTableChange(QueryModel<FileRecordModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
@@ -334,7 +334,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.RequestAsync();
+        await _dataSource.RequestAsync();
     }
 
     async Task CopyTaskLogViewLinkToClipboardAsync(string value)

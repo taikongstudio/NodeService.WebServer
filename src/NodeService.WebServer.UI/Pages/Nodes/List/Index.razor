@@ -298,7 +298,7 @@
         }
     }
 
-    void OnNodeTableChanged(QueryModel<NodeInfoModel> query)
+    async Task OnNodeTableChanged(QueryModel<NodeInfoModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
@@ -311,7 +311,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.RequestAsync();
+        await _dataSource.RequestAsync();
     }
 
     protected override void OnInitialized()
@@ -348,19 +348,19 @@
         _dataSource.Dispose();
     }
 
-    void OnSelectedAreaTag(StringEntry entry)
+    async Task OnSelectedAreaTag(StringEntry entry)
     {
         _dataSource.PageIndex = 1;
         _dataSource.QueryParameters.AreaTag = entry.Tag;
-        _dataSource.RequestAsync();
+        await _dataSource.RequestAsync();
     }
 
-    void OnNodeStatusChanged(NodeStatus nodeStatus)
+    async Task OnNodeStatusChanged(NodeStatus nodeStatus)
     {
         _nodeStatus = nodeStatus;
         _dataSource.PageIndex = 1;
         _dataSource.QueryParameters.Status = nodeStatus;
-        _dataSource.RequestAsync();
+        await _dataSource.RequestAsync();
     }
 
 }

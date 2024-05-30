@@ -285,7 +285,7 @@
         _editForm.Submit();
     }
 
-    void OnTableChange(QueryModel<NodeEnvVarsConfigModel> query)
+    async Task OnTableChange(QueryModel<NodeEnvVarsConfigModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
@@ -298,7 +298,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.RequestAsync();
+        await _dataSource.RequestAsync();
     }
 
     public void Dispose()

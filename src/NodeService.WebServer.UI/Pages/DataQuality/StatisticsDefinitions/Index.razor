@@ -316,7 +316,7 @@
         _editForm.Submit();
     }
 
-    void OnTableChange(QueryModel<DataQualityStatisticsDefinitionModel> query)
+    async Task OnTableChange(QueryModel<DataQualityStatisticsDefinitionModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
@@ -329,7 +329,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.RequestAsync();
+        await _dataSource.RequestAsync();
     }
 
     public void Dispose()

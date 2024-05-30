@@ -61,6 +61,8 @@ public class JobsController : Controller
                     queryParameters.NodeIdList,
                     queryParameters.TaskDefinitionIdList,
                     queryParameters.TaskExecutionInstanceIdList,
+                    queryParameters.BeginDateTime.Value,
+                    queryParameters.EndDateTime.Value,
                     queryParameters.SortDescriptions),
                 queryParameters.PageSize,
                 queryParameters.PageIndex

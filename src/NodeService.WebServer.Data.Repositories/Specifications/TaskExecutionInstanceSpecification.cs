@@ -24,6 +24,27 @@ public class TaskExecutionInstanceSpecification : Specification<JobExecutionInst
     }
 
     public TaskExecutionInstanceSpecification(
+    string? keywords,
+    JobExecutionStatus status,
+    IEnumerable<string> nodeIdList,
+    IEnumerable<string> taskDefinitionIdList,
+    IEnumerable<string> taskExecutionIdList,
+    DateTime startTime,
+    DateTime endTime,
+    IEnumerable<SortDescription>? sortDescriptions = null)
+    {
+        if (status != JobExecutionStatus.Unknown) Query.Where(x => x.Status == status);
+        if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
+        if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));
+        if (taskDefinitionIdList != null && taskDefinitionIdList.Any())
+            Query.Where(x => taskDefinitionIdList.Contains(x.JobScheduleConfigId));
+        if (taskExecutionIdList != null && taskExecutionIdList.Any())
+            Query.Where(x => taskExecutionIdList.Contains(x.Id));
+        Query.Where(x => x.FireTimeUtc >= startTime && x.FireTimeUtc <= endTime);
+        if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
+    }
+
+    public TaskExecutionInstanceSpecification(
     DataFilterCollection<JobExecutionStatus> statusFilters,
     DataFilterCollection<string> nodeIdFilters,
     DataFilterCollection<string> taskDefinitionIdFilters,

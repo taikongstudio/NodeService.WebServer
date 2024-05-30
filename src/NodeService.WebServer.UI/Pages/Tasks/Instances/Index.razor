@@ -376,7 +376,7 @@
     {
     }
 
-    void OnTableChange(QueryModel<JobExecutionInstanceModel> query)
+    async Task OnTableChange(QueryModel<JobExecutionInstanceModel> query)
     {
         if (!string.IsNullOrEmpty(TaskExecutionInstanceId))
         {
@@ -394,7 +394,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.RequestAsync();
+        await _dataSource.RequestAsync();
     }
 
     async Task ShowTaskLogViewerDialogAsync(string value)

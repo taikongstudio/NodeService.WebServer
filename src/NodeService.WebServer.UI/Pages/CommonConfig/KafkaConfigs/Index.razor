@@ -272,7 +272,7 @@
         _editForm.Submit();
     }
 
-    void OnTableChange(QueryModel<KafkaConfigModel> query)
+    async Task OnTableChange(QueryModel<KafkaConfigModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
@@ -285,7 +285,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.RequestAsync();
+        await _dataSource.RequestAsync();
     }
 
     public void Dispose()

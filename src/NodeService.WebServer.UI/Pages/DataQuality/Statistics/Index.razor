@@ -234,7 +234,7 @@
     {
     }
 
-    void OnTableChange(QueryModel<DataQualityNodeStatisticsRecordModel> query)
+    async Task OnTableChange(QueryModel<DataQualityNodeStatisticsRecordModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
@@ -247,7 +247,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        _dataSource.RequestAsync();
+        await _dataSource.RequestAsync();
     }
 
     async Task ShowNodeSelectorDialogAsync()

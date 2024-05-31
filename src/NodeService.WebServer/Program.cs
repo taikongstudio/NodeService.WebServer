@@ -249,6 +249,7 @@ public class Program
         builder.Services.AddHostedService<ClientUpdateQueueService>();
         builder.Services.AddHostedService<CommonConfigBatchQueryQueueService>();
         builder.Services.AddHostedService<TaskCancellationQueueService>();
+        builder.Services.AddHostedService<ConfigurationChangedNotifyService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -397,6 +398,7 @@ public class Program
         builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>, AsyncQueue<JobExecutionEventRequest>>();
         builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>, AsyncQueue<TaskScheduleMessage>>();
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
+        builder.Services.AddSingleton<IAsyncQueue<ConfigurationChangedEvent>, AsyncQueue<ConfigurationChangedEvent>>();
         builder.Services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
         builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
         builder.Services.AddSingleton<IJobFactory, JobFactory>();

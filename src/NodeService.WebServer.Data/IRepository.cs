@@ -8,7 +8,7 @@ public interface IRepository<T> :
     IAsyncDisposable
     where T : class, IAggregateRoot
 {
-    public int LastSaveChangesCount { get; }
+    public int LastChangesCount { get; }
 
     public TimeSpan LastSaveChangesTimeSpan { get; }
 

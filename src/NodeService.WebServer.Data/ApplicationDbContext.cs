@@ -90,6 +90,8 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<DataQualityNodeStatisticsRecordModel> DataQualityNodeStatisticsReportDbSet {  get; set; }
 
+    public DbSet<FileSystemWatchConfigModel> FileSystemWatchConfigurationDbSet { get; set; }
+
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
                                     DynamicallyAccessedMemberTypes.NonPublicConstructors |

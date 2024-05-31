@@ -143,6 +143,11 @@
         "key": "CommonConfig.RestApi"
       },
       {
+        "path": "/CommonConfig/FileSystemWatch",
+        "name": "文件系统监控",
+        "key": "CommonConfig.FileSystemWatch"
+      },
+      {
         "path": "/CommonConfig/WindowsTask",
         "name": "Windows计划任务配置",
         "key": "CommonConfig.WindowsTask"

@@ -246,5 +246,13 @@ public partial class ApplicationDbContext
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<DataQualityStatisticsDefinition>(v, (JsonSerializerOptions)null));
         });
+
+        modelBuilder.Entity<FileSystemWatchConfigModel>(builder =>
+        {
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<FileSystemWatchConfiguration>(v, (JsonSerializerOptions)null));
+        });
     }
 }

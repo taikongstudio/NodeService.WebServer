@@ -1,0 +1,376 @@
+﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.FileSystemWatchConfigs
+@page "/CommonConfig/FileSystemWatch"
+
+@inject NotificationService _notice
+@inject ApiService ApiService
+@inject ConfirmService _confirmService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+<GridContent>
+    <Modal Title="@_modalTitle"
+           Width="800"
+           MaskClosable="false"
+           Style="top:0"
+           @bind-Visible="@_editFormVisible"
+           ConfirmLoading="@_editFormConfirmLoading"
+           OnOk="@HandleEditFormOk"
+           OnCancel="@HandleEditFormCancel">
+        <Form Model="@_editModel"
+              LabelColSpan="4"
+              WrapperColSpan="20"
+              OnFinish="OnEditFormFinish"
+              OnFinishFailed="OnEditFormFinishFailed"
+              @ref="@_editForm">
+            @if (context == null)
+            {
+                <Empty/>
+            }
+            else
+            {
+                <FormItem Required Label="名称">
+                    <Input @bind-Value="@context.Name"/>
+                </FormItem>
+
+                <FormItem Required Label="节点">
+                    <NodeSelector Mode="SelectionMode.Single" @bind-SelectedItems="_selectedNodes"/>
+                </FormItem>
+                <FormItem Label="启动">
+                    <Switch @bind-Value="@context.Value.EnableRaisingEvents" />
+                </FormItem>
+                <FormItem Required Label="路径">
+                    <Input @bind-Value="@context.Value.Path" />
+                </FormItem>
+                <FormItem Label="包含子目录">
+                    <Switch @bind-Value="@context.Value.IncludeSubdirectories" />
+                </FormItem>
+                <FormItem Label="主文件过滤器">
+                    <Input @bind-Value="@context.Value.Filter" />
+                </FormItem>
+                <FormItem Label="文件过滤器列表">
+                    <StringEntryTable NameTitle="备注"
+                                      ValueTitle="过滤器"
+                                      ItemsSource="@context.Value.Filters"/>
+
+                </FormItem>
+                <FormItem Label="通知过滤器">
+                    <div>
+                        <Checkbox Indeterminate="@_indeterminate" Checked="@_checkAll"  CheckedChanged="@CheckAllChanged">
+                            全选
+                        </Checkbox>
+                        <br />
+                        <AntDesign.CheckboxGroup Options="@_notifyFilters" ValueChanged="@OnChanged" TValue="string" />
+                    </div>
+                </FormItem>
+            }
+        </Form>
+    </Modal>
+
+    <Table @ref="_table"
+           Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           EnableVirtualization="false"
+           TItem="FileSystemWatchConfigModel"
+           DataSource="@_dataSource.ItemsSource"
+           Resizable
+           OnChange="OnTableChange"
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           Total="@_dataSource.TotalCount"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="6">
+                    <Title Level="3">文件系统监控配置</Title>
+                </GridCol>
+                <GridCol Span="6" Offset="12">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
+                </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" Type="@ButtonType.Primary" OnClick="() => ShowEditForm()"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.QueryAsync"></Button>
+                    </SpaceItem>
+                </Space>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
+            <ActionColumn Fixed="right" Width="250" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<FileSystemWatchConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<FileSystemWatchConfigModel>())"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
+                        </SpaceItem>
+
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+        </ColumnDefinitions>
+
+        <ExpandTemplate>
+            <Tabs Animated>
+                <TabPane Tab="节点环境变量" Key="1">
+                    <StringEntryTable ItemsSource="@context.Data.Filters"
+                                      NameTitle="备注"
+                                      ValueTitle="目录"
+                                      IsEditable="false"/>
+                </TabPane>
+            </Tabs>
+        </ExpandTemplate>
+    </Table>
+</GridContent>
+
+@code {
+    ITable _table;
+    string _modalTitle;
+    bool _editFormVisible;
+    bool _editFormSubmitting;
+    bool _editFormConfirmLoading;
+    Form<FileSystemWatchConfigModel> _editForm;
+    RoutedPaginationDataSource<FileSystemWatchConfigModel, PaginationQueryParameters> _dataSource;
+    IEnumerable<NodeInfoModel> _selectedNodes;
+    IEnumerable<StringEntry> _selectedEntries = [];
+    FileSystemWatchConfigModel _editModel = new();
+    bool _indeterminate => _notifyFilters.Count(o => o.Checked) > 0 && _notifyFilters.Count(o => o.Checked) < _notifyFilters.Count();
+    bool _checkAll = true;
+    static CheckboxOption<string>[] _notifyFilters = new CheckboxOption<string>[]{
+        new() { Label="文件名称",Value=nameof(NotifyFilters.FileName) ,Checked=true},
+        new() { Label="目录名称", Value=nameof(NotifyFilters.DirectoryName),Checked=true },
+        new() { Label="属性", Value=nameof(NotifyFilters.Attributes),Checked=true },
+        new() { Label="大小",Value=nameof(NotifyFilters.Size) ,Checked=true},
+        new() { Label="最后写入时间", Value=nameof(NotifyFilters.LastWrite),Checked=true },
+        new() { Label="最后访问时间", Value=nameof(NotifyFilters.LastAccess),Checked=true },
+        new() { Label="创建时间", Value=nameof(NotifyFilters.CreationTime),Checked=true },
+        new() { Label="安全设置", Value=nameof(NotifyFilters.Security),Checked=true },
+    };
+
+    void CheckAllChanged(bool value)
+    {
+        if (_checkAll == value)
+        {
+            return;
+        }
+        _checkAll = value;
+        _notifyFilters.ForEach(o => o.Checked = _checkAll);
+    }
+
+    void OnChanged(string[] values)
+    {
+
+    }
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new RoutedPaginationDataSource<FileSystemWatchConfigModel, PaginationQueryParameters>(
+            NavigationManager.BaseUri,
+            ApiService.QueryFileSystemWatchConfigurationListAsync,
+            StateHasChanged);
+        _dataSource.ExceptionHandler = OnExepction;
+        base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
+    }
+
+
+    async Task ShowEditForm(FileSystemWatchConfigModel? model = null)
+    {
+        _editFormVisible = true;
+        if (model == null)
+        {
+            _editModel = new FileSystemWatchConfigModel
+                {
+                    Id = Guid.NewGuid().ToString()
+                };
+            _modalTitle = "新建配置";
+        }
+        else
+        {
+            _modalTitle = "编辑配置";
+            _editModel = model;
+            var selectedNode = model.Value.NodeInfoId == null ?
+            null
+            :
+            await ApiService.GetNodeInfoAsync(model.Value.NodeInfoId);
+            _selectedNodes = selectedNode == null ? [] : [selectedNode];
+
+
+            foreach (var item in _notifyFilters)
+            {
+                var value = Enum.Parse<NotifyFilters>(item.Value);
+                item.Checked = _editModel.Value.NotifyFilter.HasFlag(value);
+            }
+
+        }
+    }
+
+    async Task OnEditFormFinish(EditContext editContext)
+    {
+        try
+        {
+            foreach (var item in _editModel.Filters)
+            {
+                item.EndEdit();
+            }
+            NotifyFilters notifyFilters = default;
+            foreach (var filter in _notifyFilters)
+            {
+                if (filter.Checked)
+                {
+                    notifyFilters |= Enum.Parse<NotifyFilters>(filter.Value);
+                }
+            }
+            _editModel.Value.NodeInfoId = _selectedNodes.FirstOrDefault()?.Id;
+            _editModel.Value.NotifyFilter = notifyFilters;
+            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
+            if (apiResponse.ErrorCode == 0)
+            {
+                _editFormVisible = false;
+                _selectedNodes = [];
+                await _dataSource.QueryAsync();
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
+        }
+        finally
+        {
+            _editFormSubmitting = false;
+            _editFormConfirmLoading = false;
+        }
+    }
+
+    void OnEditFormFinishFailed(EditContext editContext)
+    {
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
+    }
+
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    {
+        var options = new ConfirmButtonOptions
+        {
+            Button1Props = new ButtonProps
+            {
+                ChildContent = "确定",
+                Type = ButtonType.Primary
+            },
+            Button2Props = new ButtonProps
+            {
+                ChildContent = "取消"
+            }
+        };
+        return _confirmService.Show(
+            content,
+            title,
+            ConfirmButtons.OKCancel,
+            ConfirmIcon.Info,
+            options);
+    }
+
+    async Task DeleteConfig(FileSystemWatchConfigModel model)
+    {
+        try
+        {
+            if (await ShowConfirmDialogAsync("删除确认", "确定要删除吗？") != ConfirmResult.OK)
+            {
+                return;
+            }
+
+            var apiResponse = await ApiService.RemoveAsync(model);
+            if (apiResponse.ErrorCode == 0)
+            {
+                await _dataSource.QueryAsync();
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = "加载配置失败"
+            });
+        }
+    }
+
+
+    void HandleEditFormCancel(MouseEventArgs e)
+    {
+        _editFormVisible = false;
+    }
+
+
+    void HandleEditFormOk(MouseEventArgs e)
+    {
+        _editFormSubmitting = true;
+        _editForm.Submit();
+    }
+
+    async Task OnTableChange(QueryModel<FileSystemWatchConfigModel> query)
+    {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        await _dataSource.RequestAsync();
+    }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
+
+}

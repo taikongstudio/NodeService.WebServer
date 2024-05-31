@@ -16,6 +16,7 @@ public partial class CommonConfigController : Controller
 {
     private readonly ExceptionCounter _exceptionCounter;
     private readonly BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> _batchQueue;
+    private readonly IAsyncQueue<ConfigurationChangedEvent> _eventQueue;
     private readonly ILogger<CommonConfigController> _logger;
     private readonly IMemoryCache _memoryCache;
     private readonly INodeSessionService _nodeSessionService;
@@ -31,7 +32,8 @@ public partial class CommonConfigController : Controller
         IServiceProvider serviceProvider,
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationMessageQueue,
-        BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> batchQueue
+        BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> batchQueue,
+        IAsyncQueue<ConfigurationChangedEvent> eventQueue
         )
     {
         _logger = logger;
@@ -42,6 +44,7 @@ public partial class CommonConfigController : Controller
         _notificationMessageQueue = notificationMessageQueue;
         _exceptionCounter = exceptionCounter;
         _batchQueue = batchQueue;
+        _eventQueue = eventQueue;
     }
 
     private async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
@@ -127,7 +130,16 @@ public partial class CommonConfigController : Controller
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
             using var repo = repoFactory.CreateRepository();
             await repo.DeleteAsync(model);
-            if (repo.LastSaveChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
+            if (repo.LastChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
+            if (repo.LastChangesCount > 0)
+            {
+                await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
+                {
+                    ChangedType = ConfigurationChangedType.Delete,
+                    TypeName = typeof(T).FullName,
+                    Json = model.ToJson<T>()
+                });
+            }
         }
         catch (Exception ex)
         {
@@ -148,18 +160,31 @@ public partial class CommonConfigController : Controller
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
             using var repo = repoFactory.CreateRepository();
             var modelFromDb = await repo.GetByIdAsync(model.Id);
+            ConfigurationChangedType type = ConfigurationChangedType.None;
             if (modelFromDb == null)
             {
                 model.EntityVersion = Guid.NewGuid().ToByteArray();
                 await repo.AddAsync(model);
+                modelFromDb = model;
+                type = ConfigurationChangedType.Add;
             }
             else
             {
                 modelFromDb.With(model);
                 await repo.SaveChangesAsync();
+                type = ConfigurationChangedType.Update;
             }
 
-            if (repo.LastSaveChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
+            if (repo.LastChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
+            if (repo.LastChangesCount > 0)
+            {
+                await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
+                {
+                    ChangedType = type,
+                    TypeName = typeof(T).FullName,
+                    Json = modelFromDb.ToJson<T>()
+                });
+            }
         }
         catch (Exception ex)
         {

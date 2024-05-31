@@ -59,6 +59,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
             var rsp = await _queryFunc.Invoke(QueryParameters, default);
             if (rsp.TotalCount == 0 && this.TotalCount == 0)
             {
+                await RaiseCompleted();
                 return;
             }
             PageSize = rsp.PageSize;
@@ -66,10 +67,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
             TotalCount = Math.Max(rsp.TotalCount, rsp.PageSize);
             await InvokeItemInitializerAsync(rsp.Result);
             ItemsSource = rsp.Result ?? [];
-            if (Completed != null)
-            {
-                await Completed();
-            }
+            await RaiseCompleted();
         }
         catch (Exception ex)
         {
@@ -83,6 +81,14 @@ public class PaginationDataSource<TElement, TQueryParameters>
         {
             IsLoading = false;
             RaiseStateChanged();
+        }
+    }
+
+    private async Task RaiseCompleted()
+    {
+        if (Completed != null)
+        {
+            await Completed();
         }
     }
 

@@ -1,4 +1,5 @@
-﻿using NodeService.WebServer.Data.Repositories.Specifications;
+﻿using NodeService.Infrastructure.Data;
+using NodeService.WebServer.Data.Repositories.Specifications;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -35,8 +36,10 @@ public partial class NodesController
 
 
     [HttpGet("/api/Nodes/{nodeId}/jobs/instances/List")]
-    public async Task<PaginationResponse<JobExecutionInstanceModel>> GetNodeTaskInstancesAsync(string nodeId,
-        [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters)
+    public async Task<PaginationResponse<JobExecutionInstanceModel>> GetNodeTaskInstancesAsync(
+        string nodeId,
+        [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters,
+        CancellationToken cancellationToken = default)
     {
         var apiResponse = new PaginationResponse<JobExecutionInstanceModel>();
         try
@@ -52,13 +55,15 @@ public partial class NodesController
             {
                 queryParameters.NodeIdList = [nodeId];
                 using var repo = _taskExecutionInstanceRepoFactory.CreateRepository();
-                var queryResult = await repo.ListAsync(new TaskExecutionInstanceSpecification(
+                var queryResult = await repo.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
                     queryParameters.Keywords,
                     queryParameters.Status,
                     queryParameters.NodeIdList,
                     queryParameters.TaskDefinitionIdList,
                     queryParameters.TaskExecutionInstanceIdList,
-                    queryParameters.SortDescriptions));
+                    queryParameters.SortDescriptions),
+                    new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
+                    cancellationToken);
                 apiResponse.SetResult(queryResult);
             }
         }

@@ -7,47 +7,6 @@ namespace NodeService.WebServer.Extensions;
 
 public static class QueryableExtensions
 {
-    public static async Task<PaginationResponse<T>> QueryPageItemsAsync<T>(
-        this IQueryable<T> queryable,
-        PaginationQueryParameters queryParameters,
-        CancellationToken cancellationToken = default)
-    {
-        var apiResponse = new PaginationResponse<T>();
-
-        T[] items = [];
-        var totalCount = 0;
-
-        if (queryParameters.PageIndex <= 0 && queryParameters.PageSize <= 0)
-        {
-            items = await queryable.ToArrayAsync(cancellationToken);
-            totalCount = items.Length;
-        }
-        else
-        {
-            totalCount = await queryable.CountAsync(cancellationToken);
-            var pageIndex = queryParameters.PageIndex - 1;
-            var pageSize = queryParameters.PageSize;
-            var startIndex = pageIndex * pageSize;
-            var skipCount = totalCount > startIndex ? startIndex : 0;
-            items = await queryable
-                .Skip(skipCount)
-                .Take(pageSize)
-                .ToArrayAsync(cancellationToken);
-            var pageCount = totalCount > 0 ? Math.DivRem(totalCount, pageSize, out var _) + 1 : 0;
-            if (queryParameters.PageIndex > pageCount) queryParameters.PageIndex = pageCount;
-            if (totalCount < pageSize && pageCount == 1)
-            {
-                queryParameters.PageIndex = 1;
-                queryParameters.PageSize = pageSize;
-            }
-        }
-
-        apiResponse.SetTotalCount(totalCount);
-        apiResponse.SetPageIndex(queryParameters.PageIndex);
-        apiResponse.SetPageSize(queryParameters.PageSize);
-        apiResponse.SetResult(items);
-        return apiResponse;
-    }
 
     public static IQueryable<T> OrderBy<T>(
         this IQueryable<T> queryable,

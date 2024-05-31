@@ -95,7 +95,11 @@ namespace NodeService.WebServer.Controllers
 
                 }
 
-                apiResponse.SetResult(calendarEntries);
+                apiResponse.SetResult(new ListQueryResult<DataQualityCalendarEntry>(
+                    calendarEntries.Count,
+                    queryParameters.PageSize,
+                    queryParameters.PageIndex,
+                    calendarEntries));
             }
             catch (Exception ex)
             {

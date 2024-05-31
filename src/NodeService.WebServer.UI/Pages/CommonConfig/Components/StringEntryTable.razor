@@ -6,7 +6,7 @@
     </Button>
 }
 
-<Table @ref="_table"
+<Table 
        Context="mappingEntry"
        TItem="StringEntry"
        DataSource="@ItemsSource"
@@ -121,7 +121,6 @@
 
 
 @code {
-    ITable _table;
 
 
     [Parameter] public IList<StringEntry> ItemsSource { get; set; }
@@ -132,13 +131,13 @@
 
     [Parameter] public EventCallback<IEnumerable<StringEntry>> SelectedItemsChanged { get; set; }
 
-    [Parameter] public EventCallback<AddingNewItemEventArgs> AddingNewItem { get; set; }
+    [Parameter] public EventCallback<AddingNewItemEventArgs<StringEntry>> AddingNewItem { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<string>> ValueChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry,string>> ValueChanged { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<string>> NameChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry,string>> NameChanged { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<string>> TagChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry,string>> TagChanged { get; set; }
 
     [Parameter] public string NameTitle { get; set; } = "名称";
 
@@ -201,7 +200,7 @@
     async Task AddNewItem()
     {
         var entry = new StringEntry();
-        var e = new AddingNewItemEventArgs(entry);
+        var e = new AddingNewItemEventArgs<StringEntry>(entry);
         await AddingNewItem.InvokeAsync(e);
         if (e.Handled)
         {
@@ -215,7 +214,7 @@
 
     async Task OnValueChanged(StringEntry stringEntry, string? value)
     {
-        var e = new ValueChangedEventArgs<string>(stringEntry, value);
+        var e = new ValueChangedEventArgs<StringEntry, string>(stringEntry, value);
         if (ValueChanged.HasDelegate)
         {
             await ValueChanged.InvokeAsync(e);
@@ -228,7 +227,7 @@
 
     async Task OnNameChanged(StringEntry stringEntry, string? value)
     {
-        var e = new ValueChangedEventArgs<string>(stringEntry, value);
+        var e = new ValueChangedEventArgs<StringEntry, string>(stringEntry, value);
         if (NameChanged.HasDelegate)
         {
             await NameChanged.InvokeAsync(e);
@@ -241,7 +240,7 @@
 
     async Task OnTagChanged(StringEntry stringEntry, string? value)
     {
-        var e = new ValueChangedEventArgs<string>(stringEntry, value);
+        var e = new ValueChangedEventArgs<StringEntry, string>(stringEntry, value);
         if (TagChanged.HasDelegate)
         {
             await TagChanged.InvokeAsync(e);

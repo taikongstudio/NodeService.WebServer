@@ -252,7 +252,7 @@
         _editForm.Submit();
     }
 
-    void AddCronExpression(AddingNewItemEventArgs e)
+    void AddCronExpression(AddingNewItemEventArgs<StringEntry> e)
     {
         e.DataItem.BeginEdit();
     }
@@ -510,7 +510,7 @@
     }
 
 
-    void OnCronExpressionValueChanged(ValueChangedEventArgs<string> e)
+    void OnCronExpressionValueChanged(ValueChangedEventArgs<StringEntry, string> e)
     {
         try
         {
@@ -518,11 +518,11 @@
             if (CronExpression.IsValidExpression(e.DataItem.Value))
             {
                 var desc = ExpressionDescriptor.GetDescription(e.DataItem.Value, new Options
-                {
-                    DayOfWeekStartIndexZero = false,
-                    Use24HourTimeFormat = true,
-                    Locale = "zh-cn"
-                });
+                    {
+                        DayOfWeekStartIndexZero = false,
+                        Use24HourTimeFormat = true,
+                        Locale = "zh-cn"
+                    });
                 e.DataItem.Tag = desc;
             }
             else
@@ -551,7 +551,7 @@
         _selectedNodes = [];
     }
 
-    void NewEnvVarAdding(AddingNewItemEventArgs e)
+    void NewEnvVarAdding(AddingNewItemEventArgs<StringEntry> e)
     {
         e.DataItem.Name = string.Empty;
         e.DataItem.Value = string.Empty;

@@ -31,7 +31,7 @@
 
     [Parameter] public EmailNotificationOptions Configuration { get; set; }
 
-    void AddTo(AddingNewItemEventArgs e)
+    void AddTo(AddingNewItemEventArgs<StringEntry> e)
     {
         if (string.IsNullOrEmpty(_to))
         {
@@ -43,7 +43,7 @@
     }
 
 
-    void AddCC(AddingNewItemEventArgs e)
+    void AddCC(AddingNewItemEventArgs<StringEntry> e)
     {
         if (string.IsNullOrEmpty(_cc))
         {

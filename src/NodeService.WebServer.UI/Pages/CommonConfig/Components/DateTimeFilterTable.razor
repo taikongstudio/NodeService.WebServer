@@ -1,0 +1,257 @@
+﻿@using NodeService.WebServer.Models
+@if (IsEditable)
+{
+    <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddNewItem" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+    <Button Shape="@ButtonShape.Circle" Danger Icon="@IconType.Outline.Delete" OnClick="RemoveSelectedItems" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+}
+
+<Table 
+       Context="mappingEntry"
+       TItem="DateTimeFilter"
+       DataSource="@ItemsSource"
+       Size="TableSize.Small"
+       SelectedRows="SelectedItems"
+       SelectedRowsChanged="@OnSelectedItemsChanged"
+       RowKey="x => x.Id">
+    <Selection Key="@mappingEntry.Id" Type="checkbox"/>
+    <PropertyColumn Hidden="@IsRangeHidden" Title="@RangeTitle" Property="c => c.Range" Sortable>
+        @if (mappingEntry.IsEditing && IsRangeEditable)
+        {
+            if (RangeList != null && RangeList.Any())
+            {
+                <Select DataSource="@RangeList"
+                        @bind-Value="@mappingEntry.Range"
+                        TItem="EnumModel<FileTimeRange>"
+                        AutoFocus
+                        TItemValue="FileTimeRange"
+                        LabelName="@nameof(EnumModel<FileTimeRange>.Name)"
+                        ValueName="@nameof(EnumModel<FileTimeRange>.Value)" />
+            }
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@(FindRangeName(mappingEntry.Range))</div>
+        }
+    </PropertyColumn>
+    <PropertyColumn Title="@BeginTitle" Property="c => c.Begin" Sortable>
+        @if (mappingEntry.IsEditing && IsDateTimeEditable)
+        {
+            <DatePicker Format="yyyy-MM-dd HH:mm:ss" ShowTime="true" Type="text" Value="@mappingEntry.Begin" ValueChanged="(DateTime value) => OnBeginChanged(mappingEntry, value)" AutoFocus="@(!IsRangeEditable && IsDateTimeEditable)" />
+
+        }
+        else if (IsDateTimeEditable)
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
+                @mappingEntry.Begin
+            </div>
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Begin</div>
+        }
+    </PropertyColumn>
+    <PropertyColumn Title="@EndTitle" Property="c => c.End" Sortable>
+        @if (mappingEntry.Range == FileTimeRange.InRange)
+        {
+            if (mappingEntry.IsEditing && IsDateTimeEditable)
+            {
+                <DatePicker Format="yyyy-MM-dd HH:mm:ss" ShowTime="true" Type="text" Value="@mappingEntry.End" ValueChanged="(DateTime value) => OnEndChanged(mappingEntry, value)" AutoFocus="@(!IsRangeEditable && IsDateTimeEditable)" />
+            }
+            else if (IsDateTimeEditable)
+            {
+                <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
+                    @mappingEntry.End
+                </div>
+            }
+            else
+            {
+                <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.End</div>
+            }
+        }
+
+    </PropertyColumn>
+    @if (IsEditable)
+    {
+        <ActionColumn Fixed="right" Width="100" Title="操作">
+            <Space>
+                @if (IsRangeEditable || IsDateTimeEditable)
+                {
+                    @if (mappingEntry.IsEditing)
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="() => mappingEntry.EndEdit()"></Button>
+                        </SpaceItem>
+                    }
+                    else
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => mappingEntry.BeginEdit()"></Button>
+                        </SpaceItem>
+                    }
+                }
+
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="() => RemoveSelectedItem(mappingEntry)"></Button>
+                </SpaceItem>
+
+            </Space>
+        </ActionColumn>
+    }
+
+</Table>
+
+
+@code {
+
+    [Parameter] public IList<DateTimeFilter> ItemsSource { get; set; }
+
+
+    public IEnumerable<DateTimeFilter> SelectedItems { get; set; } = [];
+
+
+    [Parameter] public EventCallback<IEnumerable<DateTimeFilter>> SelectedItemsChanged { get; set; }
+
+    [Parameter] public EventCallback<AddingNewItemEventArgs<DateTimeFilter>> AddingNewItem { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, DateTime>> BeginChanged { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, DateTime>> EndChanged { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, FileTimeRange>> RangeChanged { get; set; }
+
+    [Parameter] public string RangeTitle { get; set; } = "范围";
+
+    [Parameter] public string BeginTitle { get; set; } = "起始时间";
+
+    [Parameter] public string EndTitle { get; set; } = "结束时间";
+
+    [Parameter] public bool IsRangeEditable { get; set; } = true;
+
+    [Parameter] public bool IsDateTimeEditable { get; set; } = true;
+
+    [Parameter] public bool IsRangeHidden { get; set; } = false;
+
+    [Parameter] public bool IsEditable { get; set; } = true;
+
+    [Parameter] public IEnumerable<EnumModel<FileTimeRange>> RangeList { get; set; } = [];
+
+    [Parameter] public IEnumerable<DateTimeFilter> ValueList { get; set; } = [];
+
+    void RemoveSelectedItem(DateTimeFilter value)
+    {
+        ItemsSource.Remove(value);
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (!IsEditable)
+        {
+            IsRangeEditable = false;
+            IsDateTimeEditable = false;
+        }
+
+        return base.OnParametersSetAsync();
+    }
+
+    protected override void OnInitialized()
+    {
+        this.RangeList = new List<EnumModel<FileTimeRange>>()
+        {
+            new EnumModel<FileTimeRange>()
+                        {
+                 Name = "前",
+                 Value = FileTimeRange.OutOfRange,
+            },
+            new EnumModel<FileTimeRange>()
+            {
+                 Name = "内",
+                 Value = FileTimeRange.InRange,
+            },
+            new EnumModel<FileTimeRange>()
+            {
+                 Name = "后",
+                 Value = FileTimeRange.WithinRange,
+            },
+        };
+        base.OnInitialized();
+    }
+
+    private string FindRangeName(FileTimeRange range)
+    {
+        return this.RangeList.FirstOrDefault(x => x.Value == range)?.Name ?? range.ToString();
+    }
+
+    async Task OnSelectedItemsChanged(IEnumerable<DateTimeFilter> items)
+    {
+        SelectedItems = items;
+        await SelectedItemsChanged.InvokeAsync(items);
+    }
+
+    public void RemoveSelectedItems()
+    {
+        foreach (var item in SelectedItems)
+        {
+            ItemsSource.Remove(item);
+        }
+
+        SelectedItems = [];
+    }
+
+    async Task AddNewItem()
+    {
+        var entry = new DateTimeFilter();
+        var e = new AddingNewItemEventArgs<DateTimeFilter>(entry);
+        await AddingNewItem.InvokeAsync(e);
+        if (e.Handled)
+        {
+            return;
+        }
+
+        ItemsSource.Add(entry);
+        entry.BeginEdit();
+    }
+
+
+    async Task OnBeginChanged(DateTimeFilter filter, DateTime value)
+    {
+        var e = new ValueChangedEventArgs<DateTimeFilter, DateTime>(filter, value);
+        if (BeginChanged.HasDelegate)
+        {
+            await BeginChanged.InvokeAsync(e);
+        }
+        if (!e.Handled)
+        {
+            filter.Begin = value;
+        }
+    }
+
+    async Task OnEndChanged(DateTimeFilter filter, DateTime value)
+    {
+        var e = new ValueChangedEventArgs<DateTimeFilter, DateTime>(filter, value);
+        if (EndChanged.HasDelegate)
+        {
+            await EndChanged.InvokeAsync(e);
+        }
+        if (!e.Handled)
+        {
+            filter.End = value;
+        }
+    }
+
+    async Task OnRangeChanged(DateTimeFilter filter, FileTimeRange value)
+    {
+        var e = new ValueChangedEventArgs<DateTimeFilter, FileTimeRange>(filter, value);
+        if (RangeChanged.HasDelegate)
+        {
+            await RangeChanged.InvokeAsync(e);
+        }
+        if (!e.Handled)
+        {
+            filter.Range = value;
+        }
+    }
+
+
+}

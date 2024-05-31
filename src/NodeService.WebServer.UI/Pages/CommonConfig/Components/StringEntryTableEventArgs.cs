@@ -2,21 +2,21 @@
 
 namespace NodeService.WebServer.UI.Pages.CommonConfig.Components;
 
-public class AddingNewItemEventArgs : EventArgs
+public class AddingNewItemEventArgs<TDataContext> : EventArgs
 {
-    public AddingNewItemEventArgs(StringEntry item)
+    public AddingNewItemEventArgs(TDataContext item)
     {
         DataItem = item;
     }
 
     public bool Handled { get; set; }
 
-    public StringEntry DataItem { get; set; }
+    public TDataContext DataItem { get; set; }
 }
 
-public class ValueChangedEventArgs<T> : EventArgs
+public class ValueChangedEventArgs<TDataContext, TProperty> : EventArgs
 {
-    public ValueChangedEventArgs(StringEntry item, T value)
+    public ValueChangedEventArgs(TDataContext item, TProperty value)
     {
         DataItem = item;
         Value = value;
@@ -24,7 +24,7 @@ public class ValueChangedEventArgs<T> : EventArgs
 
     public bool Handled { get; set; }
 
-    public StringEntry DataItem { get; set; }
+    public TDataContext DataItem { get; set; }
 
-    public T Value { get; set; }
+    public TProperty Value { get; set; }
 }

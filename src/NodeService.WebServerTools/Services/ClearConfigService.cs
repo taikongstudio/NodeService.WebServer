@@ -24,7 +24,7 @@ namespace NodeService.WebServerTools.Services
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var dbContext = _dbContextFactory.CreateDbContext();
-            var ftpUploadConfigs = await dbContext.FtpDownloadConfigurationDbSet.ToListAsync();
+            var ftpUploadConfigs = await dbContext.FtpUploadConfigurationDbSet.ToListAsync();
             foreach (var item in ftpUploadConfigs)
             {
                 item.FtpConfig = null;

@@ -3,9 +3,9 @@
 public partial class CommonConfigController
 {
     [HttpPost("/api/CommonConfig/ftpupload/AddOrUpdate")]
-    public Task<ApiResponse>
-        AddOrUpdateAsync([FromBody] FtpUploadConfigModel model)
+    public Task<ApiResponse> AddOrUpdateAsync([FromBody] FtpUploadConfigModel model)
     {
+        model.FtpConfig = null;
         return AddOrUpdateConfigurationAsync(model);
     }
 

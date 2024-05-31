@@ -81,16 +81,16 @@
                         <br/>
                         <Text>本地文件时间和服务器文件时间差异</Text>
                         <RadioGroup @bind-Value="@context.FileExistsTimeRange">
-                            <Radio RadioButton Value="@FileExistsTimeRange.WithinRange">小于</Radio>
-                            <Radio RadioButton Value="@FileExistsTimeRange.OutOfRange">大于</Radio>
+                            <Radio RadioButton Value="@FileTimeRange.WithinRange">小于</Radio>
+                            <Radio RadioButton Value="@FileTimeRange.OutOfRange">大于</Radio>
                         </RadioGroup>
                         <br/>
                         <AntDesign.InputNumber Min="1" @bind-Value="@context.FileExistsTime"/>
                         <RadioGroup @bind-Value="@context.FileExistsTimeUnit">
-                            <Radio RadioButton Value="@FileExistsTimeUnit.Seconds">秒</Radio>
-                            <Radio RadioButton Value="@FileExistsTimeUnit.Minutes">分钟</Radio>
-                            <Radio RadioButton Value="@FileExistsTimeUnit.Hours">小时</Radio>
-                            <Radio RadioButton Value="@FileExistsTimeUnit.Days">天</Radio>
+                            <Radio RadioButton Value="@FileTimeUnit.Seconds">秒</Radio>
+                            <Radio RadioButton Value="@FileTimeUnit.Minutes">分钟</Radio>
+                            <Radio RadioButton Value="@FileTimeUnit.Hours">小时</Radio>
+                            <Radio RadioButton Value="@FileTimeUnit.Days">天</Radio>
                         </RadioGroup>
                         <Text>的文件</Text>
                     </FormItem>

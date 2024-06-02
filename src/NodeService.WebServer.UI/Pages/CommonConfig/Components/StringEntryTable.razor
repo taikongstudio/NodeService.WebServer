@@ -21,7 +21,7 @@
             if (NameList != null && NameList.Any())
             {
                 <Select DataSource="@NameList"
-                        @bind-value="@mappingEntry.Name"
+                        @bind-Value="@mappingEntry.Name"
                         TItem="StringEntry"
                         AutoFocus
                         TItemValue="string"
@@ -36,7 +36,7 @@
         else if (IsNameEditable)
         {
             <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
-                @mappingEntry.Name
+                @(NameList.FirstOrDefault(x=>x.Value== mappingEntry.Name)?.Name??mappingEntry.Name)
             </div>
         }
         else
@@ -98,19 +98,19 @@
                     @if (mappingEntry.IsEditing)
                     {
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="() => mappingEntry.EndEdit()"></Button>
+                            <Button Shape="@ButtonShape.Circle" Size="small" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="() => OnEndEdit(mappingEntry)"></Button>
                         </SpaceItem>
                     }
                     else
                     {
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => mappingEntry.BeginEdit()"></Button>
+                            <Button Shape="@ButtonShape.Circle" Size="small" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OnBeginEdit(mappingEntry)"></Button>
                         </SpaceItem>
                     }
                 }
 
                 <SpaceItem>
-                    <Button Shape="@ButtonShape.Circle" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="() => RemoveSelectedItem(mappingEntry)"></Button>
+                    <Button Shape="@ButtonShape.Circle" Size="small" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="() => RemoveSelectedItem(mappingEntry)"></Button>
                 </SpaceItem>
 
             </Space>
@@ -139,6 +139,12 @@
 
     [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry,string>> TagChanged { get; set; }
 
+    [Parameter] public EventCallback<StringEntry> EndEdit { get; set; }
+
+    [Parameter] public EventCallback<StringEntry> Deleted { get; set; }
+
+    [Parameter] public EventCallback<StringEntry> BeginEdit { get; set; }
+
     [Parameter] public string NameTitle { get; set; } = "名称";
 
     [Parameter] public string ValueTitle { get; set; } = "值";
@@ -164,9 +170,13 @@
 
     [Parameter] public IEnumerable<StringEntry> ValueList { get; set; } = [];
 
-    void RemoveSelectedItem(StringEntry value)
+    async Task RemoveSelectedItem(StringEntry value)
     {
         ItemsSource.Remove(value);
+        if (Deleted.HasDelegate)
+        {
+            await Deleted.InvokeAsync(value);
+        }
     }
 
     protected override Task OnParametersSetAsync()
@@ -187,11 +197,15 @@
         await SelectedItemsChanged.InvokeAsync(items);
     }
 
-    public void RemoveSelectedItems()
+    async Task RemoveSelectedItems()
     {
         foreach (var item in SelectedItems)
         {
             ItemsSource.Remove(item);
+            if (Deleted.HasDelegate)
+            {
+                await Deleted.InvokeAsync(item);
+            }
         }
 
         SelectedItems = [];
@@ -248,6 +262,30 @@
         if (!e.Handled)
         {
             stringEntry.Tag = value;
+        }
+    }
+
+    async Task OnBeginEdit(StringEntry stringEntry)
+    {
+        if (BeginEdit.HasDelegate)
+        {
+            await BeginEdit.InvokeAsync(stringEntry);
+        }
+        else
+        {
+            stringEntry.BeginEdit();
+        }
+    }
+
+    async Task OnEndEdit(StringEntry stringEntry)
+    {
+        if (EndEdit.HasDelegate)
+        {
+            await EndEdit.InvokeAsync(stringEntry);
+        }
+        else
+        {
+            stringEntry.EndEdit();
         }
     }
 

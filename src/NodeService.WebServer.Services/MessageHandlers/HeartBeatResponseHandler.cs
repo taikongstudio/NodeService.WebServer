@@ -63,7 +63,7 @@ public class HeartBeatResponseHandler : IMessageHandler
             {
                 Id = Guid.NewGuid().ToString(),
                 DateTime = DateTime.UtcNow,
-                NodeId = this.NodeSessionId.NodeId.Value,
+                NodeId = NodeSessionId.NodeId.Value,
                 Message = $"Online"
             });
         }

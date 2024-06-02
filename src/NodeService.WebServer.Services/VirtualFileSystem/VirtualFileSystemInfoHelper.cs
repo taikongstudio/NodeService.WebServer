@@ -1,22 +1,12 @@
 ﻿namespace NodeService.WebServer.Services.VirtualSystem;
-
-public class VirtualFileSystemInfo
+using NodeService.Infrastructure.Models;
+public class VirtualFileSystemInfoHelper
 {
-    public string Name { get; set; }
 
-    public string FullName { get; set; }
 
-    public VirtualFileSystemObjectType Type { get; set; }
-
-    public long Length { get; set; }
-
-    public DateTime CreationTime { get; set; }
-
-    public DateTime LastWriteTime { get; set; }
-
-    public static VirtualFileSystemInfo FromFtpListItem(FtpListItem ftpListItem)
+    public static VirtualFileSystemObjectInfo FromFtpListItem(FtpListItem ftpListItem)
     {
-        return new VirtualFileSystemInfo
+        return new VirtualFileSystemObjectInfo
         {
             CreationTime = ftpListItem.Created,
             FullName = ftpListItem.FullName,

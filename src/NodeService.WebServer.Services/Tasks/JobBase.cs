@@ -4,7 +4,7 @@ public abstract class JobBase : IJob, IAsyncDisposable
 {
     public JobBase(IServiceProvider serviceProvider)
     {
-        this.ServiceProvider = serviceProvider;
+        ServiceProvider = serviceProvider;
     }
 
     public IAsyncDisposable? AsyncDispoable { get; set; }

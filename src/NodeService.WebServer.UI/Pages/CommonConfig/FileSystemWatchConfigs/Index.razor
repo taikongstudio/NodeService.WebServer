@@ -33,7 +33,7 @@
                 </FormItem>
 
                 <FormItem Required Label="节点">
-                    <NodeSelector Mode="SelectionMode.Single" @bind-SelectedItems="_selectedNodes"/>
+                    <NodeSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="_selectedNodes"/>
                 </FormItem>
                 <FormItem Label="启动">
                     <Switch @bind-Value="@context.Value.EnableRaisingEvents" />
@@ -44,15 +44,25 @@
                 <FormItem Label="包含子目录">
                     <Switch @bind-Value="@context.Value.IncludeSubdirectories" />
                 </FormItem>
-                <FormItem Label="主文件过滤器">
-                    <Input @bind-Value="@context.Value.Filter" />
+                <FormItem Label="默认文件过滤器">
+                    <Switch @bind-Value="@context.Value.UseDefaultFilter" />
                 </FormItem>
-                <FormItem Label="文件过滤器列表">
-                    <StringEntryTable NameTitle="备注"
-                                      ValueTitle="过滤器"
-                                      ItemsSource="@context.Value.Filters"/>
+                @if (context.Value.UseDefaultFilter)
+                {
+                    <FormItem Label="文件过滤器">
+                        <Input @bind-Value="@context.Value.Filter" />
+                    </FormItem>
+                }
+                else
+                {
+                    <FormItem Label="文件过滤器列表">
+                        <StringEntryTable NameTitle="备注"
+                                          ValueTitle="过滤器"
+                                          ItemsSource="@context.Value.Filters" />
+                    </FormItem>
+                }
 
-                </FormItem>
+
                 <FormItem Label="通知过滤器">
                     <div>
                         <Checkbox Indeterminate="@_indeterminate" Checked="@_checkAll"  CheckedChanged="@CheckAllChanged">
@@ -102,6 +112,10 @@
         <ColumnDefinitions>
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="启动" Sortable Property="c => c.Value.EnableRaisingEvents"></PropertyColumn>
+            <PropertyColumn Title="路径" Sortable Property="c => c.Value.Path"></PropertyColumn>
+            <PropertyColumn Title="包含子目录" Sortable Property="c => c.Value.IncludeSubdirectories"></PropertyColumn>
+            <PropertyColumn Title="文件过滤器" Sortable Property="c => c.Value.Filter"></PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
@@ -213,11 +227,12 @@
         {
             _modalTitle = "编辑配置";
             _editModel = model;
-            var selectedNode = model.Value.NodeInfoId == null ?
-            null
+            var selectedNode = model.Value.NodeList.IsNullOrEmpty() ?
+            []
             :
-            await ApiService.GetNodeInfoAsync(model.Value.NodeInfoId);
-            _selectedNodes = selectedNode == null ? [] : [selectedNode];
+            await model.Value.NodeList.QueryNodeListAsync(ApiService);
+
+            _selectedNodes = selectedNode;
 
 
             foreach (var item in _notifyFilters)
@@ -245,8 +260,8 @@
                     notifyFilters |= Enum.Parse<NotifyFilters>(filter.Value);
                 }
             }
-            _editModel.Value.NodeInfoId = _selectedNodes.FirstOrDefault()?.Id;
             _editModel.Value.NotifyFilter = notifyFilters;
+            _editModel.Value.NodeList.AddRange(_selectedNodes.Select(x => new StringEntry(x.Name, x.Id)));
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {

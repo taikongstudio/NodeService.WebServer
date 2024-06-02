@@ -66,7 +66,7 @@
 
     async Task OnExepction(Exception ex)
     {
-        if (this._modelRef != null)
+        if (_modelRef != null)
         {
             await _modalService.DestroyConfirmAsync(_modelRef);
         }
@@ -290,7 +290,7 @@
 
     public void Dispose()
     {
-        this._dataSource.Dispose();
+        _dataSource.Dispose();
     }
 
 }

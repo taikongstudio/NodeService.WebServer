@@ -48,7 +48,7 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
     {
         //if (_uri == null) return new Uri(_navigationManager.Uri);
         //return _navigationManager.ToAbsoluteUri(_uri);
-        return new Uri(this._uri);
+        return new Uri(_uri);
     }
 
     public override async Task OnPaginationEvent(PaginationEventArgs e)
@@ -82,11 +82,11 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
         QueryParameters.PageIndex = PageIndex;
         QueryParameters.PageSize = PageSize;
         QueryParameters.QueryStrategy = QueryStrategy.QueryPreferred;
-        if (this._uri == null)
+        if (_uri == null)
         {
-            this._uri = _baseAddress;
+            _uri = _baseAddress;
         }
-        var uri = new Uri(this._uri);
+        var uri = new Uri(_uri);
         var uriBuilder = new UriBuilder(uri);
         var oldQuery = uriBuilder.Query;
         uriBuilder.Query = string.Empty;
@@ -94,8 +94,8 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
         _currentQuery = $"?{QueryParameters}";
         if (force || (oldQuery != _currentQuery && !IsLoading))
         {
-            this._uri = $"{uri}{_currentQuery}";
-            await this.QueryAsync();
+            _uri = $"{uri}{_currentQuery}";
+            await QueryAsync();
         }
     }
 }

@@ -20,7 +20,7 @@ public interface IVirtualFileSystem : IDisposable
         string path,
         CancellationToken cancellationToken = default);
 
-    IAsyncEnumerable<VirtualFileSystemInfo> ListDirectoryAsync(
+    IAsyncEnumerable<VirtualFileSystemObjectInfo> ListDirectoryAsync(
         string directory,
         ListDirectoryOptions? options = null,
         CancellationToken cancellationToken = default);
@@ -55,7 +55,7 @@ public abstract class VirtualFileSystemBase : IVirtualFileSystem
     public abstract ValueTask<Exception?> DeleteFileAsync(string file,
         CancellationToken cancellationToken = default);
 
-    public abstract IAsyncEnumerable<VirtualFileSystemInfo> ListDirectoryAsync(string directory,
+    public abstract IAsyncEnumerable<VirtualFileSystemObjectInfo> ListDirectoryAsync(string directory,
         ListDirectoryOptions? options = null,
         CancellationToken cancellationToken = default);
 
@@ -174,13 +174,13 @@ public class FtpVirtualFileSystem : VirtualFileSystemBase
         return previousWorkingDirectory;
     }
 
-    public override async IAsyncEnumerable<VirtualFileSystemInfo> ListDirectoryAsync(
+    public override async IAsyncEnumerable<VirtualFileSystemObjectInfo> ListDirectoryAsync(
         string directory,
         ListDirectoryOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var item in _client.GetListingEnumerable(cancellationToken, cancellationToken))
-            yield return VirtualFileSystemInfo.FromFtpListItem(item);
+            yield return VirtualFileSystemInfoHelper.FromFtpListItem(item);
     }
 
     public override ValueTask<Stream?> ReadFileAsync(

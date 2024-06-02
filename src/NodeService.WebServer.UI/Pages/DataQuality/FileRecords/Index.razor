@@ -98,7 +98,7 @@
             <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="原始文件名称" Sortable="true" Ellipsis Property="c => c.OriginalFileName"></PropertyColumn>
             <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.State">
-                <Text>@this._stateList.FirstOrDefault(x=>x.Value==context.State)?.Name</Text>
+                <Text>@_stateList.FirstOrDefault(x=>x.Value==context.State)?.Name</Text>
             </PropertyColumn>
             <PropertyColumn Title="原始大小"  Sortable="true" Property="c => c.Size"></PropertyColumn>
             <PropertyColumn Title="文件哈希" Ellipsis Sortable="true" Property="c => c.FileHashValue"></PropertyColumn>
@@ -214,7 +214,7 @@
     {
         _editingFileRecord = fileRecord;
         _isFileRecordPropertyWindowVisible = true;
-        this.StateHasChanged();
+        StateHasChanged();
     }
 
     async Task QueryFileRecordCategoriesAsync()
@@ -309,7 +309,7 @@
     {
         if (visible)
         {
-            await this.QueryFileRecordCategoriesAsync();
+            await QueryFileRecordCategoriesAsync();
         }
     }
 

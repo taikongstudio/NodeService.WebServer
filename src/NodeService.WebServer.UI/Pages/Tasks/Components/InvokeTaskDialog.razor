@@ -55,7 +55,7 @@
         {
             if (Visible)
             {
-                _selectedNodes = await TaskDefinition.Value.NodeList.LoadNodeListAsync(ApiService);
+                _selectedNodes = await TaskDefinition.Value.NodeList.QueryNodeListAsync(ApiService);
             }
         }
         catch (Exception ex)

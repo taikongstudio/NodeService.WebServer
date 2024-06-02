@@ -180,6 +180,7 @@ public partial class CommonConfigController : Controller
             {
                 await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
+                    NodeIdList = model is INodeInfoIdentity nodeInfoIdentity ? nodeInfoIdentity.NodeIdList : null,
                     ChangedType = type,
                     TypeName = typeof(T).FullName,
                     Json = modelFromDb.ToJson<T>()

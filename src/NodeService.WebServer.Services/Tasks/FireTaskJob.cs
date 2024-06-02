@@ -6,7 +6,7 @@ public class FireTaskJob : JobBase
 {
     public FireTaskJob(IServiceProvider serviceProvider) : base(serviceProvider)
     {
-        this.Logger = serviceProvider.GetService<ILogger<FireTaskJob>>();
+        Logger = serviceProvider.GetService<ILogger<FireTaskJob>>();
     }
 
     public override async Task Execute(IJobExecutionContext context)

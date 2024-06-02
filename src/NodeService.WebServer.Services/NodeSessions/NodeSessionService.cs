@@ -28,6 +28,11 @@ public record class JobExecutionReportMessage : NodeSessionMessage<JobExecutionR
 {
 }
 
+public record class FileSystemWatchEventReportMessage : NodeSessionMessage<FileSystemWatchEventReport>
+{
+
+}
+
 public class NodeSessionService : INodeSessionService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;

@@ -11,7 +11,7 @@ namespace NodeService.WebServer.UI.Extensions
 {
     public static class NodeListExtensions
     {
-        public static async Task<List<NodeInfoModel>> LoadNodeListAsync(this IEnumerable<StringEntry> stringEntries, ApiService apiService)
+        public static async Task<List<NodeInfoModel>> QueryNodeListAsync(this IEnumerable<StringEntry> stringEntries, ApiService apiService)
         {
             if (stringEntries == null || !stringEntries.Any())
             {

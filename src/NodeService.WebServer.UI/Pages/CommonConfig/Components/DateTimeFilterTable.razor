@@ -16,58 +16,64 @@
        SelectedRowsChanged="@OnSelectedItemsChanged"
        RowKey="x => x.Id">
     <Selection Key="@mappingEntry.Id" Type="checkbox"/>
-    <PropertyColumn Hidden="@IsRangeHidden" Title="@RangeTitle" Property="c => c.Range" Sortable>
-        @if (mappingEntry.IsEditing && IsRangeEditable)
+    <PropertyColumn Hidden="@IsOperatorHidden" Title="@OperatorTitle" Property="c => c.Operator" Sortable>
+        @if (mappingEntry.IsEditing && IsOperatorEditable)
         {
-            if (RangeList != null && RangeList.Any())
+            if (OperatorList != null && OperatorList.Any())
             {
-                <Select DataSource="@RangeList"
-                        @bind-Value="@mappingEntry.Range"
-                        TItem="EnumModel<FileTimeRange>"
+                <Select DataSource="@OperatorList"
+                        @bind-Value="@mappingEntry.Operator"
+                        TItem="EnumModel<CompareOperators>"
                         AutoFocus
-                        TItemValue="FileTimeRange"
-                        LabelName="@nameof(EnumModel<FileTimeRange>.Name)"
-                        ValueName="@nameof(EnumModel<FileTimeRange>.Value)" />
+                        TItemValue="CompareOperators"
+                        LabelName="@nameof(EnumModel<CompareOperators>.Name)"
+                        ValueName="@nameof(EnumModel<CompareOperators>.Value)" />
             }
         }
         else
         {
-            <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@(FindRangeName(mappingEntry.Range))</div>
+            <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@(FindCompareOperatorName(mappingEntry.Operator))</div>
         }
     </PropertyColumn>
-    <PropertyColumn Title="@BeginTitle" Property="c => c.Begin" Sortable>
-        @if (mappingEntry.IsEditing && IsDateTimeEditable)
-        {
-            <DatePicker Format="yyyy-MM-dd HH:mm:ss" ShowTime="true" Type="text" Value="@mappingEntry.Begin" ValueChanged="(DateTime value) => OnBeginChanged(mappingEntry, value)" AutoFocus="@(!IsRangeEditable && IsDateTimeEditable)" />
+    <PropertyColumn Title="@DateTimeTitle" Property="c => c.Values" Sortable>
 
-        }
-        else if (IsDateTimeEditable)
-        {
-            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
-                @mappingEntry.Begin
-            </div>
-        }
-        else
-        {
-            <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Begin</div>
-        }
-    </PropertyColumn>
-    <PropertyColumn Title="@EndTitle" Property="c => c.End" Sortable>
-        @if (mappingEntry.Range == FileTimeRange.InRange)
-        {
-            if (mappingEntry.IsEditing && IsDateTimeEditable)
+        @if (mappingEntry.Operator == CompareOperators.WithinRange || mappingEntry.Operator == CompareOperators.OutOfRange)
+        {        
+            @if (mappingEntry.IsEditing && IsDateTimeEditable)
             {
-                <DatePicker Format="yyyy-MM-dd HH:mm:ss" ShowTime="true" Type="text" Value="@mappingEntry.End" ValueChanged="(DateTime value) => OnEndChanged(mappingEntry, value)" AutoFocus="@(!IsRangeEditable && IsDateTimeEditable)" />
+                <RangePicker Format="yyyy-MM-dd HH:mm:ss" TValue="DateTime[]" @bind-Value="@mappingEntry.Values" ShowTime="@true" />
             }
             else if (IsDateTimeEditable)
             {
                 <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
-                    @mappingEntry.End
+                    @($"{mappingEntry.Values[0].ToString("yyyy-MM-dd HH:mm:ss")} ~ {mappingEntry.Values[1].ToString("yyyy-MM-dd HH:mm:ss")}")
                 </div>
             }
             else
             {
-                <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.End</div>
+                <div class="editable-cell-value-wrap" style="padding-right:24px">
+                    @($"{mappingEntry.Values[0].ToString("yyyy-MM-dd HH:mm:ss")} ~ {mappingEntry.Values[1].ToString("yyyy-MM-dd HH:mm:ss")}")
+                </div>
+            }
+
+        }
+        else
+        {   
+            if (mappingEntry.IsEditing && IsDateTimeEditable)
+            {
+                <DatePicker Format="yyyy-MM-dd HH:mm:ss" ShowTime="true" Type="text" Value="@mappingEntry.Values[0]" ValueChanged="(DateTime value) => OnValuesChanged(mappingEntry, [value,default])" AutoFocus="@(!IsOperatorEditable && IsDateTimeEditable)" />
+            }
+            else if (IsDateTimeEditable)
+            {
+                <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
+                    @($"{mappingEntry.Values[0].ToString("yyyy-MM-dd HH:mm:ss")}")
+                </div>
+            }
+            else
+            {
+                <div class="editable-cell-value-wrap" style="padding-right:24px">
+                    @($"{mappingEntry.Values[0].ToString("yyyy-MM-dd HH:mm:ss")}")
+                </div>
             }
         }
 
@@ -76,7 +82,7 @@
     {
         <ActionColumn Fixed="right" Width="100" Title="操作">
             <Space>
-                @if (IsRangeEditable || IsDateTimeEditable)
+                @if (IsOperatorEditable || IsDateTimeEditable)
                 {
                     @if (mappingEntry.IsEditing)
                     {
@@ -115,27 +121,25 @@
 
     [Parameter] public EventCallback<AddingNewItemEventArgs<DateTimeFilter>> AddingNewItem { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, DateTime>> BeginChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, DateTime[]>> ValuesChanged { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, DateTime>> EndChanged { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, FileTimeRange>> RangeChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, CompareOperators>> SelectedOperatorChanged { get; set; }
 
-    [Parameter] public string RangeTitle { get; set; } = "范围";
+    [Parameter] public string OperatorTitle { get; set; } = "运算符";
 
-    [Parameter] public string BeginTitle { get; set; } = "起始时间";
+    [Parameter] public string DateTimeTitle { get; set; } = "时间";
 
-    [Parameter] public string EndTitle { get; set; } = "结束时间";
 
-    [Parameter] public bool IsRangeEditable { get; set; } = true;
+    [Parameter] public bool IsOperatorEditable { get; set; } = true;
 
     [Parameter] public bool IsDateTimeEditable { get; set; } = true;
 
-    [Parameter] public bool IsRangeHidden { get; set; } = false;
+    [Parameter] public bool IsOperatorHidden { get; set; } = false;
 
     [Parameter] public bool IsEditable { get; set; } = true;
 
-    [Parameter] public IEnumerable<EnumModel<FileTimeRange>> RangeList { get; set; } = [];
+    [Parameter] public IEnumerable<EnumModel<CompareOperators>> OperatorList { get; set; } = [];
 
     [Parameter] public IEnumerable<DateTimeFilter> ValueList { get; set; } = [];
 
@@ -148,7 +152,7 @@
     {
         if (!IsEditable)
         {
-            IsRangeEditable = false;
+            IsOperatorEditable = false;
             IsDateTimeEditable = false;
         }
 
@@ -157,30 +161,50 @@
 
     protected override void OnInitialized()
     {
-        this.RangeList = new List<EnumModel<FileTimeRange>>()
+        OperatorList = new List<EnumModel<CompareOperators>>()
         {
-            new EnumModel<FileTimeRange>()
-                        {
-                 Name = "前",
-                 Value = FileTimeRange.OutOfRange,
-            },
-            new EnumModel<FileTimeRange>()
+            new EnumModel<CompareOperators>()
             {
-                 Name = "内",
-                 Value = FileTimeRange.InRange,
+                 Name = "小于",
+                 Value = CompareOperators.LessThan,
             },
-            new EnumModel<FileTimeRange>()
+            new EnumModel<CompareOperators>()
             {
-                 Name = "后",
-                 Value = FileTimeRange.WithinRange,
+                 Name = "小于等于",
+                 Value = CompareOperators.LessThan,
+            },
+            new EnumModel<CompareOperators>()
+            {
+                 Name = "等于",
+                 Value = CompareOperators.Equals,
+            },
+            new EnumModel<CompareOperators>()
+            {
+                 Name = "大于",
+                 Value = CompareOperators.GreatThan,
+            },
+            new EnumModel<CompareOperators>()
+            {
+                 Name = "大于等于",
+                 Value = CompareOperators.GreatThanEqual,
+            },
+            new EnumModel<CompareOperators>()
+            {
+                 Name = "范围内",
+                 Value = CompareOperators.WithinRange,
+            },
+            new EnumModel<CompareOperators>()
+            {
+                 Name = "范围外",
+                 Value = CompareOperators.OutOfRange,
             },
         };
         base.OnInitialized();
     }
 
-    private string FindRangeName(FileTimeRange range)
+    private string FindCompareOperatorName(CompareOperators range)
     {
-        return this.RangeList.FirstOrDefault(x => x.Value == range)?.Name ?? range.ToString();
+        return OperatorList.FirstOrDefault(x => x.Value == range)?.Name ?? range.ToString();
     }
 
     async Task OnSelectedItemsChanged(IEnumerable<DateTimeFilter> items)
@@ -214,42 +238,29 @@
     }
 
 
-    async Task OnBeginChanged(DateTimeFilter filter, DateTime value)
+    async Task OnValuesChanged(DateTimeFilter filter, DateTime[] value)
     {
-        var e = new ValueChangedEventArgs<DateTimeFilter, DateTime>(filter, value);
-        if (BeginChanged.HasDelegate)
+        var e = new ValueChangedEventArgs<DateTimeFilter, DateTime[]>(filter, value);
+        if (ValuesChanged.HasDelegate)
         {
-            await BeginChanged.InvokeAsync(e);
+            await ValuesChanged.InvokeAsync(e);
         }
         if (!e.Handled)
         {
-            filter.Begin = value;
+            filter.Values = value;
         }
     }
 
-    async Task OnEndChanged(DateTimeFilter filter, DateTime value)
+    async Task OnOperatorChanged(DateTimeFilter filter, CompareOperators value)
     {
-        var e = new ValueChangedEventArgs<DateTimeFilter, DateTime>(filter, value);
-        if (EndChanged.HasDelegate)
+        var e = new ValueChangedEventArgs<DateTimeFilter, CompareOperators>(filter, value);
+        if (SelectedOperatorChanged.HasDelegate)
         {
-            await EndChanged.InvokeAsync(e);
+            await SelectedOperatorChanged.InvokeAsync(e);
         }
         if (!e.Handled)
         {
-            filter.End = value;
-        }
-    }
-
-    async Task OnRangeChanged(DateTimeFilter filter, FileTimeRange value)
-    {
-        var e = new ValueChangedEventArgs<DateTimeFilter, FileTimeRange>(filter, value);
-        if (RangeChanged.HasDelegate)
-        {
-            await RangeChanged.InvokeAsync(e);
-        }
-        if (!e.Handled)
-        {
-            filter.Range = value;
+            filter.Operator = value;
         }
     }
 

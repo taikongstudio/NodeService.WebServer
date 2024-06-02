@@ -144,7 +144,7 @@
       },
       {
         "path": "/CommonConfig/FileSystemWatch",
-        "name": "文件系统监控",
+        "name": "文件系统监控配置",
         "key": "CommonConfig.FileSystemWatch"
       },
       {

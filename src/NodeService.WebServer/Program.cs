@@ -19,6 +19,7 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
+using NodeService.WebServer.Services.FileSystem;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
@@ -249,7 +250,8 @@ public class Program
         builder.Services.AddHostedService<ClientUpdateQueueService>();
         builder.Services.AddHostedService<CommonConfigBatchQueryQueueService>();
         builder.Services.AddHostedService<TaskCancellationQueueService>();
-        builder.Services.AddHostedService<ConfigurationChangedNotifyService>();
+        builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
+        builder.Services.AddHostedService<NodeFileSystemWatchEventConsumerService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -413,6 +415,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>(64, TimeSpan.FromMilliseconds(100)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(64, TimeSpan.FromSeconds(1)));
+        builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
 
     }
 

@@ -36,6 +36,9 @@
             <FormItem Label="密码">
                 <InputPassword @bind-Value="@context.Password"/>
             </FormItem>
+            <FormItem Required Label="默认工作区目录">
+                <Input @bind-Value="@context.DefaultWorkingDirectory" />
+            </FormItem>
             <FormItem Label="读取超时">
                 <AntDesign.InputNumber Style="width:300px" PlaceHolder="请输入超时（毫秒）" @bind-Value="@context.ReadTimeout"/>
             </FormItem>
@@ -182,8 +185,12 @@
         }
         else
         {
-            _editModel = model;
             _modalTitle = "新建配置";
+            _editModel = model;
+            if (string.IsNullOrEmpty(_editModel.Value.DefaultWorkingDirectory))
+            {
+                _editModel.Value.DefaultWorkingDirectory = "/";
+            }
         }
     }
 

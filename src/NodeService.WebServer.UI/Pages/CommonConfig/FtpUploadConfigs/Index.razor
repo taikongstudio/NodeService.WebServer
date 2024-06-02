@@ -48,7 +48,9 @@
                     </CommonDialog>
                 </FormItem>
                 <FormItem Label="远程目录">
-                    <Input @bind-Value="@context.RemoteDirectory" />
+                    <AntDesign.Input @bind-Value="@context.RemoteDirectory">
+                        <AddOnBefore>@(GetDefaultWorkingDirectory())</AddOnBefore>
+                    </AntDesign.Input>
                 </FormItem>
                 <FormItem Label="清空远程目录">
                     <Switch @bind-Checked="@context.CleanupRemoteDirectory" />
@@ -59,22 +61,45 @@
                 <FormItem Label="包含子目录">
                     <Switch @bind-Checked="@context.IncludeSubDirectories" />
                 </FormItem>
-                <FormItem Label="模式匹配">
-                    <Input @bind-Value="@context.SearchPattern" />
-                </FormItem>
+                @if (context.IncludeSubDirectories)
+                {
+                    <FormItem Label="最大递归深度">
+                        <AntDesign.InputNumber @bind-Value="@context.MaxRecursionDepth" Style="width:200px" />
+                    </FormItem>
+                }
                 <FormItem Label="大小写匹配">
-                    <RadioGroup @bind-Value="@context.MatchCasing" Size="large">
-                        <Radio RadioButton Value="@(MatchCasing.PlatformDefault)">默认</Radio>
+                    <RadioGroup @bind-Value="@context.MatchCasing">
+                        <Radio RadioButton Value="@(MatchCasing.PlatformDefault)">平台默认</Radio>
                         <Radio RadioButton Value="@(MatchCasing.CaseInsensitive)">大小写无关</Radio>
                         <Radio RadioButton Value="@(MatchCasing.CaseSensitive)">大小写有关</Radio>
                     </RadioGroup>
                 </FormItem>
 
+                <FormItem Label="模式匹配">
+                    <Input Disabled="@(_editModel.Value.Filters!=null&&_editModel.Value.Filters.Any(IsSearchPatternFilter))" @bind-Value="@context.SearchPattern" />
+                </FormItem>
+
+                <FormItem Label="匹配模式">
+                    <RadioGroup @bind-Value="@context.MatchType">
+                        <Radio RadioButton Value="@(MatchType.Simple)">简单匹配</Radio>
+                        <Radio RadioButton Value="@(MatchType.Win32)">Win32匹配语义</Radio>
+                    </RadioGroup>
+                </FormItem>
+
+                <FormItem Label="路径过滤器">
+                    <StringEntryTable ItemsSource="@context.Filters"
+                                      NameList="_nameList"
+                                      EndEdit="OnFilterEndEdit"
+                                      Deleted="OnFilterDeleted" />
+                </FormItem>
+                <FormItem Label="日期过滤器">
+                    <DateTimeFilterTable ItemsSource="@context.DateTimeFilters" />
+                </FormItem>
+                <FormItem Label="长度过滤器">
+                    <FileLengthFilterTable ItemsSource="@context.LengthFilters" />
+                </FormItem>
                 @if (!context.CleanupRemoteDirectory)
                 {
-                    <FormItem Label="时间范围">
-                       <DateTimeFilterTable ItemsSource="@context.DateTimeFilters"/>
-                    </FormItem>
                     <FormItem Label="文件处理方式">
                         <RadioGroup @bind-Value="@context.FtpFileExists">
                             <Radio RadioButton Value="@FileExists.Skip">跳过</Radio>
@@ -84,9 +109,13 @@
                         </RadioGroup>
                         <br />
                         <Text>本地文件时间和服务器文件时间差异</Text>
+                        <br />
                         <RadioGroup @bind-Value="@context.FileExistsTimeRange">
-                            <Radio RadioButton Value="@FileTimeRange.WithinRange">小于</Radio>
-                            <Radio RadioButton Value="@FileTimeRange.OutOfRange">大于</Radio>
+                            <Radio RadioButton Value="@CompareOperators.LessThan">小于</Radio>
+                            <Radio RadioButton Value="@CompareOperators.GreatThan">大于</Radio>
+                            <Radio RadioButton Value="@CompareOperators.LessThanEqual">小于等于</Radio>
+                            <Radio RadioButton Value="@CompareOperators.GreatThanEqual">大于等于</Radio>
+                            <Radio RadioButton Value="@CompareOperators.Equals">等于</Radio>
                         </RadioGroup>
                         <br />
                         <AntDesign.InputNumber Min="1" @bind-Value="@context.FileExistsTime" />
@@ -100,13 +129,11 @@
                     </FormItem>
                 }
 
+
                 <FormItem Label="重试次数">
-                    <AntDesign.InputNumber @bind-Value="@context.RetryTimes" />
+                    <AntDesign.InputNumber @bind-Value="@context.RetryTimes" Style="width:200px" />
                 </FormItem>
-                <FormItem Label="过滤器">
-                    <StringEntryTable ItemsSource="@context.Filters"
-                                      NameList="_nameList" />
-                </FormItem>
+
                 <FormItem Label="打印本地文件">
                     <Switch @bind-Checked="@context.PrintLocalFiles"></Switch>
                 </FormItem>
@@ -177,18 +204,6 @@
                 </CellRender>
             </ActionColumn>
         </ColumnDefinitions>
-        <ExpandTemplate>
-            <Tabs Animated>
-                <TabPane Tab="过滤器" Key="1">
-                    <StringEntryTable ItemsSource="@context.Data.Filters"
-                                      NameTitle="备注"
-                                      ValueTitle="过滤器"
-                                      IsEditable="false"/>
-                </TabPane>
-
-
-            </Tabs>
-        </ExpandTemplate>
     </Table>
 </GridContent>
 
@@ -214,8 +229,13 @@
     {
         _nameList =
         [
-            new StringEntry { Name = "包含", Value = "include" }, new StringEntry { Name = "排除", Value = "exclude" }
-        ];
+            new StringEntry { Name = "包含", Value = nameof(FilePathFilter.Contains).ToLower() },
+    new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
+    new StringEntry { Name = "开始", Value = nameof(FilePathFilter.StartWith).ToLower() },
+    new StringEntry { Name = "结束", Value = nameof(FilePathFilter.EndsWith).ToLower() },
+    new StringEntry { Name = "模式匹配", Value = nameof(FilePathFilter.SearchPattern).ToLower()},
+    new StringEntry { Name = "正则表达式", Value = nameof(FilePathFilter.RegExp).ToLower()},
+    ];
         _dataSource = new RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
             ApiService.QueryFtpUploadConfigurationListAsync,
@@ -225,6 +245,33 @@
         base.OnInitialized();
     }
 
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
+    }
+
+    private void OnFilterDeleted(StringEntry stringEntry)
+    {
+        StateHasChanged();
+    }
+
+    private void OnFilterEndEdit(StringEntry stringEntry)
+    {
+        stringEntry.EndEdit();
+        StateHasChanged();
+    }
+
+    private static bool IsSearchPatternFilter(StringEntry entry)
+    {
+        return Enum.TryParse<FilePathFilter>(
+            entry.Name,
+            true,
+            out FilePathFilter pathFilter) 
+            &&
+            pathFilter == FilePathFilter.SearchPattern;
+    }
+
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
@@ -232,12 +279,6 @@
                 Message = "加载失败",
                 Description = ex.ToString()
             });
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await _dataSource.RequestAsync();
-        await base.OnInitializedAsync();
     }
 
 
@@ -263,15 +304,27 @@
         if (model == null)
         {
             _editModel = new FtpUploadConfigModel
-            {
-                Id = Guid.NewGuid().ToString()
-            };
+                {
+                    Id = Guid.NewGuid().ToString()
+                };
             _modalTitle = "新建配置";
         }
         else
         {
             _modalTitle = "编辑配置";
             _editModel = model;
+            if (_editModel.Value.DateTimeFilters == null)
+            {
+                _editModel.Value.DateTimeFilters = [];
+            }
+            if (_editModel.Value.LengthFilters == null)
+            {
+                _editModel.Value.LengthFilters = [];
+            }
+            if (_editModel.Value.MaxRecursionDepth == 0)
+            {
+                _editModel.Value.MaxRecursionDepth = int.MaxValue;
+            }
             await InitSelectedFtpConfigAsync();
         }
     }
@@ -290,6 +343,10 @@
     {
         try
         {
+            if (_editModel.Value.DateTimeFilters == null)
+            {
+                _editModel.Value.DateTimeFilters = [];
+            }
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
@@ -399,6 +456,24 @@
     {
         _editFormSubmitting = true;
         _editForm.Submit();
+    }
+
+    private string GetDefaultWorkingDirectory()
+    {
+        if (_selectedFtpConfigs == null || !_selectedFtpConfigs.Any())
+        {
+            return "/";
+        }
+        var defaultConfig = _selectedFtpConfigs.FirstOrDefault();
+        if (defaultConfig == null || string.IsNullOrEmpty(defaultConfig.Value.DefaultWorkingDirectory))
+        {
+            return "/";
+        }
+        if (!defaultConfig.Value.DefaultWorkingDirectory.StartsWith("/"))
+        {
+            return "/" + defaultConfig.Value.DefaultWorkingDirectory;
+        }
+        return defaultConfig.Value.DefaultWorkingDirectory;
     }
 
 

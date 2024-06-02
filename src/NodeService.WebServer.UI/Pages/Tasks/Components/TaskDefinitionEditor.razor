@@ -320,7 +320,7 @@
             _modalTitle = "编辑配置";
             _taskDefinition = model;
             await OnSelectedTaskTypeDescChanged([model.Value.JobTypeDesc]);
-            _selectedNodes = await model.Value.NodeList.LoadNodeListAsync(ApiService);
+            _selectedNodes = await model.Value.NodeList.QueryNodeListAsync(ApiService);
         }
 
         _loading = false;
@@ -566,9 +566,9 @@
 
     async Task CloseImpl()
     {
-        if (this.Closed.HasDelegate)
+        if (Closed.HasDelegate)
         {
-            await this.Closed.InvokeAsync();
+            await Closed.InvokeAsync();
         }
     }
 

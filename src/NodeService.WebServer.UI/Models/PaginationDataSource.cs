@@ -57,7 +57,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
             }
             var rsp = await _queryFunc.Invoke(QueryParameters, default);
-            if (rsp.TotalCount == 0 && this.TotalCount == 0)
+            if (rsp.TotalCount == 0 && TotalCount == 0)
             {
                 await RaiseCompleted();
                 return;

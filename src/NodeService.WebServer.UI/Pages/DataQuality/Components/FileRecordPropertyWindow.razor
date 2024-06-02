@@ -68,7 +68,7 @@
     {
         try
         {
-            var rsp = await ApiService.AddOrUpdateAsync(this.DataContext);
+            var rsp = await ApiService.AddOrUpdateAsync(DataContext);
             if (rsp.ErrorCode == 0)
             {
                 await _message.Info("更新文件记录成功");
@@ -104,13 +104,13 @@
         {
             await Closed.InvokeAsync();
         }
-        this._jsonCodeEditor?.Dispose();
-        this.StateHasChanged();
+        _jsonCodeEditor?.Dispose();
+        StateHasChanged();
     }
 
     private async Task InitAsync()
     {
-        if (this.DataContext != null && !string.IsNullOrEmpty(DataContext.Properties))
+        if (DataContext != null && !string.IsNullOrEmpty(DataContext.Properties))
         {
             await _jsonCodeEditor.SetValue(DataContext.Properties);
         }

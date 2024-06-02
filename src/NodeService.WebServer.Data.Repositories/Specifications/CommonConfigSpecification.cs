@@ -19,11 +19,11 @@ public class CommonConfigSpecification<T> : Specification<T> where T : ModelBase
         {
             if (idFilters.FilterType == DataFilterTypes.Include)
             {
-                this.Query.Where(x => idFilters.Items.Contains(x.Id));
+                Query.Where(x => idFilters.Items.Contains(x.Id));
             }
             else if (idFilters.FilterType == DataFilterTypes.Exclude)
             {
-                this.Query.Where(x => !idFilters.Items.Contains(x.Id));
+                Query.Where(x => !idFilters.Items.Contains(x.Id));
             }
         }
     }

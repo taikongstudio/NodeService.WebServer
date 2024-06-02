@@ -185,7 +185,7 @@
         {
             _editModel = model;
             _modalTitle = "编辑配置";
-            _selectedNodes = await _editModel.Value.NodeList.LoadNodeListAsync(ApiService);
+            _selectedNodes = await _editModel.Value.NodeList.QueryNodeListAsync(ApiService);
             var databaseConfig = await ApiService.GetDatabaseConfigAsync(_editModel.Value.DatabaseConfigId);
             if (databaseConfig == null)
             {
@@ -210,7 +210,7 @@
                 _editModel.NodeList = new List<StringEntry>();
             }
             _editModel.NodeList.Clear();
-            _editModel.NodeList.AddRange(this._selectedNodes.Select(x => new StringEntry(x.Name, x.Id)));
+            _editModel.NodeList.AddRange(_selectedNodes.Select(x => new StringEntry(x.Name, x.Id)));
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
@@ -339,7 +339,7 @@
 
     private async Task ScriptEditorInitAsync()
     {
-        if (this._editModel != null && !string.IsNullOrEmpty(_editModel.Value.Scripts))
+        if (_editModel != null && !string.IsNullOrEmpty(_editModel.Value.Scripts))
         {
             await _scriptsEditor.SetValue(_editModel.Value.Scripts);
         }

@@ -27,12 +27,12 @@ namespace NodeService.WebServer.Services
 
         public bool AddContext(TaskPenddingContext context)
         {
-            return this._contexts.TryAdd(context.Id, context);
+            return _contexts.TryAdd(context.Id, context);
         }
 
         public bool RemoveContext(string id, out TaskPenddingContext? context)
         {
-            return this._contexts.TryRemove(id, out context);
+            return _contexts.TryRemove(id, out context);
         }
 
         public bool TryGetContext(string id, out TaskPenddingContext? context)

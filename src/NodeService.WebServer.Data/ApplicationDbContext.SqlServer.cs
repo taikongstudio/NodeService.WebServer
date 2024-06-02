@@ -179,11 +179,24 @@ public partial class ApplicationDbContext
                 model => model.Value, ownedNavigationBuilder =>
                 {
                     ownedNavigationBuilder.ToJson();
+
                     ownedNavigationBuilder
                         .Property(x => x.Filters)
                         .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<StringEntry>());
+
+                    ownedNavigationBuilder.Property(x => x.DateTimeFilters)
+                        .HasConversion(x => Serialize(x),
+                            x => Deserialize<List<DateTimeFilter>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<DateTimeFilter>());
+
+                    ownedNavigationBuilder.Property(x => x.LengthFilters)
+                        .HasConversion(x => Serialize(x),
+                            x => Deserialize<List<FileLengthFilter>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<FileLengthFilter>());
                 });
         });
 
@@ -303,6 +316,25 @@ public partial class ApplicationDbContext
                 model => model.Value, ownedNavigationBuilder =>
                 {
                     ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder.Property(x => x.NodeList)
+                        .HasConversion(x => Serialize(x),
+                            x => Deserialize<List<StringEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<StringEntry>());
+                });
+        });
+
+        modelBuilder.Entity<FileSystemWatchConfigModel>(builder =>
+        {
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder.Property(x => x.Filters)
+                        .HasConversion(x => Serialize(x),
+                            x => Deserialize<List<StringEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<StringEntry> ());
                     ownedNavigationBuilder.Property(x => x.NodeList)
                         .HasConversion(x => Serialize(x),
                             x => Deserialize<List<StringEntry>>(x))

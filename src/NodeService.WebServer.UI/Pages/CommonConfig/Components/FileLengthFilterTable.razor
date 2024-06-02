@@ -1,0 +1,320 @@
+﻿
+@if (IsEditable)
+{
+    <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddNewItem" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+    <Button Shape="@ButtonShape.Circle" Danger Icon="@IconType.Outline.Delete" OnClick="RemoveSelectedItems" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+}
+
+<Table 
+       Context="mappingEntry"
+       TItem="FileLengthFilter"
+       DataSource="@ItemsSource"
+       Size="TableSize.Small"
+       SelectedRows="SelectedItems"
+       SelectedRowsChanged="@OnSelectedItemsChanged"
+       RowKey="x => x.Id">
+    <Selection Key="@mappingEntry.Id" Type="checkbox"/>
+    <PropertyColumn Hidden="@IsOperatorHidden" Title="@OperatorTitle" Property="c => c.Operator" Sortable>
+        @if (mappingEntry.IsEditing && IsOperatorEditable)
+        {
+            if (OperatorList != null && OperatorList.Any())
+            {
+                <Select DataSource="@OperatorList"
+                        @bind-Value="@mappingEntry.Operator"
+                        TItem="EnumModel<CompareOperators>"
+                        AutoFocus
+                        TItemValue="CompareOperators"
+                        LabelName="@nameof(EnumModel<CompareOperators>.Name)"
+                        ValueName="@nameof(EnumModel<CompareOperators>.Value)" />
+            }
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@(FindCompareOperatorName(mappingEntry.Operator))</div>
+        }
+    </PropertyColumn>
+    <PropertyColumn Hidden="@IsValuesHidden" Title="@ValuesTitle" Property="c => c.Values" Sortable>
+        @if (mappingEntry.IsEditing && IsValuesEditable)
+        {
+            if (mappingEntry.Operator == CompareOperators.WithinRange || mappingEntry.Operator == CompareOperators.OutOfRange)
+            {
+                <AntDesign.InputNumber Value="@mappingEntry.Values[0]" OnChange="(double value)=>OnValuesChanged(mappingEntry,[value,mappingEntry.Values[1]])"/>
+                <Text>~</text>
+                <AntDesign.InputNumber Value="@mappingEntry.Values[1]" OnChange="(double value)=>OnValuesChanged(mappingEntry,[mappingEntry.Values[0],value])"/>
+            }else
+            {
+                <AntDesign.InputNumber Value="@mappingEntry.Values[0]" OnChange="(double value)=>OnValuesChanged(mappingEntry,[value,mappingEntry.Values[0]])" />
+            }
+        }
+        else
+        {
+            if (mappingEntry.Operator == CompareOperators.WithinRange || mappingEntry.Operator == CompareOperators.OutOfRange)
+            {
+                <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@($"{mappingEntry.Values[0]}~{mappingEntry.Values[1]}")</div>
+            }
+            else
+            {
+                <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@($"{mappingEntry.Values[0]}")</div>
+            }
+        }
+    </PropertyColumn>
+    <PropertyColumn Hidden="@IsLengthUnitHidden" Title="@FileLengthUnitTitle" Property="c => c.LengthUnit" Sortable>
+        @if (mappingEntry.IsEditing && IsLengthUnitEditable)
+        {
+            if (FileLengthUnitList != null && FileLengthUnitList.Any())
+            {
+                <Select DataSource="@FileLengthUnitList"
+                        @bind-Value="@mappingEntry.LengthUnit"
+                        TItem="EnumModel<FileLengthUnit>"
+                        AutoFocus
+                        TItemValue="FileLengthUnit"
+                        LabelName="@nameof(EnumModel<FileLengthUnit>.Name)"
+                        ValueName="@nameof(EnumModel<FileLengthUnit>.Value)" />
+            }
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@(FindLengthUnitName(mappingEntry.LengthUnit))</div>
+        }
+    </PropertyColumn>
+    @if (IsEditable)
+    {
+        <ActionColumn Fixed="right" Width="100" Title="操作">
+            <Space>
+                @if (IsOperatorEditable || IsLengthUnitEditable || IsValuesEditable)
+                {
+                    @if (mappingEntry.IsEditing)
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="() => mappingEntry.EndEdit()"></Button>
+                        </SpaceItem>
+                    }
+                    else
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => mappingEntry.BeginEdit()"></Button>
+                        </SpaceItem>
+                    }
+                }
+
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="() => RemoveSelectedItem(mappingEntry)"></Button>
+                </SpaceItem>
+
+            </Space>
+        </ActionColumn>
+    }
+
+</Table>
+
+
+@code {
+
+    [Parameter] public IList<FileLengthFilter> ItemsSource { get; set; }
+
+
+    public IEnumerable<FileLengthFilter> SelectedItems { get; set; } = [];
+
+
+    [Parameter] public EventCallback<IEnumerable<FileLengthFilter>> SelectedItemsChanged { get; set; }
+
+    [Parameter] public EventCallback<AddingNewItemEventArgs<FileLengthFilter>> AddingNewItem { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<FileLengthFilter, double[]>> ValuesChanged { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<FileLengthFilter, FileLengthUnit>> SelectedLengthUnitChanged { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<FileLengthFilter, CompareOperators>> SelectedOperatorChanged { get; set; }
+
+    [Parameter] public string OperatorTitle { get; set; } = "运算符";
+
+    [Parameter] public string FileLengthUnitTitle { get; set; } = "单位";
+
+    [Parameter] public string ValuesTitle { get; set; } = "值";
+
+
+    [Parameter] public bool IsOperatorEditable { get; set; } = true;
+
+    [Parameter] public bool IsLengthUnitEditable { get; set; } = true;
+
+    [Parameter] public bool IsValuesEditable { get; set; } = true;
+
+    [Parameter] public bool IsOperatorHidden { get; set; } = false;
+
+    [Parameter] public bool IsLengthUnitHidden { get; set; } = false;
+
+    [Parameter] public bool IsValuesHidden { get; set; } = false;
+
+    [Parameter] public bool IsEditable { get; set; } = true;
+
+    [Parameter] public IEnumerable<EnumModel<CompareOperators>> OperatorList { get; set; } = [];
+
+    [Parameter] public IEnumerable<EnumModel<FileLengthUnit>> FileLengthUnitList { get; set; } = [];
+
+    [Parameter] public IEnumerable<FileLengthFilter> ValueList { get; set; } = [];
+
+    void RemoveSelectedItem(FileLengthFilter value)
+    {
+        ItemsSource.Remove(value);
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (!IsEditable)
+        {
+            IsOperatorEditable = false;
+            IsLengthUnitEditable = false;
+            IsValuesEditable = false;
+        }
+
+        return base.OnParametersSetAsync();
+    }
+
+    protected override void OnInitialized()
+    {
+        OperatorList = [
+            new EnumModel<CompareOperators>()
+            {
+                 Name = "小于",
+                 Value = CompareOperators.LessThan,
+            },
+            new EnumModel<CompareOperators>()
+                {
+                     Name = "小于等于",
+                     Value = CompareOperators.LessThan,
+                },
+            new EnumModel<CompareOperators>()
+                {
+                     Name = "等于",
+                     Value = CompareOperators.Equals,
+                },
+            new EnumModel<CompareOperators>()
+                {
+                     Name = "大于",
+                     Value = CompareOperators.GreatThan,
+                },
+            new EnumModel<CompareOperators>()
+                {
+                     Name = "大于等于",
+                     Value = CompareOperators.GreatThanEqual,
+                },
+            new EnumModel<CompareOperators>()
+                {
+                     Name = "范围内",
+                     Value = CompareOperators.WithinRange,
+                },
+            new EnumModel<CompareOperators>()
+                {
+                     Name = "范围外",
+                     Value = CompareOperators.OutOfRange,
+                },
+        ];
+        FileLengthUnitList = [
+            new EnumModel<FileLengthUnit>()
+                {
+                     Name = "KB",
+                     Value = FileLengthUnit.KB,
+                },
+            new EnumModel<FileLengthUnit>()
+                {
+                     Name = "MB",
+                     Value = FileLengthUnit.MB,
+                },
+            new EnumModel<FileLengthUnit>()
+                {
+                     Name = "GB",
+                     Value = FileLengthUnit.GB,
+                },
+            new EnumModel<FileLengthUnit>()
+                {
+                     Name = "PB",
+                     Value = FileLengthUnit.PB,
+                },
+        ];
+        base.OnInitialized();
+    }
+
+    private string FindCompareOperatorName(CompareOperators range)
+    {
+        return OperatorList.FirstOrDefault(x => x.Value == range)?.Name ?? range.ToString();
+    }
+
+    private string FindLengthUnitName(FileLengthUnit  unit)
+    {
+        return FileLengthUnitList.FirstOrDefault(x => x.Value == unit)?.Name ?? unit.ToString();
+    }
+
+    async Task OnSelectedItemsChanged(IEnumerable<FileLengthFilter> items)
+    {
+        SelectedItems = items;
+        await SelectedItemsChanged.InvokeAsync(items);
+    }
+
+    public void RemoveSelectedItems()
+    {
+        foreach (var item in SelectedItems)
+        {
+            ItemsSource.Remove(item);
+        }
+
+        SelectedItems = [];
+    }
+
+    async Task AddNewItem()
+    {
+        var entry = new FileLengthFilter();
+        var e = new AddingNewItemEventArgs<FileLengthFilter>(entry);
+        await AddingNewItem.InvokeAsync(e);
+        if (e.Handled)
+        {
+            return;
+        }
+
+        ItemsSource.Add(entry);
+        entry.BeginEdit();
+    }
+
+
+    async Task OnValuesChanged(FileLengthFilter filter, double[] values)
+    {
+        var e = new ValueChangedEventArgs<FileLengthFilter, double[]>(filter, values);
+        if (ValuesChanged.HasDelegate)
+        {
+            await ValuesChanged.InvokeAsync(e);
+        }
+        if (!e.Handled)
+        {
+            filter.Values = values;
+        }
+    }
+
+    async Task OnOperatorChanged(FileLengthFilter filter, CompareOperators value)
+    {
+        var e = new ValueChangedEventArgs<FileLengthFilter, CompareOperators>(filter, value);
+        if (SelectedOperatorChanged.HasDelegate)
+        {
+            await SelectedOperatorChanged.InvokeAsync(e);
+        }
+        if (!e.Handled)
+        {
+            filter.Operator = value;
+        }
+    }
+
+    async Task OnFileLengthUnitChanged(FileLengthFilter filter, FileLengthUnit value)
+    {
+        var e = new ValueChangedEventArgs<FileLengthFilter, FileLengthUnit>(filter, value);
+        if (SelectedLengthUnitChanged.HasDelegate)
+        {
+            await SelectedLengthUnitChanged.InvokeAsync(e);
+        }
+        if (!e.Handled)
+        {
+            filter.LengthUnit = value;
+        }
+    }
+
+
+}

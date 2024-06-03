@@ -15,12 +15,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b04395b7-eb82-4cab-a9bf-7f5c3a791308" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/DateTimeFilter.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/DateTimeFilter.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileEnums.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileEnums.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileLengthFilter.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileLengthFilter.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FtpDownloadConfiguration.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FtpDownloadConfiguration.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FtpUploadConfiguration.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FtpUploadConfiguration.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.NodeService.WebServer/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.NodeService.WebServer/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Data/ApplicationDbContext.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Data/ApplicationDbContext.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/Components/DateTimeFilterTable.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/Components/DateTimeFilterTable.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/Components/FileLengthFilterTable.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/Components/FileLengthFilterTable.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FtpDownloadConfigs/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FtpDownloadConfigs/Index.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FtpUploadConfigs/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FtpUploadConfigs/Index.razor" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/DataQuality/Calendar/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/DataQuality/Calendar/Index.razor" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/DataQuality/Components/CalendarDateWindow.razor" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/appsettings.Development.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/appsettings.Development.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/appsettings.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/appsettings.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -39,28 +44,28 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    ".NET Launch Settings Profile.NodeService.Infrastructure.executor": "Debug",
-    ".NET Launch Settings Profile.NodeService.WebServer.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "master",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.keymap",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;.NET Launch Settings Profile.NodeService.Infrastructure.executor&quot;: &quot;Debug&quot;,
+    &quot;.NET Launch Settings Profile.NodeService.WebServer.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "rider.external.source.directories": [
-      "C:\\Users\\follo\\AppData\\Roaming\\JetBrains\\Rider2024.1\\resharper-host\\DecompilerCache",
-      "C:\\Users\\follo\\AppData\\Roaming\\JetBrains\\Rider2024.1\\resharper-host\\SourcesCache",
-      "C:\\Users\\follo\\AppData\\Local\\Symbols\\src"
+  &quot;keyToStringList&quot;: {
+    &quot;rider.external.source.directories&quot;: [
+      &quot;C:\\Users\\follo\\AppData\\Roaming\\JetBrains\\Rider2024.1\\resharper-host\\DecompilerCache&quot;,
+      &quot;C:\\Users\\follo\\AppData\\Roaming\\JetBrains\\Rider2024.1\\resharper-host\\SourcesCache&quot;,
+      &quot;C:\\Users\\follo\\AppData\\Local\\Symbols\\src&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected=".NET Launch Settings Profile.NodeService.WebServer">
     <configuration name="NodeService.WebServer: 172.27.242.223" type="DotNetMsBuildPublish" factoryName="Publish to IIS">
       <riderPublish configuration="Release" platform="Any CPU" publish_profile="172.27.242.223.pubxml" pubxml_path="$PROJECT_DIR$/src/NodeService.WebServer/Properties/PublishProfiles/172.27.242.223.pubxml" uuid_high="6555749847264480811" uuid_low="-8557570855246118524" />
@@ -174,6 +179,7 @@
       <updated>1715757164289</updated>
       <workItem from="1715757166378" duration="1420000" />
       <workItem from="1716630627015" duration="1023000" />
+      <workItem from="1717379570283" duration="3437000" />
     </task>
     <servers />
   </component>

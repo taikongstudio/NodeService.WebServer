@@ -46,24 +46,22 @@ public class VirtualFileSystemController : Controller
     [HttpPost("/api/virtualfilesystem/upload/{nodeName}")]
     public async Task<IActionResult> OnPostUploadAsync(string nodeName, List<IFormFile> files)
     {
-        var uploadFileResult = new ApiResponse<UploadFileResult>();
-        uploadFileResult.SetResult(new UploadFileResult());
+        var uploadFileResultRsp = new ApiResponse<UploadFileResult>();
+        uploadFileResultRsp.SetResult(new UploadFileResult());
         try
         {
-            uploadFileResult.Result.UploadedFiles = new List<UploadedFile>();
+            uploadFileResultRsp.Result.UploadedFiles = new List<UploadedFile>();
             var nodeCachePath = _webServerOptions.GetFileCachesPath(nodeName);
             foreach (var formFile in files)
             {
                 var fileId = formFile.Headers["FileId"];
                 var remotePath = Path.Combine(nodeCachePath, Guid.NewGuid().ToString()).Replace("\\", "/");
-                var downloadUrl =
-                    $"{_configuration.GetValue<string>("Kestrel:Endpoints:MyHttpEndpoint:Url")}/api/virtualfilesystem/{remotePath}";
+                var downloadUrl = $"{_configuration.GetValue<string>("Kestrel:Endpoints:MyHttpEndpoint:Url")}/api/virtualfilesystem/{remotePath}";
                 if (await _virtualFileSystem.UploadStream(
                         remotePath, formFile.OpenReadStream()))
-                    uploadFileResult.Result.UploadedFiles.Add(new UploadedFile
+                    uploadFileResultRsp.Result.UploadedFiles.Add(new UploadedFile
                     {
-                        DownloadUrl = downloadUrl,
-                        Name = formFile.FileName,
+                        Path = remotePath,
                         FileId = fileId
                     });
             }
@@ -72,10 +70,10 @@ public class VirtualFileSystemController : Controller
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
-            uploadFileResult.ErrorCode = ex.HResult;
-            uploadFileResult.Message = ex.Message;
+            uploadFileResultRsp.ErrorCode = ex.HResult;
+            uploadFileResultRsp.Message = ex.Message;
         }
 
-        return new JsonResult(uploadFileResult);
+        return new JsonResult(uploadFileResultRsp);
     }
 }

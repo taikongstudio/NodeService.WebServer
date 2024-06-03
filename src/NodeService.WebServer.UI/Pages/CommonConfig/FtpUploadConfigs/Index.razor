@@ -111,11 +111,11 @@
                         <Text>本地文件时间和服务器文件时间差异</Text>
                         <br />
                         <RadioGroup @bind-Value="@context.FileExistsTimeRange">
-                            <Radio RadioButton Value="@CompareOperators.LessThan">小于</Radio>
-                            <Radio RadioButton Value="@CompareOperators.GreatThan">大于</Radio>
-                            <Radio RadioButton Value="@CompareOperators.LessThanEqual">小于等于</Radio>
-                            <Radio RadioButton Value="@CompareOperators.GreatThanEqual">大于等于</Radio>
-                            <Radio RadioButton Value="@CompareOperators.Equals">等于</Radio>
+                            <Radio RadioButton Value="@CompareOperator.LessThan">小于</Radio>
+                            <Radio RadioButton Value="@CompareOperator.GreatThan">大于</Radio>
+                            <Radio RadioButton Value="@CompareOperator.LessThanEqual">小于等于</Radio>
+                            <Radio RadioButton Value="@CompareOperator.GreatThanEqual">大于等于</Radio>
+                            <Radio RadioButton Value="@CompareOperator.Equals">等于</Radio>
                         </RadioGroup>
                         <br />
                         <AntDesign.InputNumber Min="1" @bind-Value="@context.FileExistsTime" />
@@ -230,12 +230,15 @@
         _nameList =
         [
             new StringEntry { Name = "包含", Value = nameof(FilePathFilter.Contains).ToLower() },
-    new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
-    new StringEntry { Name = "开始", Value = nameof(FilePathFilter.StartWith).ToLower() },
-    new StringEntry { Name = "结束", Value = nameof(FilePathFilter.EndsWith).ToLower() },
-    new StringEntry { Name = "模式匹配", Value = nameof(FilePathFilter.SearchPattern).ToLower()},
-    new StringEntry { Name = "正则表达式", Value = nameof(FilePathFilter.RegExp).ToLower()},
-    ];
+            new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
+            new StringEntry { Name = "开头相等", Value = nameof(FilePathFilter.StartWith).ToLower() },
+            new StringEntry { Name = "开头相等", Value = nameof(FilePathFilter.NotStartWith).ToLower() },
+            new StringEntry { Name = "结尾相等", Value = nameof(FilePathFilter.EndsWith).ToLower() },
+            new StringEntry { Name = "结尾不相等", Value = nameof(FilePathFilter.NotEndsWith).ToLower() },
+            new StringEntry { Name = "模式匹配", Value = nameof(FilePathFilter.SearchPattern).ToLower()},
+            new StringEntry { Name = "正则表达式匹配", Value = nameof(FilePathFilter.RegExp).ToLower()},
+            new StringEntry { Name = "正则表达式不匹配", Value = nameof(FilePathFilter.RegExpNotMatch).ToLower()},
+        ];
         _dataSource = new RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
             ApiService.QueryFtpUploadConfigurationListAsync,

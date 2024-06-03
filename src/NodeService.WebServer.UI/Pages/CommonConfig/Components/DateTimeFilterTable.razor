@@ -1,4 +1,5 @@
-﻿
+﻿@using System.Collections
+
 @if (IsEditable)
 {
     <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddNewItem" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
@@ -7,27 +8,27 @@
     </Button>
 }
 
-<Table 
-       Context="mappingEntry"
-       TItem="DateTimeFilter"
-       DataSource="@ItemsSource"
-       Size="TableSize.Small"
-       SelectedRows="SelectedItems"
-       SelectedRowsChanged="@OnSelectedItemsChanged"
-       RowKey="x => x.Id">
+<Table
+    Context="mappingEntry"
+    TItem="DateTimeFilter"
+    DataSource="@ItemsSource"
+    Size="TableSize.Small"
+    SelectedRows="SelectedItems"
+    SelectedRowsChanged="@OnSelectedItemsChanged"
+    RowKey="x => x.Id">
     <Selection Key="@mappingEntry.Id" Type="checkbox"/>
     <PropertyColumn Hidden="@IsOperatorHidden" Title="@OperatorTitle" Property="c => c.Operator" Sortable>
         @if (mappingEntry.IsEditing && IsOperatorEditable)
         {
-            if (OperatorList != null && OperatorList.Any())
+            if (CompareOperatorList != null && CompareOperatorList.Any())
             {
-                <Select DataSource="@OperatorList"
+                <Select DataSource="@CompareOperatorList"
                         @bind-Value="@mappingEntry.Operator"
-                        TItem="EnumModel<CompareOperators>"
+                        TItem="EnumModel<CompareOperator>"
                         AutoFocus
-                        TItemValue="CompareOperators"
-                        LabelName="@nameof(EnumModel<CompareOperators>.Name)"
-                        ValueName="@nameof(EnumModel<CompareOperators>.Value)" />
+                        TItemValue="CompareOperator"
+                        LabelName="@nameof(EnumModel<CompareOperator>.Name)"
+                        ValueName="@nameof(EnumModel<CompareOperator>.Value)"/>
             }
         }
         else
@@ -35,46 +36,38 @@
             <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@(FindCompareOperatorName(mappingEntry.Operator))</div>
         }
     </PropertyColumn>
-    <PropertyColumn Title="@DateTimeTitle" Property="c => c.Values" Sortable>
-
-        @if (mappingEntry.Operator == CompareOperators.WithinRange || mappingEntry.Operator == CompareOperators.OutOfRange)
-        {        
-            @if (mappingEntry.IsEditing && IsDateTimeEditable)
+    <PropertyColumn Title="@KindTitle" Property="c => c.Kind" Sortable>
+        @if (mappingEntry.IsEditing && IsOperatorEditable)
+        {
+            if (DateTimeFilterKindList != null && DateTimeFilterKindList.Any())
             {
-                <RangePicker Format="yyyy-MM-dd HH:mm:ss" TValue="DateTime[]" @bind-Value="@mappingEntry.Values" ShowTime="@true" />
+                <Select DataSource="@DateTimeFilterKindList"
+                        @bind-Value="@mappingEntry.Kind"
+                        TItem="EnumModel<DateTimeFilterKind>"
+                        AutoFocus
+                        TItemValue="DateTimeFilterKind"
+                        LabelName="@nameof(EnumModel<DateTimeFilterKind>.Name)"
+                        ValueName="@nameof(EnumModel<DateTimeFilterKind>.Value)"/>
             }
-            else if (IsDateTimeEditable)
-            {
-                <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
-                    @($"{mappingEntry.Values[0].ToString("yyyy-MM-dd HH:mm:ss")} ~ {mappingEntry.Values[1].ToString("yyyy-MM-dd HH:mm:ss")}")
-                </div>
-            }
-            else
-            {
-                <div class="editable-cell-value-wrap" style="padding-right:24px">
-                    @($"{mappingEntry.Values[0].ToString("yyyy-MM-dd HH:mm:ss")} ~ {mappingEntry.Values[1].ToString("yyyy-MM-dd HH:mm:ss")}")
-                </div>
-            }
-
         }
         else
-        {   
-            if (mappingEntry.IsEditing && IsDateTimeEditable)
-            {
-                <DatePicker Format="yyyy-MM-dd HH:mm:ss" ShowTime="true" Type="text" Value="@mappingEntry.Values[0]" ValueChanged="(DateTime value) => OnValuesChanged(mappingEntry, [value,default])" AutoFocus="@(!IsOperatorEditable && IsDateTimeEditable)" />
-            }
-            else if (IsDateTimeEditable)
-            {
-                <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
-                    @($"{mappingEntry.Values[0].ToString("yyyy-MM-dd HH:mm:ss")}")
-                </div>
-            }
-            else
-            {
-                <div class="editable-cell-value-wrap" style="padding-right:24px">
-                    @($"{mappingEntry.Values[0].ToString("yyyy-MM-dd HH:mm:ss")}")
-                </div>
-            }
+        {
+            <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@(FindDateTimeFilterKindName(mappingEntry.Kind))</div>
+        }
+
+    </PropertyColumn>
+    <PropertyColumn Title="@ValueTitle" Property="c => c.DateTimeValues" Sortable>
+        @switch (mappingEntry.Kind)
+        {
+            case DateTimeFilterKind.DateTime:
+                @RenderDateTimeValuesPricker(mappingEntry)
+                break;
+            case DateTimeFilterKind.TimeOnly:
+                @RenderTimeOnlyValuesPricker(mappingEntry)
+                break;
+            default:
+                @RenderDoubleValuesPricker(mappingEntry)
+                break;
         }
 
     </PropertyColumn>
@@ -82,7 +75,7 @@
     {
         <ActionColumn Fixed="right" Width="100" Title="操作">
             <Space>
-                @if (IsOperatorEditable || IsDateTimeEditable)
+                @if (IsOperatorEditable || IsValuesEditable)
                 {
                     @if (mappingEntry.IsEditing)
                     {
@@ -121,25 +114,37 @@
 
     [Parameter] public EventCallback<AddingNewItemEventArgs<DateTimeFilter>> AddingNewItem { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, DateTime[]>> ValuesChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, DateTime[]>> DateTimeValuesChanged { get; set; }
 
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, CompareOperators>> SelectedOperatorChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, double[]>> DoubleValuesChanged { get; set; }
+
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, TimeOnly[]>> TimeOnlyValuesChanged { get; set; }
+
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<DateTimeFilter, CompareOperator>> SelectedOperatorChanged { get; set; }
 
     [Parameter] public string OperatorTitle { get; set; } = "运算符";
 
-    [Parameter] public string DateTimeTitle { get; set; } = "时间";
+    [Parameter] public string ValueTitle { get; set; } = "时间";
+
+    [Parameter] public string KindTitle { get; set; } = "类型";
 
 
     [Parameter] public bool IsOperatorEditable { get; set; } = true;
 
-    [Parameter] public bool IsDateTimeEditable { get; set; } = true;
+    [Parameter] public bool IsKindEditable { get; set; } = true;
+
+    [Parameter] public bool IsValuesEditable { get; set; } = true;
 
     [Parameter] public bool IsOperatorHidden { get; set; } = false;
 
     [Parameter] public bool IsEditable { get; set; } = true;
 
-    [Parameter] public IEnumerable<EnumModel<CompareOperators>> OperatorList { get; set; } = [];
+    [Parameter] public IEnumerable<EnumModel<CompareOperator>> CompareOperatorList { get; set; } = [];
+
+    [Parameter] public IEnumerable<EnumModel<DateTimeFilterKind>> DateTimeFilterKindList { get; set; } = [];
 
     [Parameter] public IEnumerable<DateTimeFilter> ValueList { get; set; } = [];
 
@@ -153,7 +158,7 @@
         if (!IsEditable)
         {
             IsOperatorEditable = false;
-            IsDateTimeEditable = false;
+            IsValuesEditable = false;
         }
 
         return base.OnParametersSetAsync();
@@ -161,50 +166,105 @@
 
     protected override void OnInitialized()
     {
-        OperatorList = new List<EnumModel<CompareOperators>>()
-        {
-            new EnumModel<CompareOperators>()
+        CompareOperatorList =
+        [
+            new EnumModel<CompareOperator>()
             {
-                 Name = "小于",
-                 Value = CompareOperators.LessThan,
+                Name = "小于",
+                Value = CompareOperator.LessThan,
             },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
             {
-                 Name = "小于等于",
-                 Value = CompareOperators.LessThan,
+                Name = "小于等于",
+                Value = CompareOperator.LessThan,
             },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
             {
-                 Name = "等于",
-                 Value = CompareOperators.Equals,
+                Name = "等于",
+                Value = CompareOperator.Equals,
             },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
             {
-                 Name = "大于",
-                 Value = CompareOperators.GreatThan,
+                Name = "大于",
+                Value = CompareOperator.GreatThan,
             },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
             {
-                 Name = "大于等于",
-                 Value = CompareOperators.GreatThanEqual,
+                Name = "大于等于",
+                Value = CompareOperator.GreatThanEqual,
             },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
             {
-                 Name = "范围内",
-                 Value = CompareOperators.WithinRange,
+                Name = "范围内",
+                Value = CompareOperator.WithinRange,
             },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
             {
-                 Name = "范围外",
-                 Value = CompareOperators.OutOfRange,
+                Name = "范围外",
+                Value = CompareOperator.OutOfRange,
+            }
+        ];
+        DateTimeFilterKindList =
+        [
+            new EnumModel<DateTimeFilterKind>()
+            {
+                Name = "日期",
+                Value = DateTimeFilterKind.DateTime,
             },
-        };
+            new EnumModel<DateTimeFilterKind>()
+            {
+                Name = "时刻",
+                Value = DateTimeFilterKind.TimeOnly,
+            },
+            new EnumModel<DateTimeFilterKind>()
+            {
+                Name = "天",
+                Value = DateTimeFilterKind.Days,
+            },
+            new EnumModel<DateTimeFilterKind>()
+            {
+                Name = "小时",
+                Value = DateTimeFilterKind.Hours,
+            },
+            new EnumModel<DateTimeFilterKind>()
+            {
+                Name = "分钟",
+                Value = DateTimeFilterKind.Minutes,
+            },
+            new EnumModel<DateTimeFilterKind>()
+            {
+                Name = "秒",
+                Value = DateTimeFilterKind.Seconds,
+            }
+        ];
         base.OnInitialized();
     }
 
-    private string FindCompareOperatorName(CompareOperators range)
+    string DoubleValuesFormatter(DateTimeFilterKind kind, double value)
     {
-        return OperatorList.FirstOrDefault(x => x.Value == range)?.Name ?? range.ToString();
+        switch (kind)
+        {
+            case DateTimeFilterKind.Days:
+                return $"{value:n1}天";
+            case DateTimeFilterKind.Hours:
+                return $"{value:n1}小时";
+            case DateTimeFilterKind.Minutes:
+                return $"{value:n1}分钟";
+            case DateTimeFilterKind.Seconds:
+                return $"{value:n1}秒";
+            default:
+                return $"{value:n1}";
+        }
+    }
+
+    string FindCompareOperatorName(CompareOperator op)
+    {
+        return CompareOperatorList.FirstOrDefault(x => x.Value == op)?.Name ?? op.ToString();
+    }
+
+    string FindDateTimeFilterKindName(DateTimeFilterKind kind)
+    {
+        return DateTimeFilterKindList.FirstOrDefault(x => x.Value == kind)?.Name ?? kind.ToString();
     }
 
     async Task OnSelectedItemsChanged(IEnumerable<DateTimeFilter> items)
@@ -233,6 +293,8 @@
             return;
         }
 
+        entry.DateTimeValues[0] = DateTime.Now.AddDays(-7);
+        entry.DateTimeValues[1] = DateTime.Now;
         ItemsSource.Add(entry);
         entry.BeginEdit();
     }
@@ -241,28 +303,163 @@
     async Task OnValuesChanged(DateTimeFilter filter, DateTime[] value)
     {
         var e = new ValueChangedEventArgs<DateTimeFilter, DateTime[]>(filter, value);
-        if (ValuesChanged.HasDelegate)
+        if (DateTimeValuesChanged.HasDelegate)
         {
-            await ValuesChanged.InvokeAsync(e);
+            await DateTimeValuesChanged.InvokeAsync(e);
         }
+
         if (!e.Handled)
         {
-            filter.Values = value;
+            filter.DateTimeValues = value;
         }
     }
 
-    async Task OnOperatorChanged(DateTimeFilter filter, CompareOperators value)
+    async Task OnValuesChanged(DateTimeFilter filter, TimeOnly[] value)
     {
-        var e = new ValueChangedEventArgs<DateTimeFilter, CompareOperators>(filter, value);
+        var e = new ValueChangedEventArgs<DateTimeFilter, TimeOnly[]>(filter, value);
+        if (TimeOnlyValuesChanged.HasDelegate)
+        {
+            await TimeOnlyValuesChanged.InvokeAsync(e);
+        }
+
+        if (!e.Handled)
+        {
+            filter.TimeOnlyValues = value;
+        }
+    }
+
+    async Task OnValuesChanged(DateTimeFilter filter, double[] value)
+    {
+        var e = new ValueChangedEventArgs<DateTimeFilter, double[]>(filter, value);
+        if (DoubleValuesChanged.HasDelegate)
+        {
+            await DoubleValuesChanged.InvokeAsync(e);
+        }
+
+        if (!e.Handled)
+        {
+            filter.DoubleValues = value;
+        }
+    }
+
+    async Task OnOperatorChanged(DateTimeFilter filter, CompareOperator value)
+    {
+        var e = new ValueChangedEventArgs<DateTimeFilter, CompareOperator>(filter, value);
         if (SelectedOperatorChanged.HasDelegate)
         {
             await SelectedOperatorChanged.InvokeAsync(e);
         }
+
         if (!e.Handled)
         {
             filter.Operator = value;
         }
     }
 
+
+    private RenderFragment RenderDateTimeValuesPricker(DateTimeFilter dateTimeFilter)
+    {
+        if (dateTimeFilter.Operator == CompareOperator.WithinRange || dateTimeFilter.Operator == CompareOperator.OutOfRange)
+        {
+            if (dateTimeFilter.IsEditing && IsValuesEditable)
+            {
+                return @<RangePicker Format="yyyy-MM-dd HH:mm:ss" TValue="DateTime[]" @bind-Value="@dateTimeFilter.DateTimeValues" ShowTime="@true"/>;
+            }
+            else if (IsValuesEditable)
+            {
+                return @<div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => dateTimeFilter.BeginEdit()">
+                    @($"{dateTimeFilter.DateTimeValues[0].ToString("yyyy-MM-dd HH:mm:ss")} ~ {dateTimeFilter.DateTimeValues[1].ToString("yyyy-MM-dd HH:mm:ss")}")
+                </div>;
+            }
+            else
+            {
+                return @<div class="editable-cell-value-wrap" style="padding-right:24px">
+                    @($"{dateTimeFilter.DateTimeValues[0].ToString("yyyy-MM-dd HH:mm:ss")} ~ {dateTimeFilter.DateTimeValues[1].ToString("yyyy-MM-dd HH:mm:ss")}")
+                </div>;
+            }
+        }
+        else
+        {
+            if (dateTimeFilter.IsEditing && IsValuesEditable)
+            {
+                return @<DatePicker Format="yyyy-MM-dd HH:mm:ss" ShowTime="true" Type="text" Value="@dateTimeFilter.DateTimeValues[0]" ValueChanged="(DateTime value) => OnValuesChanged(dateTimeFilter, [value, default])" AutoFocus="@(!IsOperatorEditable && IsValuesEditable)"/>;
+            }
+            else if (IsValuesEditable)
+            {
+                return @<div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => dateTimeFilter.BeginEdit()">
+                    @($"{dateTimeFilter.DateTimeValues[0].ToString("yyyy-MM-dd HH:mm:ss")}")
+                </div>;
+            }
+            else
+            {
+                return @<div class="editable-cell-value-wrap" style="padding-right:24px">
+                           @($"{dateTimeFilter.DateTimeValues[0].ToString("yyyy-MM-dd HH:mm:ss")}")
+                       </div>
+                    ;
+            }
+        }
+    }
+
+    private RenderFragment RenderTimeOnlyValuesPricker(DateTimeFilter dateTimeFilter)
+    {
+        if (dateTimeFilter.IsEditing && IsValuesEditable)
+        {
+            if (dateTimeFilter.Operator == CompareOperator.WithinRange || dateTimeFilter.Operator == CompareOperator.OutOfRange)
+            {
+                return @<text>
+                            <AntDesign.TimePicker Style="width:120px" Value="@dateTimeFilter.TimeOnlyValues[0]" OnChange="(DateTimeChangedEventArgs<TimeOnly> value) => OnValuesChanged(dateTimeFilter, [value.Date, dateTimeFilter.TimeOnlyValues[1]])"/>
+                            <Text>~</Text>
+                            <AntDesign.TimePicker Style="width:120px" Value="@dateTimeFilter.TimeOnlyValues[1]" OnChange="(DateTimeChangedEventArgs<TimeOnly> value) => OnValuesChanged(dateTimeFilter, [dateTimeFilter.TimeOnlyValues[0], value.Date])" />
+                        </text>;
+            }
+            else
+            {
+                return@<AntDesign.TimePicker Value="@dateTimeFilter.TimeOnlyValues[0]" OnChange="(DateTimeChangedEventArgs<TimeOnly> value) => OnValuesChanged(dateTimeFilter, [value.Date, default])"/>;
+            }
+        }
+        else
+        {
+            if (dateTimeFilter.Operator == CompareOperator.WithinRange || dateTimeFilter.Operator == CompareOperator.OutOfRange)
+            {
+                return@<div class="editable-cell-value-wrap" @onclick="() => dateTimeFilter.BeginEdit()" style="padding-right:24px">@($"{dateTimeFilter.TimeOnlyValues[0]}~{dateTimeFilter.TimeOnlyValues[1]}")</div>;
+            }
+            else
+            {
+                return@<div class="editable-cell-value-wrap" @onclick="() => dateTimeFilter.BeginEdit()" style="padding-right:24px">@($"{dateTimeFilter.TimeOnlyValues[0]}")</div>;
+            }
+        }
+    }
+
+    private RenderFragment RenderDoubleValuesPricker(DateTimeFilter dateTimeFilter)
+    {
+        if (dateTimeFilter.IsEditing && IsValuesEditable)
+        {
+            if (dateTimeFilter.Operator == CompareOperator.WithinRange || dateTimeFilter.Operator == CompareOperator.OutOfRange)
+            {
+                return@<text>
+                           <AntDesign.InputNumber Step="0.1" Formatter="(double value) => DoubleValuesFormatter(dateTimeFilter.Kind, dateTimeFilter.DoubleValues[0])" Value="@dateTimeFilter.DoubleValues[0]" OnChange="(double value) => OnValuesChanged(dateTimeFilter, [value, dateTimeFilter.DoubleValues[1]])"/>
+                           <Text>~</Text>
+                           <AntDesign.InputNumber Step="0.1" Formatter="(double value) => DoubleValuesFormatter(dateTimeFilter.Kind, dateTimeFilter.DoubleValues[1])" Value="@dateTimeFilter.DoubleValues[1]" OnChange="(double value) => OnValuesChanged(dateTimeFilter, [dateTimeFilter.DoubleValues[0], value])"/>
+                       </text>;
+            }
+            else
+            {
+                return@<AntDesign.InputNumber Step="0.1" Formatter="(double value) => DoubleValuesFormatter(dateTimeFilter.Kind, dateTimeFilter.DoubleValues[0])" Value="@dateTimeFilter.DoubleValues[0]" OnChange="(double value) => OnValuesChanged(dateTimeFilter, [value, default])"/>;
+            }
+        }
+        else
+        {
+            if (dateTimeFilter.Operator == CompareOperator.WithinRange || dateTimeFilter.Operator == CompareOperator.OutOfRange)
+            {
+                return@<div class="editable-cell-value-wrap" @onclick="() => dateTimeFilter.BeginEdit()" style="padding-right:24px">@($"{DoubleValuesFormatter(dateTimeFilter.Kind, dateTimeFilter.DoubleValues[0])}~{DoubleValuesFormatter(dateTimeFilter.Kind, dateTimeFilter.DoubleValues[1])}")</div>;
+            }
+            else
+            {
+                return@<div class="editable-cell-value-wrap" @onclick="() => dateTimeFilter.BeginEdit()" style="padding-right:24px">@($"{DoubleValuesFormatter(dateTimeFilter.Kind, dateTimeFilter.DoubleValues[0])}")</div>;
+            }
+        }
+
+        return@<text></text>;
+    }
 
 }

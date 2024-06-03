@@ -19,15 +19,15 @@
     <PropertyColumn Hidden="@IsOperatorHidden" Title="@OperatorTitle" Property="c => c.Operator" Sortable>
         @if (mappingEntry.IsEditing && IsOperatorEditable)
         {
-            if (OperatorList != null && OperatorList.Any())
+            if (CompareOperatorList != null && CompareOperatorList.Any())
             {
-                <Select DataSource="@OperatorList"
+                <Select DataSource="@CompareOperatorList"
                         @bind-Value="@mappingEntry.Operator"
-                        TItem="EnumModel<CompareOperators>"
+                        TItem="EnumModel<CompareOperator>"
                         AutoFocus
-                        TItemValue="CompareOperators"
-                        LabelName="@nameof(EnumModel<CompareOperators>.Name)"
-                        ValueName="@nameof(EnumModel<CompareOperators>.Value)" />
+                        TItemValue="CompareOperator"
+                        LabelName="@nameof(EnumModel<CompareOperator>.Name)"
+                        ValueName="@nameof(EnumModel<CompareOperator>.Value)" />
             }
         }
         else
@@ -38,7 +38,7 @@
     <PropertyColumn Hidden="@IsValuesHidden" Title="@ValuesTitle" Property="c => c.Values" Sortable>
         @if (mappingEntry.IsEditing && IsValuesEditable)
         {
-            if (mappingEntry.Operator == CompareOperators.WithinRange || mappingEntry.Operator == CompareOperators.OutOfRange)
+            if (mappingEntry.Operator == CompareOperator.WithinRange || mappingEntry.Operator == CompareOperator.OutOfRange)
             {
                 <AntDesign.InputNumber Value="@mappingEntry.Values[0]" OnChange="(double value)=>OnValuesChanged(mappingEntry,[value,mappingEntry.Values[1]])"/>
                 <Text>~</text>
@@ -50,7 +50,7 @@
         }
         else
         {
-            if (mappingEntry.Operator == CompareOperators.WithinRange || mappingEntry.Operator == CompareOperators.OutOfRange)
+            if (mappingEntry.Operator == CompareOperator.WithinRange || mappingEntry.Operator == CompareOperator.OutOfRange)
             {
                 <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@($"{mappingEntry.Values[0]}~{mappingEntry.Values[1]}")</div>
             }
@@ -63,15 +63,15 @@
     <PropertyColumn Hidden="@IsLengthUnitHidden" Title="@FileLengthUnitTitle" Property="c => c.LengthUnit" Sortable>
         @if (mappingEntry.IsEditing && IsLengthUnitEditable)
         {
-            if (FileLengthUnitList != null && FileLengthUnitList.Any())
+            if (LengthUnitList != null && LengthUnitList.Any())
             {
-                <Select DataSource="@FileLengthUnitList"
+                <Select DataSource="@LengthUnitList"
                         @bind-Value="@mappingEntry.LengthUnit"
-                        TItem="EnumModel<FileLengthUnit>"
+                        TItem="EnumModel<BinaryLengthUnit>"
                         AutoFocus
-                        TItemValue="FileLengthUnit"
-                        LabelName="@nameof(EnumModel<FileLengthUnit>.Name)"
-                        ValueName="@nameof(EnumModel<FileLengthUnit>.Value)" />
+                        TItemValue="BinaryLengthUnit"
+                        LabelName="@nameof(EnumModel<BinaryLengthUnit>.Name)"
+                        ValueName="@nameof(EnumModel<BinaryLengthUnit>.Value)" />
             }
         }
         else
@@ -124,9 +124,9 @@
 
     [Parameter] public EventCallback<ValueChangedEventArgs<FileLengthFilter, double[]>> ValuesChanged { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<FileLengthFilter, FileLengthUnit>> SelectedLengthUnitChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<FileLengthFilter, BinaryLengthUnit>> SelectedLengthUnitChanged { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<FileLengthFilter, CompareOperators>> SelectedOperatorChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<FileLengthFilter, CompareOperator>> SelectedOperatorChanged { get; set; }
 
     [Parameter] public string OperatorTitle { get; set; } = "运算符";
 
@@ -149,9 +149,9 @@
 
     [Parameter] public bool IsEditable { get; set; } = true;
 
-    [Parameter] public IEnumerable<EnumModel<CompareOperators>> OperatorList { get; set; } = [];
+    [Parameter] public IEnumerable<EnumModel<CompareOperator>> CompareOperatorList { get; set; } = [];
 
-    [Parameter] public IEnumerable<EnumModel<FileLengthUnit>> FileLengthUnitList { get; set; } = [];
+    [Parameter] public IEnumerable<EnumModel<BinaryLengthUnit>> LengthUnitList { get; set; } = [];
 
     [Parameter] public IEnumerable<FileLengthFilter> ValueList { get; set; } = [];
 
@@ -174,76 +174,76 @@
 
     protected override void OnInitialized()
     {
-        OperatorList = [
-            new EnumModel<CompareOperators>()
+        CompareOperatorList = [
+            new EnumModel<CompareOperator>()
             {
                  Name = "小于",
-                 Value = CompareOperators.LessThan,
+                 Value = CompareOperator.LessThan,
             },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
                 {
                      Name = "小于等于",
-                     Value = CompareOperators.LessThan,
+                     Value = CompareOperator.LessThan,
                 },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
                 {
                      Name = "等于",
-                     Value = CompareOperators.Equals,
+                     Value = CompareOperator.Equals,
                 },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
                 {
                      Name = "大于",
-                     Value = CompareOperators.GreatThan,
+                     Value = CompareOperator.GreatThan,
                 },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
                 {
                      Name = "大于等于",
-                     Value = CompareOperators.GreatThanEqual,
+                     Value = CompareOperator.GreatThanEqual,
                 },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
                 {
                      Name = "范围内",
-                     Value = CompareOperators.WithinRange,
+                     Value = CompareOperator.WithinRange,
                 },
-            new EnumModel<CompareOperators>()
+            new EnumModel<CompareOperator>()
                 {
                      Name = "范围外",
-                     Value = CompareOperators.OutOfRange,
+                     Value = CompareOperator.OutOfRange,
                 },
         ];
-        FileLengthUnitList = [
-            new EnumModel<FileLengthUnit>()
+        LengthUnitList = [
+            new EnumModel<BinaryLengthUnit>()
                 {
                      Name = "KB",
-                     Value = FileLengthUnit.KB,
+                     Value = BinaryLengthUnit.KB,
                 },
-            new EnumModel<FileLengthUnit>()
+            new EnumModel<BinaryLengthUnit>()
                 {
                      Name = "MB",
-                     Value = FileLengthUnit.MB,
+                     Value = BinaryLengthUnit.MB,
                 },
-            new EnumModel<FileLengthUnit>()
+            new EnumModel<BinaryLengthUnit>()
                 {
                      Name = "GB",
-                     Value = FileLengthUnit.GB,
+                     Value = BinaryLengthUnit.GB,
                 },
-            new EnumModel<FileLengthUnit>()
+            new EnumModel<BinaryLengthUnit>()
                 {
                      Name = "PB",
-                     Value = FileLengthUnit.PB,
+                     Value = BinaryLengthUnit.PB,
                 },
         ];
         base.OnInitialized();
     }
 
-    private string FindCompareOperatorName(CompareOperators range)
+    private string FindCompareOperatorName(CompareOperator op)
     {
-        return OperatorList.FirstOrDefault(x => x.Value == range)?.Name ?? range.ToString();
+        return CompareOperatorList.FirstOrDefault(x => x.Value == op)?.Name ?? op.ToString();
     }
 
-    private string FindLengthUnitName(FileLengthUnit  unit)
+    private string FindLengthUnitName(BinaryLengthUnit  unit)
     {
-        return FileLengthUnitList.FirstOrDefault(x => x.Value == unit)?.Name ?? unit.ToString();
+        return LengthUnitList.FirstOrDefault(x => x.Value == unit)?.Name ?? unit.ToString();
     }
 
     async Task OnSelectedItemsChanged(IEnumerable<FileLengthFilter> items)
@@ -290,9 +290,9 @@
         }
     }
 
-    async Task OnOperatorChanged(FileLengthFilter filter, CompareOperators value)
+    async Task OnOperatorChanged(FileLengthFilter filter, CompareOperator value)
     {
-        var e = new ValueChangedEventArgs<FileLengthFilter, CompareOperators>(filter, value);
+        var e = new ValueChangedEventArgs<FileLengthFilter, CompareOperator>(filter, value);
         if (SelectedOperatorChanged.HasDelegate)
         {
             await SelectedOperatorChanged.InvokeAsync(e);
@@ -303,9 +303,9 @@
         }
     }
 
-    async Task OnFileLengthUnitChanged(FileLengthFilter filter, FileLengthUnit value)
+    async Task OnFileLengthUnitChanged(FileLengthFilter filter, BinaryLengthUnit value)
     {
-        var e = new ValueChangedEventArgs<FileLengthFilter, FileLengthUnit>(filter, value);
+        var e = new ValueChangedEventArgs<FileLengthFilter, BinaryLengthUnit>(filter, value);
         if (SelectedLengthUnitChanged.HasDelegate)
         {
             await SelectedLengthUnitChanged.InvokeAsync(e);

@@ -9,7 +9,7 @@
 @inject ModalService _modalService
 @implements IDisposable
 
-<CalendarDetailWindow IsVisible="@_isDetailWindowVisible" DataContext="@_entry" Closed="@OnCalendarDetailWindowClosed" />
+<CalendarDetailWindow IsVisible="@_isDetailWindowVisible" DataContext="@_entry" Closed="@OnCalendarDetailWindowClosed"/>
 
 <GridRow>
 
@@ -35,11 +35,10 @@
     </Space>
 
 
-
 </GridRow>
 
 
-<Calendar DateCellRender="DateCellRender" MonthCellRender="MonthCellRender"  OnChange="OnSelectedDateChangedAsync" />
+<Calendar DateCellRender="DateCellRender" MonthCellRender="MonthCellRender" OnChange="OnSelectedDateChangedAsync"/>
 
 @code
 {
@@ -55,9 +54,9 @@
     protected override void OnInitialized()
     {
         _dataSource = new RoutedPaginationDataSource<DataQualityCalendarEntry, QueryDataQualityStatisticsCalendarParameters>(
-        NavigationManager.BaseUri,
-        ApiService.QueryDataQualityCalendarEntryListAsync,
-        StateHasChanged);
+            NavigationManager.BaseUri,
+            ApiService.QueryDataQualityCalendarEntryListAsync,
+            StateHasChanged);
         _dataSource.Completed = OnDataSourceCompleted;
         _dataSource.Ready = ReadyAsync;
         _dataSource.ExceptionHandler = OnExepction;
@@ -70,11 +69,12 @@
         {
             await _modalService.DestroyConfirmAsync(_modelRef);
         }
+
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
 
@@ -87,16 +87,16 @@
 
     private Task ReadyAsync()
     {
-        RenderFragment content =@<Icon Type="loading" Theme="outline" Style="font-size: 24px" Spin />  ;
+        RenderFragment content = @<Icon Type="loading" Theme="outline" Style="font-size: 24px" Spin/>;
         var props = new ConfirmOptions()
+        {
+            Title = "正在加载",
+            Content = content,
+            OkButtonProps = new ButtonProps()
             {
-                Title = "正在加载",
-                Content = content,
-                OkButtonProps = new ButtonProps()
-                {
-                    Disabled = true
-                },
-            };
+                Disabled = true
+            },
+        };
         _modelRef = _modalService.Info(props);
         return Task.CompletedTask;
     }
@@ -131,6 +131,7 @@
             {
                 return;
             }
+
             _selectedDate = dateTime;
             var previousDateTime = dateTime.AddMonths(-1);
             var nextDateTime = dateTime.AddMonths(1);
@@ -148,10 +149,10 @@
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
     }
 
@@ -174,19 +175,19 @@
                     {
                         break;
                     }
+
                     categoryList.AddRange(rsp.Result);
                     pageIndex++;
                 }
                 else
                 {
                     await _notice.Open(new NotificationConfig
-                            {
-                                Message = "错误提示",
-                                Description = rsp.Message
-                            });
+                    {
+                        Message = "错误提示",
+                        Description = rsp.Message
+                    });
                     break;
                 }
-
             }
 
             _categories = categoryList;
@@ -196,10 +197,10 @@
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                    {
-                        Message = "错误提示",
-                        Description = ex.ToString()
-                    });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
     }
 
@@ -218,62 +219,69 @@
                 return item;
             }
         }
+
         return null;
     }
 
-    private RenderFragment DateCellRender(DateTime value) {
+    private RenderFragment DateCellRender(DateTime value)
+    {
         if (value > DateTime.Today.Date)
         {
             return @<Template></Template>;
         }
+
         var entry = GetData(value);
         if (entry == null)
         {
-            return @<Template><Spin /></Template>;
+            return @<Template>
+                <Spin/>
+            </Template>;
         }
+
         if (entry.Entries.Count == 0)
         {
             return @<Template>
-        <ul class="events">
-            <li>
-                <Badge Size="small" Status="@BadgeStatus.Success" Text="@($"完成 --")" />
-            </li>
-            <li>
-                <Badge Size="small" Status="@BadgeStatus.Processing" Text="@($"{(value.Date==DateTime.Today.Date?"进行中":"未完成")} --")" />
-            </li>
-            <li>
-                <Badge Size="small" Status="@BadgeStatus.Error" Text="@($"错误 --")" />
-            </li>
-        </ul>
-    </Template>;
+                <ul class="events">
+                    <li>
+                        <Badge Size="small" Status="@BadgeStatus.Success" Text="@($"完成 --")"/>
+                    </li>
+                    <li>
+                        <Badge Size="small" Status="@BadgeStatus.Processing" Text="@($"{(value.Date == DateTime.Today.Date ? "进行中" : "未完成")} --")"/>
+                    </li>
+                    <li>
+                        <Badge Size="small" Status="@BadgeStatus.Error" Text="@($"错误 --")"/>
+                    </li>
+                </ul>
+            </Template>;
         }
+
         return @<Template>
-                    <ul class="events">
-                        <li>
-                            <Badge Size="small" Status="@BadgeStatus.Success" Text="@($"完成 {entry.CompletedCount}")" />
-                        </li>
-                        <li>
-                            <Badge Size="small" Status="@BadgeStatus.Processing" Text="@($"{(value.Date==DateTime.Today.Date?"进行中":"未完成")} {entry.InprogressCount}")" />
-                        </li>
-                        <li>
-                            <Badge Size="small" Status="@BadgeStatus.Error" Text="@($"错误 {entry.FaultCount}")" />
-                        </li>
-                        <li>
-                            <Button Size="small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Table" OnClick="()=>ShowCalendarDetailWindow(entry)"></Button>
-                        </li>
-                    </ul>
-                </Template>;
+            <ul class="events">
+                <li>
+                    <Badge Size="small" Status="@BadgeStatus.Success" Text="@($"完成 {entry.CompletedCount}")"/>
+                </li>
+                <li>
+                    <Badge Size="small" Status="@BadgeStatus.Processing" Text="@($"{(value.Date == DateTime.Today.Date ? "进行中" : "未完成")} {entry.InprogressCount}")"/>
+                </li>
+                <li>
+                    <Badge Size="small" Status="@BadgeStatus.Error" Text="@($"错误 {entry.FaultCount}")"/>
+                </li>
+                <li>
+                    <Button Size="small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Table" OnClick="() => ShowCalendarDetailWindow(entry)"></Button>
+                </li>
+            </ul>
+        </Template>;
     }
 
-    private RenderFragment MonthCellRender(DateTime value) {
-
+    private RenderFragment MonthCellRender(DateTime value)
+    {
         return @<Template>
-                    <div className="notes-month">
-                        <section></section>
-                        <span></span>
-                    </div>
-        </Template>
-    ;
+                   <div className="notes-month">
+                       <section></section>
+                       <span></span>
+                   </div>
+               </Template>
+            ;
     }
 
     private void ShowCalendarDetailWindow(DataQualityCalendarEntry entry)

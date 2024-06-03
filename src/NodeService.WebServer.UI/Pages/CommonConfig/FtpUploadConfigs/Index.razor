@@ -230,15 +230,15 @@
         _nameList =
         [
             new StringEntry { Name = "包含", Value = nameof(FilePathFilter.Contains).ToLower() },
-            new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
-            new StringEntry { Name = "开头匹配", Value = nameof(FilePathFilter.StartWith).ToLower() },
-            new StringEntry { Name = "开头不匹配", Value = nameof(FilePathFilter.NotStartWith).ToLower() },
-            new StringEntry { Name = "结尾匹配", Value = nameof(FilePathFilter.EndsWith).ToLower() },
-            new StringEntry { Name = "结尾不匹配", Value = nameof(FilePathFilter.NotEndsWith).ToLower() },
-            new StringEntry { Name = "模式匹配", Value = nameof(FilePathFilter.SearchPattern).ToLower()},
-            new StringEntry { Name = "正则表达式匹配", Value = nameof(FilePathFilter.RegExp).ToLower()},
-            new StringEntry { Name = "正则表达式不匹配", Value = nameof(FilePathFilter.RegExpNotMatch).ToLower()},
-        ];
+    new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
+    new StringEntry { Name = "开头匹配", Value = nameof(FilePathFilter.StartWith).ToLower() },
+    new StringEntry { Name = "开头不匹配", Value = nameof(FilePathFilter.NotStartWith).ToLower() },
+    new StringEntry { Name = "结尾匹配", Value = nameof(FilePathFilter.EndsWith).ToLower() },
+    new StringEntry { Name = "结尾不匹配", Value = nameof(FilePathFilter.NotEndsWith).ToLower() },
+    new StringEntry { Name = "模式匹配", Value = nameof(FilePathFilter.SearchPattern).ToLower()},
+    new StringEntry { Name = "正则表达式匹配", Value = nameof(FilePathFilter.RegExp).ToLower()},
+    new StringEntry { Name = "正则表达式不匹配", Value = nameof(FilePathFilter.RegExpNotMatch).ToLower()},
+    ];
         _dataSource = new RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
             ApiService.QueryFtpUploadConfigurationListAsync,
@@ -334,10 +334,17 @@
 
     async Task InitSelectedFtpConfigAsync()
     {
-        var ftpConfig = await ApiService.GetFtpConfigAsync(_editModel.Value.FtpConfigId);
-        if (ftpConfig != null)
+        if (_editModel.Value.FtpConfigId == null)
         {
-            _selectedFtpConfigs = [ftpConfig];
+            _selectedFtpConfigs = [];
+        }
+        else
+        {
+            var ftpConfig = await ApiService.GetFtpConfigAsync(_editModel.Value.FtpConfigId);
+            if (ftpConfig != null)
+            {
+                _selectedFtpConfigs = [ftpConfig];
+            }
         }
     }
 
@@ -498,7 +505,6 @@
 
     async Task ShowFtpConfigSelectorDialogAsync()
     {
-        _editModel.Value.FtpConfigId = null;
         await _ftpConfigDialog.ShowAsync();
     }
 

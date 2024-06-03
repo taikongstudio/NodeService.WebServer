@@ -38,6 +38,7 @@
                 <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
                 <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
                 <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="配置名称"></PropertyColumn>
+                <PropertyColumn Property="c => c.JobTypeDesc.Name" Ellipsis Sortable Title="任务类型"></PropertyColumn>
             </ColumnDefinitions>
         </Table>
     </GridCol>
@@ -56,7 +57,16 @@
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
         _dataSource.ExceptionHandler = OnExepction;
+        _dataSource.ItemInitializer = InitAsync;
         base.OnInitialized();
+    }
+
+    async ValueTask InitAsync(JobScheduleConfigModel model, CancellationToken cancellationToken = default)
+    {
+        if (model.Value.JobTypeDescId != null)
+        {
+            model.Value.JobTypeDesc = await ApiService.GetTaskTypeDescAsync(model.Value.JobTypeDescId);
+        }
     }
 
     async Task OnExepction(Exception ex)

@@ -1,8 +1,10 @@
-﻿using System.Threading.Channels;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Threading.Channels;
 using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 
@@ -183,10 +185,21 @@ public class TaskFireService : BackgroundService
     {
         try
         {
-            foreach (var node in taskDefinition.NodeList)
+            var nodeIdListFilter = DataFilterCollection<string>.Includes(taskDefinition.NodeList.Select(x => x.Value));
+            var nodeInfoList = await nodeInfoRepo.ListAsync(
+                new NodeInfoSpecification(
+                    AreaTags.Any,
+                    NodeStatus.All,
+                    nodeIdListFilter),
+                cancellationToken);
+            foreach (var nodeEntry in taskDefinition.NodeList)
                 try
                 {
-                    var nodeInfo = await nodeInfoRepo.GetByIdAsync(node.Value, cancellationToken);
+                    if (string.IsNullOrEmpty(nodeEntry.Value))
+                    {
+                        continue;
+                    }
+                    var nodeInfo = nodeInfoList.FirstOrDefault(x => x.Id == nodeEntry.Value);
                     if (nodeInfo == null) continue;
                     var nodeId = new NodeId(nodeInfo.Id);
                     foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
@@ -201,7 +214,7 @@ public class TaskFireService : BackgroundService
                         {
                             NodeSessionService = _nodeSessionService,
                             NodeSessionId = nodeSessionId,
-                            FireEvent = taskExecutionInstance.ToFireEvent(taskDefinition),
+                            FireEvent = taskExecutionInstance.ToFireEvent(taskDefinition, parameters.EnvironmentVariables),
                             FireParameters = parameters,
                             TaskDefinition = taskDefinition
                         };
@@ -299,7 +312,7 @@ public class TaskFireService : BackgroundService
         return (fireTaskParameters.TaskDefinitionId, fireTaskParameters.FireInstanceId);
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken = default)
     {
         _ = Task.Factory.StartNew(SchedulePenddingContextAsync, stoppingToken, stoppingToken);
         await foreach (var arrayPoolCollection in _fireTaskBatchQueue.ReceiveAllAsync(stoppingToken))
@@ -319,7 +332,7 @@ public class TaskFireService : BackgroundService
                         taskDefinitionId,
                         stoppingToken);
 
-                    if (taskDefinition == null) continue;
+                    if (taskDefinition == null || string.IsNullOrEmpty(taskDefinition.JobTypeDescId)) continue;
                     if (taskDefinition.NodeList.Count == 0) continue;
 
                     await taskFireRecordRepo.AddAsync(new JobFireConfigurationModel

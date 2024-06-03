@@ -30,6 +30,11 @@ namespace NodeService.WebServer.Services.NodeSessions
             _eventQueue = eventQueue;
         }
 
+        private NodeId CreateNodeId(string value)
+        {
+            return new NodeId(value);
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -41,7 +46,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                         ?
                         [NodeId.Any]
                         :
-                        configurationChangedEvent.NodeIdList.Select(x => new NodeId(x));
+                        configurationChangedEvent.NodeIdList.Select(CreateNodeId);
                     foreach (var nodeId in nodeIdList)
                     {
                         foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))

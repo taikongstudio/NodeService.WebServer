@@ -70,11 +70,12 @@ namespace NodeService.WebServer.Services.FileSystem
                     foreach (var nodeEventReports in arrayPoolCollection.GroupBy(x => x.NodeSessionId.NodeId))
                     {
                         var nodeId = nodeEventReports.Key;
-                        await ProcessNodeMessageReportGroup(
+                        await ProcessNodeMessageReportGroupAsync(
                             nodeId,
                             taskDefinitionRepo,
                             fileSystemWatchRepo,
-                            nodeEventReports);
+                            nodeEventReports,
+                            stoppingToken);
                     }
                 }
                 catch (Exception ex)
@@ -85,11 +86,12 @@ namespace NodeService.WebServer.Services.FileSystem
             }
         }
 
-        private async Task ProcessNodeMessageReportGroup(
+        private async Task ProcessNodeMessageReportGroupAsync(
             NodeId nodeId,
             IRepository<JobScheduleConfigModel> taskDefinitionRepo,
             IRepository<FileSystemWatchConfigModel> fileSystemWatchRepo,
-            IGrouping<NodeId, FileSystemWatchEventReportMessage> nodeMessages)
+            IGrouping<NodeId, FileSystemWatchEventReportMessage> nodeMessages,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -97,7 +99,20 @@ namespace NodeService.WebServer.Services.FileSystem
                 {
                     if (reportMessageFileGroup.Key.Directory == null)
                     {
-
+                        foreach (var message in reportMessageFileGroup)
+                        {
+                            var eventReport = message.GetMessage();
+                            var fileSystemWatchConfig = await fileSystemWatchRepo.GetByIdAsync(
+                                eventReport.ConfigurationId,
+                                cancellationToken);
+                            if (fileSystemWatchConfig == null || fileSystemWatchConfig.TaskDefinitionId == null)
+                            {
+                                continue;
+                            }
+                            fileSystemWatchConfig.ErrorCode = eventReport.Error.ErrorCode;
+                            fileSystemWatchConfig.Message = eventReport.Error.Message;
+                            await fileSystemWatchRepo.SaveChangesAsync(cancellationToken);
+                        }
                     }
                     else
                     {
@@ -112,6 +127,8 @@ namespace NodeService.WebServer.Services.FileSystem
                                 case FileSystemWatchEventReport.EventOneofCase.None:
                                     break;
                                 case FileSystemWatchEventReport.EventOneofCase.Created:
+                                    changesCount++;
+                                    break;
                                 case FileSystemWatchEventReport.EventOneofCase.Changed:
                                     changesCount++;
                                     break;
@@ -130,12 +147,17 @@ namespace NodeService.WebServer.Services.FileSystem
                         {
                             continue;
                         }
-                        var fileSystemWatchConfig = await fileSystemWatchRepo.GetByIdAsync(nodeConfigurationDirectoryKey.ConfigurationId);
+                        var fileSystemWatchConfig = await fileSystemWatchRepo.GetByIdAsync(
+                            nodeConfigurationDirectoryKey.ConfigurationId,
+                            cancellationToken);
                         if (fileSystemWatchConfig == null || fileSystemWatchConfig.TaskDefinitionId == null)
                         {
                             continue;
                         }
-                        var taskDefinition = await taskDefinitionRepo.GetByIdAsync(fileSystemWatchConfig.TaskDefinitionId);
+
+                        var taskDefinition = await taskDefinitionRepo.GetByIdAsync(
+                            fileSystemWatchConfig.TaskDefinitionId,
+                            cancellationToken);
                         if (taskDefinition == null)
                         {
                             continue;
@@ -148,8 +170,14 @@ namespace NodeService.WebServer.Services.FileSystem
                             TaskDefinitionId = taskDefinition.Id,
                             ScheduledFireTimeUtc = DateTime.UtcNow,
                             NodeList = [new StringEntry(null, nodeId.Value)],
-                            EnvironmentVariables = [new StringEntry("LocalDirectory", nodeConfigurationDirectoryKey.Directory)]
-                        });
+                            EnvironmentVariables =
+                            [
+                                new StringEntry("TaskTriggerSource", nameof(NodeFileSystemWatchEventConsumerService)),
+                                new StringEntry(nameof(FileSystemWatchConfiguration.Path), fileSystemWatchConfig.Path),
+                                new StringEntry(nameof(FileSystemWatchConfiguration.RelativePath), fileSystemWatchConfig.RelativePath),
+                                new StringEntry(nameof(FtpUploadConfiguration.LocalDirectory), nodeConfigurationDirectoryKey.Directory)
+                            ]
+                        }, cancellationToken);
 
                     }
                 }
@@ -167,25 +195,53 @@ namespace NodeService.WebServer.Services.FileSystem
             switch (report.EventCase)
             {
                 case FileSystemWatchEventReport.EventOneofCase.Created:
+                    if (report.Created.Properties.ContainsKey(nameof(FileInfo)))
+                    {
+                        return new NodeConfigurationDirectoryKey(
+                       message.NodeSessionId.NodeId.Value,
+                       report.ConfigurationId,
+                       Path.GetDirectoryName(report.Created.FullPath) ?? report.Created.FullPath);
+                    }
                     return new NodeConfigurationDirectoryKey(
                         message.NodeSessionId.NodeId.Value,
                         report.ConfigurationId,
-                        Path.GetDirectoryName(report.Created.FullPath) ?? report.Created.FullPath);
+                        report.Created.FullPath);
                 case FileSystemWatchEventReport.EventOneofCase.Deleted:
+                    if (report.Deleted.Properties.ContainsKey(nameof(FileInfo)))
+                    {
+                        return new NodeConfigurationDirectoryKey(
+                       message.NodeSessionId.NodeId.Value,
+                       report.ConfigurationId,
+                       Path.GetDirectoryName(report.Deleted.FullPath) ?? report.Deleted.FullPath);
+                    }
                     return new NodeConfigurationDirectoryKey(
                         message.NodeSessionId.NodeId.Value,
                         report.ConfigurationId,
-                        Path.GetDirectoryName(report.Deleted.FullPath) ?? report.Created.FullPath);
+                        report.Deleted.FullPath);
                 case FileSystemWatchEventReport.EventOneofCase.Changed:
+                    if (report.Changed.Properties.ContainsKey(nameof(FileInfo)))
+                    {
+                        return new NodeConfigurationDirectoryKey(
+                       message.NodeSessionId.NodeId.Value,
+                       report.ConfigurationId,
+                       Path.GetDirectoryName(report.Changed.FullPath) ?? report.Changed.FullPath);
+                    }
                     return new NodeConfigurationDirectoryKey(
                         message.NodeSessionId.NodeId.Value,
                         report.ConfigurationId,
-                        Path.GetDirectoryName(report.Changed.FullPath) ?? report.Created.FullPath);
+                        report.Changed.FullPath);
                 case FileSystemWatchEventReport.EventOneofCase.Renamed:
+                    if (report.Renamed.Properties.ContainsKey(nameof(FileInfo)))
+                    {
+                        return new NodeConfigurationDirectoryKey(
+                       message.NodeSessionId.NodeId.Value,
+                       report.ConfigurationId,
+                       Path.GetDirectoryName(report.Renamed.FullPath) ?? report.Renamed.FullPath);
+                    }
                     return new NodeConfigurationDirectoryKey(
                         message.NodeSessionId.NodeId.Value,
                         report.ConfigurationId,
-                        Path.GetDirectoryName(report.Renamed.FullPath) ?? report.Created.FullPath);
+                        report.Renamed.FullPath);
                 case FileSystemWatchEventReport.EventOneofCase.None:
                 case FileSystemWatchEventReport.EventOneofCase.Error:
                 default:

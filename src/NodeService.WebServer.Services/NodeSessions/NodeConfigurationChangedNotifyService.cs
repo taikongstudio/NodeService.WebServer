@@ -57,7 +57,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                                 Timeout = TimeSpan.FromHours(1),
                             };
                             report.Configurations.Add(
-                                Guid.NewGuid().ToString(),
+                                $"{configurationChangedEvent.TypeName}_{configurationChangedEvent.Id}",
                                 JsonSerializer.Serialize(configurationChangedEvent));
                             await _nodeSessionService.PostMessageAsync(nodeSessionId, new SubscribeEvent()
                             {

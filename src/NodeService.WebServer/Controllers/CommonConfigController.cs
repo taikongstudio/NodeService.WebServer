@@ -141,7 +141,9 @@ public partial class CommonConfigController : Controller
                 {
                     ChangedType = ConfigurationChangedType.Delete,
                     TypeName = typeof(T).FullName,
-                    Json = model.ToJson<T>()
+                    Id = model.Id,
+                    Json = model.ToJson<T>(),
+                    NodeIdList = []
                 });
             }
         }
@@ -186,9 +188,10 @@ public partial class CommonConfigController : Controller
             {
                 await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
-                    NodeIdList = model is INodeInfoIdentity nodeInfoIdentity ? nodeInfoIdentity.NodeIdList : null,
+                    NodeIdList = model is INodeInfoIdentity nodeInfoIdentity ? nodeInfoIdentity.NodeIdList : [],
                     ChangedType = type,
                     TypeName = typeof(T).FullName,
+                    Id = model.Id,
                     Json = modelFromDb.ToJson<T>()
                 });
             }

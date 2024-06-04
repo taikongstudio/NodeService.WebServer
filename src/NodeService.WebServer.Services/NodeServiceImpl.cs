@@ -137,14 +137,15 @@ public class NodeServiceImpl : NodeServiceBase
     {
         using var fileSystemWatchConfigRepo = _fileSystemWatchConfigRepoFactory.CreateRepository();
         var fileSystemWatchCOnfigList = await fileSystemWatchConfigRepo.ListAsync(context.CancellationToken);
-        foreach (var config in fileSystemWatchCOnfigList.Where(x => x.EnableRaisingEvents && x.NodeList != null && x.NodeList.Any(x => x.Value == nodeSessionId.NodeId.Value)))
+        foreach (var configuration in fileSystemWatchCOnfigList.Where(x => x.EnableRaisingEvents && x.NodeList != null && x.NodeList.Any(x => x.Value == nodeSessionId.NodeId.Value)))
         {
             await _notificationConfigChangedQueue.EnqueueAsync(new ConfigurationChangedEvent()
             {
                 NodeIdList = [nodeSessionId.NodeId.Value],
                 ChangedType = ConfigurationChangedType.Update,
                 TypeName = typeof(FileSystemWatchConfigModel).FullName,
-                Json = config.ToJson<FileSystemWatchConfigModel>()
+                Id = configuration.Id,
+                Json = configuration.ToJson<FileSystemWatchConfigModel>()
             });
         }
     }

@@ -36,21 +36,26 @@
                     <NodeSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="_selectedNodes"/>
                 </FormItem>
                 <FormItem Label="启动">
-                    <Switch @bind-Value="@context.Value.EnableRaisingEvents" />
+                    <Switch @bind-Value="@context.EnableRaisingEvents" />
                 </FormItem>
                 <FormItem Required Label="路径">
-                    <Input @bind-Value="@context.Value.Path" />
+                    <Input @bind-Value="@context.Path" />
+                </FormItem>
+                <FormItem Required Label="相对路径">
+                    <AntDesign.Input @bind-Value="@context.Value.RelativePath" >
+                        <AddOnBefore>@($"{context.Path}\\")</AddOnBefore> 
+                    </AntDesign.Input>
                 </FormItem>
                 <FormItem Label="包含子目录">
-                    <Switch @bind-Value="@context.Value.IncludeSubdirectories" />
+                    <Switch @bind-Value="@context.IncludeSubdirectories" />
                 </FormItem>
                 <FormItem Label="默认文件过滤器">
-                    <Switch @bind-Value="@context.Value.UseDefaultFilter" />
+                    <Switch @bind-Value="@context.UseDefaultFilter" />
                 </FormItem>
                 @if (context.Value.UseDefaultFilter)
                 {
                     <FormItem Label="文件过滤器">
-                        <Input @bind-Value="@context.Value.Filter" />
+                        <Input @bind-Value="@context.Filter" />
                     </FormItem>
                 }
                 else
@@ -58,7 +63,7 @@
                     <FormItem Label="文件过滤器列表">
                         <StringEntryTable NameTitle="备注"
                                           ValueTitle="过滤器"
-                                          ItemsSource="@context.Value.Filters" />
+                                          ItemsSource="@context.Filters" />
                     </FormItem>
                 }
 
@@ -84,7 +89,7 @@
                     <Tag Class="site-tag-plus" OnClick="ShowTaskDefinitionSelectorDialogAsync">
                         <Icon Type="@IconType.Outline.Edit" />
                     </Tag>
-                    <CommonDialog @ref="_ftpConfigDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
+                    <CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
                         <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
                     </CommonDialog>
                 </FormItem>
@@ -128,10 +133,20 @@
         <ColumnDefinitions>
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="启动" Sortable Property="c => c.Value.EnableRaisingEvents"></PropertyColumn>
-            <PropertyColumn Title="路径" Sortable Property="c => c.Value.Path"></PropertyColumn>
-            <PropertyColumn Title="包含子目录" Sortable Property="c => c.Value.IncludeSubdirectories"></PropertyColumn>
-            <PropertyColumn Title="文件过滤器" Sortable Property="c => c.Value.Filter"></PropertyColumn>
+            <PropertyColumn Title="启动" Sortable Property="c => c.EnableRaisingEvents"></PropertyColumn>
+            <PropertyColumn Title="路径" Ellipsis Sortable Property="c => c.Path"></PropertyColumn>
+            <PropertyColumn Title="相对路径" Ellipsis Sortable Property="c => c.RelativePath"></PropertyColumn>
+            <PropertyColumn Title="包含子目录" Sortable Property="c => c.IncludeSubdirectories"></PropertyColumn>
+            <PropertyColumn Title="文件过滤器" Sortable Property="c => c.Filter"></PropertyColumn>
+            <PropertyColumn Title="消息" Ellipsis Sortable Property="c => c.Message">
+                @if (context.ErrorCode != 0)
+                {
+                    <Tooltip Title="@context.Message">
+                        <Alert Type="@AlertType.Error" ShowIcon="true" />
+                    </Tooltip>
+                }
+
+            </PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
@@ -158,7 +173,7 @@
     bool _editFormVisible;
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
-    CommonDialog _ftpConfigDialog;
+    CommonDialog _taskDefinitionDialog;
     TaskDefinitionSelector _taskDefinitionSelector;
     IEnumerable<JobScheduleConfigModel> _selectedTaskDefinitions;
     Form<FileSystemWatchConfigModel> _editForm;
@@ -400,7 +415,7 @@
 
     async Task ShowTaskDefinitionSelectorDialogAsync()
     {
-        await _ftpConfigDialog.ShowAsync();
+        await _taskDefinitionDialog.ShowAsync();
     }
 
     Task OnTaskDefinitionSelectorDialogClosed()

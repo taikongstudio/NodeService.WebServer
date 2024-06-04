@@ -16,12 +16,12 @@ namespace NodeService.WebServer.Services.QueryOptimize
 {
     public class ClientUpdateQueueService : BackgroundService
     {
-        private readonly ILogger<ClientUpdateQueueService> _logger;
-        private readonly IMemoryCache _memoryCache;
-        private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
-        private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
-        private readonly ExceptionCounter _exceptionCounter;
-        private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> _batchQueue;
+        readonly ILogger<ClientUpdateQueueService> _logger;
+        readonly IMemoryCache _memoryCache;
+        readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+        readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
+        readonly ExceptionCounter _exceptionCounter;
+        readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> _batchQueue;
 
         public ClientUpdateQueueService(
             ILogger<ClientUpdateQueueService> logger,
@@ -109,7 +109,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 try
                 {
-
+                    using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
                     foreach (var nameGroup in arrayPoolCollection.GroupBy(static x => x.Argument.Name))
                     {
                         var name = nameGroup.Key;
@@ -133,7 +133,23 @@ namespace NodeService.WebServer.Services.QueryOptimize
                                 }
                                 else
                                 {
-                                    op.SetResult(null);
+
+                                    var hasNode = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
+                                        null,
+                                        op.Argument.IpAddress),
+                                        stoppingToken);
+                                    if (!hasNode)
+                                    {
+                                        if (clientUpdateConfig == null)
+                                        {
+                                            clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                                        }
+                                        op.SetResult(clientUpdateConfig);
+                                    }
+                                    else
+                                    {
+                                        op.SetResult(null);
+                                    }
                                 }
                             }
                             catch (Exception ex)

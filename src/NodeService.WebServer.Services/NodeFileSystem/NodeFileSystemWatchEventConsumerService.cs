@@ -202,10 +202,7 @@ namespace NodeService.WebServer.Services.FileSystem
                        report.ConfigurationId,
                        Path.GetDirectoryName(report.Created.FullPath) ?? report.Created.FullPath);
                     }
-                    return new NodeConfigurationDirectoryKey(
-                        message.NodeSessionId.NodeId.Value,
-                        report.ConfigurationId,
-                        report.Created.FullPath);
+                    break;
                 case FileSystemWatchEventReport.EventOneofCase.Deleted:
                     if (report.Deleted.Properties.ContainsKey(nameof(FileInfo)))
                     {
@@ -214,10 +211,7 @@ namespace NodeService.WebServer.Services.FileSystem
                        report.ConfigurationId,
                        Path.GetDirectoryName(report.Deleted.FullPath) ?? report.Deleted.FullPath);
                     }
-                    return new NodeConfigurationDirectoryKey(
-                        message.NodeSessionId.NodeId.Value,
-                        report.ConfigurationId,
-                        report.Deleted.FullPath);
+                    break;
                 case FileSystemWatchEventReport.EventOneofCase.Changed:
                     if (report.Changed.Properties.ContainsKey(nameof(FileInfo)))
                     {
@@ -226,10 +220,7 @@ namespace NodeService.WebServer.Services.FileSystem
                        report.ConfigurationId,
                        Path.GetDirectoryName(report.Changed.FullPath) ?? report.Changed.FullPath);
                     }
-                    return new NodeConfigurationDirectoryKey(
-                        message.NodeSessionId.NodeId.Value,
-                        report.ConfigurationId,
-                        report.Changed.FullPath);
+                    break;
                 case FileSystemWatchEventReport.EventOneofCase.Renamed:
                     if (report.Renamed.Properties.ContainsKey(nameof(FileInfo)))
                     {
@@ -238,10 +229,7 @@ namespace NodeService.WebServer.Services.FileSystem
                        report.ConfigurationId,
                        Path.GetDirectoryName(report.Renamed.FullPath) ?? report.Renamed.FullPath);
                     }
-                    return new NodeConfigurationDirectoryKey(
-                        message.NodeSessionId.NodeId.Value,
-                        report.ConfigurationId,
-                        report.Renamed.FullPath);
+                    break;
                 case FileSystemWatchEventReport.EventOneofCase.None:
                 case FileSystemWatchEventReport.EventOneofCase.Error:
                 default:

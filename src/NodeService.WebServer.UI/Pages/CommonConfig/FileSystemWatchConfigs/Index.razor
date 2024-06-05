@@ -41,7 +41,7 @@
                 <FormItem Required Label="路径">
                     <Input @bind-Value="@context.Path" />
                 </FormItem>
-                <FormItem Required Label="相对路径">
+                <FormItem Label="相对路径">
                     <AntDesign.Input @bind-Value="@context.Value.RelativePath" >
                         <AddOnBefore>@($"{context.Path}\\")</AddOnBefore> 
                     </AntDesign.Input>
@@ -92,6 +92,12 @@
                     <CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
                         <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
                     </CommonDialog>
+                </FormItem>
+                <FormItem Label="触发阈值">
+                    <AntDesign.InputNumber DefaultValue="100" @bind-Value="@context.TriggerThreshold" />
+                </FormItem>
+                <FormItem Label="最短触发间隔(秒)">
+                    <AntDesign.InputNumber DefaultValue="60" @bind-Value="@context.TimeThreshold" />
                 </FormItem>
             }
         </Form>

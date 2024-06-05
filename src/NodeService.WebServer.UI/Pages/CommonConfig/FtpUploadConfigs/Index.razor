@@ -316,17 +316,17 @@
         {
             _modalTitle = "编辑配置";
             _editModel = model;
-            if (_editModel.Value.DateTimeFilters == null)
+            if (_editModel.DateTimeFilters == null)
             {
-                _editModel.Value.DateTimeFilters = [];
+                _editModel.DateTimeFilters = [];
             }
-            if (_editModel.Value.LengthFilters == null)
+            if (_editModel.LengthFilters == null)
             {
-                _editModel.Value.LengthFilters = [];
+                _editModel.LengthFilters = [];
             }
-            if (_editModel.Value.MaxRecursionDepth == 0)
+            if (_editModel.MaxRecursionDepth == 0)
             {
-                _editModel.Value.MaxRecursionDepth = int.MaxValue;
+                _editModel.MaxRecursionDepth = int.MaxValue;
             }
             await InitSelectedFtpConfigAsync();
         }
@@ -334,13 +334,13 @@
 
     async Task InitSelectedFtpConfigAsync()
     {
-        if (_editModel.Value.FtpConfigId == null)
+        if (_editModel.FtpConfigId == null)
         {
             _selectedFtpConfigs = [];
         }
         else
         {
-            var ftpConfig = await ApiService.GetFtpConfigAsync(_editModel.Value.FtpConfigId);
+            var ftpConfig = await ApiService.GetFtpConfigAsync(_editModel.FtpConfigId);
             if (ftpConfig != null)
             {
                 _selectedFtpConfigs = [ftpConfig];
@@ -353,9 +353,13 @@
     {
         try
         {
-            if (_editModel.Value.DateTimeFilters == null)
+            if (_editModel.DateTimeFilters == null)
             {
-                _editModel.Value.DateTimeFilters = [];
+                _editModel.DateTimeFilters = [];
+            }
+            if (!_editModel.Value.RemoteDirectory.StartsWith('/'))
+            {
+                _editModel.Value.RemoteDirectory = '/' + _editModel.Value.RemoteDirectory;
             }
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
@@ -366,19 +370,19 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = apiResponse.Message
-                });
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = ex.ToString()
-            });
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
         }
         finally
         {

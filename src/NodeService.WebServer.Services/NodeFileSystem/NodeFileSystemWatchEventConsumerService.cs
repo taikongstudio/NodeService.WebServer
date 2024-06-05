@@ -17,7 +17,7 @@ namespace NodeService.WebServer.Services.FileSystem
 {
     public class NodeFileSystemWatchEventConsumerService : BackgroundService
     {
-        record struct NodeConfigurationDirectoryKey
+        record class NodeConfigurationDirectoryKey
         {
             public NodeConfigurationDirectoryKey(
                 string nodeId,
@@ -36,13 +36,38 @@ namespace NodeService.WebServer.Services.FileSystem
             public string Directory { get; set; }
         }
 
-        private readonly ILogger<NodeFileSystemWatchEventConsumerService> _logger;
-        private readonly ExceptionCounter _exceptionCounter;
-        private readonly BatchQueue<FileSystemWatchEventReportMessage> _reportMessageEventQueue;
-        private readonly BatchQueue<FireTaskParameters> _fireTaskParametersBatchQueue;
-        private readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepoFactory;
-        private readonly ApplicationRepositoryFactory<FileSystemWatchConfigModel> _fileSystemWatchRepoFactory;
+        record class DirectotyCounterInfo
+        {
+            public DirectotyCounterInfo()
+            {
+                this.PathList = new HashSet<string>();
+            }
 
+            public int ChangedCount { get; set; }
+
+            public int DeletedCount { get; set; }
+
+            public int RenamedCount { get; set; }
+
+            public int CreatedCount { get; set; }
+
+            public int TotalCount { get; set; }
+
+            public int LastTriggerCount { get; set; }
+
+            public DateTime LastTriggerTaskTime { get; set; }
+
+            public HashSet<string> PathList { get; set; }
+
+        }
+
+        readonly ILogger<NodeFileSystemWatchEventConsumerService> _logger;
+        readonly ExceptionCounter _exceptionCounter;
+        readonly BatchQueue<FileSystemWatchEventReportMessage> _reportMessageEventQueue;
+        readonly BatchQueue<FireTaskParameters> _fireTaskParametersBatchQueue;
+        readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepoFactory;
+        readonly ApplicationRepositoryFactory<FileSystemWatchConfigModel> _fileSystemWatchRepoFactory;
+        readonly ConcurrentDictionary<NodeConfigurationDirectoryKey, DirectotyCounterInfo> _directoryCounterDict;
         public NodeFileSystemWatchEventConsumerService(
             ILogger<NodeFileSystemWatchEventConsumerService> logger,
             ExceptionCounter exceptionCounter,
@@ -57,6 +82,7 @@ namespace NodeService.WebServer.Services.FileSystem
             _fireTaskParametersBatchQueue = fireTaskParametersBatchQueue;
             _taskDefinitionRepoFactory = taskDefinitionRepoFactory;
             _fileSystemWatchRepoFactory = fileSystemWatchRepoFactory;
+            _directoryCounterDict = new();
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -105,37 +131,53 @@ namespace NodeService.WebServer.Services.FileSystem
                             var fileSystemWatchConfig = await fileSystemWatchRepo.GetByIdAsync(
                                 eventReport.ConfigurationId,
                                 cancellationToken);
-                            if (fileSystemWatchConfig == null || fileSystemWatchConfig.TaskDefinitionId == null)
+                            if (fileSystemWatchConfig == null)
                             {
                                 continue;
                             }
-                            fileSystemWatchConfig.ErrorCode = eventReport.Error.ErrorCode;
-                            fileSystemWatchConfig.Message = eventReport.Error.Message;
-                            await fileSystemWatchRepo.SaveChangesAsync(cancellationToken);
+                            if (eventReport.Error != null)
+                            {
+                                fileSystemWatchConfig.ErrorCode = eventReport.Error.ErrorCode;
+                                fileSystemWatchConfig.Message = eventReport.Error.Message;
+                                await fileSystemWatchRepo.SaveChangesAsync(cancellationToken);
+                            }
                         }
                     }
                     else
                     {
                         var nodeConfigurationDirectoryKey = reportMessageFileGroup.Key;
-                        long changesCount = 0;
+                        if (!_directoryCounterDict.TryGetValue(nodeConfigurationDirectoryKey, out var counterInfo))
+                        {
+                            counterInfo = new DirectotyCounterInfo();
+                            _directoryCounterDict.TryAdd(nodeConfigurationDirectoryKey, counterInfo);
+                        }
+
                         foreach (var message in reportMessageFileGroup)
                         {
                             var eventReport = message.GetMessage();
-                            Debug.WriteLine(eventReport.ToString());
                             switch (eventReport.EventCase)
                             {
                                 case FileSystemWatchEventReport.EventOneofCase.None:
                                     break;
                                 case FileSystemWatchEventReport.EventOneofCase.Created:
-                                    changesCount++;
+                                    counterInfo.CreatedCount++;
+                                    counterInfo.TotalCount++;
+                                    counterInfo.PathList.Add(eventReport.Created.FullPath);
                                     break;
                                 case FileSystemWatchEventReport.EventOneofCase.Changed:
-                                    changesCount++;
+                                    counterInfo.ChangedCount++;
+                                    counterInfo.TotalCount++;
+                                    counterInfo.PathList.Add(eventReport.Changed.FullPath);
                                     break;
                                 case FileSystemWatchEventReport.EventOneofCase.Deleted:
+                                    counterInfo.DeletedCount++;
+                                    counterInfo.TotalCount++;
+                                    counterInfo.PathList.Add(eventReport.Deleted.FullPath);
                                     break;
                                 case FileSystemWatchEventReport.EventOneofCase.Renamed:
-                                    changesCount++;
+                                    counterInfo.RenamedCount++;
+                                    counterInfo.TotalCount++;
+                                    counterInfo.PathList.Add(eventReport.Renamed.FullPath);
                                     break;
                                 case FileSystemWatchEventReport.EventOneofCase.Error:
                                     break;
@@ -143,42 +185,59 @@ namespace NodeService.WebServer.Services.FileSystem
                                     break;
                             }
                         }
+                        long changesCount = counterInfo.TotalCount - counterInfo.LastTriggerCount;
                         if (changesCount == 0)
                         {
                             continue;
                         }
+
                         var fileSystemWatchConfig = await fileSystemWatchRepo.GetByIdAsync(
                             nodeConfigurationDirectoryKey.ConfigurationId,
                             cancellationToken);
-                        if (fileSystemWatchConfig == null || fileSystemWatchConfig.TaskDefinitionId == null)
+
+
+                        if (fileSystemWatchConfig == null)
                         {
                             continue;
                         }
 
-                        var taskDefinition = await taskDefinitionRepo.GetByIdAsync(
-                            fileSystemWatchConfig.TaskDefinitionId,
-                            cancellationToken);
-                        if (taskDefinition == null)
+                        if (fileSystemWatchConfig.TaskDefinitionId == null)
                         {
                             continue;
                         }
-                        await _fireTaskParametersBatchQueue.SendAsync(new FireTaskParameters
-                        {
-                            FireTimeUtc = DateTime.UtcNow,
-                            TriggerSource = TaskTriggerSource.Manual,
-                            FireInstanceId = $"FileSystemWatch_{Guid.NewGuid()}",
-                            TaskDefinitionId = taskDefinition.Id,
-                            ScheduledFireTimeUtc = DateTime.UtcNow,
-                            NodeList = [new StringEntry(null, nodeId.Value)],
-                            EnvironmentVariables =
-                            [
-                                new StringEntry("TaskTriggerSource", nameof(NodeFileSystemWatchEventConsumerService)),
-                                new StringEntry(nameof(FileSystemWatchConfiguration.Path), fileSystemWatchConfig.Path),
-                                new StringEntry(nameof(FileSystemWatchConfiguration.RelativePath), fileSystemWatchConfig.RelativePath),
-                                new StringEntry(nameof(FtpUploadConfiguration.LocalDirectory), nodeConfigurationDirectoryKey.Directory)
-                            ]
-                        }, cancellationToken);
 
+                        if (changesCount > fileSystemWatchConfig.TriggerThreshold
+                            &&
+                            DateTime.UtcNow - counterInfo.LastTriggerTaskTime > TimeSpan.FromSeconds(fileSystemWatchConfig.TimeThreshold))
+                        {
+                            var taskDefinition = await taskDefinitionRepo.GetByIdAsync(
+                                                fileSystemWatchConfig.TaskDefinitionId,
+                                                cancellationToken);
+                            if (taskDefinition == null)
+                            {
+                                continue;
+                            }
+                            await _fireTaskParametersBatchQueue.SendAsync(new FireTaskParameters
+                            {
+                                FireTimeUtc = DateTime.UtcNow,
+                                TriggerSource = TaskTriggerSource.Manual,
+                                FireInstanceId = $"FileSystemWatch_{Guid.NewGuid()}",
+                                TaskDefinitionId = taskDefinition.Id,
+                                ScheduledFireTimeUtc = DateTime.UtcNow,
+                                NodeList = [new StringEntry(null, nodeId.Value)],
+                                EnvironmentVariables =
+                                [
+                                    new StringEntry("TaskTriggerSource", nameof(NodeFileSystemWatchEventConsumerService)),
+                                    new StringEntry(nameof(FileSystemWatchConfiguration.Path), fileSystemWatchConfig.Path),
+                                    new StringEntry(nameof(FileSystemWatchConfiguration.RelativePath), fileSystemWatchConfig.RelativePath),
+                                    new StringEntry(nameof(FtpUploadConfiguration.LocalDirectory), nodeConfigurationDirectoryKey.Directory),
+                                    new StringEntry("PathList", JsonSerializer.Serialize<IEnumerable<string>>(counterInfo.PathList))
+                                ]
+                            }, cancellationToken);
+                            counterInfo.PathList.Clear();
+                            counterInfo.LastTriggerTaskTime = DateTime.UtcNow;
+                            counterInfo.LastTriggerCount = counterInfo.TotalCount;
+                        }
                     }
                 }
             }
@@ -192,42 +251,57 @@ namespace NodeService.WebServer.Services.FileSystem
         NodeConfigurationDirectoryKey GroupReportFunc(FileSystemWatchEventReportMessage message)
         {
             var report = message.GetMessage();
+            
             switch (report.EventCase)
             {
                 case FileSystemWatchEventReport.EventOneofCase.Created:
-                    if (report.Created.Properties.ContainsKey(nameof(FileInfo)))
                     {
-                        return new NodeConfigurationDirectoryKey(
-                       message.NodeSessionId.NodeId.Value,
-                       report.ConfigurationId,
-                       Path.GetDirectoryName(report.Created.FullPath) ?? report.Created.FullPath);
+                        string fullPath = Path.GetFullPath(report.Created.FullPath);
+                        if (report.Created.Properties.ContainsKey(nameof(FileInfo)))
+                        {
+                            return new NodeConfigurationDirectoryKey(
+                           message.NodeSessionId.NodeId.Value,
+                           report.ConfigurationId,
+                           Path.GetDirectoryName(fullPath) ?? fullPath);
+                        }
                     }
+
                     break;
                 case FileSystemWatchEventReport.EventOneofCase.Deleted:
-                    if (report.Deleted.Properties.ContainsKey(nameof(FileInfo)))
                     {
-                        return new NodeConfigurationDirectoryKey(
-                       message.NodeSessionId.NodeId.Value,
-                       report.ConfigurationId,
-                       Path.GetDirectoryName(report.Deleted.FullPath) ?? report.Deleted.FullPath);
+                        string fullPath = Path.GetFullPath(report.Deleted.FullPath);
+                        if (report.Deleted.Properties.ContainsKey(nameof(FileInfo)))
+                        {
+                            return new NodeConfigurationDirectoryKey(
+                           message.NodeSessionId.NodeId.Value,
+                           report.ConfigurationId,
+                           Path.GetDirectoryName(fullPath) ?? fullPath);
+                        }
                     }
                     break;
                 case FileSystemWatchEventReport.EventOneofCase.Changed:
-                    if (report.Changed.Properties.ContainsKey(nameof(FileInfo)))
                     {
-                        return new NodeConfigurationDirectoryKey(
-                       message.NodeSessionId.NodeId.Value,
-                       report.ConfigurationId,
-                       Path.GetDirectoryName(report.Changed.FullPath) ?? report.Changed.FullPath);
+                        string fullPath = Path.GetFullPath(report.Changed.FullPath);
+                        if (report.Changed.Properties.ContainsKey(nameof(FileInfo)))
+                        {
+                            return new NodeConfigurationDirectoryKey(
+                           message.NodeSessionId.NodeId.Value,
+                           report.ConfigurationId,
+                           Path.GetDirectoryName(fullPath) ?? fullPath);
+                        }
                     }
+
                     break;
                 case FileSystemWatchEventReport.EventOneofCase.Renamed:
-                    if (report.Renamed.Properties.ContainsKey(nameof(FileInfo)))
                     {
-                        return new NodeConfigurationDirectoryKey(
-                       message.NodeSessionId.NodeId.Value,
-                       report.ConfigurationId,
-                       Path.GetDirectoryName(report.Renamed.FullPath) ?? report.Renamed.FullPath);
+                        string fullPath = Path.GetFullPath(report.Renamed.FullPath);
+                        if (report.Renamed.Properties.ContainsKey(nameof(FileInfo)))
+                        {
+                            return new NodeConfigurationDirectoryKey(
+                           message.NodeSessionId.NodeId.Value,
+                           report.ConfigurationId,
+                           Path.GetDirectoryName(fullPath) ?? fullPath);
+                        }
                     }
                     break;
                 case FileSystemWatchEventReport.EventOneofCase.None:

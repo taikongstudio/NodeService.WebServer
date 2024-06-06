@@ -17,6 +17,7 @@ public class TaskLogPersistenceService : BackgroundService
     readonly ExceptionCounter _exceptionCounter;
     readonly BatchQueue<TaskLogGroup> _taskLogGroupBatchQueue;
     readonly WebServerCounter _webServerCounter;
+    private readonly IMemoryCache _memoryCache;
     readonly ILogger<TaskLogPersistenceService> _logger;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
 
@@ -25,7 +26,8 @@ public class TaskLogPersistenceService : BackgroundService
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
         BatchQueue<TaskLogGroup> taskLogGroupBatchQueue,
         ExceptionCounter exceptionCounter,
-        WebServerCounter webServerCounter
+        WebServerCounter webServerCounter,
+        IMemoryCache memoryCache
     )
     {
         _logger = logger;
@@ -33,6 +35,7 @@ public class TaskLogPersistenceService : BackgroundService
         _exceptionCounter = exceptionCounter;
         _taskLogGroupBatchQueue = taskLogGroupBatchQueue;
         _webServerCounter = webServerCounter;
+        _memoryCache = memoryCache;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -43,12 +46,16 @@ public class TaskLogPersistenceService : BackgroundService
             {
                 using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
                 var stopwatch = new Stopwatch();
+                var addedTaskLogPageList = new ConcurrentDictionary<string, TaskLogModel>();
+                var updatedTaskLogPageList = new ConcurrentDictionary<string, TaskLogModel>();
                 foreach (var taskLogGroup in arrayPoolCollection)
                 {
                     stopwatch.Restart();
                     var saveLogStat = await SaveTaskLogAsync(
                         taskLogRepo,
                         taskLogGroup,
+                        addedTaskLogPageList,
+                        updatedTaskLogPageList,
                         stoppingToken);
                     stopwatch.Stop();
                     _webServerCounter.TaskExecutionReportSaveLogEntriesTimeSpan += stopwatch.Elapsed;
@@ -58,6 +65,8 @@ public class TaskLogPersistenceService : BackgroundService
                     {
                         _webServerCounter.TaskExecutionReportSaveLogEntriesMaxTimeSpan = stopwatch.Elapsed;
                     }
+                    addedTaskLogPageList.Clear();
+                    updatedTaskLogPageList.Clear();
                 }
             }
             catch (Exception ex)
@@ -71,28 +80,71 @@ public class TaskLogPersistenceService : BackgroundService
     private async Task<SaveLogStat> SaveTaskLogAsync(
         IRepository<TaskLogModel> taskLogRepo,
         TaskLogGroup taskLogGroup,
+        ConcurrentDictionary<string, TaskLogModel> addedTaskLogPageDictionary,
+        ConcurrentDictionary<string, TaskLogModel> updatedTaskLogPageDictionary,
         CancellationToken stoppingToken = default)
     {
         var saveLogStat = new SaveLogStat();
         int logCount = taskLogGroup.LogEntries.Length;
         int logIndex = 0;
-        var addedTaskLogPageList = new List<TaskLogModel>();
-        var updatedTaskLogPageList = new List<TaskLogModel>();
+
+        var infoKey = $"{nameof(TaskLogPersistenceService)}{taskLogGroup.Id}_0";
+        if (!_memoryCache.TryGetValue<TaskLogModel>(infoKey, out var taskInfoLog) || taskInfoLog == null)
+        {
+            taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(
+            new TaskLogSpecification(taskLogGroup.Id, 0),
+            stoppingToken);
+            if (taskInfoLog == null)
+            {
+                taskInfoLog = new TaskLogModel()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = taskLogGroup.Id,
+                    ActualSize = logCount,
+                    PageIndex = 0,
+                    PageSize = 1
+                };
+                addedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
+
+            }
+            _memoryCache.Set(infoKey, taskInfoLog, TimeSpan.FromMinutes(10));
+        }
+
         while (logIndex < logCount)
         {
-            var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskLogGroup.Id), stoppingToken);
+            string key = CreateKey(taskLogGroup.Id, taskInfoLog.PageSize);
+            if (!_memoryCache.TryGetValue<TaskLogModel>(key, out var taskLog))
+            {
+                taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskLogGroup.Id, taskInfoLog.PageSize, 1), stoppingToken);
+                if (taskLog != null && taskLog.PageIndex == taskInfoLog.PageSize)
+                {
+                    _memoryCache.Set(key, taskLog, TimeSpan.FromMinutes(1));
+                }
+                else
+                {
+                    taskLog = null;
+                }
+            }
+
             if (taskLog == null || taskLog.ActualSize == taskLog.PageSize)
             {
-                int lastPageIndex = taskLog?.PageIndex ?? 0;
+                _memoryCache.Remove(key);
+                if (taskLog != null && taskLog.ActualSize == taskLog.PageSize)
+                {
+                    taskInfoLog.PageSize += 1;
+                }
                 taskLog = new TaskLogModel
                 {
                     Id = Guid.NewGuid().ToString(),
                     Name = taskLogGroup.Id,
-                    PageIndex = lastPageIndex + 1,
+                    PageIndex = taskInfoLog.PageSize,
                     PageSize = 512,
                 };
                 saveLogStat.PageCreated += 1;
-                addedTaskLogPageList.Add(taskLog);
+                addedTaskLogPageDictionary.AddOrUpdate(taskLog.Id, taskLog, (key, oldValue) => taskLog);
+                updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
+                key = CreateKey(taskLogGroup.Id, taskLog.PageIndex);
+                _memoryCache.Set(key, taskLog, TimeSpan.FromMinutes(1));
             }
             if (taskLog.ActualSize < taskLog.PageSize)
             {
@@ -101,35 +153,34 @@ public class TaskLogPersistenceService : BackgroundService
                 taskLog.ActualSize = taskLog.LogEntries.Count;
                 logIndex += takeCount;
                 saveLogStat.LogEntriesWritten += (uint)takeCount;
+                taskInfoLog.ActualSize += takeCount;
+                if (!addedTaskLogPageDictionary.ContainsKey(taskInfoLog.Id))
+                {
+                    updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
+                }
             }
-            updatedTaskLogPageList.Add(taskLog);
-        }
-
-        var taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(
-            new TaskLogSpecification(taskLogGroup.Id, 0),
-            stoppingToken);
-        if (taskInfoLog == null)
-        {
-            taskInfoLog = new TaskLogModel()
+            if (!addedTaskLogPageDictionary.ContainsKey(taskLog.Id))
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = taskLogGroup.Id,
-                ActualSize = logCount,
-                PageIndex = 0,
-                PageSize = 0
-            };
-            addedTaskLogPageList.Add(taskInfoLog);
-        }
-        else
-        {
-            taskInfoLog.ActualSize += logCount;
-            updatedTaskLogPageList.Add(taskInfoLog);
+                updatedTaskLogPageDictionary.AddOrUpdate(taskLog.Id, taskLog, (key, oldValue) => taskLog);
+            }
         }
 
-        await taskLogRepo.AddRangeAsync(addedTaskLogPageList, stoppingToken);
-        await taskLogRepo.UpdateRangeAsync(updatedTaskLogPageList, stoppingToken);
+
+        if (!addedTaskLogPageDictionary.IsEmpty)
+        {
+            await taskLogRepo.AddRangeAsync(addedTaskLogPageDictionary.Values, stoppingToken);
+        }
+        if (!updatedTaskLogPageDictionary.IsEmpty)
+        {
+            await taskLogRepo.UpdateRangeAsync(updatedTaskLogPageDictionary.Values, stoppingToken);
+        }
+
 
         return saveLogStat;
     }
 
+    static string CreateKey(string taskId, int pageSize)
+    {
+        return $"{nameof(TaskLogPersistenceService)}_{taskId}_{pageSize}";
+    }
 }

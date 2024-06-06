@@ -59,9 +59,8 @@
 
     StandaloneCodeEditor _viewer = null!;
     CancellationTokenSource _cancellationTokenSource;
-    List<string> _logPages = [];
     bool _loading;
-    int _logPageIndex = 0;
+    int _logPageIndex = 1;
     int _loadedLogEntriesCount;
     int _totalLogEntriesCount;
     bool _loadMoreButtonDisabled;
@@ -116,12 +115,11 @@
 
     async Task<bool> LoadNextLogPageAsync(CancellationToken cancellationToken = default)
     {
-        var pageSize = 512;
         var apiResponse = await ApiService.QueryTaskExecutionInstanceLogAsync(TaskExecutionInstanceId,
             new PaginationQueryParameters
             {
                 PageIndex = _logPageIndex,
-                PageSize = pageSize
+                PageSize = 0
             },
             cancellationToken
         );
@@ -134,31 +132,24 @@
                 sb.AppendLine($"{item.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
             }
 
-            var log = sb.ToString();
-
-            IEnumerable<string> logPages = [];
-            var lastPageItemsCount = 0;
+            var currentLogText = sb.ToString();
             var resultCount = apiResponse.Result.Count();
-            if (resultCount == apiResponse.PageSize)
-            {
-                _logPages.Add(log);
-                logPages = _logPages;
-                _logPageIndex++;
-            }
-            else
-            {
-                logPages = _logPages.Union([log]);
-                lastPageItemsCount = resultCount;
-            }
 
-            var stringBuilder = new StringBuilder();
-            stringBuilder.AppendJoin(string.Empty, logPages);
-            var logText = stringBuilder.ToString();
-            await _viewer.SetValue(logText);
-            _loadedLogEntriesCount = pageSize * _logPages.Count + lastPageItemsCount;
+            var model = await _viewer.GetModel();
+            var lineCount = await model.GetLineCount();
+            var column = await model.GetLineMaxColumn(lineCount);
+            var op = new IdentifiedSingleEditOperation()
+                {
+                    ForceMoveMarkers = false,
+                    Range = new BlazorMonaco.Range(lineCount, column, lineCount, column),
+                    Text = currentLogText
+                };
+            await model.ApplyEdits([op]);
+            _logPageIndex = apiResponse.PageIndex + 1;
+            _loadedLogEntriesCount = _loadedLogEntriesCount + resultCount;
             _totalLogEntriesCount = apiResponse.TotalCount;
             await InvokeAsync(StateHasChanged);
-            return lastPageItemsCount == 0 && _totalLogEntriesCount > 0;
+            return _totalLogEntriesCount - _loadedLogEntriesCount > 0;
         }
 
         await _notice.Open(new NotificationConfig
@@ -208,7 +199,6 @@
         _totalLogEntriesCount = 0;
         _loadedLogEntriesCount = 0;
         _logPageIndex = 0;
-        _logPages.Clear();
     }
 
     public async Task StopAsync()

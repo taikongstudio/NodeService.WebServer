@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
@@ -19,8 +20,8 @@ public class JobsController : Controller
     private readonly INodeSessionService _nodeSessionService;
     private readonly IServiceProvider _serviceProvider;
     private readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
-    private readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskInstanceRepositoryFactory;
-    private readonly TaskLogCacheManager _taskLogCacheManager;
+    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskInstanceRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
 
     public JobsController(
         IServiceProvider serviceProvider,
@@ -29,7 +30,7 @@ public class JobsController : Controller
         INodeSessionService nodeSessionService,
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
-        TaskLogCacheManager taskLogCacheManager,
+        ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
         BatchQueue<TaskCancellationParameters> taskCancellationAsyncQueue)
     {
         _serviceProvider = serviceProvider;
@@ -37,7 +38,7 @@ public class JobsController : Controller
         _taskInstanceRepositoryFactory = taskInstanceRepositoryFactory;
         _nodeSessionService = nodeSessionService;
         _memoryCache = memoryCache;
-        _taskLogCacheManager = taskLogCacheManager;
+        _taskLogRepoFactory = taskLogRepoFactory;
         _exceptionCounter = exceptionCounter;
         _taskCancellationAsyncQueue = taskCancellationAsyncQueue;
     }
@@ -141,7 +142,7 @@ public class JobsController : Controller
     }
 
 
-    [HttpGet("/api/Tasks/Instances/{taskId}/log")]
+    [HttpGet("/api/Tasks/Instances/{taskId}/Log")]
     public async Task<IActionResult> QueryTaskLogAsync(
         string taskId,
         [FromQuery] PaginationQueryParameters queryParameters)
@@ -149,50 +150,81 @@ public class JobsController : Controller
         var apiResponse = new PaginationResponse<LogEntry>();
         try
         {
-            var taskLogCache = _taskLogCacheManager.GetCache(taskId);
-            apiResponse.SetTotalCount(taskLogCache.Count);
-            if (taskLogCache.IsTruncated)
-            {
-                apiResponse.ErrorCode = -1;
-                apiResponse.Message = "log is truncated";
-            }
-            else if (taskLogCache.Count > 0)
-            {
-                if (queryParameters.PageSize == 0)
-                {
-                    using var repo = _taskInstanceRepositoryFactory.CreateRepository();
-                    var taskExecutionInstance = await repo.GetByIdAsync(taskId);
-                    var fileName = "x.log";
-                    if (taskExecutionInstance == null)
-                        fileName = $"{taskId}.log";
-                    else
-                        fileName = $"{taskExecutionInstance.Name}.log";
-                    var result = taskLogCache.GetEntries();
-                    var memoryStream = new MemoryStream();
-                    using var streamWriter = new StreamWriter(memoryStream, leaveOpen: true);
-
-                    foreach (var logEntry in result)
-                        streamWriter.WriteLine(
-                            $"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
-                    await streamWriter.FlushAsync();
-                    memoryStream.Position = 0;
-                    return File(memoryStream, "text/plain", fileName);
-                }
-
-                var items = taskLogCache.GetEntries(
-                        queryParameters.PageIndex,
-                        queryParameters.PageSize)
-                    .OrderBy(static x => x.Index).ToArray();
-                apiResponse.SetResult(items);
-            }
-            else
+            using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+            var taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, 0));
+            if (taskInfoLog == null)
             {
                 apiResponse.SetResult([]);
             }
+            else
+            {
+                int totalLogCount = taskInfoLog.ActualSize;
+                apiResponse.SetTotalCount(totalLogCount);
+                if (totalLogCount > 0)
+                {
+                    if (queryParameters.PageIndex == 0)
+                    {
+                        using var repo = _taskInstanceRepositoryFactory.CreateRepository();
+                        var taskExecutionInstance = await repo.GetByIdAsync(taskId);
+                        var fileName = "x.log";
+                        if (taskExecutionInstance == null)
+                            fileName = $"{taskId}.log";
+                        else
+                            fileName = $"{taskExecutionInstance.Name}.log";
+
+                        var memoryStream = new MemoryStream();
+                        using var streamWriter = new StreamWriter(memoryStream, leaveOpen: true);
+                        int pageIndex = 1;
+                        while (true)
+                        {
+                            var taskLogs = await taskLogRepo.ListAsync(new TaskLogSpecification(taskId, pageIndex, 100));
+                            if (taskLogs.Count == 0)
+                            {
+                                break;
+                            }
+                            foreach (var taskLog in taskLogs)
+                            {
+                                pageIndex++;
+                                foreach (var logEntry in taskLog.LogEntries)
+                                {
+                                    streamWriter.WriteLine($"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
+                                }
+                            }
+                            if (taskLogs.Count < 100)
+                            {
+                                break;
+                            }
+                        }
+
+                        await streamWriter.FlushAsync();
+                        memoryStream.Position = 0;
+                        return File(memoryStream, "text/plain", fileName);
+                    }
+                    else
+                    {
+                        var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, queryParameters.PageIndex));
+                        if (taskLog == null)
+                        {
+                            apiResponse.SetResult([]);
+                        }
+                        else
+                        {
+                            apiResponse.SetResult(taskLog.LogEntries);
+                            apiResponse.SetPageIndex(queryParameters.PageIndex);
+                            apiResponse.SetPageSize(taskLog.PageSize);
+                        }
+                    }
 
 
-            apiResponse.SetPageIndex(queryParameters.PageIndex);
-            apiResponse.SetPageSize(queryParameters.PageSize);
+                }
+                else
+                {
+                    apiResponse.SetResult([]);
+                }
+
+
+            }
+
         }
         catch (Exception ex)
         {

@@ -4,6 +4,7 @@ using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
+using System.Collections.Immutable;
 using System.Linq.Expressions;
 
 namespace NodeService.WebServer.Services.Tasks;
@@ -17,7 +18,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     private readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
     private readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
     private readonly ApplicationRepositoryFactory<JobFireConfigurationModel> _taskFireConfigRepositoryFactory;
-    private readonly TaskLogCacheManager _taskLogCacheManager;
+    private readonly BatchQueue<TaskLogGroup> _taskLogGroupBatchQueue;
     private readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
     private readonly TaskScheduler _taskScheduler;
     private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
@@ -28,7 +29,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         ApplicationRepositoryFactory<JobScheduleConfigModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<JobFireConfigurationModel> taskFireConfigRepositoryFactory,
         BatchQueue<JobExecutionReportMessage> jobExecutionReportBatchQueue,
-        TaskLogCacheManager taskLogCacheManager,
+        BatchQueue<TaskLogGroup> taskLogGroupBatchQueue,
         IAsyncQueue<TaskScheduleMessage> jobScheduleAsyncQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
         TaskSchedulerDictionary jobSchedulerDictionary,
@@ -46,7 +47,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         _logger = logger;
         _taskSchedulerDictionary = jobSchedulerDictionary;
         _taskScheduler = jobScheduler;
-        _taskLogCacheManager = taskLogCacheManager;
+        _taskLogGroupBatchQueue = taskLogGroupBatchQueue;
         _memoryCache = memoryCache;
         _webServerCounter = webServerCounter;
         _exceptionCounter = exceptionCounter;
@@ -116,7 +117,6 @@ public class TaskExecutionReportConsumerService : BackgroundService
             var stopwatchQuery = new Stopwatch();
             var stopwatchProcessLogEntries = new Stopwatch();
             var stopwatchProcessMessage = new Stopwatch();
-            List<TaskLogCachePage> taskLogPersistenceGroups = [];
             foreach (var taskReportGroup in arrayPoolCollection
                          .GroupBy(GetTaskId))
             {
@@ -149,11 +149,12 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     var report = reportMessage.GetMessage();
                     if (report.LogEntries.Count > 0)
                     {
-                        var taskLogCache = _taskLogCacheManager.GetCache(taskId);
-                        var count1 = taskLogCache.Count;
-                        _taskLogCacheManager.GetCache(taskId).AppendEntries(report.LogEntries.Select(Convert));
-                        var count2 = taskLogCache.Count;
-                        _webServerCounter.TaskExecutionReportProcessLogEntriesCount += (uint)(count2 - count1);
+                        var taskLogGroup = new TaskLogGroup
+                        {
+                            Id = taskId,
+                            LogEntries = report.LogEntries.Select(Convert).ToImmutableArray()
+                        };
+                        await _taskLogGroupBatchQueue.SendAsync(taskLogGroup);
                     }
                 }
 

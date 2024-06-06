@@ -17,6 +17,14 @@ public class WebServerCounter
 
     public TimeSpan TaskExecutionReportProcessLogEntriesTimeSpan { get; set; }
 
+    public TimeSpan TaskExecutionReportSaveLogEntriesTimeSpan { get; set; }
+
+    public TimeSpan TaskExecutionReportSaveLogEntriesMaxTimeSpan { get; set; }
+
+    public ulong TaskExecutionReportLogEntriesCount { get; set; }
+
+    public ulong TaskExecutionReportLogEntriesPageCount { get; set; }
+
     public TimeSpan TaskExecutionReportProcessTimeSpan { get; set; }
     public TimeSpan HeartBeatTotalProcessTimeSpan { get; set; }
     public ulong NodeServiceInputMessagesCount { get; set; }

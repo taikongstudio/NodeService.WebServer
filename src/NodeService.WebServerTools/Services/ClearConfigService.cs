@@ -28,6 +28,7 @@ namespace NodeService.WebServerTools.Services
             foreach (var item in ftpUploadConfigs)
             {
                 item.FtpConfig = null;
+                item.Value.MatchType = MatchType.Win32;
                 dbContext.Update(item);
 
             }

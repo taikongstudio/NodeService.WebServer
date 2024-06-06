@@ -92,6 +92,8 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<FileSystemWatchConfigModel> FileSystemWatchConfigurationDbSet { get; set; }
 
+    public DbSet<TaskLogModel> TaskLogDbSet { get; set; }
+
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
                                     DynamicallyAccessedMemberTypes.NonPublicConstructors |

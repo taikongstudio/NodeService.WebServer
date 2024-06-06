@@ -5,7 +5,7 @@ public partial class ApplicationDbContext
     private void MySql_BuildModels(ModelBuilder modelBuilder)
     {
         MySql_BuildClientUpdateInfoModel(modelBuilder);
-        MySql_BuildJsonBasedConfigurationModels(modelBuilder);
+        MySql_BuildJsonBasedDataModels(modelBuilder);
         MySql_BuildNodeInfoModel(modelBuilder);
         MySql_BuildNodeProfileModel(modelBuilder);
         MySql_BuildNodeStatusChangeRecordModel(modelBuilder);
@@ -141,7 +141,7 @@ public partial class ApplicationDbContext
             .AutoInclude();
     }
 
-    private static void MySql_BuildJsonBasedConfigurationModels(ModelBuilder modelBuilder)
+    private static void MySql_BuildJsonBasedDataModels(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FtpConfigModel>(builder =>
         {
@@ -253,6 +253,14 @@ public partial class ApplicationDbContext
                 .HasColumnType("json").HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<FileSystemWatchConfiguration>(v, (JsonSerializerOptions)null));
+        });
+
+        modelBuilder.Entity<TaskLogModel>(builder =>
+        {
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<TaskLog>(v, (JsonSerializerOptions)null));
         });
     }
 }

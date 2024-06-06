@@ -1,5 +1,7 @@
 ﻿
 
+using NodeService.Infrastructure.Logging;
+
 namespace NodeService.WebServer.Data;
 
 public partial class ApplicationDbContext
@@ -7,7 +9,7 @@ public partial class ApplicationDbContext
     private void SqlServer_BuildModels(ModelBuilder modelBuilder)
     {
         SqlServer_BuildClientUpdateInfoModel(modelBuilder);
-        SqlServer_BuildJsonBasedConfigurationModels(modelBuilder);
+        SqlServer_BuildJsonBasedDataModels(modelBuilder);
         SqlServer_BuildJobExecutionInstanceModel(modelBuilder);
         SqlServer_BuildNodeInfoModel(modelBuilder);
         SqlServer_BuildNodeProfileModel(modelBuilder);
@@ -145,7 +147,7 @@ public partial class ApplicationDbContext
             .AutoInclude();
     }
 
-    private static void SqlServer_BuildJsonBasedConfigurationModels(ModelBuilder modelBuilder)
+    private static void SqlServer_BuildJsonBasedDataModels(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FtpConfigModel>(builder =>
         {
@@ -340,6 +342,20 @@ public partial class ApplicationDbContext
                             x => Deserialize<List<StringEntry>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<StringEntry>());
+                });
+        });
+
+        modelBuilder.Entity<TaskLogModel>(builder =>
+        {
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder.Property(x => x.LogEntries)
+                        .HasConversion(x => Serialize(x),
+                            x => Deserialize<List<LogEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<LogEntry>());
                 });
         });
     }

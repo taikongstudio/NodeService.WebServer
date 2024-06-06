@@ -391,7 +391,6 @@ public class Program
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
         builder.Services.AddSingleton<TaskLogDatabase>();
         builder.Services.AddSingleton<TaskScheduler>();
-        builder.Services.AddSingleton<TaskLogCacheManager>();
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
@@ -416,6 +415,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<TaskLogGroup>(1024, TimeSpan.FromSeconds(3)));
 
     }
 

@@ -34,8 +34,7 @@
 
     IEnumerable<(string Desc, string Value)> GetStatistics()
     {
-        yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesCount), WebServerCounter.TaskExecutionReportProcessLogEntriesCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan), WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan.ToString());
+
         yield return (nameof(WebServerCounter.TaskExecutionReportAvailableCount), WebServerCounter.TaskExecutionReportAvailableCount.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportProcessTimeSpan), WebServerCounter.TaskExecutionReportProcessTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportQueryTimeSpan), WebServerCounter.TaskExecutionReportQueryTimeSpan.ToString());
@@ -49,6 +48,12 @@
         yield return (nameof(WebServerCounter.NodeServiceInputMessagesCount), WebServerCounter.NodeServiceInputMessagesCount.ToString());
         yield return (nameof(WebServerCounter.NodeServiceOutputMessagesCount), WebServerCounter.NodeServiceOutputMessagesCount.ToString());
         yield return (nameof(WebServerCounter.NodeServiceExpiredMessagesCount), WebServerCounter.NodeServiceExpiredMessagesCount.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesCount), WebServerCounter.TaskExecutionReportProcessLogEntriesCount.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan), WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportLogEntriesCount), WebServerCounter.TaskExecutionReportLogEntriesCount.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportLogEntriesPageCount), WebServerCounter.TaskExecutionReportLogEntriesPageCount.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportSaveLogEntriesTimeSpan), WebServerCounter.TaskExecutionReportSaveLogEntriesTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportSaveLogEntriesMaxTimeSpan), WebServerCounter.TaskExecutionReportSaveLogEntriesMaxTimeSpan.ToString());
     }
 
 }

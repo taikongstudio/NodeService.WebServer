@@ -136,6 +136,7 @@ public class TaskLogPersistenceService : BackgroundService
             if (addedTaskLogs.Length > 0)
             {
                 await taskLogRepo.AddRangeAsync(addedTaskLogs, stoppingToken);
+                ResetDirtyCount(addedTaskLogs);
                 RemoveFullTaskLogPages(addedTaskLogs, _addedTaskLogPageDictionary);
             }
             RemoveTaskLogPages(_addedTaskLogPageDictionary);
@@ -146,9 +147,22 @@ public class TaskLogPersistenceService : BackgroundService
             if (updatedTaskLogs.Length > 0)
             {
                 await taskLogRepo.UpdateRangeAsync(updatedTaskLogs, stoppingToken);
+                ResetDirtyCount(updatedTaskLogs);
                 RemoveFullTaskLogPages(updatedTaskLogs, _updatedTaskLogPageDictionary);
             }
             RemoveTaskLogPages(_updatedTaskLogPageDictionary);
+        }
+    }
+
+    private static void ResetDirtyCount(TaskLogModel[] addedTaskLogs)
+    {
+        if (addedTaskLogs.Length == 0)
+        {
+            return;
+        }
+        foreach (var taskLog in addedTaskLogs)
+        {
+            taskLog.DirtyCount = 0;
         }
     }
 
@@ -230,6 +244,7 @@ public class TaskLogPersistenceService : BackgroundService
                 int takeCount = Math.Min(currentLogPage.PageSize - currentLogPage.ActualSize, logEntriesCount);
                 currentLogPage.LogEntries = currentLogPage.LogEntries.Union(logEntries.Skip(logIndex).Take(takeCount)).ToList();
                 currentLogPage.ActualSize = currentLogPage.LogEntries.Count;
+                currentLogPage.DirtyCount++;
                 logIndex += takeCount;
                 _saveTaskLogStat.LogEntriesSaved += (uint)takeCount;
                 taskInfoLog.ActualSize += takeCount;
@@ -281,6 +296,10 @@ public class TaskLogPersistenceService : BackgroundService
         if (taskLog.PageIndex == 0)
         {
             return true;
+        }
+        if (taskLog.DirtyCount == 0)
+        {
+            return false;
         }
         return taskLog.ActualSize >= taskLog.PageSize || DateTime.UtcNow - taskLog.CreationDateTime > TimeSpan.FromSeconds(30);
     }

@@ -248,6 +248,7 @@ public class TaskLogPersistenceService : BackgroundService
                 logIndex += takeCount;
                 _saveTaskLogStat.LogEntriesSaved += (uint)takeCount;
                 taskInfoLog.ActualSize += takeCount;
+                taskInfoLog.DirtyCount++;
                 if (!_addedTaskLogPageDictionary.ContainsKey(taskInfoLog.Id))
                 {
                     _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
@@ -293,13 +294,13 @@ public class TaskLogPersistenceService : BackgroundService
 
     bool FilterTaskLog(TaskLogModel taskLog)
     {
-        if (taskLog.PageIndex == 0)
-        {
-            return true;
-        }
         if (taskLog.DirtyCount == 0)
         {
             return false;
+        }
+        if (taskLog.PageIndex == 0)
+        {
+            return true;
         }
         return taskLog.ActualSize >= taskLog.PageSize || DateTime.UtcNow - taskLog.CreationDateTime > TimeSpan.FromSeconds(30);
     }

@@ -27,6 +27,8 @@ public class WebServerCounter
 
     public ulong TaskExecutionReportLogGroupAvailableCount { get; set; }
 
+    public ulong TaskExecutionReportLogGroupConsumeCount { get; set; }
+
     public TimeSpan TaskExecutionReportProcessTimeSpan { get; set; }
     public TimeSpan HeartBeatTotalProcessTimeSpan { get; set; }
     public ulong NodeServiceInputMessagesCount { get; set; }

@@ -60,6 +60,7 @@ public class TaskLogPersistenceService : BackgroundService
                     _webServerCounter.TaskExecutionReportSaveLogEntriesTimeSpan += stopwatch.Elapsed;
                     _webServerCounter.TaskExecutionReportLogEntriesCount += (uint)taskLogGroup.LogEntries.Length;
                     _webServerCounter.TaskExecutionReportLogEntriesPageCount += saveLogStat.PageCreated;
+                    _webServerCounter.TaskExecutionReportLogGroupConsumeCount++;
                     if (stopwatch.Elapsed > _webServerCounter.TaskExecutionReportSaveLogEntriesMaxTimeSpan)
                     {
                         _webServerCounter.TaskExecutionReportSaveLogEntriesMaxTimeSpan = stopwatch.Elapsed;

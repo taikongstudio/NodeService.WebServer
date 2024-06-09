@@ -17,7 +17,7 @@ namespace NodeService.WebServer.Services.Tasks
     {
         readonly ILogger<TaskCancellationQueueService> _logger;
         readonly ExceptionCounter _exceptionCounter;
-        readonly ITaskPenddingContextManager _taskContextManager;
+        readonly ITaskPenddingContextManager _taskPenddingContextManager;
         private readonly INodeSessionService _nodeSessionService;
         readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
         private readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
@@ -25,14 +25,14 @@ namespace NodeService.WebServer.Services.Tasks
         public TaskCancellationQueueService(
             ILogger<TaskCancellationQueueService> logger,
             ExceptionCounter exceptionCounter,
-            ITaskPenddingContextManager taskContextManager,
+            ITaskPenddingContextManager taskPenddingContextManager,
             INodeSessionService nodeSessionService,
             BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
             ApplicationRepositoryFactory<JobExecutionInstanceModel> taskExecutionInstanceRepoFactory)
         {
             _logger = logger;
             _exceptionCounter = exceptionCounter;
-            _taskContextManager = taskContextManager;
+            _taskPenddingContextManager = taskPenddingContextManager;
             _nodeSessionService = nodeSessionService;
             _taskCancellationBatchQueue = taskCancellationBatchQueue;
             _taskExecutionInstanceRepoFactory = taskExecutionInstanceRepoFactory;
@@ -47,7 +47,7 @@ namespace NodeService.WebServer.Services.Tasks
                     using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
                     foreach (var taskCancellationParameters in arrayPoolCollection)
                     {
-                        if (_taskContextManager.TryGetContext(
+                        if (_taskPenddingContextManager.TryGetContext(
                             taskCancellationParameters.TaskExeuctionInstanceId,
                             out var context)
                             &&
@@ -59,6 +59,10 @@ namespace NodeService.WebServer.Services.Tasks
                                                         taskCancellationParameters.TaskExeuctionInstanceId,
                                                         stoppingToken);
                         if (taskExecutionInstance == null)
+                        {
+                            continue;
+                        }
+                        if (taskExecutionInstance.Status >= JobExecutionStatus.Cancelled)
                         {
                             continue;
                         }

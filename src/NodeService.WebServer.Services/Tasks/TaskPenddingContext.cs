@@ -24,7 +24,7 @@ public class TaskPenddingContext : IAsyncDisposable
 
     public required JobExecutionEventRequest FireEvent { get; init; }
 
-    public CancellationToken CancellationToken { get; set; }
+    public CancellationToken CancellationToken { get; private set; }
 
     public required FireTaskParameters FireParameters { get; init; }
 
@@ -97,7 +97,7 @@ public class TaskPenddingContext : IAsyncDisposable
 
     public async Task<bool> WaitForRunningTasksAsync(IRepository<JobExecutionInstanceModel> repository)
     {
-        while (true)
+        while (!CancellationToken.IsCancellationRequested)
         {
             var queryResult = await QueryTaskExecutionInstancesAsync(repository,
                 new QueryTaskExecutionInstanceListParameters
@@ -105,7 +105,7 @@ public class TaskPenddingContext : IAsyncDisposable
                     NodeIdList = [NodeSessionId.NodeId.Value],
                     TaskDefinitionIdList = [TaskDefinition.Id],
                     Status = JobExecutionStatus.Running
-                });
+                }, CancellationToken);
             if (!queryResult.HasValue) break;
             await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken);
         }

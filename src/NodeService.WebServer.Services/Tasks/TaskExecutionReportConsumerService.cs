@@ -1,7 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Logging;
+using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 using System.Collections.Immutable;
@@ -55,6 +58,8 @@ public class TaskExecutionReportConsumerService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        await InitAsync(stoppingToken);
+
         await foreach (var arrayPoolCollection in _taskExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
         {
 
@@ -83,6 +88,73 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 stopwatch.Reset();
             }
         }
+    }
+
+    async ValueTask InitAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
+            using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
+            var taskExeuctionInstances = await taskExecutionInstanceRepo.ListAsync(new TaskExecutionInstanceSpecification(
+                DataFilterCollection<JobExecutionStatus>.Includes([JobExecutionStatus.Triggered, JobExecutionStatus.Started, JobExecutionStatus.Running]),
+                DataFilterCollection<string>.Empty,
+                DataFilterCollection<string>.Empty,
+                DataFilterCollection<string>.Empty),
+                cancellationToken);
+            if (taskExeuctionInstances.Count == 0)
+            {
+                return;
+            }
+            List<JobExecutionInstanceModel> taskExecutionInstanceList = [];
+            foreach (var taskExecutionInstanceGroup in taskExeuctionInstances.GroupBy(static x => x.JobScheduleConfigId))
+            {
+                var taskDefinitionId = taskExecutionInstanceGroup.Key;
+                if (taskDefinitionId == null)
+                {
+                    continue;
+                }
+                var taskDefinition = await taskDefinitionRepo.GetByIdAsync(taskDefinitionId, cancellationToken);
+                if (taskDefinition == null)
+                {
+                    continue;
+                }
+                taskExecutionInstanceList.Clear();
+                foreach (var taskExecutionInstance in taskExecutionInstanceGroup)
+                {
+                    if (taskExecutionInstance.FireTimeUtc + TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds) < DateTime.UtcNow)
+                    {
+                        await _taskExecutionReportBatchQueue.SendAsync(
+                            new JobExecutionReportMessage()
+                            {
+                                NodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId),
+                                Message = new JobExecutionReport()
+                                {
+                                    Status = JobExecutionStatus.Cancelled,
+                                    Id = taskExecutionInstance.Id,
+                                    Message = "Cancelled",
+                                }
+                            },
+                            cancellationToken);
+                    }
+                    else
+                    {
+                        taskExecutionInstanceList.Add(taskExecutionInstance);
+                    }
+                }
+                if (taskExecutionInstanceList.Count > 0)
+                {
+                    await ScheduleTimeLimitTaskAsync(taskExecutionInstanceList, cancellationToken);
+                }
+
+            }
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+
     }
 
     private static string? GetTaskId(JobExecutionReportMessage? message)
@@ -257,34 +329,53 @@ public class TaskExecutionReportConsumerService : BackgroundService
     }
 
     private async Task ScheduleTimeLimitTaskAsync(
-        JobExecutionInstanceModel taskExecutionInstance,
+        IEnumerable<JobExecutionInstanceModel> taskExecutionInstances,
         CancellationToken cancellationToken = default)
     {
-        if (taskExecutionInstance == null) return;
-        using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
-        var memoryCacheKey = taskExecutionInstance.MemoryCacheKey;
-        if (!_memoryCache.TryGetValue<JobScheduleConfigModel>(memoryCacheKey, out var taskDefinition))
+        try
         {
-            taskDefinition =
-                await taskDefinitionRepo.GetByIdAsync(taskExecutionInstance.JobScheduleConfigId, cancellationToken);
-            _memoryCache.Set(memoryCacheKey, taskDefinition, TimeSpan.FromMinutes(30));
+            if (taskExecutionInstances == null || !taskExecutionInstances.Any()) return;
+            using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
+            foreach (var taskExecutionInstanceGroup in taskExecutionInstances.GroupBy(static x => x.JobScheduleConfigId))
+            {
+                var taskDefinitionId = taskExecutionInstanceGroup.Key;
+                if (taskDefinitionId == null)
+                {
+                    continue;
+                }
+                var taskDefinition = await taskDefinitionRepo.GetByIdAsync(taskDefinitionId, cancellationToken);
+                if (taskDefinition == null)
+                {
+                    continue;
+                }
+                foreach (var taskExecutionInstance in taskExecutionInstanceGroup)
+                {
+                    if (taskDefinition == null || taskDefinition.ExecutionLimitTimeSeconds <= 0) continue;
+
+                    var key = new TaskSchedulerKey(
+                        taskExecutionInstance.Id,
+                        TaskTriggerSource.Manual,
+                        nameof(TaskExecutionTimeLimitJob));
+                    await _taskScheduler.ScheduleAsync<TaskExecutionTimeLimitJob>(key,
+                        TriggerBuilderHelper.BuildDelayTrigger(TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds)),
+                        new Dictionary<string, object?>
+                        {
+                            {
+                                "TaskExecutionInstance",
+                                taskExecutionInstance.JsonClone<JobExecutionInstanceModel>()
+                            }
+                        }, cancellationToken);
+                }
+
+            }
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
         }
 
-        if (taskDefinition == null || taskDefinition.ExecutionLimitTimeSeconds <= 0) return;
 
-        var key = new TaskSchedulerKey(
-            taskExecutionInstance.Id,
-            TaskTriggerSource.Manual,
-            nameof(TaskExecutionTimeLimitJob));
-        await _taskScheduler.ScheduleAsync<TaskExecutionTimeLimitJob>(key,
-            TriggerBuilderHelper.BuildDelayTrigger(TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds)),
-            new Dictionary<string, object?>
-            {
-                {
-                    "TaskExecutionInstance",
-                    taskExecutionInstance.JsonClone<JobExecutionInstanceModel>()
-                }
-            });
     }
 
     private async Task ProcessTaskExecutionReportAsync(
@@ -312,7 +403,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     break;
                 case JobExecutionStatus.Started:
                     if (taskExecutionInstance.Status != JobExecutionStatus.Started)
-                        await ScheduleTimeLimitTaskAsync(taskExecutionInstance, stoppingToken);
+                        await ScheduleTimeLimitTaskAsync([taskExecutionInstance], stoppingToken);
                     break;
                 case JobExecutionStatus.Running:
                     break;

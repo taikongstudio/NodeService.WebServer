@@ -189,7 +189,7 @@ public class TaskLogPersistenceService : BackgroundService
         _addedTaskLogPageDictionary.Clear();
     }
 
-    void ResetTaskLogPageDirtyCount(TaskLogModel[] taskLogs)
+    static void ResetTaskLogPageDirtyCount(TaskLogModel[] taskLogs)
     {
         if (taskLogs.Length == 0)
         {

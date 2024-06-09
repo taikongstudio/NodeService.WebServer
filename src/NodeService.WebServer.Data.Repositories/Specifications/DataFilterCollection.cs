@@ -23,23 +23,23 @@ public readonly struct DataFilterCollection<T>
 
     public bool HasValue => Items != null && Items.Any();
 
-    public static DataFilterCollection<string> Includes(IEnumerable<string> items)
+    public static DataFilterCollection<T> Includes(IEnumerable<T> items)
     {
-        return new DataFilterCollection<string>(DataFilterTypes.Include, items);
+        return new DataFilterCollection<T>(DataFilterTypes.Include, items);
     }
 
-    public static DataFilterCollection<string> Includes(params string[] items)
+    public static DataFilterCollection<T> Includes(params T[] items)
     {
-        return new DataFilterCollection<string>(DataFilterTypes.Include, items);
+        return new DataFilterCollection<T>(DataFilterTypes.Include, items);
     }
 
-    public static DataFilterCollection<string> Excludes(IEnumerable<string> items)
+    public static DataFilterCollection<T> Excludes(IEnumerable<T> items)
     {
-        return new DataFilterCollection<string>(DataFilterTypes.Exclude, items);
+        return new DataFilterCollection<T>(DataFilterTypes.Exclude, items);
     }
 
-    public static DataFilterCollection<string> Excludes(params string[] items)
+    public static DataFilterCollection<T> Excludes(params T[] items)
     {
-        return new DataFilterCollection<string>(DataFilterTypes.Exclude, items);
+        return new DataFilterCollection<T>(DataFilterTypes.Exclude, items);
     }
 }

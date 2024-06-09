@@ -347,6 +347,7 @@ public partial class ApplicationDbContext
 
         modelBuilder.Entity<TaskLogModel>(builder =>
         {
+            builder.HasKey(x => x.Id);
             builder.OwnsOne(
                 model => model.Value, ownedNavigationBuilder =>
                 {

@@ -134,6 +134,7 @@ public partial class CommonConfigController : Controller
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
             using var repo = repoFactory.CreateRepository();
             await repo.DeleteAsync(model);
+            _memoryCache.Remove(model.MemoryCacheKey);
             if (repo.LastChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
             if (repo.LastChangesCount > 0)
             {

@@ -8,25 +8,17 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
 {
     public class TaskLogSpecification : Specification<TaskLogModel>
     {
-        public TaskLogSpecification(string id, bool loadLogEntries = false)
-        {
-            Query.Where(x => x.Name == id);
-            Query.OrderByDescending(x => x.PageIndex);
-            if (!loadLogEntries)
-            {
-                Query.Include(x => x.Value, false);
-            }
-        }
 
         public TaskLogSpecification(string id, int pageIndex)
         {
-            Query.Where(x => x.Name == id && pageIndex == x.PageIndex);
+            var key = $"{id}_{pageIndex}";
+            Query.Where(x => x.Id == key && x.PageIndex == pageIndex);
             Query.OrderBy(x => x.PageIndex);
         }
 
         public TaskLogSpecification(string id, int pageIndex, int pageCount)
         {
-            Query.Where(x => x.Name == id && x.PageIndex >= pageIndex && x.PageIndex < pageIndex + pageCount);
+            Query.Where(x => x.Id.Contains(id) && x.PageIndex >= pageIndex && x.PageIndex < pageIndex + pageCount);
             Query.OrderBy(x => x.PageIndex);
         }
     }

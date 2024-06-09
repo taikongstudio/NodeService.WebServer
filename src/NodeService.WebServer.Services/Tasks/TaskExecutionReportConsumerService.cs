@@ -262,12 +262,12 @@ public class TaskExecutionReportConsumerService : BackgroundService
     {
         if (taskExecutionInstance == null) return;
         using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
-        var cacheKey = $"{nameof(JobScheduleConfigModel)}:{taskExecutionInstance.JobScheduleConfigId}";
-        if (!_memoryCache.TryGetValue<JobScheduleConfigModel>(cacheKey, out var taskDefinition))
+        var memoryCacheKey = taskExecutionInstance.MemoryCacheKey;
+        if (!_memoryCache.TryGetValue<JobScheduleConfigModel>(memoryCacheKey, out var taskDefinition))
         {
             taskDefinition =
                 await taskDefinitionRepo.GetByIdAsync(taskExecutionInstance.JobScheduleConfigId, cancellationToken);
-            _memoryCache.Set(cacheKey, taskDefinition, TimeSpan.FromMinutes(30));
+            _memoryCache.Set(memoryCacheKey, taskDefinition, TimeSpan.FromMinutes(30));
         }
 
         if (taskDefinition == null || taskDefinition.ExecutionLimitTimeSeconds <= 0) return;

@@ -257,6 +257,7 @@ public partial class ApplicationDbContext
 
         modelBuilder.Entity<TaskLogModel>(builder =>
         {
+            builder.HasKey(x => x.Id);
             builder.Property(x => x.Value)
                 .HasColumnType("json").HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),

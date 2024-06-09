@@ -12,6 +12,13 @@
     <Flex Vertical>
 
         <Space>
+            <SpaceItem>
+                <Button Shape="@ButtonShape.Circle"
+                        Type="@ButtonType.Primary"
+                        Icon="@IconType.Outline.Reload"
+                        OnClick="InitAsync">
+                </Button>
+            </SpaceItem>
             @if (_loading)
             {
                 <SpaceItem>
@@ -28,8 +35,8 @@
                     <Button Shape="@ButtonShape.Circle"
                             Type="@ButtonType.Primary"
                             Disabled="@_loadMoreButtonDisabled"
-                            Icon="@IconType.Outline.Reload"
-                            OnClick="LoadTaskLogsAsync">
+                            Icon="@IconType.Outline.PlayCircle"
+                            OnClick="LoadMoreTaskLogsAsync">
                     </Button>
                 </SpaceItem>
             }
@@ -47,7 +54,7 @@
     <Flex Vertical Style="flex:auto">
         <StandaloneCodeEditor @ref="@_viewer"
                               CssClass="taskLogViwer"
-                              OnDidInit="LoadTaskLogsAsync"
+                              OnDidInit="InitAsync"
                               ConstructionOptions="EditorConstructionOptions"/>
     </Flex>
 </Flex>
@@ -60,24 +67,42 @@
     StandaloneCodeEditor _viewer = null!;
     CancellationTokenSource _cancellationTokenSource;
     bool _loading;
-    int _logPageIndex = 1;
+    int _nextLogPageIndex = 1;
     int _loadedLogEntriesCount;
     int _totalLogEntriesCount;
     bool _loadMoreButtonDisabled;
+    int _lastEntriesCount = 0;
+    int _lastFullTaskLogPageEndLineNumber = 0;
 
-    async Task LoadTaskLogsAsync()
+    async Task Reset()
     {
-        try
-        {
-            _loadMoreButtonDisabled = true;
-            _loading = true;
-            InitCancellationTokenSource();
-            await _viewer.UpdateOptions(new EditorUpdateOptions
+        _loadMoreButtonDisabled = true;
+        _loading = true;
+        _nextLogPageIndex = 1;
+        _loadedLogEntriesCount = 0;
+        _lastEntriesCount = 0;
+        _lastFullTaskLogPageEndLineNumber = 0;
+
+        await _viewer.UpdateOptions(new EditorUpdateOptions
             {
                 ReadOnly = true,
                 LineNumbersMinChars = 10
             });
 
+        await _viewer.SetValue(string.Empty);
+    }
+
+    async Task InitAsync()
+    {
+        await Reset();
+        await LoadMoreTaskLogsAsync();
+    }
+
+    async Task LoadMoreTaskLogsAsync()
+    {
+        try
+        {
+            InitCancellationTokenSource();
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
                 if (!await LoadNextLogPageAsync(_cancellationTokenSource.Token))
@@ -118,14 +143,25 @@
         var apiResponse = await ApiService.QueryTaskExecutionInstanceLogAsync(TaskExecutionInstanceId,
             new PaginationQueryParameters
             {
-                PageIndex = _logPageIndex,
+                PageIndex = _nextLogPageIndex,
                 PageSize = 0
             },
             cancellationToken
         );
+        if (apiResponse == null)
+        {
+            return false;
+        }
+
         if (apiResponse.ErrorCode == 0)
         {
             var sb = new StringBuilder();
+
+
+            if (apiResponse.Result == null || !apiResponse.Result.Any())
+            {
+                return false;
+            }
 
             foreach (var item in apiResponse.Result)
             {
@@ -133,23 +169,45 @@
             }
 
             var currentLogText = sb.ToString();
-            var resultCount = apiResponse.Result.Count();
+            var entiresCount = apiResponse.Result.Count();
 
             var model = await _viewer.GetModel();
-            var lineCount = await model.GetLineCount();
-            var column = await model.GetLineMaxColumn(lineCount);
+            var startLineNumber = await model.GetLineCount();
+            var startColumn = 1;
+            var endLineNumber = startLineNumber;
+            var endColumn = await model.GetLineMaxColumn(endLineNumber);
+
+            if (entiresCount == apiResponse.PageSize)
+            {
+                _nextLogPageIndex = apiResponse.PageIndex + 1;
+                _loadedLogEntriesCount = _loadedLogEntriesCount - _lastEntriesCount;
+                _loadedLogEntriesCount = _loadedLogEntriesCount + entiresCount;
+                _lastEntriesCount = 0;
+            }
+            else
+            {
+                startLineNumber = _lastFullTaskLogPageEndLineNumber;
+                _loadedLogEntriesCount = _loadedLogEntriesCount - _lastEntriesCount;
+                _loadedLogEntriesCount = _loadedLogEntriesCount + entiresCount;
+                _lastEntriesCount = entiresCount;
+            }
+
             var op = new IdentifiedSingleEditOperation()
                 {
                     ForceMoveMarkers = false,
-                    Range = new BlazorMonaco.Range(lineCount, column, lineCount, column),
+                    Range = new BlazorMonaco.Range(startLineNumber, startColumn, endLineNumber, endColumn),
                     Text = currentLogText
                 };
             await model.ApplyEdits([op]);
-            _logPageIndex = apiResponse.PageIndex + 1;
-            _loadedLogEntriesCount = _loadedLogEntriesCount + resultCount;
+
+            if (entiresCount == apiResponse.PageSize)
+            {
+                _lastFullTaskLogPageEndLineNumber = endLineNumber;
+            }
+
             _totalLogEntriesCount = apiResponse.TotalCount;
             await InvokeAsync(StateHasChanged);
-            return _totalLogEntriesCount - _loadedLogEntriesCount > 0;
+            return entiresCount == apiResponse.PageSize;
         }
 
         await _notice.Open(new NotificationConfig
@@ -185,6 +243,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        await Reset();
         if (_viewer != null)
         {
             await _viewer.SetValue(string.Empty);
@@ -194,11 +253,10 @@
         {
             await _cancellationTokenSource.CancelAsync();
         }
-
         TaskExecutionInstanceId = null;
         _totalLogEntriesCount = 0;
         _loadedLogEntriesCount = 0;
-        _logPageIndex = 0;
+        _nextLogPageIndex = 0;
     }
 
     public async Task StopAsync()

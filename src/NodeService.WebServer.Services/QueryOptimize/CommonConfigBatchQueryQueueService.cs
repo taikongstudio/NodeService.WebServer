@@ -79,12 +79,12 @@ namespace NodeService.WebServer.Services.QueryOptimize
                     _logger.LogInformation($"QueryParameters:{argument.QueryParameters},Type:{argument.Type},{batchQueueOperationGroup.Count()} requests");
 
                     ListQueryResult<object> result = default;
-                    var key = $"{argument.Type}-{nameof(CreateQueryByParameterLambda)}";
-                    if (!_funcDict.TryGetValue(key, out var func))
+                    var funcKey = $"{argument.Type}-{nameof(CreateQueryByParameterLambdaExpression)}";
+                    if (!_funcDict.TryGetValue(funcKey, out var func))
                     {
-                        var expr = CreateQueryByParameterLambda(argument.Type);
+                        var expr = CreateQueryByParameterLambdaExpression(argument.Type);
                         func = expr.Compile();
-                        _funcDict.TryAdd(key, func);
+                        _funcDict.TryAdd(funcKey, func);
                     }
                     var task = ((Func<PaginationQueryParameters, Task<ListQueryResult<object>>>)func).Invoke(argument.QueryParameters);
                     result = await task;
@@ -126,12 +126,12 @@ namespace NodeService.WebServer.Services.QueryOptimize
                     }
                     else
                     {
-                        var key = $"{type}-{nameof(CreateQueryByIdListLambda)}";
-                        if (!_funcDict.TryGetValue(key, out var func))
+                        var funcKey = $"{type}-{nameof(CreateQueryByIdListLambdaExpression)}";
+                        if (!_funcDict.TryGetValue(funcKey, out var func))
                         {
-                            var expr = CreateQueryByIdListLambda(type);
+                            var expr = CreateQueryByIdListLambdaExpression(type);
                             func = expr.Compile();
-                            _funcDict.TryAdd(key, func);
+                            _funcDict.TryAdd(funcKey, func);
                         }
                         var task = ((Func<IEnumerable<string>, Task<ListQueryResult<object>>>)func).Invoke(idList);
                         var queryResult = await task;
@@ -185,7 +185,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
             return result != null;
         }
 
-        Expression<Func<PaginationQueryParameters, Task<ListQueryResult<object?>>>> CreateQueryByParameterLambda(Type type)
+        Expression<Func<PaginationQueryParameters, Task<ListQueryResult<object?>>>> CreateQueryByParameterLambdaExpression(Type type)
         {
             var thisExpr = Expression.Constant(this);
             var queryParameters = Expression.Parameter(
@@ -196,7 +196,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
             return Expression.Lambda<Func<PaginationQueryParameters, Task<ListQueryResult<object?>>>>(callExpr, queryParameters);
         }
 
-        Expression<Func<IEnumerable<string>, Task<ListQueryResult<object?>>>> CreateQueryByIdListLambda(Type type)
+        Expression<Func<IEnumerable<string>, Task<ListQueryResult<object?>>>> CreateQueryByIdListLambdaExpression(Type type)
         {
             var thisExpr = Expression.Constant(this);
             var idListParameter = Expression.Parameter(

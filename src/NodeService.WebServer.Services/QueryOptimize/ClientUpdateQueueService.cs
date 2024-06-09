@@ -134,11 +134,11 @@ namespace NodeService.WebServer.Services.QueryOptimize
                                 else
                                 {
 
-                                    var hasNode = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
+                                    var hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
                                         null,
                                         op.Argument.IpAddress),
                                         stoppingToken);
-                                    if (!hasNode)
+                                    if (!hasNodeInfo)
                                     {
                                         if (clientUpdateConfig == null)
                                         {

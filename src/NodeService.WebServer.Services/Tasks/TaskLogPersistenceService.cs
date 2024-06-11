@@ -74,12 +74,12 @@ public class TaskLogPersistenceService : BackgroundService
 
     void Stat()
     {
-        _webServerCounter.TaskExecutionReportLogEntriesPageCount += (ulong)_taskLogHandlers.Values.Sum(x => x.TotalPageCount);
-        _webServerCounter.TaskExecutionReportLogGroupConsumeCount += (ulong)_taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
-        _webServerCounter.TaskExecutionReportLogEntriesSavedCount += (ulong)_taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
+        _webServerCounter.TaskExecutionReportLogEntriesPageCount = (ulong)_taskLogHandlers.Values.Sum(x => x.TotalPageCount);
+        _webServerCounter.TaskExecutionReportLogGroupConsumeCount = (ulong)_taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
+        _webServerCounter.TaskExecutionReportLogEntriesSavedCount = (ulong)_taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
         _webServerCounter.TaskExecutionReportLogEntriesSaveMaxTimeSpan = _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
-        _webServerCounter.TaskExecutionReportLogEntriesQueryTimeSpan += _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
-        _webServerCounter.TaskExecutionReportLogEntriesSaveTimeSpan += _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
+        _webServerCounter.TaskExecutionReportLogEntriesQueryTimeSpan = _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
+        _webServerCounter.TaskExecutionReportLogEntriesSaveTimeSpan = _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
         _webServerCounter.TaskExecutionReportLogGroupAvailableCount = (uint)_taskLogGroupBatchQueue.AvailableCount;
     }
 

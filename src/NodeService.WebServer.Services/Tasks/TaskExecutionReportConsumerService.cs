@@ -61,7 +61,14 @@ public class TaskExecutionReportConsumerService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await InitAsync(stoppingToken);
+        _ = Task.Factory.StartNew(async () =>
+         {
+             while (!stoppingToken.IsCancellationRequested)
+             {
+                 await ScanExpiredTaskExecutionInstanceAsync(stoppingToken);
+                 await Task.Delay(TimeSpan.FromHours(6), stoppingToken);
+             }
+         });
 
         await foreach (var arrayPoolCollection in _taskExecutionReportBatchQueue.ReceiveAllAsync(stoppingToken))
         {
@@ -93,7 +100,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-    async ValueTask InitAsync(CancellationToken cancellationToken = default)
+    async ValueTask ScanExpiredTaskExecutionInstanceAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -125,6 +132,10 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 taskExecutionInstanceList.Clear();
                 foreach (var taskExecutionInstance in taskExecutionInstanceGroup)
                 {
+                    if (DateTime.UtcNow - taskExecutionInstance.FireTimeUtc < TimeSpan.FromDays(7))
+                    {
+                        continue;
+                    }
                     if (taskExecutionInstance.FireTimeUtc + TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds) < DateTime.UtcNow)
                     {
                         await _taskExecutionReportBatchQueue.SendAsync(

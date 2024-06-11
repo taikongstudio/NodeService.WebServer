@@ -238,11 +238,17 @@ public class TaskLogPersistenceService : BackgroundService
         {
             var taskLogPageIdLike = $"{taskId}_%";
             var taskLogInfoPageId = $"{taskId}_0";
-            FormattableString sql = $"update TaskLogDbSet\r\nset ActualSize=(select sum(ActualSize) from TaskLogDbSet where Id like {taskLogPageIdLike} and PageIndex>=1),\r\nPageSize=(select max(PageIndex) from TaskLogDbSet where Id like {taskLogPageIdLike} and PageIndex>=1 ),\r\nPageIndex=0\r\nwhere Id={taskLogInfoPageId}";
-            var changesCount = await taskLogRepo.DbContext.Database.ExecuteSqlAsync(
-                            sql,
-                            cancellationToken: stoppingToken);
-            taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, 0), stoppingToken);
+            var dbContext = taskLogRepo.DbContext as ApplicationDbContext;
+            if (await dbContext.TaskLogDbSet.AnyAsync(x => x.Id.StartsWith(taskId)))
+            {
+                var actualSize = await dbContext.TaskLogDbSet.Where(x => x.Id.StartsWith(taskId) && x.PageIndex >= 1).SumAsync(x => x.ActualSize);
+                int pageSize = await dbContext.TaskLogDbSet.Where(x => x.Id.StartsWith(taskId) && x.PageIndex >= 1).MaxAsync(x => x.PageIndex);
+                FormattableString sql = $"update TaskLogDbSet\r\nset ActualSize={actualSize},\r\nPageSize={pageSize},\r\nPageIndex=0\r\nwhere Id={taskLogInfoPageId}";
+                var changesCount = await taskLogRepo.DbContext.Database.ExecuteSqlAsync(
+                                sql,
+                                cancellationToken: stoppingToken);
+                taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, 0), stoppingToken);
+            }
         }
         if (taskInfoLog == null)
         {

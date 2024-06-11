@@ -389,13 +389,11 @@ public class Program
     private static void ConfigureSingleton(WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
-        builder.Services.AddSingleton<TaskLogDatabase>();
         builder.Services.AddSingleton<TaskScheduler>();
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
-        builder.Services.AddSingleton<IAsyncQueue<TaskLogDatabase>, AsyncQueue<TaskLogDatabase>>();
         builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>, AsyncQueue<JobExecutionEventRequest>>();
         builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>, AsyncQueue<TaskScheduleMessage>>();
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();

@@ -80,7 +80,7 @@ public class TaskLogPersistenceService : BackgroundService
         _updatedTaskLogPageDictionary = new ConcurrentDictionary<string, TaskLogModel>();
         _taskLogStat = new SaveTaskLogStat();
         _timer = new Timer(OnTimer);
-        _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(3));
+        _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(1));
     }
 
     void OnTimer(object? state)
@@ -149,7 +149,10 @@ public class TaskLogPersistenceService : BackgroundService
         if (!_addedTaskLogPageDictionary.IsEmpty)
         {
             var addedTaskLogs = _addedTaskLogPageDictionary.Values.ToArray();
-            await taskLogRepo.AddRangeAsync(addedTaskLogs, stoppingToken);
+            foreach (var taskLog in addedTaskLogs)
+            {
+                await taskLogRepo.AddAsync(taskLog, stoppingToken);
+            }
             ResetTaskLogPageDirtyCount(addedTaskLogs);
             MoveToUpdateDictionary(addedTaskLogs);
 
@@ -159,7 +162,10 @@ public class TaskLogPersistenceService : BackgroundService
             var updatedTaskLogs = _updatedTaskLogPageDictionary.Values.Where(IsTaskLogPageChanged).ToArray();
             if (updatedTaskLogs.Length > 0)
             {
-                await taskLogRepo.UpdateRangeAsync(updatedTaskLogs, stoppingToken);
+                foreach (var taskLog in updatedTaskLogs)
+                {
+                    await taskLogRepo.UpdateAsync(taskLog, stoppingToken);
+                }
 
                 ResetTaskLogPageDirtyCount(updatedTaskLogs);
             }

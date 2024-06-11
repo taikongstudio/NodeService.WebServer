@@ -229,6 +229,7 @@
     {
         _nameList =
         [
+
             new StringEntry { Name = "包含", Value = nameof(FilePathFilter.Contains).ToLower() },
     new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
     new StringEntry { Name = "开头匹配", Value = nameof(FilePathFilter.StartWith).ToLower() },
@@ -361,6 +362,14 @@
             {
                 _editModel.Value.RemoteDirectory = '/' + _editModel.Value.RemoteDirectory;
             }
+            // if (!_editModel.Value.Filters.Any(IsSearchPatternFilter))
+            // {
+            //     _editModel.Value.Filters.Insert(0, new StringEntry()
+            //         {
+            //             Name = nameof(FilePathFilter.SearchPattern),
+            //             Value = _editModel.Value.SearchPattern
+            //         });
+            // }
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {

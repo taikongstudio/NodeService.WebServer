@@ -17,11 +17,11 @@ public class WebServerCounter
 
     public TimeSpan TaskExecutionReportProcessLogEntriesTimeSpan { get; set; }
 
-    public TimeSpan TaskExecutionReportSaveLogEntriesTimeSpan { get; set; }
+    public TimeSpan TaskExecutionReportLogEntriesSaveTimeSpan { get; set; }
 
-    public TimeSpan TaskExecutionReportQueryLogEntriesTimeSpan { get; set; }
+    public TimeSpan TaskExecutionReportLogEntriesQueryTimeSpan { get; set; }
 
-    public TimeSpan TaskExecutionReportSaveLogEntriesMaxTimeSpan { get; set; }
+    public TimeSpan TaskExecutionReportLogEntriesSaveMaxTimeSpan { get; set; }
 
     public ulong TaskExecutionReportLogEntriesSavedCount { get; set; }
 

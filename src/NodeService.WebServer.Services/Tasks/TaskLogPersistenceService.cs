@@ -36,6 +36,7 @@ public class TaskLogPersistenceService : BackgroundService
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
     readonly Timer _timer;
     readonly ConcurrentDictionary<int, TaskLogHandler> _taskLogHandlers;
+    IEnumerable<int> _keys = [];
 
     public TaskLogPersistenceService(
         IServiceProvider serviceProvider,
@@ -67,9 +68,18 @@ public class TaskLogPersistenceService : BackgroundService
     {
         await foreach (var arrayPoolCollection in _taskLogGroupBatchQueue.ReceiveAllAsync(stoppingToken))
         {
-            await Parallel.ForEachAsync(arrayPoolCollection.GroupBy(GroupTaskLogGroupFunc), RunTaskLogHandlerAsync);
+            await Parallel.ForEachAsync(
+                arrayPoolCollection.GroupBy(TaskLogGroupGroupFunc),
+                stoppingToken,
+                RunTaskLogHandlerAsync);
+            _keys = _taskLogHandlers.Keys;
             Stat();
         }
+    }
+
+    int GetActiveTaskLogGroupCount(TaskLogHandler taskLogHandler)
+    {
+        return taskLogHandler.ActiveTaskLogGroupCount;
     }
 
     void Stat()
@@ -83,27 +93,28 @@ public class TaskLogPersistenceService : BackgroundService
         _webServerCounter.TaskExecutionReportLogGroupAvailableCount = (uint)_taskLogGroupBatchQueue.AvailableCount;
     }
 
-    public async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogGroup> taskLogGroup, CancellationToken stoppingToken)
+    async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogGroup> taskLogGroup, CancellationToken stoppingToken)
     {
         var key = taskLogGroup.Key;
-        var handler = _taskLogHandlers.GetOrAdd(key, CreateTaskLogHandler);
+        var handler = _taskLogHandlers.GetOrAdd(key, CreateTaskLogHandlerFactory);
         await handler.ProcessAsync(taskLogGroup, stoppingToken);
 
     }
 
-    TaskLogHandler CreateTaskLogHandler(int index)
+    TaskLogHandler CreateTaskLogHandlerFactory(int id)
     {
-        return _serviceProvider.GetService<TaskLogHandler>();
+        var taskLogHandler = _serviceProvider.GetService<TaskLogHandler>();
+        taskLogHandler.Id = id;
+        return taskLogHandler;
     }
 
-    private int GroupTaskLogGroupFunc(TaskLogGroup group)
+    int TaskLogGroupGroupFunc(TaskLogGroup group)
     {
         if (group.Id == null)
         {
-            return 0;
+            return _keys.ElementAtOrDefault(Random.Shared.Next(0, _taskLogHandlers.Count));
         }
-        Math.DivRem(group.Id.GetHashCode(), 10, out int result);
-        return result;
+        return group.Id[0];
     }
 
 

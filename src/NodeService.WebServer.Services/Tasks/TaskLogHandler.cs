@@ -40,6 +40,10 @@ namespace NodeService.WebServer.Services.Tasks
 
         public long TotalPageCount { get; private set; }
 
+        public int ActiveTaskLogGroupCount {  get; private set; }
+
+        public int Id { get; set; }
+
         public TaskLogHandler(
             ILogger<TaskLogHandler> logger,
             ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
@@ -54,23 +58,21 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
         public async ValueTask ProcessAsync(
-            IEnumerable<TaskLogGroup> arrayPoolCollection,
+            IEnumerable<TaskLogGroup> taskLogGroupList,
             CancellationToken stoppingToken = default)
         {
             try
             {
-                using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
                 var stopwatch = new Stopwatch();
 
                 stopwatch.Restart();
-                foreach (var taskLogGroups in arrayPoolCollection.GroupBy(x => x.Id))
+                foreach (var taskLogGroups in taskLogGroupList.GroupBy(x => x.Id))
                 {
                     if (taskLogGroups.Key == null)
                     {
                         continue;
                     }
                     await SaveTaskLogGroupAsync(
-                        taskLogRepo,
                         taskLogGroups,
                         stoppingToken);
                 }
@@ -83,7 +85,7 @@ namespace NodeService.WebServer.Services.Tasks
                 }
 
                 stopwatch.Restart();
-                await AddOrUpdateTaskLogPagesAsync(taskLogRepo, stoppingToken);
+                await AddOrUpdateTaskLogPagesAsync(stoppingToken);
                 stopwatch.Stop();
 
                 TotalSaveTimeSpan += stopwatch.Elapsed;
@@ -101,19 +103,20 @@ namespace NodeService.WebServer.Services.Tasks
             }
             finally
             {
-
+                ActiveTaskLogGroupCount = _updatedTaskLogPageDictionary.Count;
             }
         }
 
         async Task AddOrUpdateTaskLogPagesAsync(
-            IRepository<TaskLogModel> taskLogRepo,
             CancellationToken stoppingToken = default)
         {
             if (!_addedTaskLogPageDictionary.IsEmpty)
             {
                 var addedTaskLogs = _addedTaskLogPageDictionary.Values.ToArray();
+                using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
                 foreach (var taskLog in addedTaskLogs)
                 {
+                    taskLogRepo.DbContext.ChangeTracker.Clear();
                     await taskLogRepo.AddAsync(taskLog, stoppingToken);
                 }
                 ResetTaskLogPageDirtyCount(addedTaskLogs);
@@ -125,8 +128,10 @@ namespace NodeService.WebServer.Services.Tasks
                 var updatedTaskLogs = _updatedTaskLogPageDictionary.Values.Where(IsTaskLogPageChanged).ToArray();
                 if (updatedTaskLogs.Length > 0)
                 {
+                    using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
                     foreach (var taskLog in updatedTaskLogs)
                     {
+                        taskLogRepo.DbContext.ChangeTracker.Clear();
                         await taskLogRepo.UpdateAsync(taskLog, stoppingToken);
                     }
 
@@ -171,7 +176,6 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
         async Task SaveTaskLogGroupAsync(
-            IRepository<TaskLogModel> taskLogRepo,
             IGrouping<string, TaskLogGroup> taskLogGroups,
             CancellationToken stoppingToken = default)
         {
@@ -180,14 +184,13 @@ namespace NodeService.WebServer.Services.Tasks
             var logEntries = taskLogGroups.SelectMany(static x => x.LogEntries);
             var logEntriesCount = logEntries.Count();
 
-            TaskLogModel? taskInfoLog = await EnsureTaskInfoLogAsync(taskLogRepo, taskId, stoppingToken);
+            TaskLogModel? taskInfoLog = await EnsureTaskInfoLogAsync(taskId, stoppingToken);
             if (taskInfoLog == null)
             {
                 return;
             }
 
             await SaveTaskLogPagesAsync(
-                         taskLogRepo,
                          taskId,
                          taskInfoLog,
                          logEntries,
@@ -198,7 +201,6 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
         async Task<TaskLogModel?> EnsureTaskInfoLogAsync(
-            IRepository<TaskLogModel> taskLogRepo,
             string taskId,
             CancellationToken stoppingToken = default)
         {
@@ -207,6 +209,7 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 var taskLogPageIdLike = $"{taskId}_%";
                 var taskLogInfoPageId = $"{taskId}_0";
+                using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
                 var dbContext = taskLogRepo.DbContext as ApplicationDbContext;
                 if (await dbContext.TaskLogDbSet.AnyAsync(x => x.Id.StartsWith(taskId)))
                 {
@@ -230,7 +233,6 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
         async ValueTask SaveTaskLogPagesAsync(
-            IRepository<TaskLogModel> taskLogRepo,
             string taskId,
             TaskLogModel taskInfoLog,
             IEnumerable<LogEntry> logEntries,
@@ -243,6 +245,7 @@ namespace NodeService.WebServer.Services.Tasks
             var key = $"{taskId}_{taskInfoLog.PageSize}";
             if (!_updatedTaskLogPageDictionary.TryGetValue(key, out currentLogPage) || currentLogPage == null)
             {
+                using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
                 currentLogPage = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, taskInfoLog.PageSize), stoppingToken);
             }
             while (logIndex < logEntriesCount)

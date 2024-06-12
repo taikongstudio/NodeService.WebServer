@@ -117,8 +117,7 @@ namespace NodeService.WebServer.Services.Tasks
 
                 foreach (var taskLog in addedTaskLogs)
                 {
-                    using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-                    await taskLogRepo.AddAsync(taskLog, stoppingToken);
+                    await AddTaskLogAsync(taskLog, stoppingToken);
                 }
                 ResetTaskLogPageDirtyCount(addedTaskLogs);
                 MoveToUpdateDictionary(addedTaskLogs);
@@ -131,8 +130,7 @@ namespace NodeService.WebServer.Services.Tasks
                 {
                     foreach (var taskLog in updatedTaskLogs)
                     {
-                        using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-                        await taskLogRepo.UpdateAsync(taskLog, stoppingToken);
+                        await UpdateTaskLogAsync(taskLog, stoppingToken);
                     }
 
                     ResetTaskLogPageDirtyCount(updatedTaskLogs);
@@ -140,6 +138,18 @@ namespace NodeService.WebServer.Services.Tasks
                 RemoveFullTaskLogPages(_updatedTaskLogPageDictionary);
                 RemoveInactiveTaskLogPages(_updatedTaskLogPageDictionary);
             }
+        }
+
+        async ValueTask UpdateTaskLogAsync(TaskLogModel taskLog, CancellationToken stoppingToken = default)
+        {
+            using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+            await taskLogRepo.UpdateAsync(taskLog, stoppingToken);
+        }
+
+        async ValueTask AddTaskLogAsync(TaskLogModel taskLog, CancellationToken stoppingToken = default)
+        {
+            using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+            await taskLogRepo.AddAsync(taskLog, stoppingToken);
         }
 
         void MoveToUpdateDictionary(TaskLogModel[] taskLogPages)

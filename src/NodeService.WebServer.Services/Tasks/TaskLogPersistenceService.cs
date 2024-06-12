@@ -114,7 +114,8 @@ public class TaskLogPersistenceService : BackgroundService
         {
             return _keys.ElementAtOrDefault(Random.Shared.Next(0, _taskLogHandlers.Count));
         }
-        return group.Id[0];
+        Math.DivRem(group.Id[0], 10, out int result);
+        return result;
     }
 
 

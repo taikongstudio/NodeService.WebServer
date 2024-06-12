@@ -110,13 +110,13 @@ namespace NodeService.WebServer.Services.Tasks
         async Task AddOrUpdateTaskLogPagesAsync(
             CancellationToken stoppingToken = default)
         {
+            using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
             if (!_addedTaskLogPageDictionary.IsEmpty)
             {
                 var addedTaskLogs = _addedTaskLogPageDictionary.Values.ToArray();
-                using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+
                 foreach (var taskLog in addedTaskLogs)
                 {
-                    taskLogRepo.DbContext.ChangeTracker.Clear();
                     await taskLogRepo.AddAsync(taskLog, stoppingToken);
                 }
                 ResetTaskLogPageDirtyCount(addedTaskLogs);
@@ -128,10 +128,8 @@ namespace NodeService.WebServer.Services.Tasks
                 var updatedTaskLogs = _updatedTaskLogPageDictionary.Values.Where(IsTaskLogPageChanged).ToArray();
                 if (updatedTaskLogs.Length > 0)
                 {
-                    using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
                     foreach (var taskLog in updatedTaskLogs)
                     {
-                        taskLogRepo.DbContext.ChangeTracker.Clear();
                         await taskLogRepo.UpdateAsync(taskLog, stoppingToken);
                     }
 

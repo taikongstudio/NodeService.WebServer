@@ -34,6 +34,7 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
+        AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         await Parser
             .Default
             .ParseArguments<CommandLineOptions>(args)
@@ -43,6 +44,26 @@ public class Program
                 Console.WriteLine(JsonSerializer.Serialize(options));
                 return RunWithOptions(options, args);
             });
+    }
+
+    private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+    {
+        string crashFileName = $"./crash.{DateTime.Now:yyyy-MM-dd_HH_mm_ss}.log";
+        if (e.IsTerminating)
+        {
+            crashFileName = $"./crash.terminate.{DateTime.Now:yyyy-MM-dd_HH_mm_ss}.log";
+        }
+        try
+        {
+            using var crashWriter = File.CreateText(crashFileName);
+            crashWriter.WriteLine(e.ExceptionObject.ToString());
+            crashWriter.Flush();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine(ex.ToString());
+        }
+
     }
 
     private static async Task RunWithOptions(CommandLineOptions options, string[] args)

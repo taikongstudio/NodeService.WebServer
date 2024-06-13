@@ -14,8 +14,17 @@
         </SpaceItem>
     </Space>
     <Tabs>
-
-        <TabPane Tab="区域设置" Key="1">
+        <TabPane Tab="基础设置" Key="1">
+            <Form Model="@_nodeSettings" Size="@AntSizeLDSType.Default"
+                  LabelColSpan="4"
+                  Layout="@FormLayout.Horizontal"
+                  WrapperColSpan="20">
+                <FormItem Label="时间差异警告阈值（秒）">
+                    <AntDesign.InputNumber Style="width:200px" Min="0" @bind-Value="@context.TimeDiffWarningSeconds" />
+                </FormItem>
+            </Form>
+        </TabPane>
+        <TabPane Tab="区域设置" Key="2">
             <StringEntryTable ValueTitle="Ip范围"
                               NameTitle="区域名称"
                               IsTagHidden="false"
@@ -23,7 +32,7 @@
                               TagTitle="代码"
                               ItemsSource="@_nodeSettings.IpAddressMappings"/>
         </TabPane>
-        <TabPane Tab="进程用途映射" Key="2">
+        <TabPane Tab="进程用途映射" Key="3">
             <StringEntryTable ValueTitle="用途"
                               NameTitle="进程名称"
                               ItemsSource="@_nodeSettings.ProcessUsagesMapping"/>

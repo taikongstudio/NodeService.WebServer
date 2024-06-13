@@ -83,7 +83,7 @@ public class NodeSessionService : INodeSessionService
 
     public void UpdateNodeStatus(NodeSessionId nodeSessionId, NodeStatus nodeStatus)
     {
-        if (nodeStatus == NodeStatus.Offline) _nodeHealthyCounterDictionary.Ensure(nodeSessionId).OfflineCount++;
+        if (nodeStatus == NodeStatus.Offline) _nodeHealthyCounterDictionary.Ensure(nodeSessionId.NodeId).OfflineCount++;
         EnsureNodeSession(nodeSessionId).Status = nodeStatus;
     }
 

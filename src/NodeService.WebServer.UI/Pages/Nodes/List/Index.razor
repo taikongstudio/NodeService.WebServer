@@ -143,14 +143,11 @@
                     <PropertyColumn Title="厂区" Sortable="true" Property="c => c.Profile.FactoryName">
                         <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
                     </PropertyColumn>
-                    <PropertyColumn Title="状态" Sortable="true" Hidden SorterMultiple="1" SorterCompare="(a, b) => a - b" Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
+                    <PropertyColumn Title="状态" Sortable="true" Hidden  Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
                     <PropertyColumn
                         Title="节点名称"
                         Sortable="true"
-                        SorterMultiple="2"
-                        SorterCompare="(a, b) => StringComparer.Ordinal.Compare(a, b)"
-                        Property="c => c.Name"
-                        DefaultSortOrder="SortDirection.Ascending">
+                        Property="c => c.Name">
                         @switch (context.Status)
                         {
                             case NodeStatus.Online:
@@ -168,11 +165,18 @@
                     <PropertyColumn
                         Title="最后在线时间"
                         Sortable="true"
-                        SorterMultiple="0"
-                        SorterCompare="(a, b) => a.CompareTo(b)"
                         DefaultSortOrder="SortDirection.Descending"
-                        Format="@NodePropertyModel.DateTimeFormatString"
                         Property="c => c.Profile.ServerUpdateTimeUtc">
+                        <Text>
+                            @GetTimeDesc(context.Profile.ServerUpdateTimeUtc)
+                        </Text>
+                        @if(ShowTimeDiffWarning(context))
+                        {
+                            <Tooltip Title="@_timeDiffWarningMsg">
+                                <Icon Type="warning" Theme="twotone" TwotoneColor="#ff4d4f" Height="1.5em" Width="1.5em" />
+                            </Tooltip>
+                  
+                        }
                     </PropertyColumn>
                     <PropertyColumn Title="测试分类" Sortable="true" Property="c => c.Profile.TestInfo"></PropertyColumn>
                     <PropertyColumn Title="实验室区域" Sortable="true" Property="c => c.Profile.LabArea"></PropertyColumn>
@@ -208,6 +212,7 @@
 @code{
     NodeStatus _nodeStatus = NodeStatus.All;
     string _selectedAreaTag = "*";
+    string _timeDiffWarningMsg;
     NodeSettings _nodeSettings = new();
 
     RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
@@ -220,6 +225,38 @@
     string? _modifyErrorMsg;
 
     UpdateNodeProfileModel? _editingNodeInfoModel;
+
+    string GetTimeDesc(DateTime dateTime)
+    {
+        var timeDiff = DateTime.UtcNow - dateTime;
+        if (timeDiff.TotalDays >= 1)
+        {
+            return $"{(int)timeDiff.TotalDays}天前";
+        }
+        else if (timeDiff.TotalSeconds < 60)
+        {
+            return $"{(int)timeDiff.TotalSeconds}秒前";
+        }
+        else if (timeDiff.TotalMinutes < 60)
+        {
+            return $"{(int)timeDiff.TotalMinutes}分钟前";
+        }
+        else if (timeDiff.TotalHours < 24)
+        {
+            return $"{(int)timeDiff.TotalHours}小时前";
+        }
+        return dateTime.ToString();
+    }
+
+    bool ShowTimeDiffWarning(NodeInfoModel nodeInfo)
+    {
+        if (nodeInfo.Status != NodeStatus.Online)
+        {
+            return false;
+        }
+        var timeDiff = nodeInfo.Profile.ServerUpdateTimeUtc - nodeInfo.Profile.UpdateTime.ToUniversalTime();
+        return Math.Abs(timeDiff.TotalSeconds) > _nodeSettings.TimeDiffWarningSeconds;
+    }
 
 
     void OpenModifyNodeInfoDrawer(NodeInfoModel nodeInfo)
@@ -278,6 +315,7 @@
             if (apiResponse.ErrorCode == 0)
             {
                 _nodeSettings = apiResponse.Result;
+                _timeDiffWarningMsg = $"服务器时间与节点时间差距大于{_nodeSettings.TimeDiffWarningSeconds}秒";
                 if (_nodeSettings.IpAddressMappings != null)
                 {
                     _selectedAreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault().Tag;

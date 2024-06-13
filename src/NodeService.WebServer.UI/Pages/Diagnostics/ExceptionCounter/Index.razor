@@ -12,10 +12,7 @@
 <Table Size="TableSize.Small"
        DataSource="@Statistics">
     <ColumnDefinitions Context="ctx">
-        <PropertyColumn Property="c => c.Exception" Ellipsis Title="异常">
-            <Tooltip Title="@ctx.Exception">
-                @ctx.Exception
-            </Tooltip>
+        <PropertyColumn Property="c => c.Exception" Title="异常">
         </PropertyColumn>
         <PropertyColumn Property="c => c.Count" Width="200" Title="计数"></PropertyColumn>
     </ColumnDefinitions>

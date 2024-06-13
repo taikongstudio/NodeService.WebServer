@@ -1,14 +1,22 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
+using System.Configuration;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
 public class NodeHealthyCheckService : BackgroundService
 {
+    class NodeHealthyCheckItem
+    {
+        public NodeInfoModel Node { get; set; }
+
+        public string Message { get; set; }
+    }
     private readonly ExceptionCounter _exceptionCounter;
     private readonly NodeHealthyCounterDictionary _healthyCounterDict;
     private readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
@@ -20,6 +28,7 @@ public class NodeHealthyCheckService : BackgroundService
     private readonly IAsyncQueue<NotificationMessage> _notificationQueue;
     private readonly ApplicationRepositoryFactory<NotificationConfigModel> _notificationRepositoryFactory;
     private readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
+    private NodeSettings _nodeSettings;
 
     public NodeHealthyCheckService(
         ILogger<NodeHealthyCheckService> logger,
@@ -63,34 +72,67 @@ public class NodeHealthyCheckService : BackgroundService
             NodeHealthyCheckConfiguration? configuration;
             if (!TryReadConfiguration(propertyBag, out configuration) || configuration == null) return;
 
-            List<NodeInfoModel> offlineNodeList = [];
+            await RefreshNodeSettingsAsync(cancellationToken);
+
+            List<NodeHealthyCheckItem> nodeHealthyCheckItemList = [];
             var nodeInfoList = await nodeInfoRepo.ListAsync(cancellationToken);
             foreach (var nodeInfo in nodeInfoList)
             {
-                if (offlineNodeList.Contains(nodeInfo)) continue;
-                if (nodeInfo.Status == NodeStatus.Offline
-                    &&
-                    DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc >
-                    TimeSpan.FromMinutes(configuration.OfflineMinutes))
+                var healthyCheckItems = GetNodeHealthyCheckItems(configuration, nodeInfo);
+                if (healthyCheckItems.Any())
                 {
-                    var healthCounter = _healthyCounterDictionary.Ensure(new NodeSessionId(nodeInfo.Id));
-                    if (healthCounter.SentNotificationCount == 0 || CanSendNotification(configuration, healthCounter))
+                    var healthyCounter = _healthyCounterDictionary.Ensure(new NodeId(nodeInfo.Id));
+                    if (healthyCounter.SentNotificationCount == 0 || CanSendNotification(configuration, healthyCounter))
                     {
-                        healthCounter.LastSentNotificationDateTimeUtc = DateTime.UtcNow;
-                        healthCounter.SentNotificationCount++;
-                        offlineNodeList.Add(nodeInfo);
+                        healthyCounter.LastSentNotificationDateTimeUtc = DateTime.UtcNow;
+                        healthyCounter.SentNotificationCount++;
+                        nodeHealthyCheckItemList.AddRange(healthyCheckItems);
                     }
                 }
             }
 
-            if (offlineNodeList.Count <= 0) return;
-            await SendNodeOfflineNotificationAsync(configuration, offlineNodeList, cancellationToken);
+            if (nodeHealthyCheckItemList.Count <= 0) return;
+            await SendNodeHealthyCheckNotificationAsync(configuration, nodeHealthyCheckItemList, cancellationToken);
         }
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
+    }
+
+    IEnumerable<NodeHealthyCheckItem> GetNodeHealthyCheckItems(NodeHealthyCheckConfiguration configuration, NodeInfoModel nodeInfo)
+    {
+        if (IsNodeOffline(configuration, nodeInfo))
+        {
+            yield return new NodeHealthyCheckItem()
+            {
+                Node = nodeInfo,
+                Message = "离线"
+            };
+        }
+        if (ShouldSendTimeDiffWarning(nodeInfo))
+        {
+            yield return new NodeHealthyCheckItem()
+            {
+                Node = nodeInfo,
+                Message = $"服务与节点时间差异大于{_nodeSettings.TimeDiffWarningSeconds}秒"
+            };
+        }
+        yield break;
+    }
+
+    bool IsNodeOffline(NodeHealthyCheckConfiguration configuration, NodeInfoModel nodeInfo)
+    {
+        return nodeInfo.Status == NodeStatus.Offline
+                              &&
+                              DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc >
+                              TimeSpan.FromMinutes(configuration.OfflineMinutes);
+    }
+
+    bool ShouldSendTimeDiffWarning(NodeInfoModel nodeInfo)
+    {
+        return Math.Abs((nodeInfo.Profile.ServerUpdateTimeUtc - nodeInfo.Profile.UpdateTime.ToUniversalTime()).TotalSeconds) > _nodeSettings.TimeDiffWarningSeconds;
     }
 
     private bool TryReadConfiguration(
@@ -117,18 +159,22 @@ public class NodeHealthyCheckService : BackgroundService
         return configuration != null;
     }
 
-    private async Task SendNodeOfflineNotificationAsync(
+    private async Task SendNodeHealthyCheckNotificationAsync(
         NodeHealthyCheckConfiguration configuration,
-        List<NodeInfoModel> offlineNodeList,
+        List<NodeHealthyCheckItem> nodeHealthyCheckItemList,
         CancellationToken cancellationToken = default)
     {
 
         using var repo = _notificationRepositoryFactory.CreateRepository();
 
         StringBuilder stringBuilder = new StringBuilder();
-        foreach (var item in offlineNodeList.Where(static x => x != null).OrderBy(static x => x.Profile.ServerUpdateTimeUtc))
+        foreach (var nodeHealthyCheckItemGroups in nodeHealthyCheckItemList.GroupBy(static x => x.Node))
         {
-            stringBuilder.Append($"<tr><td>{item.Profile.ServerUpdateTimeUtc}</td><td>{item.Name}</td><td>离线</td></tr>");
+            foreach (var nodeHealthCheckItem in nodeHealthyCheckItemGroups.OrderBy(x => x.Node.Profile.ServerUpdateTimeUtc))
+            {
+                stringBuilder.Append($"<tr><td>{nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc}</td><td>{nodeHealthCheckItem.Node.Name}</td><td>{nodeHealthCheckItem.Message}</td></tr>");
+
+            }
         }
         var content = configuration.ContentFormat.Replace("{0}", stringBuilder.ToString());
 
@@ -153,5 +199,16 @@ public class NodeHealthyCheckService : BackgroundService
                TimeSpan.FromMinutes(configuration.NotificationDuration)
                >
                healthCounter.SentNotificationCount + 1;
+    }
+
+    private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        using var repo = _propertyBagRepositoryFactory.CreateRepository();
+        var propertyBag =
+            await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
+        if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value))
+            _nodeSettings = new NodeSettings();
+        else
+            _nodeSettings = JsonSerializer.Deserialize<NodeSettings>(value as string);
     }
 }

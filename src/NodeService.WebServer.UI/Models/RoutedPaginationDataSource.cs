@@ -67,7 +67,7 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
 
     public async Task RequestAsync()
     {
-       await RequestCoreAsync(false);
+       await RequestCoreAsync(true);
     }
 
     private async Task RequestCoreAsync(bool force)

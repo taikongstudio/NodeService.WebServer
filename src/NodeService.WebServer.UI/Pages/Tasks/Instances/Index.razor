@@ -223,7 +223,7 @@
     DateTime BeginDateTime;
     DateTime EndDateTime;
 
-    readonly DateTime?[] DateTimes = [DateTime.UtcNow.Date, DateTime.UtcNow.Date];
+    readonly DateTime?[] DateTimes = [default, default];
 
     string _taskLogDialogTitle = "Loading";
 
@@ -270,11 +270,14 @@
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Finished, Name = "完成" });
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Cancelled, Name = "已取消" });
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.PenddingTimeout, Name = "等待超时" });
-        BeginDateTime = DateTime.Today.Date;
+        BeginDateTime = DateTime.Today.Date.AddDays(-7);
         EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
-        await _dataSource.RequestAsync();
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(JobExecutionInstanceModel.Status), "ascend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(JobExecutionInstanceModel.FireTimeUtc), "descend"));
+        await QueryTaskExecutionInstanceListAsync();
         await base.OnInitializedAsync();
     }
 
@@ -286,10 +289,6 @@
             {
                 await ShowTaskLogViewerDialogAsync(TaskExecutionInstanceId);
             }
-            else
-            {
-                await QueryTaskExecutionInstanceListAsync();
-            }
         }
 
         await base.OnAfterRenderAsync(firstRender);
@@ -297,8 +296,8 @@
 
     void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
     {
-        BeginDateTime = e.Dates[0] ?? DateTime.Today.Date;
-        EndDateTime = e.Dates[1] ?? DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        BeginDateTime = e.Dates[0] ?? DateTime.Today.Date.AddDays(-7);
+        EndDateTime = e.Dates[1] ?? DateTime.Today.Date.AddDays(1).Date.AddSeconds(-1);
     }
 
     async Task QueryTaskExecutionInstanceListAsync()
@@ -324,7 +323,7 @@
                 _dataSource.QueryParameters.Status = _selectedStatus;
             }
 
-            _dataSource.ForceRequestAsync();
+            await _dataSource.RequestAsync();
         }
         catch (Exception ex)
         {
@@ -382,7 +381,6 @@
         {
             return;
         }
-
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
         {

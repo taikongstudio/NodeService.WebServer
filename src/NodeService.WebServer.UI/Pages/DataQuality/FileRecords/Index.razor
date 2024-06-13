@@ -293,7 +293,7 @@
                 _dataSource.QueryParameters.State = _selectedState;
             }
 
-            _dataSource.ForceRequestAsync();
+            await _dataSource.RequestAsync();
         }
         catch (Exception ex)
         {

@@ -40,7 +40,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     public DateTime LastQueryDateTime { get; set; }
 
-    public TimeSpan MinRefreshDuration { get; set; } = TimeSpan.FromSeconds(0.5);
+    public TimeSpan MinRefreshDuration { get; set; } = TimeSpan.FromSeconds(1);
 
     public virtual async Task QueryAsync()
     {
@@ -57,6 +57,14 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
             }
             var rsp = await _queryFunc.Invoke(QueryParameters, default);
+            if (rsp.ErrorCode != 0)
+            {
+                if (ExceptionHandler != null)
+                {
+                    await ExceptionHandler(new Exception(rsp.Message) { HResult = rsp.ErrorCode });
+                    return;
+                }
+            }
             if (rsp.TotalCount == 0 && TotalCount == 0)
             {
                 await RaiseCompleted();

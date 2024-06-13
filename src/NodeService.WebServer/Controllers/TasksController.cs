@@ -12,7 +12,7 @@ namespace NodeService.WebServer.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]
-public class JobsController : Controller
+public class TasksController : Controller
 {
     private readonly ExceptionCounter _exceptionCounter;
     private readonly ILogger<NodesController> _logger;
@@ -23,7 +23,7 @@ public class JobsController : Controller
     readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskInstanceRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
 
-    public JobsController(
+    public TasksController(
         IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<JobExecutionInstanceModel> taskInstanceRepositoryFactory,
@@ -51,10 +51,6 @@ public class JobsController : Controller
         var apiResponse = new PaginationResponse<JobExecutionInstanceModel>();
         try
         {
-            if (queryParameters.BeginDateTime == null)
-                queryParameters.BeginDateTime = DateTime.UtcNow.Date;
-            if (queryParameters.EndDateTime == null)
-                queryParameters.EndDateTime = DateTime.UtcNow.Date.AddDays(1).AddSeconds(-1);
             using var repo = _taskInstanceRepositoryFactory.CreateRepository();
             var queryResult = await repo.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
                     queryParameters.Keywords,
@@ -62,8 +58,8 @@ public class JobsController : Controller
                     queryParameters.NodeIdList,
                     queryParameters.TaskDefinitionIdList,
                     queryParameters.TaskExecutionInstanceIdList,
-                    queryParameters.BeginDateTime.Value,
-                    queryParameters.EndDateTime.Value,
+                    queryParameters.BeginDateTime,
+                    queryParameters.EndDateTime,
                     queryParameters.SortDescriptions),
                 queryParameters.PageSize,
                 queryParameters.PageIndex

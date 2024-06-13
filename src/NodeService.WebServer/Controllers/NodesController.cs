@@ -107,4 +107,29 @@ public partial class NodesController : Controller
         return apiResponse;
     }
 
+    [HttpDelete("/api/Nodes/{id}/Delete")]
+    public async Task<ApiResponse> DeleteNodeInfoAsync(string id)
+    {
+        var apiResponse = new ApiResponse<NodeInfoModel>();
+        try
+        {
+            using var repo = _nodeInfoRepoFactory.CreateRepository();
+            var nodeInfo = await repo.GetByIdAsync(id);
+            if (nodeInfo != null)
+            {
+                nodeInfo.Deleted = true;
+                await repo.UpdateAsync(nodeInfo);
+            }
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.ToString();
+        }
+
+        return apiResponse;
+    }
+
 }

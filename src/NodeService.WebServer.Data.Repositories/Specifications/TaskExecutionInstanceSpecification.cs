@@ -29,8 +29,8 @@ public class TaskExecutionInstanceSpecification : Specification<JobExecutionInst
     IEnumerable<string> nodeIdList,
     IEnumerable<string> taskDefinitionIdList,
     IEnumerable<string> taskExecutionIdInstanceList,
-    DateTime startTime,
-    DateTime endTime,
+    DateTime? startTime,
+    DateTime? endTime,
     IEnumerable<SortDescription>? sortDescriptions = null)
     {
         if (status != JobExecutionStatus.Unknown) Query.Where(x => x.Status == status);
@@ -40,7 +40,19 @@ public class TaskExecutionInstanceSpecification : Specification<JobExecutionInst
             Query.Where(x => taskDefinitionIdList.Contains(x.JobScheduleConfigId));
         if (taskExecutionIdInstanceList != null && taskExecutionIdInstanceList.Any())
             Query.Where(x => taskExecutionIdInstanceList.Contains(x.Id));
-        Query.Where(x => x.FireTimeUtc >= startTime && x.FireTimeUtc <= endTime);
+        if (startTime != null && startTime.HasValue && endTime != null && endTime.HasValue)
+        {
+            Query.Where(x => x.FireTimeUtc >= startTime && x.FireTimeUtc <= endTime);
+        }
+        else if (startTime == null && endTime != null && endTime.HasValue)
+        {
+            Query.Where(x => x.FireTimeUtc <= endTime);
+        }
+        else if (startTime != null && startTime.HasValue && endTime == null)
+        {
+            Query.Where(x => x.FireTimeUtc >= startTime);
+        }
+
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 

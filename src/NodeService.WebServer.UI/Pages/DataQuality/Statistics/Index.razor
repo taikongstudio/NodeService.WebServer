@@ -214,7 +214,7 @@
                 _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
             }
 
-            await _dataSource.ForceRequestAsync();
+            await _dataSource.RequestAsync();
         }
         catch (Exception ex)
         {

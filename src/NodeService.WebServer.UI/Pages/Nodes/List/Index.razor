@@ -5,6 +5,7 @@
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
 @inject IMessageService _message
+@inject ConfirmService _confirmService
 @implements IDisposable
 
 <GridContent>
@@ -189,7 +190,10 @@
                     <ActionColumn Fixed="right" Title="操作">
                         <Space Size=@("middle")>
                             <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Size="small" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OpenModifyNodeInfoDrawer(context)"></Button>
+                                <Button Shape="@ButtonShape.Circle" Size="default" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OpenModifyNodeInfoDrawer(context)"></Button>
+                            </SpaceItem>
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Size="default" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteNodeAsync(context)"></Button>
                             </SpaceItem>
                         </Space>
                     </ActionColumn>
@@ -361,6 +365,60 @@
         _dataSource.PageIndex = 1;
         _dataSource.QueryParameters.Status = nodeStatus;
         await _dataSource.RequestAsync();
+    }
+
+    async Task DeleteNodeAsync(NodeInfoModel nodeInfo)
+    {
+        try
+        {
+            if (await ShowConfirmDialogAsync("删除确认", "确定要删除吗？") != ConfirmResult.OK)
+            {
+                return;
+            }
+            var rsp = await ApiService.DeleteNodeInfoAsync(nodeInfo.Id);
+            if (rsp.ErrorCode == 0)
+            {
+               await _message.Info("删除节点成功");
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "删除失败",
+                        Description = rsp.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "删除失败",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
+    {
+        var options = new ConfirmButtonOptions
+            {
+                Button1Props = new ButtonProps
+                {
+                    ChildContent = "确定",
+                    Type = ButtonType.Primary
+                },
+                Button2Props = new ButtonProps
+                {
+                    ChildContent = "取消"
+                }
+            };
+        return _confirmService.Show(
+            content,
+            title,
+            ConfirmButtons.OKCancel,
+            ConfirmIcon.Info,
+            options);
     }
 
 }

@@ -70,11 +70,6 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
        await RequestCoreAsync(false);
     }
 
-    public async Task ForceRequestAsync()
-    {
-       await RequestCoreAsync(true);
-    }
-
     private async Task RequestCoreAsync(bool force)
     {
         if (PageIndex <= 0) PageIndex = 1;

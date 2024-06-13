@@ -144,7 +144,7 @@
                 DateTime.DaysInMonth(nextDateTime.Year, nextDateTime.Month), 0, 0, 0).AddSeconds(-1);
             _dataSource.QueryParameters.PageIndex = 1;
             _dataSource.QueryParameters.PageSize = 100;
-            await _dataSource.ForceRequestAsync();
+            await _dataSource.RequestAsync();
         }
         catch (Exception ex)
         {

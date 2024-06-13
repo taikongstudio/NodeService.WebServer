@@ -478,7 +478,6 @@ public class TaskExecutionReportConsumerService : BackgroundService
         JobExecutionInstanceModel parentTaskInstance,
         CancellationToken cancellationToken = default)
     {
-        var key = $"{nameof(JobFireConfigurationModel)}:{parentTaskInstance.FireInstanceId}";
         using var taskFireConfigRepo = _taskFireConfigRepositoryFactory.CreateRepository();
         var taskFireConfig = await taskFireConfigRepo.GetByIdAsync(parentTaskInstance.FireInstanceId, cancellationToken);
 
@@ -509,13 +508,8 @@ public class TaskExecutionReportConsumerService : BackgroundService
     JobExecutionInstanceModel parentTaskInstance,
     CancellationToken cancellationToken = default)
     {
-        var key = $"{nameof(JobFireConfigurationModel)}:{parentTaskInstance.FireInstanceId}";
-        if (!_memoryCache.TryGetValue<JobFireConfigurationModel>(key, out var taskFireConfig))
-        {
-            using var taskFireConfigRepo = _taskFireConfigRepositoryFactory.CreateRepository();
-            taskFireConfig = await taskFireConfigRepo.GetByIdAsync(parentTaskInstance.FireInstanceId, cancellationToken);
-            _memoryCache.Set(key, taskFireConfig, TimeSpan.FromMinutes(30));
-        }
+        using var taskFireConfigRepo = _taskFireConfigRepositoryFactory.CreateRepository();
+        var taskFireConfig = await taskFireConfigRepo.GetByIdAsync(parentTaskInstance.FireInstanceId, cancellationToken);
 
         if (taskFireConfig == null)
         {

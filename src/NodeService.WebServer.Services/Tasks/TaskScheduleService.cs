@@ -37,18 +37,18 @@ public class TaskScheduleService : BackgroundService
         _exceptionCounter = exceptionCounter;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        Scheduler = await _schedulerFactory.GetScheduler(stoppingToken);
+        Scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
         Scheduler.JobFactory = _serviceProvider.GetService<IJobFactory>();
-        if (!Scheduler.IsStarted) await Scheduler.Start(stoppingToken);
-        await ScheduleTasksAsync(stoppingToken);
-        while (!stoppingToken.IsCancellationRequested)
+        if (!Scheduler.IsStarted) await Scheduler.Start(cancellationToken);
+        await ScheduleTasksAsync(cancellationToken);
+        while (!cancellationToken.IsCancellationRequested)
         {
-            var taskScheduleMessage = await _taskSchedulerMessageQueue.DeuqueAsync(stoppingToken);
+            var taskScheduleMessage = await _taskSchedulerMessageQueue.DeuqueAsync(cancellationToken);
             try
             {
-                await ScheduleTaskAsync(taskScheduleMessage, stoppingToken);
+                await ScheduleTaskAsync(taskScheduleMessage, cancellationToken);
             }
             catch (Exception ex)
             {

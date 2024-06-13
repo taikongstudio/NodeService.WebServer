@@ -28,9 +28,9 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
         _cudBatchQueue = cudBatchQueue;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        await foreach (var arrayPoolCollection in _cudBatchQueue.ReceiveAllAsync(stoppingToken))
+        await foreach (var arrayPoolCollection in _cudBatchQueue.ReceiveAllAsync(cancellationToken))
         {
             try
             {
@@ -44,7 +44,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
                         case BatchQueueOperationKind.None:
                             break;
                         case BatchQueueOperationKind.InsertOrUpdate:
-                            await InsertOrUpdateAsync(repo, operation, stoppingToken);
+                            await InsertOrUpdateAsync(repo, operation, cancellationToken);
 
                             break;
                         case BatchQueueOperationKind.Delete:
@@ -86,7 +86,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
 
     }
 
-    private async Task InsertOrUpdateAsync(IRepository<FileRecordModel> repo, BatchQueueOperation<FileRecordModel, bool>? operation, CancellationToken stoppingToken)
+    private async Task InsertOrUpdateAsync(IRepository<FileRecordModel> repo, BatchQueueOperation<FileRecordModel, bool>? operation, CancellationToken cancellationToken)
     {
         try
         {
@@ -95,7 +95,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
                      operation.Argument.Id,
                      null,
                      operation.Argument.Name),
-                 stoppingToken);
+                 cancellationToken);
             if (modelFromRepo == null)
             {
                 await repo.AddAsync(operation.Argument);
@@ -112,7 +112,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
                 modelFromRepo.FileHashValue = operation.Argument.FileHashValue;
                 modelFromRepo.CreationDateTime = operation.Argument.CreationDateTime;
                 modelFromRepo.ModifiedDateTime = operation.Argument.ModifiedDateTime;
-                await repo.SaveChangesAsync(stoppingToken);
+                await repo.SaveChangesAsync(cancellationToken);
             }
             operation.SetResult(true);
         }

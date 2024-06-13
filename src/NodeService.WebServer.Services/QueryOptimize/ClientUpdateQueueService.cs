@@ -40,13 +40,13 @@ namespace NodeService.WebServer.Services.QueryOptimize
             _batchQueue = batchQueue;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            _ = Task.Factory.StartNew((state) => ShuffleNodesAsync((CancellationToken)state), stoppingToken, stoppingToken);
-            while (!stoppingToken.IsCancellationRequested)
+            _ = Task.Factory.StartNew((state) => ShuffleNodesAsync((CancellationToken)state), cancellationToken, cancellationToken);
+            while (!cancellationToken.IsCancellationRequested)
             {
-                await QueueAsync(stoppingToken);
-                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                await QueueAsync(cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
             }
         }
 
@@ -100,11 +100,11 @@ namespace NodeService.WebServer.Services.QueryOptimize
             return $"ClientUpdateEnabled:{value}";
         }
 
-        private async Task QueueAsync(CancellationToken stoppingToken = default)
+        private async Task QueueAsync(CancellationToken cancellationToken = default)
         {
 
 
-            await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(stoppingToken))
+            await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(cancellationToken))
             {
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 try
@@ -137,7 +137,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
                                     var hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
                                         null,
                                         op.Argument.IpAddress),
-                                        stoppingToken);
+                                        cancellationToken);
                                     if (!hasNodeInfo)
                                     {
                                         if (clientUpdateConfig == null)

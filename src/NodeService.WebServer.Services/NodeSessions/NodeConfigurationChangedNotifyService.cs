@@ -35,13 +35,13 @@ namespace NodeService.WebServer.Services.NodeSessions
             return new NodeId(value);
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            while (!stoppingToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    var configurationChangedEvent = await _eventQueue.DeuqueAsync(stoppingToken);
+                    var configurationChangedEvent = await _eventQueue.DeuqueAsync(cancellationToken);
                     IEnumerable<NodeId> nodeIdList = configurationChangedEvent.NodeIdList.IsNullOrEmpty()
                         ?
                         [NodeId.Any]
@@ -64,7 +64,7 @@ namespace NodeService.WebServer.Services.NodeSessions
                                 RequestId = Guid.NewGuid().ToString(),
                                 Topic = nameof(NodeConfigurationChangedNotifyService),
                                 ConfigurationChangedReport = report
-                            }, cancellationToken: stoppingToken);
+                            }, cancellationToken: cancellationToken);
                         }
                     }
                 }

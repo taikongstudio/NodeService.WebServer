@@ -22,7 +22,7 @@ public class AnalysisLogService : BackgroundService
         _apiService = apiService;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         await dbContext.Database.EnsureCreatedAsync();

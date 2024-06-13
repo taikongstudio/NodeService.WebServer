@@ -21,7 +21,7 @@ namespace NodeService.WebServerTools.Services
             _dbContextFactory = dbContextFactory;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             var dbContext = _dbContextFactory.CreateDbContext();
             var ftpUploadConfigs = await dbContext.FtpUploadConfigurationDbSet.ToListAsync();

@@ -41,9 +41,9 @@ namespace NodeService.WebServer.Services.QueryOptimize
             _funcDict = new ConcurrentDictionary<string, Delegate>();
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(stoppingToken))
+            await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(cancellationToken))
             {
                 Stopwatch stopwatch = Stopwatch.StartNew();
                 try

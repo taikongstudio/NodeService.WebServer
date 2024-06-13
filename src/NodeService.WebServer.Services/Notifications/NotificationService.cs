@@ -23,12 +23,12 @@ public class NotificationService : BackgroundService
         _exceptionCounter = exceptionCounter;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested)
             try
             {
-                var notificationMessage = await _notificationMessageQueue.DeuqueAsync(stoppingToken);
+                var notificationMessage = await _notificationMessageQueue.DeuqueAsync(cancellationToken);
                 switch (notificationMessage.Configuration.ConfigurationType)
                 {
                     case NotificationConfigurationType.Email:

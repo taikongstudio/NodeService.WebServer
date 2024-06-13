@@ -27,7 +27,7 @@ public class TaskLogPersistenceService : BackgroundService
     }
 
     readonly ExceptionCounter _exceptionCounter;
-    readonly BatchQueue<TaskLogGroup> _taskLogGroupBatchQueue;
+    readonly BatchQueue<TaskLogUnit> _taskLogUnitBatchQueue;
     readonly WebServerCounter _webServerCounter;
 
     readonly IMemoryCache _memoryCache;
@@ -42,7 +42,7 @@ public class TaskLogPersistenceService : BackgroundService
         IServiceProvider serviceProvider,
         ILogger<TaskLogPersistenceService> logger,
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
-        BatchQueue<TaskLogGroup> taskLogGroupBatchQueue,
+        BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
         ExceptionCounter exceptionCounter,
         WebServerCounter webServerCounter,
         IMemoryCache memoryCache)
@@ -50,7 +50,7 @@ public class TaskLogPersistenceService : BackgroundService
         _logger = logger;
         _taskLogRepoFactory = taskLogRepoFactory;
         _exceptionCounter = exceptionCounter;
-        _taskLogGroupBatchQueue = taskLogGroupBatchQueue;
+        _taskLogUnitBatchQueue = taskLogUnitBatchQueue;
         _webServerCounter = webServerCounter;
         _memoryCache = memoryCache;
         _taskLogHandlers = new ConcurrentDictionary<int, TaskLogHandler>();
@@ -61,16 +61,16 @@ public class TaskLogPersistenceService : BackgroundService
 
     void OnTimer(object? state)
     {
-        _taskLogGroupBatchQueue.Post(new TaskLogGroup() { Id = null, LogEntries = [] });
+        _taskLogUnitBatchQueue.Post(new TaskLogUnit() { Id = null, LogEntries = [] });
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        await foreach (var arrayPoolCollection in _taskLogGroupBatchQueue.ReceiveAllAsync(stoppingToken))
+        await foreach (var arrayPoolCollection in _taskLogUnitBatchQueue.ReceiveAllAsync(cancellationToken))
         {
             await Parallel.ForEachAsync(
-                arrayPoolCollection.GroupBy(TaskLogGroupGroupFunc),
-                stoppingToken,
+                arrayPoolCollection.GroupBy(TaskLogUnitGroupFunc),
+                cancellationToken,
                 RunTaskLogHandlerAsync);
             _keys = _taskLogHandlers.Keys;
             Stat();
@@ -90,14 +90,14 @@ public class TaskLogPersistenceService : BackgroundService
         _webServerCounter.TaskExecutionReportLogEntriesSaveMaxTimeSpan = _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
         _webServerCounter.TaskExecutionReportLogEntriesQueryTimeSpan = _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
         _webServerCounter.TaskExecutionReportLogEntriesSaveTimeSpan = _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
-        _webServerCounter.TaskExecutionReportLogGroupAvailableCount = (uint)_taskLogGroupBatchQueue.AvailableCount;
+        _webServerCounter.TaskExecutionReportLogGroupAvailableCount = (uint)_taskLogUnitBatchQueue.AvailableCount;
     }
 
-    async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogGroup> taskLogGroup, CancellationToken stoppingToken)
+    async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogUnit> taskLogUnitGroup, CancellationToken cancellationToken)
     {
-        var key = taskLogGroup.Key;
+        var key = taskLogUnitGroup.Key;
         var handler = _taskLogHandlers.GetOrAdd(key, CreateTaskLogHandlerFactory);
-        await handler.ProcessAsync(taskLogGroup, stoppingToken);
+        await handler.ProcessAsync(taskLogUnitGroup, cancellationToken);
 
     }
 
@@ -108,13 +108,13 @@ public class TaskLogPersistenceService : BackgroundService
         return taskLogHandler;
     }
 
-    int TaskLogGroupGroupFunc(TaskLogGroup group)
+    int TaskLogUnitGroupFunc(TaskLogUnit unit)
     {
-        if (group.Id == null)
+        if (unit.Id == null)
         {
             return _keys.ElementAtOrDefault(Random.Shared.Next(0, _taskLogHandlers.Count));
         }
-        Math.DivRem(group.Id[0], 10, out int result);
+        Math.DivRem(unit.Id[0], 10, out int result);
         return result;
     }
 

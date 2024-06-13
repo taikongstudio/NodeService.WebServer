@@ -38,9 +38,9 @@ namespace NodeService.WebServer.Services.Tasks
             _taskExecutionInstanceRepoFactory = taskExecutionInstanceRepoFactory;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            await foreach (var arrayPoolCollection in _taskCancellationBatchQueue.ReceiveAllAsync(stoppingToken))
+            await foreach (var arrayPoolCollection in _taskCancellationBatchQueue.ReceiveAllAsync(cancellationToken))
             {
                 try
                 {
@@ -57,7 +57,7 @@ namespace NodeService.WebServer.Services.Tasks
                         }
                         var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(
                                                         taskCancellationParameters.TaskExeuctionInstanceId,
-                                                        stoppingToken);
+                                                        cancellationToken);
                         if (taskExecutionInstance == null)
                         {
                             continue;
@@ -71,7 +71,7 @@ namespace NodeService.WebServer.Services.Tasks
                             await _nodeSessionService.PostTaskExecutionEventAsync(
                                     nodeSessionId,
                                     taskExecutionInstance.ToCancelEvent(),
-                                    stoppingToken);
+                                    cancellationToken);
                         }
 
                     }

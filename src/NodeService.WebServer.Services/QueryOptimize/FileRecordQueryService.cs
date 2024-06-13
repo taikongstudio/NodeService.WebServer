@@ -35,9 +35,9 @@ public class FileRecordQueryService : BackgroundService
         _queryBatchQueue = queryBatchQueue;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(stoppingToken))
+        await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(cancellationToken))
         {
 
             try

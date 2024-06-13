@@ -53,11 +53,11 @@ public class HeartBeatResponseConsumerService : BackgroundService
         _webServerCounter = webServerCounter;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        if (!_webServerOptions.DebugProductionMode) await InvalidateAllNodeStatusAsync(stoppingToken);
+        if (!_webServerOptions.DebugProductionMode) await InvalidateAllNodeStatusAsync(cancellationToken);
 
-        await foreach (var arrayPoolCollection in _hearBeatMessageBatchQueue.ReceiveAllAsync(stoppingToken))
+        await foreach (var arrayPoolCollection in _hearBeatMessageBatchQueue.ReceiveAllAsync(cancellationToken))
         {
             var stopwatch = new Stopwatch();
             var count = arrayPoolCollection.Count;
@@ -85,7 +85,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private async Task InvalidateAllNodeStatusAsync(CancellationToken stoppingToken)
+    private async Task InvalidateAllNodeStatusAsync(CancellationToken cancellationToken)
     {
         using var repo = _nodeInfoRepositoryFactory.CreateRepository();
         try
@@ -191,6 +191,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     DateTime.ParseExact(hearBeatResponse.Properties[NodePropertyModel.LastUpdateDateTime_Key],
                         NodePropertyModel.DateTimeFormatString, DateTimeFormatInfo.InvariantInfo);
                 nodeInfo.Profile.ServerUpdateTimeUtc = DateTime.UtcNow;
+                CompareNodeCurrentTime(nodeInfo);
                 nodeInfo.Profile.Name = nodeInfo.Name;
                 nodeInfo.Profile.NodeInfoId = nodeInfo.Id;
                 nodeInfo.Profile.ClientVersion = hearBeatResponse.Properties[NodePropertyModel.ClientVersion_Key];
@@ -227,7 +228,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
                         if (!string.IsNullOrEmpty(processString) && processString.Contains('['))
                         {
                             var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
-                            AnalysisProcessInfoList(nodeInfo, processInfoList);
+                            if (processInfoList != null)
+                            {
+                                AnalysisProcessInfoList(nodeInfo, processInfoList);
+                            }
                         }
             }
 
@@ -254,6 +258,15 @@ public class HeartBeatResponseConsumerService : BackgroundService
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError($"{ex}");
+        }
+    }
+
+    private void CompareNodeCurrentTime(NodeInfoModel nodeInfo)
+    {
+        var diff = nodeInfo.Profile.ServerUpdateTimeUtc - nodeInfo.Profile.UpdateTime.ToUniversalTime();
+        if (diff.TotalSeconds > 60)
+        {
+
         }
     }
 

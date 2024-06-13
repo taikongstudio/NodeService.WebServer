@@ -42,30 +42,29 @@ public class NodeHealthyCheckService : BackgroundService
         _exceptionCounter = exceptionCounter;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        if (!Debugger.IsAttached) await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
-        while (!stoppingToken.IsCancellationRequested)
+        if (!Debugger.IsAttached) await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
+        while (!cancellationToken.IsCancellationRequested)
         {
-            await CheckNodeHealthyAsync(stoppingToken);
-            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+            await CheckNodeHealthyAsync(cancellationToken);
+            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
         }
     }
 
-    private async Task CheckNodeHealthyAsync(CancellationToken stoppingToken = default)
+    private async Task CheckNodeHealthyAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             using var propertyBagRepo = _propertyBagRepositoryFactory.CreateRepository();
             using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
             var propertyBag =
-                await propertyBagRepo.FirstOrDefaultAsync(
-                    new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
+                await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck), cancellationToken);
             NodeHealthyCheckConfiguration? configuration;
             if (!TryReadConfiguration(propertyBag, out configuration) || configuration == null) return;
 
             List<NodeInfoModel> offlineNodeList = [];
-            var nodeInfoList = await nodeInfoRepo.ListAsync();
+            var nodeInfoList = await nodeInfoRepo.ListAsync(cancellationToken);
             foreach (var nodeInfo in nodeInfoList)
             {
                 if (offlineNodeList.Contains(nodeInfo)) continue;
@@ -85,7 +84,7 @@ public class NodeHealthyCheckService : BackgroundService
             }
 
             if (offlineNodeList.Count <= 0) return;
-            await SendNodeOfflineNotificationAsync(configuration, offlineNodeList, stoppingToken);
+            await SendNodeOfflineNotificationAsync(configuration, offlineNodeList, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -121,7 +120,7 @@ public class NodeHealthyCheckService : BackgroundService
     private async Task SendNodeOfflineNotificationAsync(
         NodeHealthyCheckConfiguration configuration,
         List<NodeInfoModel> offlineNodeList,
-        CancellationToken stoppingToken = default)
+        CancellationToken cancellationToken = default)
     {
 
         using var repo = _notificationRepositoryFactory.CreateRepository();
@@ -136,13 +135,13 @@ public class NodeHealthyCheckService : BackgroundService
 
         foreach (var entry in configuration.Configurations)
         {
-            var notificationConfig = await repo.GetByIdAsync(entry.Value, stoppingToken);
+            var notificationConfig = await repo.GetByIdAsync(entry.Value, cancellationToken);
             if (notificationConfig == null || !notificationConfig.IsEnabled) continue;
             await _notificationQueue.EnqueueAsync(
                 new NotificationMessage(configuration.Subject,
                     content,
                     notificationConfig.Value),
-                stoppingToken);
+                cancellationToken);
         }
     }
 

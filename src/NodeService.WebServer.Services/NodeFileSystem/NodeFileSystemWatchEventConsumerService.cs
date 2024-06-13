@@ -1,17 +1,9 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Models;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics.Eventing.Reader;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.FileSystem
 {
@@ -40,7 +32,7 @@ namespace NodeService.WebServer.Services.FileSystem
         {
             public DirectotyCounterInfo()
             {
-                this.PathList = new HashSet<string>();
+                this.PathList = [];
             }
 
             public int ChangedCount { get; set; }
@@ -85,9 +77,9 @@ namespace NodeService.WebServer.Services.FileSystem
             _directoryCounterDict = new();
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            await foreach (var arrayPoolCollection in _reportMessageEventQueue.ReceiveAllAsync(stoppingToken))
+            await foreach (var arrayPoolCollection in _reportMessageEventQueue.ReceiveAllAsync(cancellationToken))
             {
                 try
                 {
@@ -101,7 +93,7 @@ namespace NodeService.WebServer.Services.FileSystem
                             taskDefinitionRepo,
                             fileSystemWatchRepo,
                             nodeEventReports,
-                            stoppingToken);
+                            cancellationToken);
                     }
                 }
                 catch (Exception ex)

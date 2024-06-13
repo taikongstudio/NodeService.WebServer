@@ -42,29 +42,29 @@ namespace NodeService.WebServer.Services.DataQuality
             _alarmMessageBatchQueue = alarmMessageBatchQueue;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            while (!stoppingToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
                     DateTime dateTime = DateTime.Today.Date;
-                    await RefreshNodeSettingsAsync(stoppingToken);
+                    await RefreshNodeSettingsAsync(cancellationToken);
                     if (_dataQualitySettings == null || !_dataQualitySettings.IsEnabled)
                     {
-                        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                        await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                         continue;
                     }
                     while (dateTime >= _dataQualitySettings.StatisticsLimitDate)
                     {
-                        await RefreshNodeSettingsAsync(stoppingToken);
+                        await RefreshNodeSettingsAsync(cancellationToken);
                         if (_dataQualitySettings == null || !_dataQualitySettings.IsEnabled)
                         {
                             break;
                         }
                         var ipNodeInfoMapping = new ConcurrentDictionary<string, NodeInfoModel>(StringComparer.OrdinalIgnoreCase);
-                        await StatisticsDateAysnc(dateTime, ipNodeInfoMapping, stoppingToken);
-                        await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+                        await StatisticsDateAysnc(dateTime, ipNodeInfoMapping, cancellationToken);
+                        await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                         dateTime = dateTime.AddDays(-1);
                     }
 
@@ -87,7 +87,7 @@ namespace NodeService.WebServer.Services.DataQuality
                 {
                     durationMinutes = 10;
                 }
-                await Task.Delay(TimeSpan.FromMinutes(durationMinutes), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(durationMinutes), cancellationToken);
             }
         }
 

@@ -312,10 +312,10 @@ public class TaskFireService : BackgroundService
         return (fireTaskParameters.TaskDefinitionId, fireTaskParameters.FireInstanceId);
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken = default)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        _ = Task.Factory.StartNew(SchedulePenddingContextAsync, stoppingToken, stoppingToken);
-        await foreach (var arrayPoolCollection in _fireTaskBatchQueue.ReceiveAllAsync(stoppingToken))
+        _ = Task.Factory.StartNew(SchedulePenddingContextAsync, cancellationToken, cancellationToken);
+        await foreach (var arrayPoolCollection in _fireTaskBatchQueue.ReceiveAllAsync(cancellationToken))
             try
             {
                 using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
@@ -330,7 +330,7 @@ public class TaskFireService : BackgroundService
 
                     var taskDefinition = await taskDefinitionRepo.GetByIdAsync(
                         taskDefinitionId,
-                        stoppingToken);
+                        cancellationToken);
 
                     if (taskDefinition == null || string.IsNullOrEmpty(taskDefinition.JobTypeDescId)) continue;
                     if (taskDefinition.NodeList.Count == 0) continue;
@@ -339,12 +339,12 @@ public class TaskFireService : BackgroundService
                     {
                         Id = fireTaskInstanceId,
                         JobScheduleConfigJsonString = taskDefinition.ToJson()
-                    }, stoppingToken);
+                    }, cancellationToken);
 
 
                     taskDefinition.JobTypeDesc = await taskTypeDescRepo.GetByIdAsync(
                         taskDefinition.JobTypeDescId,
-                        stoppingToken);
+                        cancellationToken);
                     foreach (var fireTaskParameters in fireTaskParametersGroup)
                     {
                         if (fireTaskParameters.NodeList != null && fireTaskParameters.NodeList.Count > 0)
@@ -357,7 +357,7 @@ public class TaskFireService : BackgroundService
                             nodeInfoRepo,
                             fireTaskParameters,
                             taskDefinition,
-                            stoppingToken);
+                            cancellationToken);
                     }
                 }
             }

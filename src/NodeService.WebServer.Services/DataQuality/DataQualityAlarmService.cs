@@ -38,10 +38,10 @@ namespace NodeService.WebServer.Services.DataQuality
             _propertyBagRepoFactory = propertyBagRepoFactory;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
 
-            await foreach (var arrayPoolCollection in _alarmMessageBatchQueue.ReceiveAllAsync(stoppingToken))
+            await foreach (var arrayPoolCollection in _alarmMessageBatchQueue.ReceiveAllAsync(cancellationToken))
             {
                 try
                 {
@@ -58,7 +58,7 @@ namespace NodeService.WebServer.Services.DataQuality
                         {
                             break;
                         }
-                        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                        await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
                     }
                     if (configuration == null)
                     {
@@ -87,7 +87,7 @@ namespace NodeService.WebServer.Services.DataQuality
                         {
                             continue;
                         }
-                        var notificationConfig = await notificationConfigRepo.GetByIdAsync(entry.Value, stoppingToken);
+                        var notificationConfig = await notificationConfigRepo.GetByIdAsync(entry.Value, cancellationToken);
                         if (notificationConfig == null || !notificationConfig.IsEnabled)
                             continue;
 
@@ -95,7 +95,7 @@ namespace NodeService.WebServer.Services.DataQuality
                             new NotificationMessage(configuration.Subject,
                                 content,
                                 notificationConfig.Value),
-                            stoppingToken);
+                            cancellationToken);
                     }
                 }
                 catch (Exception ex)

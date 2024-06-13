@@ -17,7 +17,7 @@ public class MergeNodeService : BackgroundService
         _dbContextFactory = dbContextFactory;
     }
 
-    //protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    //protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     //{
     //    await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
     //    var nodes = await dbContext.NodeInfoDbSet.ToListAsync();
@@ -44,7 +44,7 @@ public class MergeNodeService : BackgroundService
     //    }
     //}
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         while (true)
         {

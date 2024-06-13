@@ -37,9 +37,9 @@ namespace NodeService.WebServer.Services.NodeSessions
             _webServerCounter = webServerCounter;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
-            await foreach (var arrayPoolCollection in _recordBatchQueue.ReceiveAllAsync(stoppingToken))
+            await foreach (var arrayPoolCollection in _recordBatchQueue.ReceiveAllAsync(cancellationToken))
             {
                 try
                 {

@@ -44,12 +44,12 @@ public class HeartBeatRequestProducerService : BackgroundService
         base.Dispose();
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested)
             try
             {
-                await ExecuteCoreAsync(stoppingToken);
+                await ExecuteCoreAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -58,12 +58,12 @@ public class HeartBeatRequestProducerService : BackgroundService
             }
     }
 
-    private async Task ExecuteCoreAsync(CancellationToken stoppingToken = default)
+    private async Task ExecuteCoreAsync(CancellationToken cancellationToken = default)
     {
         var nodeSessions = _nodeSessionService.EnumNodeSessions(NodeId.Any);
         if (!nodeSessions.Any())
         {
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
             return;
         }
 
@@ -91,7 +91,7 @@ public class HeartBeatRequestProducerService : BackgroundService
             _logger.LogInformation($"Send heart beat to {nodeSessionId}:{nodeName}");
             await _nodeSessionService.PostHeartBeatRequestAsync(nodeSessionId);
             await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(50, (double)_options.HeartBeatPeriod / nodeCount)),
-                stoppingToken);
+                cancellationToken);
         }
 
         _logger.LogInformation("End");

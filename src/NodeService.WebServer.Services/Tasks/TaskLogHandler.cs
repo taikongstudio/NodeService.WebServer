@@ -21,6 +21,8 @@ namespace NodeService.WebServer.Services.Tasks
             public long LogEntriesSavedCount;
         }
 
+        const int PAGESIZE = 1024;
+
         readonly ConcurrentDictionary<string, TaskLogModel> _addedTaskLogPageDictionary;
         readonly ConcurrentDictionary<string, TaskLogModel> _updatedTaskLogPageDictionary;
         readonly ExceptionCounter _exceptionCounter;
@@ -40,7 +42,7 @@ namespace NodeService.WebServer.Services.Tasks
 
         public long TotalPageCount { get; private set; }
 
-        public int ActiveTaskLogGroupCount {  get; private set; }
+        public int ActiveTaskLogGroupCount { get; private set; }
 
         public int Id { get; set; }
 
@@ -58,23 +60,23 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
         public async ValueTask ProcessAsync(
-            IEnumerable<TaskLogGroup> taskLogGroupList,
-            CancellationToken stoppingToken = default)
+            IEnumerable<TaskLogUnit> taskLogUnitList,
+            CancellationToken cancellationToken = default)
         {
             try
             {
                 var stopwatch = new Stopwatch();
 
                 stopwatch.Restart();
-                foreach (var taskLogGroups in taskLogGroupList.GroupBy(x => x.Id))
+                foreach (var taskLogUnitGroups in taskLogUnitList.GroupBy(GetTaskLogUnitKey))
                 {
-                    if (taskLogGroups.Key == null)
+                    if (taskLogUnitGroups.Key == null)
                     {
                         continue;
                     }
-                    await SaveTaskLogGroupAsync(
-                        taskLogGroups,
-                        stoppingToken);
+                    await ProcessTaskLogUnitGroupAsync(
+                        taskLogUnitGroups,
+                        cancellationToken);
                 }
                 stopwatch.Stop();
 
@@ -85,7 +87,7 @@ namespace NodeService.WebServer.Services.Tasks
                 }
 
                 stopwatch.Restart();
-                await AddOrUpdateTaskLogPagesAsync(stoppingToken);
+                await AddOrUpdateTaskLogPagesAsync(cancellationToken);
                 stopwatch.Stop();
 
                 TotalSaveTimeSpan += stopwatch.Elapsed;
@@ -107,32 +109,36 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        async Task AddOrUpdateTaskLogPagesAsync(
-            CancellationToken stoppingToken = default)
+        static string GetTaskLogUnitKey(TaskLogUnit taskLogUnit)
+        {
+            return taskLogUnit.Id;
+        }
+
+        async Task AddOrUpdateTaskLogPagesAsync(CancellationToken cancellationToken = default)
         {
 
             if (!_addedTaskLogPageDictionary.IsEmpty)
             {
-                var addedTaskLogs = _addedTaskLogPageDictionary.Values.ToArray();
-
-                foreach (var taskLog in addedTaskLogs)
+                var addedTaskLogs = _addedTaskLogPageDictionary.Values;
+                await Parallel.ForEachAsync(addedTaskLogs, new ParallelOptions()
                 {
-                    await AddTaskLogAsync(taskLog, stoppingToken);
-                }
+                    CancellationToken = cancellationToken,
+                    MaxDegreeOfParallelism = Math.Max(Math.DivRem(addedTaskLogs.Count, PAGESIZE, out _), Environment.ProcessorCount / 4),
+                }, AddTaskLogAsync);
                 ResetTaskLogPageDirtyCount(addedTaskLogs);
                 MoveToUpdateDictionary(addedTaskLogs);
 
             }
             if (!_updatedTaskLogPageDictionary.IsEmpty)
             {
-                var updatedTaskLogs = _updatedTaskLogPageDictionary.Values.Where(IsTaskLogPageChanged).ToArray();
-                if (updatedTaskLogs.Length > 0)
+                var updatedTaskLogs = _updatedTaskLogPageDictionary.Values.Where(IsTaskLogPageChanged);
+                if (updatedTaskLogs.Any())
                 {
-                    foreach (var taskLog in updatedTaskLogs)
+                    await Parallel.ForEachAsync(updatedTaskLogs, new ParallelOptions()
                     {
-                        await UpdateTaskLogAsync(taskLog, stoppingToken);
-                    }
-
+                        CancellationToken = cancellationToken,
+                        MaxDegreeOfParallelism = Environment.ProcessorCount / 4,
+                    }, UpdateTaskLogAsync);
                     ResetTaskLogPageDirtyCount(updatedTaskLogs);
                 }
                 RemoveFullTaskLogPages(_updatedTaskLogPageDictionary);
@@ -140,21 +146,39 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        async ValueTask UpdateTaskLogAsync(TaskLogModel taskLog, CancellationToken stoppingToken = default)
+        async ValueTask UpdateTaskLogAsync(TaskLogModel taskLog, CancellationToken cancellationToken = default)
         {
-            using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-            await taskLogRepo.UpdateAsync(taskLog, stoppingToken);
+            try
+            {
+                using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+                await taskLogRepo.UpdateAsync(taskLog, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+
         }
 
-        async ValueTask AddTaskLogAsync(TaskLogModel taskLog, CancellationToken stoppingToken = default)
+        async ValueTask AddTaskLogAsync(TaskLogModel taskLog, CancellationToken cancellationToken = default)
         {
-            using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-            await taskLogRepo.AddAsync(taskLog, stoppingToken);
+            try
+            {
+                using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+                await taskLogRepo.AddAsync(taskLog, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+
         }
 
-        void MoveToUpdateDictionary(TaskLogModel[] taskLogPages)
+        void MoveToUpdateDictionary(IEnumerable<TaskLogModel> taskLogPages)
         {
-            if (taskLogPages.Length == 0)
+            if (!taskLogPages.Any())
             {
                 return;
             }
@@ -165,17 +189,16 @@ namespace NodeService.WebServer.Services.Tasks
                     _taskLogStat.PageSaveCount++;
                     continue;
                 }
-                _updatedTaskLogPageDictionary.AddOrUpdate(
+                _updatedTaskLogPageDictionary.TryAdd(
                     taskLogPage.Id,
-                    taskLogPage,
-                    (key, oldValue) => taskLogPage);
+                    taskLogPage);
             }
             _addedTaskLogPageDictionary.Clear();
         }
 
-        static void ResetTaskLogPageDirtyCount(TaskLogModel[] taskLogs)
+        static void ResetTaskLogPageDirtyCount(IEnumerable<TaskLogModel> taskLogs)
         {
-            if (taskLogs.Length == 0)
+            if (!taskLogs.Any())
             {
                 return;
             }
@@ -185,34 +208,34 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        async Task SaveTaskLogGroupAsync(
-            IGrouping<string, TaskLogGroup> taskLogGroups,
-            CancellationToken stoppingToken = default)
+        async Task ProcessTaskLogUnitGroupAsync(
+            IGrouping<string, TaskLogUnit> taskLogGroups,
+            CancellationToken cancellationToken = default)
         {
             var taskId = taskLogGroups.Key;
             var groupsCount = taskLogGroups.Count();
             var logEntries = taskLogGroups.SelectMany(static x => x.LogEntries);
             var logEntriesCount = logEntries.Count();
 
-            TaskLogModel? taskInfoLog = await EnsureTaskInfoLogAsync(taskId, stoppingToken);
+            TaskLogModel? taskInfoLog = await EnsureTaskInfoLogAsync(taskId, cancellationToken);
             if (taskInfoLog == null)
             {
                 return;
             }
 
-            await SaveTaskLogPagesAsync(
+            await ProcessTaskLogPagesAsync(
                          taskId,
                          taskInfoLog,
                          logEntries,
                          logEntriesCount,
-                         stoppingToken);
+                         cancellationToken);
 
             TotalGroupConsumeCount += (uint)groupsCount;
         }
 
         async Task<TaskLogModel?> EnsureTaskInfoLogAsync(
             string taskId,
-            CancellationToken stoppingToken = default)
+            CancellationToken cancellationToken = default)
         {
             var taskLogInfoKey = CreateTaskLogInfoKey(taskId);
             if (!_updatedTaskLogPageDictionary.TryGetValue(taskLogInfoKey, out var taskInfoLog) || taskInfoLog == null)
@@ -228,35 +251,34 @@ namespace NodeService.WebServer.Services.Tasks
                     FormattableString sql = $"update TaskLogDbSet\r\nset ActualSize={actualSize},\r\nPageSize={pageSize},\r\nPageIndex=0\r\nwhere Id={taskLogInfoPageId}";
                     var changesCount = await taskLogRepo.DbContext.Database.ExecuteSqlAsync(
                                     sql,
-                                    cancellationToken: stoppingToken);
-                    taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, 0), stoppingToken);
+                                    cancellationToken: cancellationToken);
+                    taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, 0), cancellationToken);
                 }
             }
             if (taskInfoLog == null)
             {
                 taskInfoLog = CreateTaskLogInfoPage(taskId);
 
-                _addedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
+                _addedTaskLogPageDictionary.TryAdd(taskInfoLog.Id, taskInfoLog);
             }
 
             return taskInfoLog;
         }
 
-        async ValueTask SaveTaskLogPagesAsync(
+        async ValueTask ProcessTaskLogPagesAsync(
             string taskId,
             TaskLogModel taskInfoLog,
             IEnumerable<LogEntry> logEntries,
             int logEntriesCount,
-            CancellationToken stoppingToken = default)
+            CancellationToken cancellationToken = default)
         {
 
             int logIndex = 0;
-            TaskLogModel? currentLogPage = null;
             var key = $"{taskId}_{taskInfoLog.PageSize}";
-            if (!_updatedTaskLogPageDictionary.TryGetValue(key, out currentLogPage) || currentLogPage == null)
+            if (!_updatedTaskLogPageDictionary.TryGetValue(key, out TaskLogModel? currentLogPage) || currentLogPage == null)
             {
                 using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-                currentLogPage = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, taskInfoLog.PageSize), stoppingToken);
+                currentLogPage = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, taskInfoLog.PageSize), cancellationToken);
             }
             while (logIndex < logEntriesCount)
             {
@@ -265,20 +287,20 @@ namespace NodeService.WebServer.Services.Tasks
                     if (currentLogPage != null && currentLogPage.ActualSize == currentLogPage.PageSize)
                     {
                         taskInfoLog.PageSize += 1;
-                        _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
+                        _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, UpdateValueFactory);
                     }
                     currentLogPage = CreateNewTaskLogPage(
                         taskId,
                         taskInfoLog.PageSize,
-                        64);
+                        PAGESIZE);
                     _taskLogStat.PageCreatedCount += 1;
-                    _addedTaskLogPageDictionary.AddOrUpdate(currentLogPage.Id, currentLogPage, (key, oldValue) => currentLogPage);
+                    _addedTaskLogPageDictionary.TryAdd(currentLogPage.Id, currentLogPage);
                 }
                 if (currentLogPage.ActualSize < currentLogPage.PageSize)
                 {
                     int takeCount = Math.Min(currentLogPage.PageSize - currentLogPage.ActualSize, logEntriesCount);
-                    currentLogPage.Value.LogEntries = currentLogPage.Value.LogEntries.Union(logEntries.Skip(logIndex).Take(takeCount)).ToList();
-                    currentLogPage.ActualSize = currentLogPage.Value.LogEntries.Count;
+                    currentLogPage.Value.LogEntries = currentLogPage.Value.LogEntries.Union(logEntries.Skip(logIndex).Take(takeCount));
+                    currentLogPage.ActualSize = currentLogPage.Value.LogEntries.Count();
                     currentLogPage.DirtyCount++;
                     currentLogPage.LastWriteTime = DateTime.UtcNow;
                     logIndex += takeCount;
@@ -286,11 +308,16 @@ namespace NodeService.WebServer.Services.Tasks
                     taskInfoLog.ActualSize += takeCount;
                     taskInfoLog.DirtyCount++;
                     taskInfoLog.LastWriteTime = DateTime.UtcNow;
-                    _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
-                    _updatedTaskLogPageDictionary.AddOrUpdate(currentLogPage.Id, currentLogPage, (key, oldValue) => currentLogPage);
+                    _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, UpdateValueFactory);
+                    _updatedTaskLogPageDictionary.AddOrUpdate(currentLogPage.Id, currentLogPage, UpdateValueFactory);
                 }
             }
 
+        }
+
+        static T UpdateValueFactory<T>(string key, T oldValue)
+        {
+            return oldValue;
         }
 
         void RemoveFullTaskLogPages(ConcurrentDictionary<string, TaskLogModel> dict)
@@ -299,8 +326,8 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 return;
             }
-            var fullTaskLogPages = dict.Values.Where(IsFullTaskLogPage).ToArray();
-            if (fullTaskLogPages.Length > 0)
+            var fullTaskLogPages = dict.Values.Where(IsFullTaskLogPage);
+            if (fullTaskLogPages.Any())
             {
                 foreach (var taskLogPage in fullTaskLogPages)
                 {
@@ -316,8 +343,8 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 return;
             }
-            var inactiveTaskLogPages = dict.Values.Where(IsInactiveTaskLogPage).ToArray();
-            if (inactiveTaskLogPages.Length > 0)
+            var inactiveTaskLogPages = dict.Values.Where(IsInactiveTaskLogPage);
+            if (inactiveTaskLogPages.Any())
             {
                 foreach (var taskLogPage in inactiveTaskLogPages)
                 {
@@ -346,7 +373,12 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 return DateTime.UtcNow - taskLog.LastWriteTime > TimeSpan.FromSeconds(5);
             }
-            return taskLog.ActualSize >= taskLog.PageSize || DateTime.UtcNow - taskLog.LastWriteTime > TimeSpan.FromSeconds(10);
+            return 
+                taskLog.ActualSize >= taskLog.PageSize
+                ||
+                taskLog.DirtyCount > 5
+                ||
+                DateTime.UtcNow - taskLog.LastWriteTime > TimeSpan.FromSeconds(10);
         }
 
         static TaskLogModel CreateNewTaskLogPage(string taskId, int pageIndex, int pageSize)

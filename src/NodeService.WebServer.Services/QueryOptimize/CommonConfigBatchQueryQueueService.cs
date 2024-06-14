@@ -217,7 +217,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
             {
                 using var repo = repoFactory.CreateRepository();
                 listQueryResult = await repo.PaginationQueryAsync(
-                    new CommonConfigSpecification<T>(queryParameters.Keywords),
+                    new CommonConfigSpecification<T>(queryParameters.Keywords, queryParameters.SortDescriptions),
                     queryParameters.PageSize,
                     queryParameters.PageIndex);
             }

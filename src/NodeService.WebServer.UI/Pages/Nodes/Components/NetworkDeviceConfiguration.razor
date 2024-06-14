@@ -1,4 +1,5 @@
-﻿<FormItem Label="IP地址">
+﻿@using System.Net.NetworkInformation
+<FormItem Label="IP地址">
     <Input @bind-Value="@Settings.IpAddress" />
 </FormItem>
 
@@ -10,7 +11,37 @@
     <AntDesign.InputNumber Min="1"  @bind-Value="@Settings.PingTimeOutSeconds" />
 </FormItem>
 
+<FormItem>
+    <Button OnClick="PingAsync">测试</Button>
+</FormItem>
+    @if (_loading)
+    {
+        <Icon Type="loading" Theme="outline" />
+    }
+@if (_showAlert)
+{
+    <Alert Type="@_alertType" Message="@_ipStatus.ToString()" />
+}
+
+
 @code {
     [Parameter]
     public IPAddressPortSettings Settings { get; set; } = new IPAddressPortSettings();
+
+    bool _showAlert = false;
+    bool _loading = false;
+    IPStatus _ipStatus;
+
+    string _alertType => _ipStatus == IPStatus.Success ? AlertType.Success : AlertType.Error;
+
+    async Task PingAsync()
+    {
+        _showAlert = false;
+        _loading = true;
+        using var ping = new Ping();
+        var reply = await ping.SendPingAsync(Settings.IpAddress, TimeSpan.FromSeconds(Settings.PingTimeOutSeconds));
+        _showAlert = true;
+        _loading = false;
+        _ipStatus = reply.Status;
+    }
 }

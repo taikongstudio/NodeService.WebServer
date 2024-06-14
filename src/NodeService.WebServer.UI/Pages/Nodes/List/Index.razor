@@ -437,7 +437,7 @@
         _nodeDeviceTypes =
         [
             new EnumModel<NodeDeviceType>("网络设备", NodeDeviceType.NetworkDevice),
-    new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPort)
+            new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPort)
         ];
         _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager.BaseUri, ApiService.QueryNodeListAsync, StateHasChanged);
         _dataSource.QueryParameters.Status = NodeStatus.All;

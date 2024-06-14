@@ -51,6 +51,15 @@
             <FormItem Label="数据通信连接超时">
                 <AntDesign.InputNumber Style="width:300px" PlaceHolder="请输入超时（毫秒）" @bind-Value="@context.DataConnectionConnectTimeout"/>
             </FormItem>
+            <FormItem Label="数据连接类型">
+                <Select DataSource="@_dataConnectionTypes"
+                        Value="@context.DataConnectionType"
+                        TItem="EnumModel<int>"
+                        TItemValue="int"
+                        ValueChanged="OnDataConnectionTypeChanged"
+                        LabelName="@nameof(EnumModel<int>.Name)"
+                        ValueName="@nameof(EnumModel<int>.Value)"></Select>
+            </FormItem>
         </Form>
     </Modal>
 
@@ -144,11 +153,24 @@
     Form<FtpConfigModel> _editForm;
     FtpConfigModel _editModel = new();
 
+    IEnumerable<EnumModel<int>> _dataConnectionTypes = [];
+
     bool _loading;
     RoutedPaginationDataSource<FtpConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
+        _dataConnectionTypes =
+        [
+            new EnumModel<int>("AutoActive", 0),
+    new EnumModel<int>("AutoPassive", 1),
+    new EnumModel<int>("PASV", 2),
+    new EnumModel<int>("EPSV", 3),
+    new EnumModel<int>("PORT", 4),
+    new EnumModel<int>("EPRT", 5),
+    new EnumModel<int>("PassiveExtended", 6),
+    new EnumModel<int>("PassiveAllowUnroutable", 7),
+    ];
         _dataSource = new RoutedPaginationDataSource<FtpConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
             ApiService.QueryFtpConfigurationListAsync,
@@ -325,4 +347,8 @@
         _dataSource.Dispose();
     }
 
+    void OnDataConnectionTypeChanged(int dataConnectionType)
+    {
+        _editModel.DataConnectionType = dataConnectionType;
+    }
 }

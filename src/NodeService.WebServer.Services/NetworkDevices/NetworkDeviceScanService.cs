@@ -62,18 +62,15 @@ namespace NodeService.WebServer.Services.NetworkDevices
             {
                 await RefreshNodeSettingsAsync(cancellationToken);
                 using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-                using var propertyBagRepo = _propertyBagRepoFactory.CreateRepository();
                 List<NodeInfoModel> networkDeviceList = await QueryNetworkDeviceListAsync(nodeInfoRepo, cancellationToken);
 
                 await Parallel.ForEachAsync(networkDeviceList, new ParallelOptions()
                 {
                     CancellationToken = cancellationToken,
                     MaxDegreeOfParallelism = 4,
-                }, (nodeInfo, token) => ProcessNodeInfoAsync(
-                        nodeInfoRepo,
-                        propertyBagRepo,
-                        nodeInfo,
-                        token));
+                }, ProcessNodeInfoAsync);
+
+                await nodeInfoRepo.UpdateRangeAsync(networkDeviceList, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -84,13 +81,13 @@ namespace NodeService.WebServer.Services.NetworkDevices
         }
 
         async ValueTask ProcessNodeInfoAsync(
-            IRepository<NodeInfoModel> nodeInfoRepo,
-            IRepository<PropertyBag> propertyBagRepo,
             NodeInfoModel nodeInfo,
             CancellationToken cancellationToken)
         {
             try
             {
+            
+                using var propertyBagRepo = _propertyBagRepoFactory.CreateRepository();
                 switch (nodeInfo.DeviceType)
                 {
                     case NodeDeviceType.NetworkDevice:
@@ -128,7 +125,6 @@ namespace NodeService.WebServer.Services.NetworkDevices
                             }
                             nodeInfo.Profile.IpAddress = ipAddressPortSettings.IpAddress;
                             _nodeSettings.MatchAreaTag(nodeInfo);
-                            await nodeInfoRepo.UpdateAsync(nodeInfo, cancellationToken);
                         }
                         break;
                     default:
@@ -163,11 +159,12 @@ namespace NodeService.WebServer.Services.NetworkDevices
             IRepository<NodeInfoModel> nodeInfoRepo,
             CancellationToken cancellationToken = default)
         {
-            var nodeInfoList= await nodeInfoRepo.ListAsync(
+            var nodeInfoList = await nodeInfoRepo.ListAsync(
                 new NodeInfoSpecification(
                     null,
                     NodeStatus.All,
-                    NodeDeviceType.NetworkDevice),
+                    NodeDeviceType.NetworkDevice,
+                    [new SortDescription(nameof(NodeInfoModel.Status), "descend")]),
                 cancellationToken);
             return nodeInfoList;
         }

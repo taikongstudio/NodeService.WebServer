@@ -114,7 +114,7 @@
                 case NodeDeviceType.NetworkDevice:
                     <NetworkDeviceConfiguration Settings="@_ipAddressPortSettings"/>
                     break;
-                case NodeDeviceType.SerialPort:
+                case NodeDeviceType.SerialPortDevice:
                     <SerialPortConfiguration Settings="@_serialPortSettings" />
                     break;
 
@@ -150,7 +150,7 @@
                         <GridCol Span="20" Offset="0">
                             <Space Wrap>
                                 <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Plus" OnClick="()=>ShowCreateNodeDeviceFormAsync()"></Button>
+                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Plus" OnClick="()=>ShowEditNodeDeviceFormAsync()"></Button>
                                 </SpaceItem>
                                 <SpaceItem>
                                     <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="_dataSource.QueryAsync"></Button>
@@ -185,7 +185,7 @@
                                             <Icon Type="desktop" Theme="outline" /><Text>计算机</Text>
                                         </Radio>
                                         <Radio RadioButton Value="@(NodeDeviceType.NetworkDevice)">
-                                            <Icon Type="cluster" Theme="outline" /><Text>网络设备</Text>
+                                            <Icon Type="cluster" Theme="outline" /><Text>设备</Text>
                                         </Radio>
                                     </RadioGroup>
                                 </SpaceItem>
@@ -221,7 +221,9 @@
                         }
                         else
                         {
-                            <NavLink >@context.Name</NavLink>
+                            <Button Type="@ButtonType.Link"  OnClick="()=>ShowEditNodeDeviceFormAsync(context)">
+                                @context.Name
+                            </Button>
                         }
 
                     </PropertyColumn>
@@ -437,7 +439,7 @@
         _nodeDeviceTypes =
         [
             new EnumModel<NodeDeviceType>("网络设备", NodeDeviceType.NetworkDevice),
-        new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPort)
+    new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPortDevice)
         ];
         _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager.BaseUri, ApiService.QueryNodeListAsync, StateHasChanged);
         _dataSource.QueryParameters.Status = NodeStatus.All;
@@ -559,7 +561,7 @@
                 case NodeDeviceType.NetworkDevice:
                     _editModel.Properties.TryAdd("Settings", _ipAddressPortSettings);
                     break;
-                case NodeDeviceType.SerialPort:
+                case NodeDeviceType.SerialPortDevice:
                     _editModel.Properties.TryAdd("Settings", _serialPortSettings);
                     break;
             }
@@ -614,7 +616,7 @@
         _editForm.Submit();
     }
 
-    Task ShowCreateNodeDeviceFormAsync(NodeInfoModel nodeInfo = null)
+    Task ShowEditNodeDeviceFormAsync(NodeInfoModel nodeInfo = null)
     {
         _editFormVisible = true;
         if (nodeInfo == null)
@@ -626,6 +628,22 @@
         {
             _editModel = nodeInfo;
             _modalTitle = "编辑节点设备";
+            if (_editModel.Properties != null && _editModel.Properties.TryGetValue("Settings", out var value) && value is JsonElement jsonElement)
+            {
+                switch (_editModel.DeviceType)
+                {
+                    case NodeDeviceType.NetworkDevice:
+
+                        _ipAddressPortSettings = jsonElement.Deserialize<IPAddressPortSettings>(new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+
+                        break;
+                    case NodeDeviceType.SerialPortDevice:
+                        _serialPortSettings = jsonElement.Deserialize<SerialPortSettings>(new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
         return Task.CompletedTask;
     }

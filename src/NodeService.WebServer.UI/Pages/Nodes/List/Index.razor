@@ -206,13 +206,13 @@
                         @switch (context.Status)
                         {
                             case NodeStatus.Online:
-                                <Badge Style="margin-right:10px" Status="@BadgeStatus.Success"></Badge>
+                                <Badge Style="margin-right:5px" Status="@BadgeStatus.Success"></Badge>
                                 break;
                             case NodeStatus.Offline:
-                                <Badge Style="margin-right:10px" Status="@BadgeStatus.Warning"></Badge>
+                                <Badge Style="margin-right:5px" Status="@BadgeStatus.Warning"></Badge>
                                 break;
                             case NodeStatus.NotConfigured:
-                                <Badge Style="margin-right:10px" Status="@BadgeStatus.Error"></Badge>
+                                <Badge Style="margin-right:5px" Status="@BadgeStatus.Error"></Badge>
                                 break;
                         }
                         @if (context.DeviceType == NodeDeviceType.Computer)
@@ -221,7 +221,7 @@
                         }
                         else
                         {
-                            <Button Type="@ButtonType.Link"  OnClick="()=>ShowEditNodeDeviceFormAsync(context)">
+                            <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link"  OnClick="()=>ShowEditNodeDeviceFormAsync(context)">
                                 @context.Name
                             </Button>
                         }

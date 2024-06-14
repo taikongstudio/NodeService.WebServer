@@ -88,15 +88,21 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private async Task InvalidateAllNodeStatusAsync(CancellationToken cancellationToken)
+    private async Task InvalidateAllNodeStatusAsync(CancellationToken cancellationToken = default)
     {
-        using var repo = _nodeInfoRepositoryFactory.CreateRepository();
+        using var nodeRepo = _nodeInfoRepositoryFactory.CreateRepository();
         try
         {
-            var nodes = await repo.ListAsync(new NodeInfoSpecification(AreaTags.Any, NodeStatus.Online, []));
-            foreach (var item in nodes)
-                item.Status = NodeStatus.Offline;
-            await repo.UpdateRangeAsync(nodes);
+            var nodes = await nodeRepo.ListAsync(
+                new NodeInfoSpecification(
+                    AreaTags.Any,
+                    NodeStatus.Online,
+                    NodeDeviceType.Computer,
+                    []),
+                cancellationToken);
+            foreach (var node in nodes)
+                node.Status = NodeStatus.Offline;
+            await nodeRepo.UpdateRangeAsync(nodes, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -198,19 +204,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 nodeInfo.Profile.LoginName = hearBeatResponse.Properties[NodePropertyModel.Environment_UserName_Key];
                 nodeInfo.Profile.FactoryName = "Unknown";
                 if (!string.IsNullOrEmpty(nodeInfo.Profile.IpAddress))
-                    foreach (var mapping in _nodeSettings.IpAddressMappings)
-                    {
-                        if (string.IsNullOrEmpty(mapping.Name)
-                            || string.IsNullOrEmpty(mapping.Value))
-                            continue;
-
-                        if (nodeInfo.Profile.IpAddress.StartsWith(mapping.Value))
-                        {
-                            nodeInfo.Profile.FactoryName = mapping.Tag;
-                            break;
-                        }
-                    }
-
+                    _nodeSettings.MatchAreaTag(nodeInfo);
 
                 foreach (var item in hearBeatResponse.Properties)
                 {

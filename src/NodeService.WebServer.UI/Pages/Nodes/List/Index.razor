@@ -1,5 +1,6 @@
 @namespace NodeService.WebServer.UI.Pages.Nodes.List
 @page "/Nodes/List"
+@using NodeService.WebServer.UI.Pages.Nodes.Components
 
 @inject ApiService ApiService;
 @inject NotificationService _notice
@@ -82,6 +83,45 @@
 
         </Template>
     </Drawer>
+    <Modal Width="800"
+           Style="top:0"
+           Title="@_modalTitle"
+           @bind-Visible="@_editFormVisible"
+           ConfirmLoading="@_editFormConfirmLoading"
+           OnOk="@HandleEditFormOk"
+           OnCancel="@HandleEditFormCancel">
+        <Form Model="@_editModel" Size="@AntSizeLDSType.Default"
+              LabelColSpan="4"
+              Layout="@FormLayout.Horizontal"
+              WrapperColSpan="20"
+              OnFinish="OnEditFormFinish"
+              OnFinishFailed="OnEditFormFinishFailed"
+              @ref="@_editForm">
+            <FormItem Label="设备名称">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+            <FormItem Label="配置类型">
+                <Select DataSource="@_nodeDeviceTypes"
+                        Value="@context.DeviceType"
+                        TItem="EnumModel<NodeDeviceType>"
+                        TItemValue="NodeDeviceType"
+                        ValueChanged="OnSelectedDeviceTypeChanged"
+                        LabelName="@nameof(EnumModel<NodeDeviceType>.Name)"
+                        ValueName="@nameof(EnumModel<NodeDeviceType>.Value)"></Select>
+            </FormItem>
+            @switch (context.DeviceType)
+            {
+                case NodeDeviceType.NetworkDevice:
+                    <NetworkDeviceConfiguration Settings="@_ipAddressPortSettings"/>
+                    break;
+                case NodeDeviceType.SerialPort:
+                    <SerialPortConfiguration Settings="@_serialPortSettings" />
+                    break;
+
+            }
+
+        </Form>
+    </Modal>
     <GridRow Gutter="(8, 0)">
         <GridCol Span="24">
             <Table Loading="@_dataSource.IsLoading"
@@ -108,7 +148,10 @@
                     </GridRow>
                     <GridRow>
                         <GridCol Span="20" Offset="0">
-                            <Space>
+                            <Space Wrap>
+                                <SpaceItem>
+                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Plus" OnClick="()=>ShowCreateNodeDeviceFormAsync()"></Button>
+                                </SpaceItem>
                                 <SpaceItem>
                                     <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="_dataSource.QueryAsync"></Button>
                                 </SpaceItem>
@@ -131,6 +174,18 @@
                                         </Radio>
                                         <Radio RadioButton Value="@(NodeStatus.Offline)">
                                             <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="离线" />
+                                        </Radio>
+                                    </RadioGroup>
+                                </SpaceItem>
+
+                                 <SpaceItem>
+                                    <RadioGroup Value="_nodeDeviceType" ValueChanged="(NodeDeviceType nodeDeviceType) => OnNodeDeviceTypeChanged(nodeDeviceType)" Size="middle">
+                                        <Radio RadioButton Value="@(NodeDeviceType.All)">全部</Radio>
+                                        <Radio RadioButton Value="@(NodeDeviceType.Computer)">
+                                            <Icon Type="desktop" Theme="outline" /><Text>计算机</Text>
+                                        </Radio>
+                                        <Radio RadioButton Value="@(NodeDeviceType.NetworkDevice)">
+                                            <Icon Type="cluster" Theme="outline" /><Text>网络设备</Text>
                                         </Radio>
                                     </RadioGroup>
                                 </SpaceItem>
@@ -160,7 +215,15 @@
                                 <Badge Style="margin-right:10px" Status="@BadgeStatus.Error"></Badge>
                                 break;
                         }
-                        <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
+                        @if (context.DeviceType == NodeDeviceType.Computer)
+                        {
+                            <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
+                        }
+                        else
+                        {
+                            <NavLink >@context.Name</NavLink>
+                        }
+
                     </PropertyColumn>
                     <PropertyColumn
                         Title="最后在线时间"
@@ -210,21 +273,33 @@
 
 
 @code{
+
+    string _modalTitle;
+    bool _editFormVisible;
+    bool _editFormSubmitting;
+    bool _editFormConfirmLoading;
+    NodeInfoModel _editModel;
+
     NodeStatus _nodeStatus = NodeStatus.All;
+    NodeDeviceType _nodeDeviceType = NodeDeviceType.All;
     string _selectedAreaTag = "*";
     string _timeDiffWarningMsg;
     NodeSettings _nodeSettings = new();
 
     RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
 
+    IEnumerable<EnumModel<NodeDeviceType>> _nodeDeviceTypes;
 
-    Form<NodeSettings> _editForm;
+    Form<NodeInfoModel> _editForm;
 
     bool _nodeInfoDrawerVisible;
 
     string? _modifyErrorMsg;
 
     UpdateNodeProfileModel? _editingNodeInfoModel;
+
+    IPAddressPortSettings _ipAddressPortSettings = new IPAddressPortSettings();
+    SerialPortSettings _serialPortSettings = new SerialPortSettings();
 
     string GetTimeDesc(DateTime dateTime)
     {
@@ -311,6 +386,7 @@
     {
         try
         {
+
             var apiResponse = await ApiService.QueryNodeSettingsAsync();
             if (apiResponse.ErrorCode == 0)
             {
@@ -358,6 +434,11 @@
 
     protected override void OnInitialized()
     {
+        _nodeDeviceTypes =
+        [
+            new EnumModel<NodeDeviceType>("网络设备", NodeDeviceType.NetworkDevice),
+    new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPort)
+        ];
         _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager.BaseUri, ApiService.QueryNodeListAsync, StateHasChanged);
         _dataSource.QueryParameters.Status = NodeStatus.All;
         _dataSource.QueryParameters.AreaTag = "*";
@@ -405,6 +486,14 @@
         await _dataSource.RequestAsync();
     }
 
+    async Task OnNodeDeviceTypeChanged(NodeDeviceType nodeDeviceType)
+    {
+        _nodeDeviceType = nodeDeviceType;
+        _dataSource.PageIndex = 1;
+        _dataSource.QueryParameters.DeviceType = nodeDeviceType;
+        await _dataSource.RequestAsync();
+    }
+
     async Task DeleteNodeAsync(NodeInfoModel nodeInfo)
     {
         try
@@ -413,10 +502,11 @@
             {
                 return;
             }
-            var rsp = await ApiService.DeleteNodeInfoAsync(nodeInfo.Id);
+            var rsp = await ApiService.RemoveAsync(nodeInfo);
             if (rsp.ErrorCode == 0)
             {
-               await _message.Info("删除节点成功");
+                await _message.Info("删除节点成功");
+                await _dataSource.QueryAsync();
             }
             else
             {
@@ -459,4 +549,88 @@
             options);
     }
 
+    async Task OnEditFormFinish(EditContext editContext)
+    {
+        try
+        {
+            _editModel.Properties.Remove("Settings", out _);
+            switch (_editModel.DeviceType)
+            {
+                case NodeDeviceType.NetworkDevice:
+                    _editModel.Properties.TryAdd("Settings", _ipAddressPortSettings);
+                    break;
+                case NodeDeviceType.SerialPort:
+                    _editModel.Properties.TryAdd("Settings", _serialPortSettings);
+                    break;
+            }
+
+            var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
+            if (apiResponse.ErrorCode == 0)
+            {
+                _editFormVisible = false;
+                await _dataSource.QueryAsync();
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.Message
+                });
+        }
+        finally
+        {
+            _editFormSubmitting = false;
+            _editFormConfirmLoading = false;
+        }
+    }
+
+    void OnEditFormFinishFailed(EditContext editContext)
+    {
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
+    }
+
+    void HandleEditFormCancel(MouseEventArgs e)
+    {
+        _editFormSubmitting = false;
+        _editFormVisible = false;
+    }
+
+
+    void HandleEditFormOk(MouseEventArgs e)
+    {
+        _editFormSubmitting = true;
+        _editForm.Submit();
+    }
+
+    Task ShowCreateNodeDeviceFormAsync(NodeInfoModel nodeInfo = null)
+    {
+        _editFormVisible = true;
+        if (nodeInfo == null)
+        {
+            _editModel = NodeInfoModel.Create(Guid.NewGuid().ToString(), "新建节点设备", NodeDeviceType.NetworkDevice);
+            _modalTitle = "新建节点设备";
+        }
+        else
+        {
+            _editModel = nodeInfo;
+            _modalTitle = "编辑节点设备";
+        }
+        return Task.CompletedTask;
+    }
+
+    void OnSelectedDeviceTypeChanged(NodeDeviceType nodeDeviceType)
+    {
+        _editModel.DeviceType = nodeDeviceType;
+    }
 }

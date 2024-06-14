@@ -1,4 +1,5 @@
-﻿using NodeService.WebServer.Extensions;
+﻿using NodeService.Infrastructure.DataModels;
+using NodeService.WebServer.Extensions;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
@@ -16,9 +17,15 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
 
     public NodeInfoSpecification(
         string? name,
-        string? ipAddress)
+        string? ipAddress,
+        NodeDeviceType deviceType)
     {
         Query.AsSplitQuery();
+        if (deviceType != NodeDeviceType.All)
+        {
+            Query.Where(x => x.DeviceType == deviceType);
+        }
+        Query.Where(x => !x.Deleted);
         Query.Where(x => x.Name == name || x.Profile.IpAddress == ipAddress);
         Query.OrderByDescending(x => x.Profile.ServerUpdateTimeUtc);
     }
@@ -26,13 +33,19 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
     public NodeInfoSpecification(
         string? areaTag,
         NodeStatus nodeStatus,
+        NodeDeviceType deviceType,
         IEnumerable<SortDescription>? sortDescriptions)
     {
         Query.AsSplitQuery();
+        if (deviceType != NodeDeviceType.All)
+        {
+            Query.Where(x => x.DeviceType == deviceType);
+        }
         Query.Where(x => !x.Deleted);
         if (!string.IsNullOrEmpty(areaTag) && areaTag != AreaTags.Any)
             Query.Where(x => x.Profile.FactoryName == areaTag);
         if (nodeStatus != NodeStatus.All) Query.Where(x => x.Status == nodeStatus);
+
         if (sortDescriptions != null && sortDescriptions.Any())
             Query.SortBy(sortDescriptions, PathSelector);
     }
@@ -40,6 +53,7 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
     public NodeInfoSpecification(
         string? areaTag,
         NodeStatus nodeStatus,
+        NodeDeviceType deviceType,
         string? keywords,
         bool searchProfileProperties = true,
         IEnumerable<SortDescription>? sortDescriptions = null)
@@ -47,6 +61,7 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         this(
             areaTag,
             nodeStatus,
+            deviceType,
             sortDescriptions)
     {
         if (!string.IsNullOrEmpty(keywords))
@@ -74,6 +89,7 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
     public NodeInfoSpecification(
         string? areaTag,
         NodeStatus nodeStatus,
+        NodeDeviceType nodeDeviceType,
         DataFilterCollection<string> keyFilters = default,
         DataFilterCollection<string> nameFilters = default,
         IEnumerable<SortDescription>? sortDescriptions = default
@@ -82,6 +98,7 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         this(
             areaTag,
             nodeStatus,
+            nodeDeviceType,
             sortDescriptions)
     {
         if (keyFilters.HasValue)

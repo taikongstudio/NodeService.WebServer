@@ -1,0 +1,16 @@
+﻿<FormItem Label="IP地址">
+    <Input @bind-Value="@Settings.IpAddress" />
+</FormItem>
+
+<FormItem Label="端口">
+    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.Port" />
+</FormItem>
+
+<FormItem Label="Ping超时（秒）">
+    <AntDesign.InputNumber Min="1"  @bind-Value="@Settings.PingTimeOutSeconds" />
+</FormItem>
+
+@code {
+    [Parameter]
+    public IPAddressPortSettings Settings { get; set; } = new IPAddressPortSettings();
+}

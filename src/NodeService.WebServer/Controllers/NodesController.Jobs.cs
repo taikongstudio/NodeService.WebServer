@@ -5,7 +5,7 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class NodesController
 {
-    [HttpGet("/api/Nodes/{id}/jobs/List")]
+    [HttpGet("/api/Nodes/~/{id}/jobs/List")]
     public async Task<ApiResponse<IEnumerable<JobScheduleConfigModel>>> GetNodeTaskListAsync(string id)
     {
         var apiResponse = new ApiResponse<IEnumerable<JobScheduleConfigModel>>();

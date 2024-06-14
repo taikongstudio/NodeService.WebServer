@@ -136,7 +136,8 @@ namespace NodeService.WebServer.Services.QueryOptimize
 
                                     var hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
                                         null,
-                                        op.Argument.IpAddress),
+                                        op.Argument.IpAddress,
+                                         NodeDeviceType.Computer),
                                         cancellationToken);
                                     if (!hasNodeInfo)
                                     {
@@ -197,9 +198,10 @@ namespace NodeService.WebServer.Services.QueryOptimize
                     var nodeList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
                         AreaTags.Any,
                         NodeStatus.All,
-                            new DataFilterCollection<string>(
-                            dataFilterType,
-                            clientUpdateConfig.DnsFilters.Select(x => x.Value)),
+                        NodeDeviceType.Computer,
+                        new DataFilterCollection<string>(
+                        dataFilterType,
+                        clientUpdateConfig.DnsFilters.Select(x => x.Value)),
                         default));
                     if (nodeList.Count != 0 && nodeList.Any(x => x.Profile.IpAddress == ipAddress))
                     {

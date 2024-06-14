@@ -152,9 +152,10 @@ namespace NodeService.WebServer.Services.DataQuality
                             nodeList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
                                AreaTags.Any,
                                NodeStatus.All,
+                               NodeDeviceType.Computer,
                                DataFilterCollection<string>.Includes(statisticsDefinition.NodeList.Select(x => x.Value))), cancellationToken);
                         }
-                        var groups = results.GroupBy(x => x.name);
+                        var groups = results.GroupBy(static x => x.name);
 
                         foreach (var nodeGroup in groups)
                         {
@@ -174,7 +175,7 @@ namespace NodeService.WebServer.Services.DataQuality
                                 if (!nodeMapping.TryGetValue(name, out nodeInfo))
                                 {
                                     nodeInfo = await nodeInfoRepo.FirstOrDefaultAsync(
-                                            new NodeInfoSpecification(name, null),
+                                            new NodeInfoSpecification(name, null, NodeDeviceType.Computer),
                                             cancellationToken);
                                     if (nodeInfo == null)
                                     {

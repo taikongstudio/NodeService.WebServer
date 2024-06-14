@@ -1,4 +1,5 @@
 ﻿using NodeService.Infrastructure.Data;
+using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
@@ -13,34 +14,42 @@ public partial class NodesController : Controller
     readonly ExceptionCounter _exceptionCounter;
     readonly ILogger<NodesController> _logger;
     readonly IMemoryCache _memoryCache;
+    readonly INodeSessionService _nodeSessionService;
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
     readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertySnapshotRepoFactory;
     readonly ApplicationRepositoryFactory<NodeStatusChangeRecordModel> _recordRepoFactory;
+    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
     readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
-    readonly INodeSessionService _nodeSessionService;
-    readonly IVirtualFileSystem _virtualFileSystem;
-    readonly WebServerOptions _webServerOptions;
+    static readonly JsonSerializerOptions _jsonOptions;
+
+    static NodesController()
+    {
+        _jsonOptions = _jsonOptions = new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true,
+        };
+    }
 
     public NodesController(
         ExceptionCounter exceptionCounter,
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
-        IOptionsSnapshot<WebServerOptions> webServerOptions,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
         ApplicationRepositoryFactory<JobExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
         ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertySnapshotRepositoryFactory,
         ApplicationRepositoryFactory<NodeStatusChangeRecordModel> nodeStatusChangeRecordRepositoryFactory,
+        ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
         INodeSessionService nodeSessionService)
     {
         _logger = logger;
+        _nodeSessionService = nodeSessionService;
+        _memoryCache = memoryCache;
+        _exceptionCounter = exceptionCounter;
         _nodeInfoRepoFactory = nodeInfoRepositoryFactory;
         _taskExecutionInstanceRepoFactory = taskExecutionInstanceRepositoryFactory;
         _nodePropertySnapshotRepoFactory = nodePropertySnapshotRepositoryFactory;
         _recordRepoFactory = nodeStatusChangeRecordRepositoryFactory;
-        _nodeSessionService = nodeSessionService;
-        _memoryCache = memoryCache;
-        _webServerOptions = webServerOptions.Value;
-        _exceptionCounter = exceptionCounter;
+        _propertyBagRepositoryFactory = propertyBagRepositoryFactory;
     }
 
     [HttpGet("/api/Nodes/List")]
@@ -51,12 +60,14 @@ public partial class NodesController : Controller
         var apiResponse = new PaginationResponse<NodeInfoModel>();
         try
         {
-            using var repo = _nodeInfoRepoFactory.CreateRepository();
+            using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+
             ListQueryResult<NodeInfoModel> queryResult = default;
             if (queryParameters.IdList == null || queryParameters.IdList.Count == 0)
-                queryResult = await repo.PaginationQueryAsync(new NodeInfoSpecification(
+                queryResult = await nodeInfoRepo.PaginationQueryAsync(new NodeInfoSpecification(
                         queryParameters.AreaTag,
                         queryParameters.Status,
+                        queryParameters.DeviceType,
                         queryParameters.Keywords,
                         queryParameters.SearchProfileProperties,
                         queryParameters.SortDescriptions),
@@ -64,14 +75,29 @@ public partial class NodesController : Controller
                     queryParameters.PageIndex,
                     cancellationToken);
             else
-                queryResult = await repo.PaginationQueryAsync(new NodeInfoSpecification(
+                queryResult = await nodeInfoRepo.PaginationQueryAsync(new NodeInfoSpecification(
                         queryParameters.AreaTag,
                         queryParameters.Status,
+                        queryParameters.DeviceType,
                         new DataFilterCollection<string>(DataFilterTypes.Include, queryParameters.IdList)),
                     queryParameters.PageSize,
                     queryParameters.PageIndex,
                     cancellationToken);
+            if (queryParameters.IncludeProperties)
+            {
+                using var propertyBagRepo = _propertyBagRepositoryFactory.CreateRepository();
+                foreach (var nodeInfo in queryResult.Items)
+                {
+                    var propertyBag = await propertyBagRepo.GetByIdAsync(nodeInfo.GetPropertyBagId());
+                    if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value) || value is not string json)
+                    {
+                        continue;
+                    }
 
+                    var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json, _jsonOptions);
+                    nodeInfo.Properties = dict;
+                }
+            }
             apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
@@ -86,7 +112,7 @@ public partial class NodesController : Controller
     }
 
 
-    [HttpGet("/api/Nodes/{id}")]
+    [HttpGet("/api/Nodes/~/{id}")]
     public async Task<ApiResponse<NodeInfoModel>> QueryNodeInfoAsync(string id)
     {
         var apiResponse = new ApiResponse<NodeInfoModel>();
@@ -107,7 +133,7 @@ public partial class NodesController : Controller
         return apiResponse;
     }
 
-    [HttpDelete("/api/Nodes/{id}/Delete")]
+    [HttpDelete("/api/Nodes/~/{id}/Delete")]
     public async Task<ApiResponse> DeleteNodeInfoAsync(string id)
     {
         var apiResponse = new ApiResponse<NodeInfoModel>();
@@ -119,6 +145,61 @@ public partial class NodesController : Controller
             {
                 nodeInfo.Deleted = true;
                 await repo.UpdateAsync(nodeInfo);
+            }
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.ToString();
+        }
+
+        return apiResponse;
+    }
+
+    [HttpPost("/api/Nodes/AddOrUpdate")]
+    public async Task<ApiResponse> AddOrUpdateNodeInfoAsync([FromBody] NodeInfoModel nodeInfo)
+    {
+        var apiResponse = new ApiResponse<NodeInfoModel>();
+        try
+        {
+            using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+            using var propertyBagRepo = _propertyBagRepositoryFactory.CreateRepository();
+            var nodeInfoFromDb = await nodeInfoRepo.GetByIdAsync(nodeInfo.Id);
+            if (nodeInfo.Properties != null)
+            {
+                var nodePropertyBagId = nodeInfo.GetPropertyBagId();
+                var propertyBag = await propertyBagRepo.GetByIdAsync(nodePropertyBagId);
+                if (propertyBag == null)
+                {
+                    propertyBag = new PropertyBag
+                    {
+                        { "Id", nodePropertyBagId },
+                        { "Value", JsonSerializer.Serialize(nodeInfo.Properties) }
+                    };
+                    propertyBag["CreatedDate"] = DateTime.UtcNow;
+                    await propertyBagRepo.AddAsync(propertyBag);
+                }
+                else
+                {
+                    propertyBag["Value"] = JsonSerializer.Serialize(nodeInfo.Properties);
+                    await propertyBagRepo.UpdateAsync(propertyBag);
+                }
+            }
+            if (nodeInfoFromDb == null)
+            {
+                nodeInfoFromDb = nodeInfo;
+                await nodeInfoRepo.AddAsync(nodeInfoFromDb);
+            }
+            else
+            {
+                nodeInfoFromDb.Id = nodeInfo.Id;
+                nodeInfoFromDb.Name = nodeInfo.Name;
+                nodeInfoFromDb.DeviceType = nodeInfo.DeviceType;
+                nodeInfoFromDb.Status = nodeInfo.Status;
+                nodeInfoFromDb.Description = nodeInfo.Description;
+                await nodeInfoRepo.UpdateAsync(nodeInfoFromDb);
             }
         }
         catch (Exception ex)

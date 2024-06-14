@@ -190,6 +190,7 @@ public class TaskFireService : BackgroundService
                 new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.All,
+                    NodeDeviceType.Computer,
                     nodeIdListFilter),
                 cancellationToken);
             foreach (var nodeEntry in taskDefinition.NodeList)

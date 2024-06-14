@@ -56,7 +56,7 @@ public class ManagementController : Controller
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
         for (var i = 0; i < 3000; i++)
         {
-            var nodeInfo = NodeInfoModel.Create(Guid.NewGuid().ToString(), i.ToString());
+            var nodeInfo = NodeInfoModel.Create(Guid.NewGuid().ToString(), i.ToString(), NodeDeviceType.Computer);
             dbContext.NodeInfoDbSet.Add(nodeInfo);
         }
 

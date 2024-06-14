@@ -67,7 +67,7 @@ public class HeartBeatRequestProducerService : BackgroundService
             return;
         }
 
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
         var nodeSessionsCount = _nodeSessionService.GetNodeSessionsCount();
         var nodeSessionArray = ArrayPool<NodeSessionId>.Shared.Rent(nodeSessionsCount);
         var nodeCount = 0;
@@ -77,6 +77,8 @@ public class HeartBeatRequestProducerService : BackgroundService
             nodeCount++;
         }
 
+        Random.Shared.Shuffle(nodeSessionArray);
+        Random.Shared.Shuffle(nodeSessionArray);
         Random.Shared.Shuffle(nodeSessionArray);
         _logger.LogInformation($"Start Count:{nodeSessionsCount}");
         foreach (var nodeSessionId in nodeSessionArray)
@@ -89,7 +91,7 @@ public class HeartBeatRequestProducerService : BackgroundService
 
             var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);
             _logger.LogInformation($"Send heart beat to {nodeSessionId}:{nodeName}");
-            await _nodeSessionService.PostHeartBeatRequestAsync(nodeSessionId);
+            await _nodeSessionService.PostHeartBeatRequestAsync(nodeSessionId, cancellationToken);
             await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(50, (double)_options.HeartBeatPeriod / nodeCount)),
                 cancellationToken);
         }
@@ -113,11 +115,5 @@ public class HeartBeatRequestProducerService : BackgroundService
         {
             _nodeSessionService.SetHttpContext(nodeSessionId, null);
         }
-    }
-
-    private class HeartBeatCounter
-    {
-        public long Count { get; set; }
-        public NodeSessionId SessionId { get; init; }
     }
 }

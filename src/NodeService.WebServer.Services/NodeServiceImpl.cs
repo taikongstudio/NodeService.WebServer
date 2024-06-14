@@ -70,7 +70,7 @@ public class NodeServiceImpl : NodeServiceBase
 
         if (nodeInfo == null)
         {
-            nodeInfo = NodeInfoModel.Create(nodeId, nodeName);
+            nodeInfo = NodeInfoModel.Create(nodeId, nodeName, NodeDeviceType.Computer);
             var nodeProfile = await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileSpecification(nodeName), cancellationToken);
             if (nodeProfile != null)
             {

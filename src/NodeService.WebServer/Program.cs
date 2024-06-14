@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.RateLimiting;
 using AntDesign.ProLayout;
@@ -21,6 +22,7 @@ using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
 using NodeService.WebServer.Services.FileSystem;
 using NodeService.WebServer.Services.MessageHandlers;
+using NodeService.WebServer.Services.NetworkDevices;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
 using NodeService.WebServer.Services.QueryOptimize;
@@ -273,6 +275,7 @@ public class Program
         builder.Services.AddHostedService<TaskCancellationQueueService>();
         builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
         builder.Services.AddHostedService<NodeFileSystemWatchEventConsumerService>();
+        builder.Services.AddHostedService<NetworkDeviceScanService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)

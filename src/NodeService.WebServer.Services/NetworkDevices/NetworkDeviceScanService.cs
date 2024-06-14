@@ -65,14 +65,15 @@ namespace NodeService.WebServer.Services.NetworkDevices
                 using var propertyBagRepo = _propertyBagRepoFactory.CreateRepository();
                 List<NodeInfoModel> networkDeviceList = await QueryNetworkDeviceListAsync(nodeInfoRepo, cancellationToken);
 
-                foreach (var nodeInfo in networkDeviceList)
+                await Parallel.ForEachAsync(networkDeviceList, new ParallelOptions()
                 {
-                    await ProcessNodeInfoAsync(
+                    CancellationToken = cancellationToken,
+                    MaxDegreeOfParallelism = 4,
+                }, (nodeInfo, token) => ProcessNodeInfoAsync(
                         nodeInfoRepo,
                         propertyBagRepo,
                         nodeInfo,
-                        cancellationToken);
-                }
+                        token));
             }
             catch (Exception ex)
             {

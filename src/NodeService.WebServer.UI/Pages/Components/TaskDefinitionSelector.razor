@@ -1,6 +1,6 @@
 ﻿@inject ApiService ApiService
 @inject NotificationService _notice
-@inherits Selector<JobScheduleConfigModel>
+@inherits Selector<TaskDefinitionModel>
 
 <GridRow>
     <div style="margin:5px 0px;padding:5px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
@@ -23,7 +23,7 @@
 <GridRow>
     <GridCol Flex=@("auto")>
         <Table Size="TableSize.Small"
-               OnChange="(QueryModel<JobScheduleConfigModel> query) => OnTableChanged(query)"
+               OnChange="(QueryModel<TaskDefinitionModel> query) => OnTableChanged(query)"
                OnPageIndexChange="@_dataSource.OnPaginationEvent"
                OnPageSizeChange="@_dataSource.OnPaginationEvent"
                PageSize="@_dataSource.PageSize"
@@ -32,7 +32,7 @@
                Loading="@_dataSource.IsLoading"
                DataSource="@_dataSource.ItemsSource"
                SelectedRows="@SelectedItems"
-               SelectedRowsChanged="(IEnumerable<JobScheduleConfigModel> items) => OnSelectedItemsChanged(items)"
+               SelectedRowsChanged="(IEnumerable<TaskDefinitionModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
                 <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
@@ -46,13 +46,13 @@
 
 @code {
 
-    PaginationDataSource<JobScheduleConfigModel, PaginationQueryParameters> _dataSource;
+    PaginationDataSource<TaskDefinitionModel, PaginationQueryParameters> _dataSource;
 
-    protected override IEnumerable<JobScheduleConfigModel> ItemsSource => _dataSource.ItemsSource;
+    protected override IEnumerable<TaskDefinitionModel> ItemsSource => _dataSource.ItemsSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new PaginationDataSource<JobScheduleConfigModel, PaginationQueryParameters>(ApiService.QueryTaskScheduleConfigurationListAsync, StateHasChanged);
+        _dataSource = new PaginationDataSource<TaskDefinitionModel, PaginationQueryParameters>(ApiService.QueryTaskDefinitionListAsync, StateHasChanged);
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
         _dataSource.ExceptionHandler = OnExepction;
@@ -60,11 +60,11 @@
         base.OnInitialized();
     }
 
-    async ValueTask InitAsync(JobScheduleConfigModel model, CancellationToken cancellationToken = default)
+    async ValueTask InitAsync(TaskDefinitionModel model, CancellationToken cancellationToken = default)
     {
         if (model.Value.JobTypeDescId != null)
         {
-            model.Value.JobTypeDesc = await ApiService.GetTaskTypeDescAsync(model.Value.JobTypeDescId);
+            model.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(model.Value.JobTypeDescId);
         }
     }
 
@@ -85,7 +85,7 @@
         await _dataSource.QueryAsync();
     }
 
-    async Task OnTableChanged(QueryModel<JobScheduleConfigModel> query)
+    async Task OnTableChanged(QueryModel<TaskDefinitionModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)

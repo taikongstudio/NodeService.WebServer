@@ -47,7 +47,7 @@
                     }
                 }
                 <Tag Class="site-tag-plus" OnClick="ShowDatabaseConfigSelectorDialogAsync">
-                    <Icon Type="@IconType.Outline.Edit" />
+                    <Icon Type="@IconType.Outline.Search" />
                 </Tag>
                 <CommonDialog @ref="_mySqlConfigDialog" Closed="OnSelectDatabaseConfigDialogClosed">
                     <MysqlConfigSelector @ref="_mySqlConfigSelector" @bind-SelectedItems="_selectedDatabaseConfigs" Mode="SelectionMode.Single" />

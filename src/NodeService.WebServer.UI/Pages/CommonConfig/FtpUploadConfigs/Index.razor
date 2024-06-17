@@ -41,7 +41,7 @@
                         }
                     }
                     <Tag Class="site-tag-plus" OnClick="ShowFtpConfigSelectorDialogAsync">
-                        <Icon Type="@IconType.Outline.Edit" />
+                        <Icon Type="@IconType.Outline.Search" />
                     </Tag>
                     <CommonDialog @ref="_ftpConfigDialog" Closed="OnSelectFtpConfigDialogClosed">
                         <FtpConfigSelector @ref="_ftpConfigSelector" @bind-SelectedItems="@_selectedFtpConfigs" Mode="SelectionMode.Single" />

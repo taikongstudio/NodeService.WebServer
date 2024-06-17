@@ -1,5 +1,6 @@
 ﻿
 
+using Microsoft.AspNetCore.Identity;
 using NodeService.Infrastructure.Logging;
 
 namespace NodeService.WebServer.Data;
@@ -10,7 +11,7 @@ public partial class ApplicationDbContext
     {
         SqlServer_BuildClientUpdateInfoModel(modelBuilder);
         SqlServer_BuildJsonBasedDataModels(modelBuilder);
-        SqlServer_BuildJobExecutionInstanceModel(modelBuilder);
+        SqlServer_BuildTaskExecutionInstanceModel(modelBuilder);
         SqlServer_BuildNodeInfoModel(modelBuilder);
         SqlServer_BuildNodeProfileModel(modelBuilder);
         SqlServer_BuildNodeStatusChangeRecordModel(modelBuilder);
@@ -18,7 +19,7 @@ public partial class ApplicationDbContext
         SqlServer_BuildFileRecordModel(modelBuilder);
         SqlServer_BuildNodeStatisticsRecordModel(modelBuilder);
         SqlServer_BuildNotificationRecordModel(modelBuilder);
-        SqlServer_BuildJobFireConfigurationModel(modelBuilder);
+        SqlServer_BuildTaskActivationRecordModel(modelBuilder);
         SqlServer_BuildClientUpdateCounterModel(modelBuilder);
     }
 
@@ -65,11 +66,16 @@ public partial class ApplicationDbContext
         });
     }
 
-    private void SqlServer_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)
+    private void SqlServer_BuildTaskActivationRecordModel(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<JobFireConfigurationModel>(entityBuilder =>
+        modelBuilder.Entity<TaskActivationRecordModel>(builder =>
         {
-            entityBuilder.HasKey(nameof(JobFireConfigurationModel.Id));
+            builder.HasKey(nameof(TaskActivationRecordModel.Id));
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                });
         });
     }
 
@@ -96,12 +102,12 @@ public partial class ApplicationDbContext
     }
 
 
-    private static void SqlServer_BuildJobExecutionInstanceModel(ModelBuilder modelBuilder)
+    private static void SqlServer_BuildTaskExecutionInstanceModel(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<JobExecutionInstanceModel>()
-            .HasKey(nameof(JobExecutionInstanceModel.Id));
+        modelBuilder.Entity<TaskExecutionInstanceModel>()
+            .HasKey(nameof(TaskExecutionInstanceModel.Id));
 
-        modelBuilder.Entity<JobExecutionInstanceModel>()
+        modelBuilder.Entity<TaskExecutionInstanceModel>()
             .Navigation(x => x.NodeInfo)
             .AutoInclude();
     }
@@ -130,7 +136,7 @@ public partial class ApplicationDbContext
             .HasKey(nameof(NodeInfoModel.Id));
 
         modelBuilder.Entity<NodeInfoModel>()
-            .HasMany(x => x.JobExecutionInstances)
+            .HasMany(x => x.TaskExecutionInstances)
             .WithOne(x => x.NodeInfo)
             .HasForeignKey(x => x.NodeInfoId)
             .IsRequired();
@@ -222,22 +228,12 @@ public partial class ApplicationDbContext
                 model => model.Value, ownedNavigationBuilder => { ownedNavigationBuilder.ToJson(); });
         });
 
-        modelBuilder.Entity<JobScheduleConfigModel>(builder =>
+        modelBuilder.Entity<TaskDefinitionModel>(builder =>
         {
             builder.OwnsOne(
                 model => model.Value, ownedNavigationBuilder =>
                 {
                     ownedNavigationBuilder.ToJson();
-                    ownedNavigationBuilder
-                        .Property(x => x.DnsFilters)
-                        .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
-                        .Metadata
-                        .SetValueComparer(GetEnumerableComparer<StringEntry>());
-
-                    ownedNavigationBuilder.Property(x => x.IpAddressFilters)
-                        .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
-                        .Metadata
-                        .SetValueComparer(GetEnumerableComparer<StringEntry>());
 
                     ownedNavigationBuilder.Property(x => x.ChildTaskDefinitions)
                         .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
@@ -267,7 +263,7 @@ public partial class ApplicationDbContext
                 });
         });
 
-        modelBuilder.Entity<JobTypeDescConfigModel>(builder =>
+        modelBuilder.Entity<TaskTypeDescConfigModel>(builder =>
         {
             builder.OwnsOne(
                 model => model.Value, ownedNavigationBuilder =>
@@ -332,12 +328,20 @@ public partial class ApplicationDbContext
                 model => model.Value, ownedNavigationBuilder =>
                 {
                     ownedNavigationBuilder.ToJson();
+
                     ownedNavigationBuilder.Property(x => x.Filters)
                         .HasConversion(x => Serialize(x),
                             x => Deserialize<List<StringEntry>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<StringEntry> ());
+
                     ownedNavigationBuilder.Property(x => x.NodeList)
+                        .HasConversion(x => Serialize(x),
+                            x => Deserialize<List<StringEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<StringEntry>());
+
+                    ownedNavigationBuilder.Property(x => x.Feedbacks)
                         .HasConversion(x => Serialize(x),
                             x => Deserialize<List<StringEntry>>(x))
                         .Metadata

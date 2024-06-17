@@ -15,17 +15,77 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b04395b7-eb82-4cab-a9bf-7f5c3a791308" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/DateTimeFilter.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/DateTimeFilter.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileEnums.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileEnums.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileLengthFilter.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileLengthFilter.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FtpDownloadConfiguration.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FtpDownloadConfiguration.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FtpUploadConfiguration.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FtpUploadConfiguration.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/ApiService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/ApiService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/ApiServiceExtensions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/ApiServiceExtensions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileSystemWatchConfiguration.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/FileSystemWatchConfiguration.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/JobExecutionInstanceModel.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/JobExecutionStrategy.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/JobFireConfigurationModel.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/JobScheduleConfigModel.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/JobScheduleConfiguration.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/JobTypeDescConfigModel.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/NodeInfoModel.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/DataModels/NodeInfoModel.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/GlobalUsings.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/GlobalUsings.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/ExecuteBatchScriptJobOptions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/ExecuteBatchScriptJobOptions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/ExecutePythonCodeJobOptions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/ExecutePythonCodeJobOptions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/FtpDownloadJobOptions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/FtpDownloadJobOptions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/FtpUploadJobOptions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/FtpUploadJobOptions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/GCJobOptions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/GCJobOptions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/JobOptionsBase.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/JobOptionsBase.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/QueryTaskExecutionInstanceListParameters.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/QueryTaskExecutionInstanceListParameters.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/ShouHuUploadJobOptions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/ShouHuUploadJobOptions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/TaskCreationParameters.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/TaskCreationParameters.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/TaskLogUnit.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/TaskLogUnit.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/UploadMaccorDataJobOptions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Models/UploadMaccorDataJobOptions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/NodeSessions/INodeSessionService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/NodeSessions/INodeSessionService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Protos/Models.proto" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Protos/Models.proto" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Protos/NodeService.proto" beforeDir="false" afterPath="$PROJECT_DIR$/../NodeService.Infrastructure/src/NodeService.Infrastructure/Protos/NodeService.proto" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.NodeService.WebServer/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.NodeService.WebServer/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Data.Repositories/GlobalUsings.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Data.Repositories/GlobalUsings.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Data.Repositories/Specifications/TaskDefinitionSpecification.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Data.Repositories/Specifications/TaskDefinitionSpecification.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Data.Repositories/Specifications/TaskExecutionInstanceSpecification.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Data.Repositories/Specifications/TaskExecutionInstanceSpecification.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Data/ApplicationDbContext.MySql.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Data/ApplicationDbContext.MySql.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Data/ApplicationDbContext.SqlServer.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Data/ApplicationDbContext.SqlServer.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Data/ApplicationDbContext.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Data/ApplicationDbContext.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/GlobalUsings.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/GlobalUsings.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/MessageHandlers/TaskExecutionReportHandler.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/MessageHandlers/TaskExecutionReportHandler.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NetworkDevices/NetworkDeviceScanService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NetworkDevices/NetworkDeviceScanService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeFileSystem/NodeFileSystemWatchEventConsumerService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeFileSystem/NodeFileSystemWatchEventConsumerService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeServiceImpl.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeServiceImpl.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeSessions/HeartBeatResponseConsumerService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeSessions/HeartBeatResponseConsumerService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeSessions/NodeSessionService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeSessions/NodeSessionService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/QueryOptimize/ClientUpdateQueueService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/QueryOptimize/ClientUpdateQueueService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/QueryOptimize/CommonConfigBatchQueryQueueService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/QueryOptimize/CommonConfigBatchQueryQueueService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskCancellationQueueService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskCancellationQueueService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionReportConsumerService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionReportConsumerService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionTimeLimitJob.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionTimeLimitJob.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskFireService.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskPenddingContext.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskPenddingContext.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskScheduleService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskScheduleService.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/Components/DateTimeFilterTable.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/Components/DateTimeFilterTable.razor" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/Components/FileLengthFilterTable.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/Components/FileLengthFilterTable.razor" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FtpDownloadConfigs/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FtpDownloadConfigs/Index.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FileSystemWatchConfigs/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FileSystemWatchConfigs/Index.razor" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FtpUploadConfigs/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FtpUploadConfigs/Index.razor" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/DataQuality/Calendar/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/DataQuality/Calendar/Index.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/JobTypeDescConfigs/Index.razor" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Components/TaskDefinitionSelector.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Components/TaskDefinitionSelector.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Components/TaskTypeDescSelector.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Components/TaskTypeDescSelector.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/DataQuality/StatisticsDefinitions/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/DataQuality/StatisticsDefinitions/Index.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Nodes/List/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Nodes/List/Index.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Tasks/Components/InvokeTaskDialog.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Tasks/Components/InvokeTaskDialog.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Tasks/Components/TaskDefinitionEditor.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Tasks/Components/TaskDefinitionEditor.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Tasks/Definitions/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Tasks/Definitions/Index.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Tasks/Instances/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Tasks/Instances/Index.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/_Imports.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/_Imports.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/CommonConfigController.JobTypeDescConfig.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/CommonConfigController.TaskDefinition.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/CommonConfigController.TaskDefinition.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/ManagementController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/ManagementController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/NodesController.Jobs.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/NodesController.Jobs.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/NodesController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/NodesController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/TasksController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/TasksController.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/Program.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/appsettings.Development.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/appsettings.Development.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/appsettings.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/appsettings.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/wwwroot/data/menu.json" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/wwwroot/data/menu.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServerTools/Services/AnalysisLogService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServerTools/Services/AnalysisLogService.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -180,6 +240,7 @@
       <workItem from="1715757166378" duration="1420000" />
       <workItem from="1716630627015" duration="1023000" />
       <workItem from="1717379570283" duration="3437000" />
+      <workItem from="1718547068386" duration="1353000" />
     </task>
     <servers />
   </component>
@@ -189,6 +250,26 @@
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/CommonConfig/FileSystemWatchConfigs/Index.razor</url>
+          <line>252</line>
+          <properties documentPath="D:\repos\NodeService\NodeService.WebServer\src\NodeService.WebServer.UI\Pages\CommonConfig\FileSystemWatchConfigs\Index.razor" isMultiMethodBreakpoint="true">
+            <option name="multiMethodBreakpoint" value="true" />
+            <startOffsets>
+              <option value="-1" />
+            </startOffsets>
+            <endOffsets>
+              <option value="-1" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="XSLT-Support.FileAssociations.UIState">
     <expand />

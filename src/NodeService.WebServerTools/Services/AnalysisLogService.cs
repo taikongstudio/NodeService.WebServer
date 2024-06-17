@@ -30,7 +30,7 @@ public class AnalysisLogService : BackgroundService
         {
             using var streamWriter = new StreamWriter(File.Open("d:\\task.txt", FileMode.OpenOrCreate));
 
-            foreach (var jobExecutionInstance in await dbContext.JobExecutionInstancesDbSet.AsQueryable()
+            foreach (var jobExecutionInstance in await dbContext.TaskExecutionInstancesDbSet.AsQueryable()
                          .Where(x => x.Name.Contains("075404"))
                          .ToArrayAsync())
             {

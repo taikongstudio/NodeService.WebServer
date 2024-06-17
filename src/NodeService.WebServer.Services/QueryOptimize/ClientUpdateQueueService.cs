@@ -173,7 +173,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
                 finally
                 {
                     stopwatch.Stop();
-                    _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed{stopwatch.Elapsed}");
+                    _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed:{stopwatch.Elapsed}");
                 }
             }
 

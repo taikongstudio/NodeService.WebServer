@@ -305,6 +305,10 @@
 
     string GetTimeDesc(DateTime dateTime)
     {
+        if (dateTime == DateTime.MinValue)
+        {
+            return "未知";
+        }
         var timeDiff = DateTime.UtcNow - dateTime;
         if (timeDiff.TotalDays >= 1)
         {

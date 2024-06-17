@@ -1,12 +1,13 @@
 ﻿// add a reference to System.ComponentModel.DataAnnotations DLL
 
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Sqlite.Infrastructure.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure.Internal;
+using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NodeService.WebServer.Data;
 
@@ -45,18 +46,18 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<NodeProfileModel> NodeProfilesDbSet { get; set; }
 
-    public DbSet<JobExecutionInstanceModel> JobExecutionInstancesDbSet { get; set; }
-    public DbSet<JobScheduleConfigModel> JobScheduleConfigurationDbSet { get; set; }
+    public DbSet<TaskExecutionInstanceModel> TaskExecutionInstancesDbSet { get; set; }
+    public DbSet<TaskDefinitionModel> TaskDefinitionDbSet { get; set; }
 
     public DbSet<NodePropertySnapshotModel> NodePropertiesSnapshotsDbSet { get; set; }
 
-    public DbSet<JobTypeDescConfigModel> JobTypeDescConfigurationDbSet { get; set; }
+    public DbSet<TaskTypeDescConfigModel> TaskTypeDescConfigurationDbSet { get; set; }
 
     public DbSet<FtpConfigModel> FtpConfigurationDbSet { get; set; }
 
     public DbSet<KafkaConfigModel> KafkaConfigurationDbSet { get; set; }
 
-    public DbSet<DatabaseConfigModel> MysqlConfigurationDbSet { get; set; }
+    public DbSet<DatabaseConfigModel> DatabaseConfigurationDbSet { get; set; }
 
     public DbSet<FtpUploadConfigModel> FtpUploadConfigurationDbSet { get; set; }
 
@@ -69,7 +70,7 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<NodeEnvVarsConfigModel> NodeEnvVarsConfigurationDbSet { get; set; }
 
-    public DbSet<JobFireConfigurationModel> JobFireConfigurationsDbSet { get; set; }
+    public DbSet<TaskActivationRecordModel> TaskActivationRecordsDbSet { get; set; }
 
 
     public DbSet<FileRecordModel> FileRecordsDbSet { get; set; }
@@ -123,11 +124,38 @@ public partial class ApplicationDbContext : DbContext
     private static ValueComparer<IEnumerable<T>> GetEnumerableComparer<T>()
     {
         var comparer = new ValueComparer<IEnumerable<T>>(
-            (r, l) => r.SequenceEqual(l),
-            x => x.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-            x => x
+            (r, l) => SequenceEqual(r, l),
+            x => GetCollectionHashCode(x),
+            x => Snapshot(x)
         );
         return comparer;
+    }
+
+    private static IEnumerable<T> Snapshot<T>(IEnumerable<T> source)
+    {
+        if (source is List<T>)
+        {
+            return source.ToList();
+        }
+        else if (source is T[])
+        {
+            return source.ToArray();
+        }
+        else if (source is IDictionary dictionary)
+        {
+            return source;
+        }
+        return source;
+    }
+
+    private static bool SequenceEqual<T>(IEnumerable<T> left, IEnumerable<T> right)
+    {
+        return left.SequenceEqual(right);
+    }
+
+    private static int GetCollectionHashCode<T>(IEnumerable<T> collection)
+    {
+        return collection.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode()));
     }
 
     private static ValueComparer<T> GetTypedComparer<T>() where T : IEquatable<T>

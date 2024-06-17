@@ -21,4 +21,3 @@ global using System.Text.Json;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using System.Threading.Tasks.Dataflow;
-global using static NodeService.Infrastructure.Models.JobExecutionReport.Types;

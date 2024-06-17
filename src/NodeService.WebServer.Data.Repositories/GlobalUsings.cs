@@ -9,4 +9,3 @@ global using Microsoft.EntityFrameworkCore.Internal;
 global using NodeService.Infrastructure.DataModels;
 global using NodeService.Infrastructure.Models;
 global using Ardalis.Specification.EntityFrameworkCore;
-global using static NodeService.Infrastructure.Models.JobExecutionReport.Types;

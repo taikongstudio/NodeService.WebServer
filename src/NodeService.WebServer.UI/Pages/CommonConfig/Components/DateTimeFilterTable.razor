@@ -394,8 +394,7 @@
             {
                 return @<div class="editable-cell-value-wrap" style="padding-right:24px">
                            @($"{dateTimeFilter.DateTimeValues[0].ToString("yyyy-MM-dd HH:mm:ss")}")
-                       </div>
-                    ;
+                       </div>;
             }
         }
     }
@@ -428,6 +427,7 @@
                 return@<div class="editable-cell-value-wrap" @onclick="() => dateTimeFilter.BeginEdit()" style="padding-right:24px">@($"{dateTimeFilter.TimeOnlyValues[0]}")</div>;
             }
         }
+        return @<Text></Text>;
     }
 
     private RenderFragment RenderDoubleValuesPricker(DateTimeFilter dateTimeFilter)
@@ -459,7 +459,7 @@
             }
         }
 
-        return@<text></text>;
+        return @<Text></Text>;
     }
 
 }

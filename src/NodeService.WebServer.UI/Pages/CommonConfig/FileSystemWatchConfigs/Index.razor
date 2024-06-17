@@ -36,26 +36,26 @@
                     <NodeSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="_selectedNodes"/>
                 </FormItem>
                 <FormItem Label="启动">
-                    <Switch @bind-Value="@context.EnableRaisingEvents" />
+                    <Switch @bind-Value="@context.EnableRaisingEvents"/>
                 </FormItem>
                 <FormItem Required Label="路径">
-                    <Input @bind-Value="@context.Path" />
+                    <Input @bind-Value="@context.Path"/>
                 </FormItem>
                 <FormItem Label="相对路径">
-                    <AntDesign.Input @bind-Value="@context.Value.RelativePath" >
-                        <AddOnBefore>@($"{context.Path}\\")</AddOnBefore> 
+                    <AntDesign.Input @bind-Value="@context.Value.RelativePath">
+                        <AddOnBefore>@($"{context.Path}\\")</AddOnBefore>
                     </AntDesign.Input>
                 </FormItem>
                 <FormItem Label="包含子目录">
-                    <Switch @bind-Value="@context.IncludeSubdirectories" />
+                    <Switch @bind-Value="@context.IncludeSubdirectories"/>
                 </FormItem>
                 <FormItem Label="默认文件过滤器">
-                    <Switch @bind-Value="@context.UseDefaultFilter" />
+                    <Switch @bind-Value="@context.UseDefaultFilter"/>
                 </FormItem>
                 @if (context.Value.UseDefaultFilter)
                 {
                     <FormItem Label="文件过滤器">
-                        <Input @bind-Value="@context.Filter" />
+                        <Input @bind-Value="@context.Filter"/>
                     </FormItem>
                 }
                 else
@@ -63,59 +63,94 @@
                     <FormItem Label="文件过滤器列表">
                         <StringEntryTable NameTitle="备注"
                                           ValueTitle="过滤器"
-                                          ItemsSource="@context.Filters" />
+                                          ItemsSource="@context.Filters"/>
                     </FormItem>
                 }
 
                 <FormItem Label="通知过滤器">
                     <div>
-                        <Checkbox Indeterminate="@_indeterminate" Checked="@_checkAll"  CheckedChanged="@CheckAllChanged">
+                        <Checkbox Indeterminate="@_indeterminate" Checked="@_checkAll" CheckedChanged="@CheckAllChanged">
                             全选
                         </Checkbox>
-                        <br />
-                        <AntDesign.CheckboxGroup Options="@_notifyFilters" ValueChanged="@OnChanged" TValue="string" />
+                        <br/>
+                        <AntDesign.CheckboxGroup Options="@_notifyFilters" ValueChanged="@OnChanged" TValue="string"/>
                     </div>
                 </FormItem>
 
-                <FormItem Label="触发任务">
-                    @if (_selectedTaskDefinitions != null)
+                <FormItem Label="事件处理器">
+                    <Select DataSource="@_fileSystemWatchEventHandlers"
+                            Value="@context.Value.EventHandler"
+                            TItem="EnumModel<FileSystemWatchEventHandler>"
+                            AutoFocus
+                            OnSelectedItemChanged="(EnumModel<FileSystemWatchEventHandler> value) => OnSelectedEventHandlerChanged(value.Value)"
+                            TItemValue="FileSystemWatchEventHandler"
+                            LabelName="@nameof(EnumModel<FileSystemWatchEventHandler>.Name)"
+                            ValueName="@nameof(EnumModel<FileSystemWatchEventHandler>.Value)"/>
+                </FormItem>
+                <FormItem Label="事件处理上下文">
+                    @switch (context.Value.EventHandler)
                     {
-                        foreach (var item in _selectedTaskDefinitions)
-                        {
-                            <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
+                        case FileSystemWatchEventHandler.Taskflow:
+                            if (_selectedTaskDefinitions != null)
+                            {
+                                foreach (var item in _selectedTaskDefinitions)
+                                {
+                                    <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
+                                    break;
+                                }
+                            }
+
+                            <Tag Class="site-tag-plus" OnClick="ShowTaskDefinitionSelectorDialogAsync">
+                                <Icon Type="@IconType.Outline.Search" />
+                            </Tag>
+                            <CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
+                                <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
+                            </CommonDialog>
                             break;
-                        }
+                        case FileSystemWatchEventHandler.AutoSync:
+                            if (_selectedFtpUploadConfigs != null)
+                            {
+                                foreach (var item in _selectedFtpUploadConfigs)
+                                {
+                                    <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
+                                    break;
+                                }
+                            }
+
+                            <Tag Class="site-tag-plus" OnClick="ShowFtpUploadConfigSelectorDialogAsync">
+                                <Icon Type="@IconType.Outline.Search" />
+                            </Tag>
+                            <CommonDialog @ref="_ftpUploadConfigDialog" Closed="OnFtpConfigSelectorDialogClosed">
+                                <FtpUploadConfigSelector @ref="_ftpUploadConfigSelector" @bind-SelectedItems="@_selectedFtpUploadConfigs" Mode="SelectionMode.Single" />
+                            </CommonDialog>
+                            break;
                     }
-                    <Tag Class="site-tag-plus" OnClick="ShowTaskDefinitionSelectorDialogAsync">
-                        <Icon Type="@IconType.Outline.Edit" />
-                    </Tag>
-                    <CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
-                        <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
-                    </CommonDialog>
+
+
                 </FormItem>
                 <FormItem Label="触发阈值">
-                    <AntDesign.InputNumber DefaultValue="100" @bind-Value="@context.TriggerThreshold" />
+                    <AntDesign.InputNumber DefaultValue="100" @bind-Value="@context.TriggerThreshold"/>
                 </FormItem>
                 <FormItem Label="最短触发间隔(秒)">
-                    <AntDesign.InputNumber DefaultValue="60" @bind-Value="@context.TimeThreshold" />
+                    <AntDesign.InputNumber DefaultValue="60" @bind-Value="@context.TimeThreshold"/>
                 </FormItem>
             }
         </Form>
     </Modal>
 
-    <Table 
-           Size="TableSize.Small"
-           Loading="@_dataSource.IsLoading"
-           EnableVirtualization="false"
-           TItem="FileSystemWatchConfigModel"
-           DataSource="@_dataSource.ItemsSource"
-           Resizable
-           OnChange="OnTableChange"
-           PageIndex="@_dataSource.PageIndex"
-           PageSize="@_dataSource.PageSize"
-           Total="@_dataSource.TotalCount"
-           OnPageIndexChange="@_dataSource.OnPaginationEvent"
-           OnPageSizeChange="@_dataSource.OnPaginationEvent">
+    <Table
+        Size="TableSize.Small"
+        Loading="@_dataSource.IsLoading"
+        EnableVirtualization="false"
+        TItem="FileSystemWatchConfigModel"
+        DataSource="@_dataSource.ItemsSource"
+        Resizable
+        OnChange="OnTableChange"
+        PageIndex="@_dataSource.PageIndex"
+        PageSize="@_dataSource.PageSize"
+        Total="@_dataSource.TotalCount"
+        OnPageIndexChange="@_dataSource.OnPaginationEvent"
+        OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
@@ -144,15 +179,6 @@
             <PropertyColumn Title="相对路径" Ellipsis Sortable Property="c => c.RelativePath"></PropertyColumn>
             <PropertyColumn Title="包含子目录" Sortable Property="c => c.IncludeSubdirectories"></PropertyColumn>
             <PropertyColumn Title="文件过滤器" Sortable Property="c => c.Filter"></PropertyColumn>
-            <PropertyColumn Title="消息" Ellipsis Sortable Property="c => c.Message">
-                @if (context.ErrorCode != 0)
-                {
-                    <Tooltip Title="@context.Message">
-                        <Alert Type="@AlertType.Error" ShowIcon="true" />
-                    </Tooltip>
-                }
-
-            </PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
@@ -171,6 +197,13 @@
             </ActionColumn>
         </ColumnDefinitions>
 
+        <ExpandTemplate>
+            <StringEntryTable ItemsSource="@context.Data.Feedbacks"
+                              NameTitle="节点"
+                              ValueTitle="消息"
+                              IsEditable="false"/>
+        </ExpandTemplate>
+
     </Table>
 </GridContent>
 
@@ -181,23 +214,29 @@
     bool _editFormConfirmLoading;
     CommonDialog _taskDefinitionDialog;
     TaskDefinitionSelector _taskDefinitionSelector;
-    IEnumerable<JobScheduleConfigModel> _selectedTaskDefinitions;
+    CommonDialog _ftpUploadConfigDialog;
+    FtpUploadConfigSelector _ftpUploadConfigSelector;
+    IEnumerable<TaskDefinitionModel> _selectedTaskDefinitions = [];
+    IEnumerable<FtpUploadConfigModel> _selectedFtpUploadConfigs = [];
     Form<FileSystemWatchConfigModel> _editForm;
     RoutedPaginationDataSource<FileSystemWatchConfigModel, PaginationQueryParameters> _dataSource;
     IEnumerable<NodeInfoModel> _selectedNodes;
     IEnumerable<StringEntry> _selectedEntries = [];
+    IEnumerable<EnumModel<FileSystemWatchEventHandler>> _fileSystemWatchEventHandlers;
     FileSystemWatchConfigModel _editModel = new();
     bool _indeterminate => _notifyFilters.Count(o => o.Checked) > 0 && _notifyFilters.Count(o => o.Checked) < _notifyFilters.Count();
     bool _checkAll = true;
-    static CheckboxOption<string>[] _notifyFilters = new CheckboxOption<string>[]{
-        new() { Label="文件名称",Value=nameof(NotifyFilters.FileName) ,Checked=true},
-        new() { Label="目录名称", Value=nameof(NotifyFilters.DirectoryName),Checked=true },
-        new() { Label="属性", Value=nameof(NotifyFilters.Attributes),Checked=true },
-        new() { Label="大小",Value=nameof(NotifyFilters.Size) ,Checked=true},
-        new() { Label="最后写入时间", Value=nameof(NotifyFilters.LastWrite),Checked=true },
-        new() { Label="最后访问时间", Value=nameof(NotifyFilters.LastAccess),Checked=true },
-        new() { Label="创建时间", Value=nameof(NotifyFilters.CreationTime),Checked=true },
-        new() { Label="安全设置", Value=nameof(NotifyFilters.Security),Checked=true },
+
+    static CheckboxOption<string>[] _notifyFilters = new CheckboxOption<string>[]
+    {
+        new() { Label = "文件名称", Value = nameof(NotifyFilters.FileName), Checked = true },
+        new() { Label = "目录名称", Value = nameof(NotifyFilters.DirectoryName), Checked = true },
+        new() { Label = "属性", Value = nameof(NotifyFilters.Attributes), Checked = true },
+        new() { Label = "大小", Value = nameof(NotifyFilters.Size), Checked = true },
+        new() { Label = "最后写入时间", Value = nameof(NotifyFilters.LastWrite), Checked = true },
+        new() { Label = "最后访问时间", Value = nameof(NotifyFilters.LastAccess), Checked = true },
+        new() { Label = "创建时间", Value = nameof(NotifyFilters.CreationTime), Checked = true },
+        new() { Label = "安全设置", Value = nameof(NotifyFilters.Security), Checked = true },
     };
 
     void CheckAllChanged(bool value)
@@ -206,17 +245,22 @@
         {
             return;
         }
+
         _checkAll = value;
         _notifyFilters.ForEach(o => o.Checked = _checkAll);
     }
 
     void OnChanged(string[] values)
     {
-
     }
 
     protected override void OnInitialized()
     {
+        _fileSystemWatchEventHandlers =
+        [
+            new EnumModel<FileSystemWatchEventHandler>("任务流", FileSystemWatchEventHandler.Taskflow),
+            new EnumModel<FileSystemWatchEventHandler>("自动同步", FileSystemWatchEventHandler.AutoSync),
+        ];
         _dataSource = new RoutedPaginationDataSource<FileSystemWatchConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
             ApiService.QueryFileSystemWatchConfigurationListAsync,
@@ -228,10 +272,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
@@ -247,31 +291,28 @@
         if (model == null)
         {
             _editModel = new FileSystemWatchConfigModel
-                {
-                    Id = Guid.NewGuid().ToString()
-                };
+            {
+                Id = Guid.NewGuid().ToString()
+            };
             _modalTitle = "新建配置";
         }
         else
         {
             _modalTitle = "编辑配置";
             _editModel = model;
-            var selectedNode = model.Value.NodeList.IsNullOrEmpty() ?
-            []
-            :
-            await model.Value.NodeList.QueryNodeListAsync(ApiService);
+            var selectedNodes = model.Value.NodeList.IsNullOrEmpty()
+                ? []
+                : await model.Value.NodeList.QueryNodeListAsync(ApiService);
 
-            await InitSelectedFtpConfigAsync();
+            _selectedNodes = selectedNodes;
 
-            _selectedNodes = selectedNode;
-
+            await OnSelectedEventHandlerChanged(_editModel.Value.EventHandler);
 
             foreach (var item in _notifyFilters)
             {
                 var value = Enum.Parse<NotifyFilters>(item.Value);
                 item.Checked = _editModel.Value.NotifyFilter.HasFlag(value);
             }
-
         }
     }
 
@@ -283,6 +324,7 @@
             {
                 item.EndEdit();
             }
+
             NotifyFilters notifyFilters = default;
             foreach (var filter in _notifyFilters)
             {
@@ -291,8 +333,17 @@
                     notifyFilters |= Enum.Parse<NotifyFilters>(filter.Value);
                 }
             }
+
             _editModel.Value.NotifyFilter = notifyFilters;
-            _editModel.Value.NodeList.AddRange(_selectedNodes.Select(x => new StringEntry(x.Name, x.Id)));
+            _editModel.Value.NodeList.Clear();
+            if (_selectedNodes != null)
+            {
+                foreach (var selectedNode in _selectedNodes)
+                {
+                    _editModel.Value.NodeList.Add(new StringEntry(selectedNode.Name, selectedNode.Id));
+                }
+            }
+
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
@@ -328,6 +379,7 @@
     {
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
+        _editFormVisible = true;
     }
 
     Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
@@ -426,24 +478,75 @@
 
     Task OnTaskDefinitionSelectorDialogClosed()
     {
-        _editModel.Value.TaskDefinitionId = _selectedTaskDefinitions.FirstOrDefault()?.Id;
+        _editModel.Value.HandlerContext = _selectedTaskDefinitions?.FirstOrDefault()?.Id;
         StateHasChanged();
         return Task.CompletedTask;
     }
 
-    async Task InitSelectedFtpConfigAsync()
+    async Task ShowFtpUploadConfigSelectorDialogAsync()
     {
-        if (_editModel.Value.TaskDefinitionId == null)
+        await _ftpUploadConfigDialog.ShowAsync();
+    }
+
+    Task OnFtpConfigSelectorDialogClosed()
+    {
+        _editModel.Value.HandlerContext = _selectedFtpUploadConfigs?.FirstOrDefault()?.Id;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    async Task InitSelectedTaskDefinitionsAsync()
+    {
+        if (_editModel.Value.EventHandler == FileSystemWatchEventHandler.Taskflow)
         {
-            _selectedTaskDefinitions = [];
+            if (_editModel.Value.HandlerContext == null)
+            {
+                _selectedTaskDefinitions = [];
+            }
+            else
+            {
+                var taskDefnition = await ApiService.GetTaskDefinitionAsync(_editModel.Value.HandlerContext);
+                if (taskDefnition == null)
+                {
+                    _selectedTaskDefinitions = [];
+                }
+                else
+                {
+                    _selectedTaskDefinitions = [taskDefnition];
+                }
+            }
         }
         else
         {
-            var taskDefnition = await ApiService.GetTaskDefinitionAsync(_editModel.Value.TaskDefinitionId);
-            if (taskDefnition != null)
-            {
-                _selectedTaskDefinitions = [taskDefnition];
-            }
+            _selectedTaskDefinitions = [];
         }
     }
+
+    async Task InitSelectedFtpUploadConfigAsync()
+    {
+        if (_editModel.Value.EventHandler == FileSystemWatchEventHandler.AutoSync && _editModel.Value.HandlerContext != null)
+        {
+            var ftpUploadConfig = await ApiService.GetFtpUploadConfigAsync(_editModel.Value.HandlerContext);
+            _selectedFtpUploadConfigs = ftpUploadConfig == null ? [] : [ftpUploadConfig];
+        }
+        else
+        {
+            _selectedFtpUploadConfigs = [];
+        }
+    }
+
+    async Task OnSelectedEventHandlerChanged(FileSystemWatchEventHandler eventHandler)
+    {
+        _editModel.Value.EventHandler = eventHandler;
+        switch (eventHandler)
+        {
+            case FileSystemWatchEventHandler.Taskflow:
+                await InitSelectedTaskDefinitionsAsync();
+                break;
+            case FileSystemWatchEventHandler.AutoSync:
+                await InitSelectedFtpUploadConfigAsync();
+                break;
+        }
+    }
+
 }

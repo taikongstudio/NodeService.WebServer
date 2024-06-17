@@ -41,9 +41,9 @@
         </FormItem>
 
         <FormItem Label="任务类型">
-            @if (_taskDefinition != null && _taskDefinition.Value.JobTypeDesc != null)
+            @if (_taskDefinition != null && _taskDefinition.Value.TaskTypeDesc != null)
             {
-                <Tag @key="_taskDefinition.Value.JobTypeDesc.Id">@_taskDefinition.Value.JobTypeDesc.Name</Tag>
+                <Tag @key="_taskDefinition.Value.TaskTypeDesc.Id">@_taskDefinition.Value.TaskTypeDesc.Name</Tag>
             }
             <Tag Class="site-tag-plus" OnClick="() => _taskTypeDescSelectorDialog.ShowAsync()">
                 <Icon Type="@IconType.Outline.Edit"/>
@@ -86,10 +86,10 @@
         </FormItem>
         <FormItem Label="并发执行策略">
             <RadioGroup @bind-Value="@context.ExecutionStrategy">
-                <Radio RadioButton Value="@JobExecutionStrategy.Skip">请勿启动新实例</Radio>
-                <Radio RadioButton Value="@JobExecutionStrategy.Concurrent">并行运行新实例</Radio>
-                <Radio RadioButton Value="@JobExecutionStrategy.Queue">对新实例排队</Radio>
-                <Radio RadioButton Value="@JobExecutionStrategy.Stop">停止现有实例</Radio>
+                <Radio RadioButton Value="@TaskExecutionStrategy.Skip">请勿启动新实例</Radio>
+                <Radio RadioButton Value="@TaskExecutionStrategy.Concurrent">并行运行新实例</Radio>
+                <Radio RadioButton Value="@TaskExecutionStrategy.Queue">对新实例排队</Radio>
+                <Radio RadioButton Value="@TaskExecutionStrategy.Stop">停止现有实例</Radio>
             </RadioGroup>
         </FormItem>
 
@@ -111,20 +111,20 @@
 @code {
     bool _loading;
     IEnumerable<NodeInfoModel> _selectedNodes = [];
-    IEnumerable<JobTypeDescConfigModel> _selectedTaskTypeDescConfigList = [];
-    IEnumerable<JobScheduleConfigModel> _selectedTaskDefinitionList = [];
+    IEnumerable<TaskTypeDescConfigModel> _selectedTaskTypeDescConfigList = [];
+    IEnumerable<TaskDefinitionModel> _selectedTaskDefinitionList = [];
     OptionValueEditor _optionValueEditor;
     string _modalTitle;
     bool _editFormVisible;
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
-    Form<JobScheduleConfigModel> _editForm;
+    Form<TaskDefinitionModel> _editForm;
     string? _selectedNodeInfoId;
     string _selectedTaskDefinitionId;
     TaskTypeDescSelector _taskTypeDescSelector;
     CommonDialog _taskTypeDescSelectorDialog;
 
-    private JobScheduleConfigModel _taskDefinition { get; set; } = new();
+    private TaskDefinitionModel _taskDefinition { get; set; } = new();
 
     [Parameter] public EventCallback Closed { get; set; }
 
@@ -264,7 +264,7 @@
     }
 
 
-    async Task OnSelectedTaskTypeDescChanged(IEnumerable<JobTypeDescConfigModel> items)
+    async Task OnSelectedTaskTypeDescChanged(IEnumerable<TaskTypeDescConfigModel> items)
     {
         try
         {
@@ -273,13 +273,13 @@
             if (model == null)
             {
                 _taskDefinition.JobTypeDescId = null;
-                _taskDefinition.JobTypeDesc = null;
+                _taskDefinition.TaskTypeDesc = null;
                 _taskDefinition.OptionValueEditors.Clear();
                 return;
             }
 
             _taskDefinition.JobTypeDescId = model.Id;
-            _taskDefinition.JobTypeDesc = model;
+            _taskDefinition.TaskTypeDesc = model;
 
             var optionValueEditors = new Dictionary<string, EditorBase>();
             await BuildOptionValueEditorsAsync(_taskDefinition, optionValueEditors);
@@ -302,13 +302,13 @@
     }
 
 
-    async Task ShowEditForm(JobScheduleConfigModel? model = null)
+    async Task ShowEditForm(TaskDefinitionModel? model = null)
     {
         _loading = true;
         _editFormVisible = true;
         if (model == null)
         {
-            _taskDefinition = new JobScheduleConfigModel
+            _taskDefinition = new TaskDefinitionModel
             {
                 Id = Guid.NewGuid().ToString(),
                 IsEnabled = true
@@ -319,7 +319,7 @@
         {
             _modalTitle = "编辑配置";
             _taskDefinition = model;
-            await OnSelectedTaskTypeDescChanged([model.Value.JobTypeDesc]);
+            await OnSelectedTaskTypeDescChanged([model.Value.TaskTypeDesc]);
             _selectedNodes = await model.Value.NodeList.QueryNodeListAsync(ApiService);
         }
 
@@ -382,15 +382,15 @@
     }
 
 
-    async Task BuildOptionValueEditorsAsync(JobScheduleConfigModel model, Dictionary<string, EditorBase> optionEditors)
+    async Task BuildOptionValueEditorsAsync(TaskDefinitionModel model, Dictionary<string, EditorBase> optionEditors)
     {
-        if (model.JobTypeDesc == null)
+        if (model.TaskTypeDesc == null)
         {
             return;
         }
 
         optionEditors.Clear();
-        foreach (var optionEditor in model.JobTypeDesc.OptionValueEditors)
+        foreach (var optionEditor in model.TaskTypeDesc.OptionValueEditors)
         {
             if (!Enum.TryParse<OptionValueType>(optionEditor.Tag, out var optionEditorType))
             {
@@ -536,7 +536,7 @@
         }
     }
 
-    void OnSelectedChildTaskDefinitionChanged(IEnumerable<JobScheduleConfigModel> items)
+    void OnSelectedChildTaskDefinitionChanged(IEnumerable<TaskDefinitionModel> items)
     {
         if (_selectedTaskDefinitionList != items)
         {
@@ -558,7 +558,7 @@
         e.DataItem.BeginEdit();
     }
 
-    public async Task ShowAsync(JobScheduleConfigModel taskDefintion = null)
+    public async Task ShowAsync(TaskDefinitionModel taskDefintion = null)
     {
         await ShowEditForm(taskDefintion);
         StateHasChanged();

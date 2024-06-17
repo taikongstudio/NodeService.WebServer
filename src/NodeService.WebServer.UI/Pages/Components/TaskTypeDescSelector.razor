@@ -1,6 +1,6 @@
 ﻿@inject ApiService ApiService
 @inject NotificationService _notice
-@inherits Selector<JobTypeDescConfigModel>
+@inherits Selector<TaskTypeDescConfigModel>
 
 <GridRow>
     <div style="margin:5px 0px;padding:5px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
@@ -23,7 +23,7 @@
 <GridRow>
     <GridCol Flex=@("auto")>
         <Table Size="TableSize.Small"
-               OnChange="(QueryModel<JobTypeDescConfigModel> query) => OnTableChanged(query)"
+               OnChange="(QueryModel<TaskTypeDescConfigModel> query) => OnTableChanged(query)"
                OnPageIndexChange="@_dataSource.OnPaginationEvent"
                OnPageSizeChange="@_dataSource.OnPaginationEvent"
                PageSize="@_dataSource.PageSize"
@@ -32,7 +32,7 @@
                Loading="@_dataSource.IsLoading"
                DataSource="@_dataSource.ItemsSource"
                SelectedRows="@SelectedItems"
-               SelectedRowsChanged="(IEnumerable<JobTypeDescConfigModel> items) => OnSelectedItemsChanged(items)"
+               SelectedRowsChanged="(IEnumerable<TaskTypeDescConfigModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">
                 <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
@@ -46,13 +46,13 @@
 
 @code {
 
-    PaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters> _dataSource;
+    PaginationDataSource<TaskTypeDescConfigModel, PaginationQueryParameters> _dataSource;
 
-    protected override IEnumerable<JobTypeDescConfigModel> ItemsSource => _dataSource.ItemsSource;
+    protected override IEnumerable<TaskTypeDescConfigModel> ItemsSource => _dataSource.ItemsSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new PaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters>(ApiService.QueryTaskTypeDescConfigurationListAsync, StateHasChanged);
+        _dataSource = new PaginationDataSource<TaskTypeDescConfigModel, PaginationQueryParameters>(ApiService.QueryTaskTypeDescConfigurationListAsync, StateHasChanged);
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
 
@@ -77,7 +77,7 @@
         await _dataSource.QueryAsync();
     }
 
-    async Task OnTableChanged(QueryModel<JobTypeDescConfigModel> query)
+    async Task OnTableChanged(QueryModel<TaskTypeDescConfigModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)

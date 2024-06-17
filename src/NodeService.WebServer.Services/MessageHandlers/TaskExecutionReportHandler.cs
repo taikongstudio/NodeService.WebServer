@@ -6,11 +6,11 @@ namespace NodeService.WebServer.Services.MessageHandlers;
 
 public class TaskExecutionReportHandler : IMessageHandler
 {
-    private readonly BatchQueue<JobExecutionReportMessage> _batchQueue;
+    private readonly BatchQueue<TaskExecutionReportMessage> _batchQueue;
     private readonly ILogger<HeartBeatResponseHandler> _logger;
 
     public TaskExecutionReportHandler(
-        BatchQueue<JobExecutionReportMessage> batchQueue,
+        BatchQueue<TaskExecutionReportMessage> batchQueue,
         ILogger<HeartBeatResponseHandler> logger
     )
     {
@@ -25,10 +25,10 @@ public class TaskExecutionReportHandler : IMessageHandler
 
     public ValueTask HandleAsync(NodeSessionId nodeSessionId, HttpContext httpContext, IMessage message)
     {
-        _batchQueue.Post(new JobExecutionReportMessage
+        _batchQueue.Post(new TaskExecutionReportMessage
         {
             NodeSessionId = nodeSessionId,
-            Message = message as JobExecutionReport
+            Message = message as TaskExecutionReport
         });
         return ValueTask.CompletedTask;
     }

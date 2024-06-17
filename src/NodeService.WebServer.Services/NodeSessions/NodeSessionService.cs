@@ -24,7 +24,7 @@ public record class NodeHeartBeatSessionMessage : NodeSessionMessage<HeartBeatRe
 {
 }
 
-public record class JobExecutionReportMessage : NodeSessionMessage<JobExecutionReport>
+public record class TaskExecutionReportMessage : NodeSessionMessage<TaskExecutionReport>
 {
 }
 
@@ -95,6 +95,7 @@ public class NodeSessionService : INodeSessionService
         await this.PostMessageAsync(nodeSessionId, new SubscribeEvent
         {
             RequestId = Guid.NewGuid().ToString(),
+            Timeout = TimeSpan.FromMinutes(10),
             HeartBeatRequest = new HeartBeatRequest
             {
                 RequestId = Guid.NewGuid().ToString()
@@ -113,20 +114,20 @@ public class NodeSessionService : INodeSessionService
             cancellationToken);
     }
 
-    public async Task<JobExecutionEventResponse?> SendTaskExecutionEventAsync(
+    public async Task<TaskExecutionEventResponse?> SendTaskExecutionEventAsync(
         NodeSessionId nodeSessionId,
-        JobExecutionEventRequest taskExecutionEventRequest,
+        TaskExecutionEventRequest taskExecutionEventRequest,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(taskExecutionEventRequest);
         var subscribeEvent = new SubscribeEvent
         {
             RequestId = taskExecutionEventRequest.RequestId,
-            Timeout = TimeSpan.FromSeconds(30),
+            Timeout = TimeSpan.FromHours(6),
             Topic = "task",
-            JobExecutionEventRequest = taskExecutionEventRequest
+            TaskExecutionEventRequest = taskExecutionEventRequest
         };
-        var rsp = await this.SendMessageAsync<SubscribeEvent, JobExecutionEventResponse>(
+        var rsp = await this.SendMessageAsync<SubscribeEvent, TaskExecutionEventResponse>(
             nodeSessionId,
             subscribeEvent,
             cancellationToken);
@@ -135,7 +136,7 @@ public class NodeSessionService : INodeSessionService
 
     public async ValueTask PostTaskExecutionEventAsync(
     NodeSessionId nodeSessionId,
-    JobExecutionEventRequest taskExecutionEventRequest,
+    TaskExecutionEventRequest taskExecutionEventRequest,
     CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(taskExecutionEventRequest);
@@ -144,7 +145,7 @@ public class NodeSessionService : INodeSessionService
             RequestId = taskExecutionEventRequest.RequestId,
             Timeout = TimeSpan.FromSeconds(30),
             Topic = "task",
-            JobExecutionEventRequest = taskExecutionEventRequest
+            TaskExecutionEventRequest = taskExecutionEventRequest
         };
 
         await this.PostMessageAsync<SubscribeEvent>(
@@ -227,7 +228,7 @@ public class NodeSessionService : INodeSessionService
             Id = id;
             Status = NodeStatus.NotConfigured;
             InputQueue = new AsyncQueue<IMessage>();
-            OutputQueue = new AsyncQueue<IMessage>();
+            OutputQueue = new AsyncQueue<IMessage>(1024);
         }
 
         public IAsyncQueue<IMessage> InputQueue { get; }

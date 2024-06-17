@@ -230,8 +230,8 @@ public class NodeServiceImpl : NodeServiceBase
         return new Empty();
     }
 
-    public override async Task<Empty> SendJobExecutionEventResponse(
-        JobExecutionEventResponse response,
+    public override async Task<Empty> SendTaskExecutionEventResponse(
+        TaskExecutionEventResponse response,
         ServerCallContext context)
     {
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
@@ -241,8 +241,8 @@ public class NodeServiceImpl : NodeServiceBase
     }
 
 
-    public override async Task<Empty> SendJobExecutionReport(
-        IAsyncStreamReader<JobExecutionReport> requestStream,
+    public override async Task<Empty> SendTaskExecutionReport(
+        IAsyncStreamReader<TaskExecutionReport> requestStream,
         ServerCallContext context)
     {
         try

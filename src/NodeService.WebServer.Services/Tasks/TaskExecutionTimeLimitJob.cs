@@ -18,7 +18,7 @@ public class TaskExecutionTimeLimitJob : JobBase
     public override async Task Execute(IJobExecutionContext context)
     {
         var nodeSessionService = ServiceProvider.GetService<INodeSessionService>();
-        var taskExecutionInstance = Properties["TaskExecutionInstance"] as JobExecutionInstanceModel;
+        var taskExecutionInstance = Properties["TaskExecutionInstance"] as TaskExecutionInstanceModel;
         await _batchQueue.SendAsync(new TaskCancellationParameters()
         {
             TaskExeuctionInstanceId = taskExecutionInstance.Id,

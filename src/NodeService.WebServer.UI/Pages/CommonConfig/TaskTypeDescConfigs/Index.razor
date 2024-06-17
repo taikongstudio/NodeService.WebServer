@@ -1,5 +1,5 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.JobTypeDescConfigs
-@page "/CommonConfig/JobTypeDesc"
+@page "/CommonConfig/TaskTypeDesc"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject IMessageService _message
@@ -53,7 +53,7 @@
            Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            EnableVirtualization="false"
-           TItem="JobTypeDescConfigModel"
+           TItem="TaskTypeDescConfigModel"
            Resizable
            OnChange="OnTableChange"
            DataSource="@_dataSource.ItemsSource"
@@ -91,10 +91,10 @@
                 <CellRender Context="cellData">
                     <Space>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<JobTypeDescConfigModel>())"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => ShowEditForm(context.CopyClone<TaskTypeDescConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<JobTypeDescConfigModel>())"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<TaskTypeDescConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
@@ -123,8 +123,8 @@
     bool _editFormVisible;
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
-    Form<JobTypeDescConfigModel> _editForm;
-    JobTypeDescConfigModel _editModel = new();
+    Form<TaskTypeDescConfigModel> _editForm;
+    TaskTypeDescConfigModel _editModel = new();
 
     IEnumerable<StringEntry> _selectedOptionValueEditors;
 
@@ -135,7 +135,7 @@
 
     bool _loading;
 
-    RoutedPaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters> _dataSource;
+    RoutedPaginationDataSource<TaskTypeDescConfigModel, PaginationQueryParameters> _dataSource;
 
     protected override void OnInitialized()
     {
@@ -264,7 +264,7 @@
             }
         );
 
-        _dataSource = new RoutedPaginationDataSource<JobTypeDescConfigModel, PaginationQueryParameters>(
+        _dataSource = new RoutedPaginationDataSource<TaskTypeDescConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
             ApiService.QueryTaskTypeDescConfigurationListAsync,
             StateHasChanged);
@@ -287,12 +287,12 @@
         await base.OnInitializedAsync();
     }
 
-    void ShowEditForm(JobTypeDescConfigModel? model = null)
+    void ShowEditForm(TaskTypeDescConfigModel? model = null)
     {
         _editFormVisible = true;
         if (model == null)
         {
-            _editModel = new JobTypeDescConfigModel
+            _editModel = new TaskTypeDescConfigModel
             {
                 Id = Guid.NewGuid().ToString()
             };
@@ -368,7 +368,7 @@
             options);
     }
 
-    async Task DeleteConfig(JobTypeDescConfigModel model)
+    async Task DeleteConfig(TaskTypeDescConfigModel model)
     {
         try
         {
@@ -433,7 +433,7 @@
     {
     }
 
-    async Task OnTableChange(QueryModel<JobTypeDescConfigModel> query)
+    async Task OnTableChange(QueryModel<TaskTypeDescConfigModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)

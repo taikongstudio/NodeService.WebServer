@@ -6,9 +6,9 @@ namespace NodeService.WebServer.Controllers;
 public partial class NodesController
 {
     [HttpGet("/api/Nodes/~/{id}/jobs/List")]
-    public async Task<ApiResponse<IEnumerable<JobScheduleConfigModel>>> GetNodeTaskListAsync(string id)
+    public async Task<ApiResponse<IEnumerable<TaskDefinitionModel>>> GetNodeTaskListAsync(string id)
     {
-        var apiResponse = new ApiResponse<IEnumerable<JobScheduleConfigModel>>();
+        var apiResponse = new ApiResponse<IEnumerable<TaskDefinitionModel>>();
         try
         {
             using var repository = _nodeInfoRepoFactory.CreateRepository();
@@ -36,12 +36,12 @@ public partial class NodesController
 
 
     [HttpGet("/api/Nodes/{nodeId}/jobs/instances/List")]
-    public async Task<PaginationResponse<JobExecutionInstanceModel>> GetNodeTaskInstancesAsync(
+    public async Task<PaginationResponse<TaskExecutionInstanceModel>> GetNodeTaskInstancesAsync(
         string nodeId,
         [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters,
         CancellationToken cancellationToken = default)
     {
-        var apiResponse = new PaginationResponse<JobExecutionInstanceModel>();
+        var apiResponse = new PaginationResponse<TaskExecutionInstanceModel>();
         try
         {
             using var repository = _nodeInfoRepoFactory.CreateRepository();

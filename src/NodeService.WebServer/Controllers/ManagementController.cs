@@ -70,7 +70,7 @@ public class ManagementController : Controller
     {
         var apiResponse = new ApiResponse<int>();
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-        dbContext.JobScheduleConfigurationDbSet.RemoveRange(dbContext.JobScheduleConfigurationDbSet.ToArray());
+        dbContext.TaskDefinitionDbSet.RemoveRange(dbContext.TaskDefinitionDbSet.ToArray());
         var changesCount = await dbContext.SaveChangesAsync();
         apiResponse.SetResult(changesCount);
         return apiResponse;
@@ -90,12 +90,12 @@ public class ManagementController : Controller
 
         foreach (var type in serviceOptionsTypes)
         {
-            var model = new JobTypeDescConfigModel();
+            var model = new TaskTypeDescConfigModel();
             model.Id = Guid.NewGuid().ToString();
             model.Name = type.Name.Replace("Options", string.Empty);
             model.FullName = "NodeService.WindowsService.Services." + model.Name;
             model.Description = type.Name;
-            dbContext.JobTypeDescConfigurationDbSet.Add(model);
+            dbContext.TaskTypeDescConfigurationDbSet.Add(model);
             foreach (var propertyInfo in type.GetProperties())
                 if (propertyInfo.PropertyType == typeof(bool))
                     model.OptionValueEditors.Add(new StringEntry

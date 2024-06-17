@@ -63,7 +63,7 @@ public partial class CommonConfigController : Controller
                 ?
                 BatchQueueOperationPriority.High
                 :
-                BatchQueueOperationPriority.Mormal;
+                BatchQueueOperationPriority.Normal;
             var op = new BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>(
                 paramters,
                 BatchQueueOperationKind.Query,

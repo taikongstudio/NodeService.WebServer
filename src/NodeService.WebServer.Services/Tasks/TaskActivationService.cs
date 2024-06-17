@@ -10,30 +10,30 @@ using NodeService.WebServer.Services.NodeSessions;
 
 namespace NodeService.WebServer.Services.Tasks;
 
-public class TaskFireService : BackgroundService
+public class TaskActivationService : BackgroundService
 {
     readonly ExceptionCounter _exceptionCounter;
     readonly BatchQueue<FireTaskParameters> _fireTaskBatchQueue;
-    readonly ILogger<TaskFireService> _logger;
+    readonly ILogger<TaskActivationService> _logger;
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
     readonly INodeSessionService _nodeSessionService;
     readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationQueue;
     readonly ITaskPenddingContextManager _taskPenddingContextManager;
-    readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
-    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
-    readonly BatchQueue<JobExecutionReportMessage> _taskExecutionReportBatchQueue;
-    readonly ApplicationRepositoryFactory<JobFireConfigurationModel> _taskFireRecordRepositoryFactory;
-    readonly ApplicationRepositoryFactory<JobTypeDescConfigModel> _taskTypeDescConfigRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
+    readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
+    readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskTypeDescConfigModel> _taskTypeDescConfigRepositoryFactory;
 
-    public TaskFireService(
-        ILogger<TaskFireService> logger,
-        ApplicationRepositoryFactory<JobScheduleConfigModel> taskDefinitionRepositoryFactory,
-        ApplicationRepositoryFactory<JobExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
-        ApplicationRepositoryFactory<JobFireConfigurationModel> jobFireConfigRepositoryFactory,
-        ApplicationRepositoryFactory<JobTypeDescConfigModel> taskTypeDescConfigRepositoryFactory,
+    public TaskActivationService(
+        ILogger<TaskActivationService> logger,
+        ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
+        ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
+        ApplicationRepositoryFactory<TaskActivationRecordModel> jobFireConfigRepositoryFactory,
+        ApplicationRepositoryFactory<TaskTypeDescConfigModel> taskTypeDescConfigRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
-        BatchQueue<JobExecutionReportMessage> taskExecutionReportBatchQueue,
+        BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
         INodeSessionService nodeSessionService,
         ExceptionCounter exceptionCounter,
         BatchQueue<FireTaskParameters> fireTaskBatchQueue,
@@ -46,7 +46,7 @@ public class TaskFireService : BackgroundService
         _nodeSessionService = nodeSessionService;
         _taskDefinitionRepositoryFactory = taskDefinitionRepositoryFactory;
         _taskExecutionInstanceRepositoryFactory = taskExecutionInstanceRepositoryFactory;
-        _taskFireRecordRepositoryFactory = jobFireConfigRepositoryFactory;
+        _taskActivationRecordRepositoryFactory = jobFireConfigRepositoryFactory;
         _taskTypeDescConfigRepositoryFactory = taskTypeDescConfigRepositoryFactory;
         _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
 
@@ -98,16 +98,16 @@ public class TaskFireService : BackgroundService
             await context.EnsureInitAsync();
             switch (context.TaskDefinition.ExecutionStrategy)
             {
-                case JobExecutionStrategy.Concurrent:
+                case TaskExecutionStrategy.Concurrent:
                     readyToRun = true;
                     break;
-                case JobExecutionStrategy.Queue:
+                case TaskExecutionStrategy.Queue:
                     readyToRun = await context.WaitForRunningTasksAsync(repo);
                     break;
-                case JobExecutionStrategy.Stop:
+                case TaskExecutionStrategy.Stop:
                     readyToRun = await context.StopRunningTasksAsync(repo);
                     break;
-                case JobExecutionStrategy.Skip:
+                case TaskExecutionStrategy.Skip:
                     return;
             }
 
@@ -121,15 +121,15 @@ public class TaskFireService : BackgroundService
 
                 var rsp = await _nodeSessionService.SendTaskExecutionEventAsync(
                     context.NodeSessionId,
-                    context.FireEvent,
+                    context.TriggerEvent,
                     context.CancellationToken);
-                _logger.LogInformation($"{context.Id}:SendJobExecutionEventAsync");
-                await _taskExecutionReportBatchQueue.SendAsync(new JobExecutionReportMessage
+                _logger.LogInformation($"{context.Id}:SendTaskExecutionEventAsync");
+                await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
                 {
-                    Message = new JobExecutionReport
+                    Message = new TaskExecutionReport
                     {
                         Id = context.Id,
-                        Status = JobExecutionStatus.Triggered,
+                        Status = TaskExecutionStatus.Triggered,
                         Message = rsp.Message
                     }
                 });
@@ -160,12 +160,12 @@ public class TaskFireService : BackgroundService
         _taskPenddingContextManager.RemoveContext(context.Id, out _);
         if (context.CancellationToken.IsCancellationRequested)
         {
-            await _taskExecutionReportBatchQueue.SendAsync(new JobExecutionReportMessage
+            await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
             {
-                Message = new JobExecutionReport
+                Message = new TaskExecutionReport
                 {
                     Id = context.Id,
-                    Status = JobExecutionStatus.PenddingTimeout,
+                    Status = TaskExecutionStatus.PenddingTimeout,
                     Message = "Timeout"
                 }
             });
@@ -174,13 +174,13 @@ public class TaskFireService : BackgroundService
     }
 
     private async Task FireTaskAsync(
-        IRepository<JobScheduleConfigModel> taskDefinitionRepo,
-        IRepository<JobExecutionInstanceModel> taskExecutionInstanceRepo,
-        IRepository<JobFireConfigurationModel> taskFireRecordRepo,
-        IRepository<JobTypeDescConfigModel> taskTypeDescConfigRepo,
+        IRepository<TaskDefinitionModel> taskDefinitionRepo,
+        IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo,
+        IRepository<TaskActivationRecordModel> taskActivationRecordRepo,
+        IRepository<TaskTypeDescConfigModel> taskTypeDescConfigRepo,
         IRepository<NodeInfoModel> nodeInfoRepo,
         FireTaskParameters parameters,
-        JobScheduleConfigModel taskDefinition,
+        TaskDefinitionModel taskDefinition,
         CancellationToken cancellationToken = default)
     {
         try
@@ -200,9 +200,16 @@ public class TaskFireService : BackgroundService
                     {
                         continue;
                     }
-                    var nodeInfo = nodeInfoList.FirstOrDefault(x => x.Id == nodeEntry.Value);
-                    if (nodeInfo == null) continue;
-                    var nodeId = new NodeId(nodeInfo.Id);
+                    NodeId nodeId = NodeId.Null;
+                    foreach (var nodeInfo in nodeInfoList)
+                    {
+                        if (nodeInfo.Id == nodeEntry.Value)
+                        {
+                            nodeId = new NodeId(nodeEntry.Value);
+                            break;
+                        }
+                    }
+                    if (nodeId.IsNullOrEmpty) continue;
                     foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
                     {
                         var taskExecutionInstance = await AddTaskExecutionInstanceAsync(
@@ -215,11 +222,11 @@ public class TaskFireService : BackgroundService
                         {
                             NodeSessionService = _nodeSessionService,
                             NodeSessionId = nodeSessionId,
-                            FireEvent = taskExecutionInstance.ToFireEvent(taskDefinition, parameters.EnvironmentVariables),
+                            TriggerEvent = taskExecutionInstance.ToTriggerEvent(taskDefinition, parameters.EnvironmentVariables),
                             FireParameters = parameters,
                             TaskDefinition = taskDefinition
                         };
-
+                       
                         if (_taskPenddingContextManager.AddContext(context))
                         {
                             await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
@@ -242,20 +249,20 @@ public class TaskFireService : BackgroundService
         }
     }
 
-    public async Task<JobExecutionInstanceModel> AddTaskExecutionInstanceAsync(
-        JobScheduleConfigModel taskDefinition,
-        IRepository<JobExecutionInstanceModel> taskExecutionInstanceRepo,
+    public async Task<TaskExecutionInstanceModel> AddTaskExecutionInstanceAsync(
+        TaskDefinitionModel taskDefinition,
+        IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo,
         NodeSessionId nodeSessionId,
         FireTaskParameters parameters,
         CancellationToken cancellationToken = default)
     {
         var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);
-        var taskExecutionInstance = new JobExecutionInstanceModel
+        var taskExecutionInstance = new TaskExecutionInstanceModel
         {
             Id = Guid.NewGuid().ToString(),
             Name = $"{nodeName} {taskDefinition.Name} {parameters.FireInstanceId}",
             NodeInfoId = nodeSessionId.NodeId.Value,
-            Status = JobExecutionStatus.Triggered,
+            Status = TaskExecutionStatus.Triggered,
             FireTimeUtc = parameters.FireTimeUtc.DateTime,
             Message = string.Empty,
             FireType = "Server",
@@ -271,19 +278,19 @@ public class TaskFireService : BackgroundService
         {
             switch (taskDefinition.ExecutionStrategy)
             {
-                case JobExecutionStrategy.Concurrent:
+                case TaskExecutionStrategy.Concurrent:
                     taskExecutionInstance.Message = $"{nodeName}:triggered";
                     break;
-                case JobExecutionStrategy.Queue:
-                    taskExecutionInstance.Status = JobExecutionStatus.Pendding;
+                case TaskExecutionStrategy.Queue:
+                    taskExecutionInstance.Status = TaskExecutionStatus.Pendding;
                     taskExecutionInstance.Message = $"{nodeName}: waiting for any job";
                     break;
-                case JobExecutionStrategy.Skip:
-                    taskExecutionInstance.Status = JobExecutionStatus.Pendding;
+                case TaskExecutionStrategy.Skip:
+                    taskExecutionInstance.Status = TaskExecutionStatus.Pendding;
                     taskExecutionInstance.Message = $"{nodeName}: start job";
                     break;
-                case JobExecutionStrategy.Stop:
-                    taskExecutionInstance.Status = JobExecutionStatus.Pendding;
+                case TaskExecutionStrategy.Stop:
+                    taskExecutionInstance.Status = TaskExecutionStatus.Pendding;
                     taskExecutionInstance.Message = $"{nodeName}: waiting for kill all job";
                     break;
             }
@@ -291,7 +298,7 @@ public class TaskFireService : BackgroundService
         else
         {
             taskExecutionInstance.Message = $"{nodeName} offline";
-            taskExecutionInstance.Status = JobExecutionStatus.Failed;
+            taskExecutionInstance.Status = TaskExecutionStatus.Failed;
         }
 
         if (parameters.NextFireTimeUtc != null)
@@ -320,7 +327,7 @@ public class TaskFireService : BackgroundService
             try
             {
                 using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
-                using var taskFireRecordRepo = _taskFireRecordRepositoryFactory.CreateRepository();
+                using var taskActivationRecordRepo = _taskActivationRecordRepositoryFactory.CreateRepository();
                 using var taskTypeDescRepo = _taskTypeDescConfigRepositoryFactory.CreateRepository();
                 using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
                 using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
@@ -329,35 +336,37 @@ public class TaskFireService : BackgroundService
                 {
                     var (taskDefinitionId, fireTaskInstanceId) = fireTaskParametersGroup.Key;
 
-                    var taskDefinition = await taskDefinitionRepo.GetByIdAsync(
+                    var taskDefinitionModel = await taskDefinitionRepo.GetByIdAsync(
                         taskDefinitionId,
                         cancellationToken);
 
-                    if (taskDefinition == null || string.IsNullOrEmpty(taskDefinition.JobTypeDescId)) continue;
-                    if (taskDefinition.NodeList.Count == 0) continue;
+                    if (taskDefinitionModel == null || string.IsNullOrEmpty(taskDefinitionModel.JobTypeDescId)) continue;
+                    if (taskDefinitionModel.NodeList.Count == 0) continue;
 
-                    await taskFireRecordRepo.AddAsync(new JobFireConfigurationModel
+
+                    taskDefinitionModel.TaskTypeDesc = await taskTypeDescRepo.GetByIdAsync(
+                        taskDefinitionModel.JobTypeDescId,
+                        cancellationToken);
+
+                    await taskActivationRecordRepo.AddAsync(new TaskActivationRecordModel
                     {
                         Id = fireTaskInstanceId,
-                        JobScheduleConfigJsonString = taskDefinition.ToJson()
+                        Name = taskDefinitionModel.Name,
+                        TaskDefinitionJson = JsonSerializer.Serialize(taskDefinitionModel.Value)
                     }, cancellationToken);
 
-
-                    taskDefinition.JobTypeDesc = await taskTypeDescRepo.GetByIdAsync(
-                        taskDefinition.JobTypeDescId,
-                        cancellationToken);
                     foreach (var fireTaskParameters in fireTaskParametersGroup)
                     {
                         if (fireTaskParameters.NodeList != null && fireTaskParameters.NodeList.Count > 0)
-                            taskDefinition.NodeList = fireTaskParameters.NodeList;
+                            taskDefinitionModel.NodeList = fireTaskParameters.NodeList;
                         await FireTaskAsync(
                             taskDefinitionRepo,
                             taskExecutionInstanceRepo,
-                            taskFireRecordRepo,
+                            taskActivationRecordRepo,
                             taskTypeDescRepo,
                             nodeInfoRepo,
                             fireTaskParameters,
-                            taskDefinition,
+                            taskDefinitionModel,
                             cancellationToken);
                     }
                 }

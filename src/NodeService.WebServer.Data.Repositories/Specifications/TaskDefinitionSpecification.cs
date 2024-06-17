@@ -2,7 +2,7 @@
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class TaskDefinitionSpecification : Specification<JobScheduleConfigModel>
+public class TaskDefinitionSpecification : Specification<TaskDefinitionModel>
 {
     public TaskDefinitionSpecification(
         string? keywords,

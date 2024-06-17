@@ -23,6 +23,7 @@ using NodeService.WebServer.Services.DataQuality;
 using NodeService.WebServer.Services.FileSystem;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NetworkDevices;
+using NodeService.WebServer.Services.NodeFileSystem;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
 using NodeService.WebServer.Services.QueryOptimize;
@@ -74,6 +75,7 @@ public class Program
 
         try
         {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", options.env);
 
             var builder = WebApplication.CreateBuilder(args);
@@ -202,6 +204,7 @@ public class Program
 
         builder.Services.AddLogging(logger =>
         {
+            logger.AddFilter("Microsoft.AspNetCore.Components.RenderTree.*", LogLevel.None);
             logger.ClearProviders();
             logger.AddConsole();
             logger.AddNLog();
@@ -266,7 +269,7 @@ public class Program
         builder.Services.AddHostedService<NodeHealthyCheckService>();
         builder.Services.AddHostedService<FileRecordQueryService>();
         builder.Services.AddHostedService<FileRecordInsertUpdateDeleteService>();
-        builder.Services.AddHostedService<TaskFireService>();
+        builder.Services.AddHostedService<TaskActivationService>();
         builder.Services.AddHostedService<NodeStatusChangeRecordService>();
         builder.Services.AddHostedService<DataQualityStatisticsService>();
         builder.Services.AddHostedService<DataQualityAlarmService>();
@@ -276,6 +279,7 @@ public class Program
         builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
         builder.Services.AddHostedService<NodeFileSystemWatchEventConsumerService>();
         builder.Services.AddHostedService<NetworkDeviceScanService>();
+        builder.Services.AddHostedService<NodeFileSystemSyncService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -350,7 +354,7 @@ public class Program
                 var messageHandlerDictionary = new MessageHandlerDictionary
                 {
                     { HeartBeatResponse.Descriptor, sp.GetService<HeartBeatResponseHandler>() },
-                    { JobExecutionReport.Descriptor, sp.GetService<TaskExecutionReportHandler>() },
+                    { TaskExecutionReport.Descriptor, sp.GetService<TaskExecutionReportHandler>() },
                     //{ FileSystemBulkOperationReport.Descriptor, sp.GetService<FileSystemOperationReportHandler>() },
                 };
                 return messageHandlerDictionary;
@@ -419,7 +423,7 @@ public class Program
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
-        builder.Services.AddSingleton<IAsyncQueue<JobExecutionEventRequest>, AsyncQueue<JobExecutionEventRequest>>();
+        builder.Services.AddSingleton<IAsyncQueue<TaskExecutionEventRequest>, AsyncQueue<TaskExecutionEventRequest>>();
         builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>, AsyncQueue<TaskScheduleMessage>>();
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
         builder.Services.AddSingleton<IAsyncQueue<ConfigurationChangedEvent>, AsyncQueue<ConfigurationChangedEvent>>();
@@ -427,7 +431,7 @@ public class Program
         builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
         builder.Services.AddSingleton<IJobFactory, JobFactory>();
         builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
-        builder.Services.AddSingleton(new BatchQueue<JobExecutionReportMessage>(1024, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(1024, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(10)));
         builder.Services.AddSingleton(new BatchQueue<FireTaskParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(1024, TimeSpan.FromSeconds(3)));
@@ -439,7 +443,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(1024, TimeSpan.FromSeconds(1)));
-
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>>(64, TimeSpan.FromSeconds(5)));
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

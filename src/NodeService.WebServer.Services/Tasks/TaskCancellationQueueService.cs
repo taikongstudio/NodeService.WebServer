@@ -20,7 +20,7 @@ namespace NodeService.WebServer.Services.Tasks
         readonly ITaskPenddingContextManager _taskPenddingContextManager;
         private readonly INodeSessionService _nodeSessionService;
         readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
-        private readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
+        private readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
 
         public TaskCancellationQueueService(
             ILogger<TaskCancellationQueueService> logger,
@@ -28,7 +28,7 @@ namespace NodeService.WebServer.Services.Tasks
             ITaskPenddingContextManager taskPenddingContextManager,
             INodeSessionService nodeSessionService,
             BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
-            ApplicationRepositoryFactory<JobExecutionInstanceModel> taskExecutionInstanceRepoFactory)
+            ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepoFactory)
         {
             _logger = logger;
             _exceptionCounter = exceptionCounter;
@@ -62,7 +62,7 @@ namespace NodeService.WebServer.Services.Tasks
                         {
                             continue;
                         }
-                        if (taskExecutionInstance.Status >= JobExecutionStatus.Cancelled)
+                        if (taskExecutionInstance.Status >= TaskExecutionStatus.Cancelled)
                         {
                             continue;
                         }

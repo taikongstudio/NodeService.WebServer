@@ -10,7 +10,7 @@ public partial class ApplicationDbContext
         MySql_BuildNodeProfileModel(modelBuilder);
         MySql_BuildNodeStatusChangeRecordModel(modelBuilder);
         MySql_BuildNodePropertySnapshotModel(modelBuilder);
-        MySql_BuildJobExecutionInstanceModel(modelBuilder);
+        MySql_BuildTaskExecutionInstanceModel(modelBuilder);
         MySql_BuildFileRecordModel(modelBuilder);
         Mysql_BuildNodeStatisticsRecordModel(modelBuilder);
         MySql_BuildNotificationRecordModel(modelBuilder);
@@ -60,9 +60,9 @@ public partial class ApplicationDbContext
 
     private void MySql_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<JobFireConfigurationModel>(entityBuilder =>
+        modelBuilder.Entity<TaskActivationRecordModel>(entityBuilder =>
         {
-            entityBuilder.HasKey(nameof(JobFireConfigurationModel.Id));
+            entityBuilder.HasKey(nameof(TaskActivationRecordModel.Id));
         });
     }
 
@@ -89,12 +89,12 @@ public partial class ApplicationDbContext
     }
 
 
-    private static void MySql_BuildJobExecutionInstanceModel(ModelBuilder modelBuilder)
+    private static void MySql_BuildTaskExecutionInstanceModel(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<JobExecutionInstanceModel>()
-            .HasKey(nameof(JobExecutionInstanceModel.Id));
+        modelBuilder.Entity<TaskExecutionInstanceModel>()
+            .HasKey(nameof(TaskExecutionInstanceModel.Id));
 
-        modelBuilder.Entity<JobExecutionInstanceModel>()
+        modelBuilder.Entity<TaskExecutionInstanceModel>()
             .Navigation(x => x.NodeInfo)
             .AutoInclude(false);
     }
@@ -124,7 +124,7 @@ public partial class ApplicationDbContext
             .HasKey(nameof(NodeInfoModel.Id));
 
         modelBuilder.Entity<NodeInfoModel>()
-            .HasMany(x => x.JobExecutionInstances)
+            .HasMany(x => x.TaskExecutionInstances)
             .WithOne(x => x.NodeInfo)
             .HasForeignKey(x => x.NodeInfoId)
             .IsRequired();
@@ -191,15 +191,15 @@ public partial class ApplicationDbContext
                     v => JsonSerializer.Deserialize<DatabaseConfiguration>(v, (JsonSerializerOptions)null));
         });
 
-        modelBuilder.Entity<JobScheduleConfigModel>(builder =>
+        modelBuilder.Entity<TaskDefinitionModel>(builder =>
         {
             builder.Property(x => x.Value)
                 .HasColumnType("json").HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
-                    v => JsonSerializer.Deserialize<JobScheduleConfiguration>(v, (JsonSerializerOptions)null));
+                    v => JsonSerializer.Deserialize<TaskDefinition>(v, (JsonSerializerOptions)null));
         });
 
-        modelBuilder.Entity<JobTypeDescConfigModel>(builder =>
+        modelBuilder.Entity<TaskTypeDescConfigModel>(builder =>
         {
             builder.Property(x => x.Value)
                 .HasColumnType("json").HasConversion(

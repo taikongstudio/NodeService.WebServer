@@ -13,7 +13,7 @@ public class TaskScheduleService : BackgroundService
     private readonly ILogger<TaskScheduleService> _logger;
     private readonly ISchedulerFactory _schedulerFactory;
     private readonly IServiceProvider _serviceProvider;
-    private readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
     private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
 
     private readonly IAsyncQueue<TaskScheduleMessage> _taskSchedulerMessageQueue;
@@ -22,7 +22,7 @@ public class TaskScheduleService : BackgroundService
     public TaskScheduleService(
         IServiceProvider serviceProvider,
         IAsyncQueue<TaskScheduleMessage> taskScheduleMessageQueue,
-        ApplicationRepositoryFactory<JobScheduleConfigModel> taskDefinitionRepositoryFactory,
+        ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
         ISchedulerFactory schedulerFactory,
         TaskSchedulerDictionary taskSchedulerDictionary,
         ILogger<TaskScheduleService> logger,
@@ -133,11 +133,10 @@ public class TaskScheduleService : BackgroundService
     private async ValueTask<IAsyncDisposable> ScheduleTaskAsync(
         TaskSchedulerKey taskSchedulerKey,
         string? parentTaskId,
-        JobScheduleConfigModel taskDefinition,
+        TaskDefinitionModel taskDefinition,
         CancellationToken cancellationToken = default)
     {
         var taskScheduler = _serviceProvider.GetService<TaskScheduler>();
-        if (taskScheduler == null) throw new InvalidOperationException();
         var asyncDisposable = await taskScheduler.ScheduleAsync<FireTaskJob>(taskSchedulerKey,
             taskSchedulerKey.TriggerSource == TaskTriggerSource.Schedule
                 ? TriggerBuilderHelper.BuildScheduleTrigger(taskDefinition.CronExpressions.Select(x => x.Value))

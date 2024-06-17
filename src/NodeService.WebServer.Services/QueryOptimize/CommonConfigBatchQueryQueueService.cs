@@ -61,16 +61,16 @@ namespace NodeService.WebServer.Services.QueryOptimize
                 finally
                 {
                     stopwatch.Stop();
-                    _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed{stopwatch.Elapsed}");
+                    _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed:{stopwatch.Elapsed}");
                 }
             }
         }
 
-        private async Task ProcessQueryByParameterAsync(ArrayPoolCollection<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>?> arrayPoolCollection)
+        private async Task ProcessQueryByParameterAsync(ArrayPoolCollection<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> arrayPoolCollection)
         {
             foreach (var batchQueueOperationGroup in arrayPoolCollection.Where(static x => x != null && x.Argument.QueryParameters != null)
-                                                                        .OrderByDescending(x => x.Priority)
-                                                                        .GroupBy(x => x.Argument))
+                                                                        .OrderByDescending(static x => x.Priority)
+                                                                        .GroupBy(static x => x.Argument))
             {
 
                 try
@@ -106,7 +106,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
             }
         }
 
-        private async Task ProcessQueryByIdAsync(ArrayPoolCollection<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>?> arrayPoolCollection)
+        private async Task ProcessQueryByIdAsync(ArrayPoolCollection<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> arrayPoolCollection)
         {
             foreach (var batchQueueOperationGroup in arrayPoolCollection.Where(static x => x != null && x.Argument.Id != null)
                                                     .OrderByDescending(x => x.Priority)

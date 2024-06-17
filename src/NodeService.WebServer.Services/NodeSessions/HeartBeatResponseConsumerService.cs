@@ -20,7 +20,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
     readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertyRepositoryFactory;
     readonly INodeSessionService _nodeSessionService;
     readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
-    readonly ApplicationRepositoryFactory<JobScheduleConfigModel> _taskDefinitionRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
     readonly WebServerCounter _webServerCounter;
     readonly IAsyncQueue<NotificationMessage> _notificationQueue;
     readonly WebServerOptions _webServerOptions;
@@ -31,7 +31,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         ILogger<HeartBeatResponseConsumerService> logger,
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationQueue,
-        ApplicationRepositoryFactory<JobScheduleConfigModel> taskDefinitionRepositoryFactory,
+        ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
         ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertyRepositoryFactory,

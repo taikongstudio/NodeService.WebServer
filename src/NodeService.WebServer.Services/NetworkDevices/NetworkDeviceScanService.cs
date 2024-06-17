@@ -52,7 +52,7 @@ namespace NodeService.WebServer.Services.NetworkDevices
             while (!cancellationToken.IsCancellationRequested)
             {
                 await ScanNetworkDevicesAsync(cancellationToken);
-                await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
             }
         }
 

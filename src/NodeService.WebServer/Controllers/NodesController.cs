@@ -19,7 +19,7 @@ public partial class NodesController : Controller
     readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertySnapshotRepoFactory;
     readonly ApplicationRepositoryFactory<NodeStatusChangeRecordModel> _recordRepoFactory;
     readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
-    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
+    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
     static readonly JsonSerializerOptions _jsonOptions;
 
     static NodesController()
@@ -35,7 +35,7 @@ public partial class NodesController : Controller
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
-        ApplicationRepositoryFactory<JobExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
+        ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
         ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertySnapshotRepositoryFactory,
         ApplicationRepositoryFactory<NodeStatusChangeRecordModel> nodeStatusChangeRecordRepositoryFactory,
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,

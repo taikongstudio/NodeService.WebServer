@@ -3,17 +3,17 @@ using System.Linq;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class TaskExecutionInstanceSpecification : Specification<JobExecutionInstanceModel>
+public class TaskExecutionInstanceSpecification : Specification<TaskExecutionInstanceModel>
 {
     public TaskExecutionInstanceSpecification(
         string? keywords,
-        JobExecutionStatus status,
+        TaskExecutionStatus status,
         IEnumerable<string> nodeIdList,
         IEnumerable<string> taskDefinitionIdList,
         IEnumerable<string> taskExecutionIdList,
         IEnumerable<SortDescription>? sortDescriptions = null)
     {
-        if (status != JobExecutionStatus.Unknown) Query.Where(x => x.Status == status);
+        if (status != TaskExecutionStatus.Unknown) Query.Where(x => x.Status == status);
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));
         if (taskDefinitionIdList != null && taskDefinitionIdList.Any())
@@ -25,7 +25,7 @@ public class TaskExecutionInstanceSpecification : Specification<JobExecutionInst
 
     public TaskExecutionInstanceSpecification(
     string? keywords,
-    JobExecutionStatus status,
+    TaskExecutionStatus status,
     IEnumerable<string> nodeIdList,
     IEnumerable<string> taskDefinitionIdList,
     IEnumerable<string> taskExecutionIdInstanceList,
@@ -33,7 +33,7 @@ public class TaskExecutionInstanceSpecification : Specification<JobExecutionInst
     DateTime? endTime,
     IEnumerable<SortDescription>? sortDescriptions = null)
     {
-        if (status != JobExecutionStatus.Unknown) Query.Where(x => x.Status == status);
+        if (status != TaskExecutionStatus.Unknown) Query.Where(x => x.Status == status);
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));
         if (taskDefinitionIdList != null && taskDefinitionIdList.Any())
@@ -57,7 +57,7 @@ public class TaskExecutionInstanceSpecification : Specification<JobExecutionInst
     }
 
     public TaskExecutionInstanceSpecification(
-    DataFilterCollection<JobExecutionStatus> statusFilters,
+    DataFilterCollection<TaskExecutionStatus> statusFilters,
     DataFilterCollection<string> nodeIdFilters,
     DataFilterCollection<string> taskDefinitionIdFilters,
     DataFilterCollection<string> taskExecutionInstanceIdFilters)

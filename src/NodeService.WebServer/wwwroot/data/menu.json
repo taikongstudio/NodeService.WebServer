@@ -105,7 +105,7 @@
       {
         "path": "/CommonConfig/Database/",
         "name": "数据库配置",
-        "key": "CommonConfig.Dataabase"
+        "key": "CommonConfig.Database"
       },
       {
         "path": "/CommonConfig/Ftp",
@@ -153,9 +153,9 @@
         "key": "CommonConfig.WindowsTask"
       },
       {
-        "path": "/CommonConfig/JobTypeDesc",
+        "path": "/CommonConfig/TaskTypeDesc",
         "name": "作业类型描述配置",
-        "key": "CommonConfig.JobTypeDesc"
+        "key": "CommonConfig.TaskTypeDesc"
       },
       {
         "path": "/CommonConfig/ClientUpdates",

@@ -31,7 +31,7 @@
            OnChange="OnTableChange"
            OnPageSizeChange="@_dataSource.OnPaginationEvent"
            OnPageIndexChange="@_dataSource.OnPaginationEvent"
-           TItem="JobExecutionInstanceModel"
+           TItem="TaskExecutionInstanceModel"
            DataSource="@_dataSource.ItemsSource">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
@@ -84,7 +84,7 @@
                     </SpaceItem>
                     <SpaceItem>
                         <Select TItem="JobExeuctionStatusModel"
-                                TItemValue="JobExecutionStatus"
+                                TItemValue="TaskExecutionStatus"
                                 DataSource="@_jobExeuctionStatusList"
                                 @bind-Value="@_selectedStatus"
                                 LabelName="@nameof(JobExeuctionStatusModel.Name)"
@@ -120,31 +120,31 @@
             <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
                 @switch (context.Status)
                 {
-                    case JobExecutionStatus.Unknown:
+                    case TaskExecutionStatus.Unknown:
                         <Text>未知</Text>
                         break;
-                    case JobExecutionStatus.Triggered:
+                    case TaskExecutionStatus.Triggered:
                         <Text>已触发</Text>
                         break;
-                    case JobExecutionStatus.Pendding:
+                    case TaskExecutionStatus.Pendding:
                         <Text>排队</Text>
                         break;
-                    case JobExecutionStatus.Started:
+                    case TaskExecutionStatus.Started:
                         <Text>已启动</Text>
                         break;
-                    case JobExecutionStatus.Running:
+                    case TaskExecutionStatus.Running:
                         <Text>运行中</Text>
                         break;
-                    case JobExecutionStatus.Finished:
+                    case TaskExecutionStatus.Finished:
                         <Text>完成</Text>
                         break;
-                    case JobExecutionStatus.Cancelled:
+                    case TaskExecutionStatus.Cancelled:
                         <Text>已取消</Text>
                         break;
-                    case JobExecutionStatus.Failed:
+                    case TaskExecutionStatus.Failed:
                         <Text>失败</Text>
                         break;
-                    case JobExecutionStatus.PenddingTimeout:
+                    case TaskExecutionStatus.PenddingTimeout:
                         <Text>等待超时</Text>
                         break;
                 }
@@ -158,17 +158,17 @@
                     <Space>
                         @switch (context.Status)
                         {
-                            case JobExecutionStatus.PenddingTimeout:
+                            case TaskExecutionStatus.PenddingTimeout:
                                 <SpaceItem>
                                     <Button Shape="@ButtonShape.Circle" OnClick="() => RevokeJobAsync(context)" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle"></Button>
                                 </SpaceItem>
                                 break;
-                            case JobExecutionStatus.Failed:
+                            case TaskExecutionStatus.Failed:
                                 <SpaceItem>
                                     <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle"></Button>
                                 </SpaceItem>
                                 break;
-                            case JobExecutionStatus.Running:
+                            case TaskExecutionStatus.Running:
                                 <SpaceItem>
                                     <Button Danger Shape="@ButtonShape.Circle" OnClick="() => CancelTaskAsync(context)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
                                 </SpaceItem>
@@ -211,7 +211,7 @@
 
     class JobExeuctionStatusModel
     {
-        public JobExecutionStatus Value { get; set; }
+        public TaskExecutionStatus Value { get; set; }
 
         public string Name { get; set; }
     }
@@ -227,15 +227,15 @@
 
     string _taskLogDialogTitle = "Loading";
 
-    RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters> _dataSource;
+    RoutedPaginationDataSource<TaskExecutionInstanceModel, QueryTaskExecutionInstanceListParameters> _dataSource;
 
 
     readonly List<JobExeuctionStatusModel> _jobExeuctionStatusList = [];
 
     IEnumerable<NodeInfoModel> _selectedNodeList = [];
-    IEnumerable<JobScheduleConfigModel> _selectedTaskDefinitionList = [];
+    IEnumerable<TaskDefinitionModel> _selectedTaskDefinitionList = [];
 
-    JobExecutionStatus _selectedStatus;
+    TaskExecutionStatus _selectedStatus;
 
     [Parameter] public string? TaskExecutionInstanceId { get; set; }
 
@@ -244,7 +244,7 @@
 
     protected override void OnInitialized()
     {
-        _dataSource = new RoutedPaginationDataSource<JobExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
+        _dataSource = new RoutedPaginationDataSource<TaskExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
         _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
     }
@@ -261,22 +261,22 @@
     protected override async Task OnInitializedAsync()
     {
 
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Unknown, Name = "全部" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Triggered, Name = "已触发" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Pendding, Name = "等待中" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Started, Name = "已启动" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Running, Name = "运行中" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Failed, Name = "失败" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Finished, Name = "完成" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.Cancelled, Name = "已取消" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = JobExecutionStatus.PenddingTimeout, Name = "等待超时" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待中" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Started, Name = "已启动" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Running, Name = "运行中" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Failed, Name = "失败" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Finished, Name = "完成" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Cancelled, Name = "已取消" });
+        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.PenddingTimeout, Name = "等待超时" });
         BeginDateTime = DateTime.Today.Date.AddDays(-7);
         EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
         _dataSource.QueryParameters.SortDescriptions.Clear();
-        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(JobExecutionInstanceModel.Status), "ascend"));
-        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(JobExecutionInstanceModel.FireTimeUtc), "descend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.Status), "ascend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.FireTimeUtc), "descend"));
         await QueryTaskExecutionInstanceListAsync();
         await base.OnInitializedAsync();
     }
@@ -318,7 +318,7 @@
                 _dataSource.QueryParameters.TaskDefinitionIdList.AddRange(_selectedTaskDefinitionList.Select(x => x.Id));
             }
 
-            if (_selectedStatus != JobExecutionStatus.Unknown)
+            if (_selectedStatus != TaskExecutionStatus.Unknown)
             {
                 _dataSource.QueryParameters.Status = _selectedStatus;
             }
@@ -335,7 +335,7 @@
         }
     }
 
-    async Task RevokeJobAsync(JobExecutionInstanceModel instance)
+    async Task RevokeJobAsync(TaskExecutionInstanceModel instance)
     {
         try
         {
@@ -351,7 +351,7 @@
         }
     }
 
-    async Task CancelTaskAsync(JobExecutionInstanceModel model)
+    async Task CancelTaskAsync(TaskExecutionInstanceModel model)
     {
         try
         {
@@ -375,7 +375,7 @@
     {
     }
 
-    async Task OnTableChange(QueryModel<JobExecutionInstanceModel> query)
+    async Task OnTableChange(QueryModel<TaskExecutionInstanceModel> query)
     {
         if (!string.IsNullOrEmpty(TaskExecutionInstanceId))
         {

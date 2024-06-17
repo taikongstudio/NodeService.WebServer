@@ -20,13 +20,13 @@ public class TasksController : Controller
     private readonly INodeSessionService _nodeSessionService;
     private readonly IServiceProvider _serviceProvider;
     private readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
-    readonly ApplicationRepositoryFactory<JobExecutionInstanceModel> _taskInstanceRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskInstanceRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
 
     public TasksController(
         IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter,
-        ApplicationRepositoryFactory<JobExecutionInstanceModel> taskInstanceRepositoryFactory,
+        ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskInstanceRepositoryFactory,
         INodeSessionService nodeSessionService,
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
@@ -44,11 +44,11 @@ public class TasksController : Controller
     }
 
     [HttpGet("/api/Tasks/Instances/List")]
-    public async Task<PaginationResponse<JobExecutionInstanceModel>> QueryTaskExecutionInstanceListAsync(
+    public async Task<PaginationResponse<TaskExecutionInstanceModel>> QueryTaskExecutionInstanceListAsync(
         [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters
     )
     {
-        var apiResponse = new PaginationResponse<JobExecutionInstanceModel>();
+        var apiResponse = new PaginationResponse<TaskExecutionInstanceModel>();
         try
         {
             using var repo = _taskInstanceRepositoryFactory.CreateRepository();
@@ -78,9 +78,9 @@ public class TasksController : Controller
     }
 
     [HttpGet("/api/Tasks/Instances/{id}/Reinvoke")]
-    public async Task<ApiResponse<JobExecutionInstanceModel>> ReinvokeAsync(string id)
+    public async Task<ApiResponse<TaskExecutionInstanceModel>> ReinvokeAsync(string id)
     {
-        var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
+        var apiResponse = new ApiResponse<TaskExecutionInstanceModel>();
         try
         {
             using var repo = _taskInstanceRepositoryFactory.CreateRepository();
@@ -114,11 +114,11 @@ public class TasksController : Controller
     }
 
     [HttpPost("/api/Tasks/Instances/{id}/Cancel")]
-    public async Task<ApiResponse<JobExecutionInstanceModel>> CancelAsync(
+    public async Task<ApiResponse<TaskExecutionInstanceModel>> CancelAsync(
         string id,
         [FromBody] TaskCancellationParameters taskCancellationParameters)
     {
-        var apiResponse = new ApiResponse<JobExecutionInstanceModel>();
+        var apiResponse = new ApiResponse<TaskExecutionInstanceModel>();
         try
         {
             await _taskCancellationAsyncQueue.SendAsync(new TaskCancellationParameters

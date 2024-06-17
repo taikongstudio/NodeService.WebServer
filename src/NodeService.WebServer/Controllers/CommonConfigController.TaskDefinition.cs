@@ -4,13 +4,13 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
-    [HttpPost("/api/CommonConfig/JobSchedule/AddOrUpdate")]
-    public Task<ApiResponse> AddOrUpdateAsync([FromBody] JobScheduleConfigModel model)
+    [HttpPost("/api/CommonConfig/TaskDefinition/AddOrUpdate")]
+    public Task<ApiResponse> AddOrUpdateAsync([FromBody] TaskDefinitionModel model)
     {
         return AddOrUpdateConfigurationAsync(model, AddOrUpdateTaskDefinitionAsync);
     }
 
-    private async Task AddOrUpdateTaskDefinitionAsync(JobScheduleConfigModel taskDefinition)
+    private async Task AddOrUpdateTaskDefinitionAsync(TaskDefinitionModel taskDefinition)
     {
         await _serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>().EnqueueAsync(
             new TaskScheduleMessage(TaskTriggerSource.Schedule, taskDefinition.Id,
@@ -18,7 +18,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/JobSchedule/{taskDefinitionId}/Invoke")]
+    [HttpPost("/api/CommonConfig/TaskDefinition/{taskDefinitionId}/Invoke")]
     public async Task<ApiResponse> InvokeJobScheduleAsync(string taskDefinitionId,
         [FromBody] InvokeTaskParameters invokeTaskParameters)
     {
@@ -47,27 +47,27 @@ public partial class CommonConfigController
     }
 
 
-    [HttpGet("/api/CommonConfig/JobSchedule/List")]
-    public Task<PaginationResponse<JobScheduleConfigModel>> QueryTaskDefinitionListAsync(
+    [HttpGet("/api/CommonConfig/TaskDefinition/List")]
+    public Task<PaginationResponse<TaskDefinitionModel>> QueryTaskDefinitionListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
-        return QueryConfigurationListAsync<JobScheduleConfigModel>(queryParameters);
+        return QueryConfigurationListAsync<TaskDefinitionModel>(queryParameters);
     }
 
-    [HttpGet("/api/CommonConfig/JobSchedule/{id}")]
-    public Task<ApiResponse<JobScheduleConfigModel>> QueryTaskDefinitionAsync(string id)
+    [HttpGet("/api/CommonConfig/TaskDefinition/{id}")]
+    public Task<ApiResponse<TaskDefinitionModel>> QueryTaskDefinitionAsync(string id)
     {
-        return QueryConfigurationAsync<JobScheduleConfigModel>(id);
+        return QueryConfigurationAsync<TaskDefinitionModel>(id);
     }
 
 
-    [HttpPost("/api/CommonConfig/JobSchedule/Remove")]
-    public Task<ApiResponse> RemoveAsync([FromBody] JobScheduleConfigModel model)
+    [HttpPost("/api/CommonConfig/TaskDefinition/Remove")]
+    public Task<ApiResponse> RemoveAsync([FromBody] TaskDefinitionModel model)
     {
         return DeleteConfigurationAsync(model, RemoveTaskDefinitionAsync);
     }
 
-    private async Task RemoveTaskDefinitionAsync(JobScheduleConfigModel taskDefinition)
+    private async Task RemoveTaskDefinitionAsync(TaskDefinitionModel taskDefinition)
     {
         var messageQueue = _serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>();
         await messageQueue.EnqueueAsync(new TaskScheduleMessage(TaskTriggerSource.Schedule, taskDefinition.Id,

@@ -38,11 +38,11 @@
     bool _visible;
     bool _loading;
 
-    Form<JobScheduleConfigModel> _fireTaskForm;
+    Form<TaskDefinitionModel> _fireTaskForm;
 
     IEnumerable<NodeInfoModel> _selectedNodes = [];
 
-    [Parameter] public JobScheduleConfigModel TaskDefinition { get; set; }
+    [Parameter] public TaskDefinitionModel TaskDefinition { get; set; }
 
     [Parameter] public bool Visible { get; set; }
 

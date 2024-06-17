@@ -19,7 +19,7 @@
         Size="TableSize.Small"
         Loading="@_dataSource.IsLoading"
         EnableVirtualization="false"
-        TItem="JobScheduleConfigModel"
+        TItem="TaskDefinitionModel"
         DataSource="@_dataSource.ItemsSource"
         Resizable
         Total="@_dataSource.TotalCount"
@@ -53,8 +53,8 @@
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="描述" Ellipsis Sortable Property="c => c.Description"></PropertyColumn>
             <PropertyColumn Title="启用" Ellipsis Sortable Property="c => c.IsEnabled"></PropertyColumn>
-            <PropertyColumn Title="任务类型" Ellipsis Property="c => c.JobTypeDesc">
-                <Text>@context.JobTypeDesc?.Name</Text>
+            <PropertyColumn Title="任务类型" Ellipsis Property="c => c.TaskTypeDesc">
+                <Text>@context.TaskTypeDesc?.Name</Text>
             </PropertyColumn>
 
             <ActionColumn Fixed="right" Width="250" Title="操作">
@@ -64,10 +64,10 @@
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle" OnClick="() => ShowInvokeTaskDialogAsync(context)"></Button>
                         </SpaceItem>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => _taskDefinitionEditor.ShowAsync(context.CopyClone<JobScheduleConfigModel>())"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => _taskDefinitionEditor.ShowAsync(context.CopyClone<TaskDefinitionModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => _taskDefinitionEditor.ShowAsync(context.JsonClone<JobScheduleConfigModel>())"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => _taskDefinitionEditor.ShowAsync(context.JsonClone<TaskDefinitionModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
@@ -86,18 +86,18 @@
 
     bool _InvokeTaskDialogVisible;
 
-    JobScheduleConfigModel _taskDefinition;
+    TaskDefinitionModel _taskDefinition;
 
     TaskDefinitionEditor _taskDefinitionEditor;
 
-    RoutedPaginationDataSource<JobScheduleConfigModel, PaginationQueryParameters> _dataSource;
+    RoutedPaginationDataSource<TaskDefinitionModel, PaginationQueryParameters> _dataSource;
     PaginationDataSource<NodeInfoModel, PaginationQueryParameters> _nodeDataSource;
 
     protected override void OnInitialized()
     {
-        _dataSource = new RoutedPaginationDataSource<JobScheduleConfigModel, PaginationQueryParameters>(
+        _dataSource = new RoutedPaginationDataSource<TaskDefinitionModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
-            ApiService.QueryTaskScheduleConfigurationListAsync,
+            ApiService.QueryTaskDefinitionListAsync,
             StateHasChanged);
         _dataSource.ItemInitializer = InitAsync;
         _nodeDataSource = new PaginationDataSource<NodeInfoModel, PaginationQueryParameters>(
@@ -124,7 +124,7 @@
     }
 
     async ValueTask InitAsync(
-        JobScheduleConfigModel model,
+        TaskDefinitionModel model,
         CancellationToken cancellationToken = default)
     {
         if (model == null)
@@ -135,7 +135,7 @@
         var rsp = await ApiService.QueryTaskTypeDescConfigAsync(model.Value.JobTypeDescId);
         if (rsp.ErrorCode == 0)
         {
-            model.Value.JobTypeDesc = rsp.Result;
+            model.Value.TaskTypeDesc = rsp.Result;
             //await BuildOptionValueEditorsAsync(model, model.OptionValueEditors);
         }
     }
@@ -155,7 +155,7 @@
         }
     }
 
-    void ShowInvokeTaskDialogAsync(JobScheduleConfigModel model)
+    void ShowInvokeTaskDialogAsync(TaskDefinitionModel model)
     {
         _InvokeTaskDialogVisible = true;
         _taskDefinition = model;
@@ -189,7 +189,7 @@
             options);
     }
 
-    async Task DeleteConfig(JobScheduleConfigModel model)
+    async Task DeleteConfig(TaskDefinitionModel model)
     {
         try
         {
@@ -228,7 +228,7 @@
     }
 
 
-    async Task OnTableChange(QueryModel<JobScheduleConfigModel> query)
+    async Task OnTableChange(QueryModel<TaskDefinitionModel> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)

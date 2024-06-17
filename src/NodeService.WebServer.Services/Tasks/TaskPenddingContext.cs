@@ -20,9 +20,9 @@ public class TaskPenddingContext : IAsyncDisposable
 
     public required NodeSessionId NodeSessionId { get; init; }
 
-    public required JobScheduleConfigModel TaskDefinition { get; init; }
+    public required TaskDefinitionModel TaskDefinition { get; init; }
 
-    public required JobExecutionEventRequest FireEvent { get; init; }
+    public required TaskExecutionEventRequest TriggerEvent { get; init; }
 
     public CancellationToken CancellationToken { get; private set; }
 
@@ -34,7 +34,7 @@ public class TaskPenddingContext : IAsyncDisposable
         return ValueTask.CompletedTask;
     }
 
-    public async Task<bool> WaitAllTaskTerminatedAsync(IRepository<JobExecutionInstanceModel> repository)
+    public async Task<bool> WaitAllTaskTerminatedAsync(IRepository<TaskExecutionInstanceModel> repository)
     {
         while (!CancellationToken.IsCancellationRequested)
         {
@@ -45,7 +45,7 @@ public class TaskPenddingContext : IAsyncDisposable
                 {
                     NodeIdList = [NodeSessionId.NodeId.Value],
                     TaskDefinitionIdList = [TaskDefinition.Id],
-                    Status = JobExecutionStatus.Running
+                    Status = TaskExecutionStatus.Running
                 });
 
             if (queryResult.IsEmpty) return true;
@@ -55,7 +55,7 @@ public class TaskPenddingContext : IAsyncDisposable
         return false;
     }
 
-    public async Task<bool> StopRunningTasksAsync(IRepository<JobExecutionInstanceModel> repository)
+    public async Task<bool> StopRunningTasksAsync(IRepository<TaskExecutionInstanceModel> repository)
     {
         while (!CancellationToken.IsCancellationRequested)
         {
@@ -64,7 +64,7 @@ public class TaskPenddingContext : IAsyncDisposable
                 {
                     NodeIdList = [NodeSessionId.NodeId.Value],
                     TaskDefinitionIdList = [TaskDefinition.Id],
-                    Status = JobExecutionStatus.Running
+                    Status = TaskExecutionStatus.Running
                 });
 
             if (queryResult.IsEmpty) return true;
@@ -95,7 +95,7 @@ public class TaskPenddingContext : IAsyncDisposable
         return ValueTask.CompletedTask;
     }
 
-    public async Task<bool> WaitForRunningTasksAsync(IRepository<JobExecutionInstanceModel> repository)
+    public async Task<bool> WaitForRunningTasksAsync(IRepository<TaskExecutionInstanceModel> repository)
     {
         while (!CancellationToken.IsCancellationRequested)
         {
@@ -104,7 +104,7 @@ public class TaskPenddingContext : IAsyncDisposable
                 {
                     NodeIdList = [NodeSessionId.NodeId.Value],
                     TaskDefinitionIdList = [TaskDefinition.Id],
-                    Status = JobExecutionStatus.Running
+                    Status = TaskExecutionStatus.Running
                 }, CancellationToken);
             if (!queryResult.HasValue) break;
             await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken);
@@ -114,8 +114,8 @@ public class TaskPenddingContext : IAsyncDisposable
     }
 
 
-    public async Task<ListQueryResult<JobExecutionInstanceModel>> QueryTaskExecutionInstancesAsync(
-        IRepository<JobExecutionInstanceModel> repository,
+    public async Task<ListQueryResult<TaskExecutionInstanceModel>> QueryTaskExecutionInstancesAsync(
+        IRepository<TaskExecutionInstanceModel> repository,
         QueryTaskExecutionInstanceListParameters queryParameters,
         CancellationToken cancellationToken = default)
     {

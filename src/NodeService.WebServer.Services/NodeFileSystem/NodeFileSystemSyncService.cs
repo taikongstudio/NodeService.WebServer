@@ -274,55 +274,23 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 
         async Task<FormFileUploadContext> CreateContextAsync(string nodeId, string directory, IFormFile formFile)
         {
-            var encoding = Encoding.GetEncoding("gb2312");
+
             var fileSystemSyncProgress = new FileSystemSyncProgress();
-            var fileSystemSyncInfo = new FileSystemSyncInfo();
+            var fileSystemSyncInfo = await FileSystemSyncInfo.FromFormFileAsync(formFile);
             var formFileUploadContext = new FormFileUploadContext()
             {
                 Progress = fileSystemSyncProgress,
                 SyncInfo = fileSystemSyncInfo
             };
+
             fileSystemSyncProgress.Directory = directory;
-            fileSystemSyncProgress.FileName = encoding.GetString(Convert.FromBase64String(formFile.FileName));
+            fileSystemSyncProgress.FileName = fileSystemSyncInfo.FileName;
             fileSystemSyncProgress.NodeId = nodeId;
             fileSystemSyncProgress.Status = "Unknown";
-
-            var compressedFileHash = formFile.Headers[nameof(FileSystemSyncInfo.CompressedFileHash)].FirstOrDefault();
-            var originalFileHash = formFile.Headers[nameof(FileSystemSyncInfo.OriginalFileHash)].FirstOrDefault();
-            var compressedFileLength = long.Parse(formFile.Headers[nameof(FileSystemSyncInfo.CompressedFileLength)]);
-            var originalFileLength = long.Parse(formFile.Headers[nameof(FileSystemSyncInfo.OriginalFileLength)]);
-            var isCompressed = bool.Parse(formFile.Headers[nameof(FileSystemSyncInfo.IsCompressed)]);
-            var hashAlgorithmType = Enum.Parse<HashAlgorithmType>(formFile.Headers[nameof(FileSystemSyncInfo.HashAlgorithmType)]);
-            var fileName = formFile.Headers[nameof(FileSystemSyncInfo.FileName)].FirstOrDefault();
-            var tagetFilePathBase64 = formFile.Headers[nameof(FileSystemSyncInfo.TargetFilePath)].FirstOrDefault();
-            var targetFilePath = encoding.GetString(Convert.FromBase64String(tagetFilePathBase64));
-
-            fileSystemSyncInfo.CompressedFileHash = compressedFileHash;
-            fileSystemSyncInfo.CompressedFileLength = originalFileLength;
-            fileSystemSyncInfo.FileName = fileName;
-            fileSystemSyncInfo.HashAlgorithmType = hashAlgorithmType;
-            fileSystemSyncInfo.IsCompressed = isCompressed;
-            fileSystemSyncInfo.OriginalFileHash = originalFileHash;
-            fileSystemSyncInfo.OriginalFileLength = originalFileLength;
-            fileSystemSyncInfo.TargetFilePath = targetFilePath;
-
-            if (fileSystemSyncInfo.IsCompressed)
-            {
-                var length = (int)fileSystemSyncInfo.OriginalFileLength;
-                var buffer = ArrayPool<byte>.Shared.Rent(length);
-                fileSystemSyncInfo.Stream = new MemoryStream(buffer, 0, length, true, true);
-                using var decompressor = new GZipStream(formFile.OpenReadStream(), CompressionMode.Decompress);
-                await decompressor.CopyToAsync(fileSystemSyncInfo.Stream);
-            }
-            else
-            {
-                fileSystemSyncInfo.Stream = formFile.OpenReadStream();
-            }
-            fileSystemSyncInfo.Stream.Position = 0;
             return formFileUploadContext;
         }
 
-        private async ValueTask ProcessFileAsync(
+        async ValueTask ProcessFileAsync(
             FormFileUploadContext context,
             CancellationToken cancellationToken = default)
         {

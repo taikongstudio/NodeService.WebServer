@@ -263,5 +263,14 @@ public partial class ApplicationDbContext
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<TaskLog>(v, (JsonSerializerOptions)null));
         });
+
+        modelBuilder.Entity<TaskActivationRecordModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<TaskActivationRecord>(v, (JsonSerializerOptions)null));
+        });
     }
 }

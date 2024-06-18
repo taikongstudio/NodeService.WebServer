@@ -134,7 +134,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
                         else
                             nodeFeedback.Value =
                                 $"ErrorCode:{eventReport.Error.ErrorCode},ErrorMessage:{eventReport.Error.Message}";
-                        await fileSystemWatchRepo.SaveChangesAsync(cancellationToken);
+                        await fileSystemWatchRepo.UpdateAsync(fileSystemWatchConfig, cancellationToken);
                     }
                 }
                 else

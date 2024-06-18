@@ -31,7 +31,6 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         await foreach (var arrayPoolCollection in _cudBatchQueue.ReceiveAllAsync(cancellationToken))
-        {
             try
             {
                 using var repo = _repositoryFactory.CreateRepository();
@@ -60,12 +59,11 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
             }
             finally
             {
-
             }
-        }
     }
 
-    private async Task DeleteAsync(IRepository<FileRecordModel> repo, BatchQueueOperation<FileRecordModel, bool>? operation)
+    private async Task DeleteAsync(IRepository<FileRecordModel> repo,
+        BatchQueueOperation<FileRecordModel, bool>? operation)
     {
         try
         {
@@ -82,20 +80,19 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
         {
             repo.DbContext.ChangeTracker.Clear();
         }
-
-
     }
 
-    private async Task InsertOrUpdateAsync(IRepository<FileRecordModel> repo, BatchQueueOperation<FileRecordModel, bool>? operation, CancellationToken cancellationToken)
+    private async Task InsertOrUpdateAsync(IRepository<FileRecordModel> repo,
+        BatchQueueOperation<FileRecordModel, bool>? operation, CancellationToken cancellationToken)
     {
         try
         {
             var modelFromRepo = await repo.FirstOrDefaultAsync(
-                 new FileRecordSpecification(
-                     operation.Argument.Id,
-                     null,
-                     operation.Argument.Name),
-                 cancellationToken);
+                new FileRecordSpecification(
+                    operation.Argument.Id,
+                    null,
+                    operation.Argument.Name),
+                cancellationToken);
             if (modelFromRepo == null)
             {
                 await repo.AddAsync(operation.Argument);
@@ -114,6 +111,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
                 modelFromRepo.ModifiedDateTime = operation.Argument.ModifiedDateTime;
                 await repo.SaveChangesAsync(cancellationToken);
             }
+
             operation.SetResult(true);
         }
         catch (Exception ex)

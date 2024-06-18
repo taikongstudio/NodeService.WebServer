@@ -7,21 +7,21 @@
 @implements IDisposable
 <GridContent>
     <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
-        <NodeSelector @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple" />
+        <NodeSelector @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple"/>
     </CommonDialog>
-    <Table 
-           Size="TableSize.Small"
-           Loading="@_dataSource.IsLoading"
-           EnableVirtualization="false"
-           TItem="NodeStatusChangeRecordModel"
-           Resizable
-           OnChange="OnTableChange"
-           PageIndex="@_dataSource.PageIndex"
-           PageSize="@_dataSource.PageSize"
-           Total="@_dataSource.TotalCount"
-           OnPageIndexChange="@_dataSource.OnPaginationEvent"
-           OnPageSizeChange="@_dataSource.OnPaginationEvent"
-           DataSource="@_dataSource.ItemsSource">
+    <Table
+        Size="TableSize.Small"
+        Loading="@_dataSource.IsLoading"
+        EnableVirtualization="false"
+        TItem="NodeStatusChangeRecordModel"
+        Resizable
+        OnChange="OnTableChange"
+        PageIndex="@_dataSource.PageIndex"
+        PageSize="@_dataSource.PageSize"
+        Total="@_dataSource.TotalCount"
+        OnPageIndexChange="@_dataSource.OnPaginationEvent"
+        OnPageSizeChange="@_dataSource.OnPaginationEvent"
+        DataSource="@_dataSource.ItemsSource">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
@@ -29,7 +29,7 @@
                 </GridCol>
                 <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords"
-                            OnSearch="@QueryAsync" />
+                            OnSearch="@QueryAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow Wrap Style="min-height:30px">
@@ -102,10 +102,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
@@ -156,6 +156,7 @@
         {
             _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
         }
+
         await _dataSource.QueryAsync();
     }
 
@@ -163,4 +164,5 @@
     {
         _dataSource.Dispose();
     }
+
 }

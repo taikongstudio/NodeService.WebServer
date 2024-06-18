@@ -15,8 +15,8 @@ public class FileRecordQueryService : BackgroundService
     private readonly ILogger<FileRecordQueryService> _logger;
 
     private readonly BatchQueue<
-        BatchQueueOperation<FileRecordBatchQueryParameters,
-            ListQueryResult<FileRecordModel>>>
+            BatchQueueOperation<FileRecordBatchQueryParameters,
+                ListQueryResult<FileRecordModel>>>
         _queryBatchQueue;
 
     private readonly ApplicationRepositoryFactory<FileRecordModel> _repositoryFactory;
@@ -38,50 +38,36 @@ public class FileRecordQueryService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(cancellationToken))
-        {
-
             try
             {
                 using var repo = _repositoryFactory.CreateRepository();
                 foreach (var argumentGroup in arrayPoolCollection
-                    .Where(static x => x.Kind == BatchQueueOperationKind.Query)
-                    .GroupBy(x => x.Argument))
+                             .Where(static x => x.Kind == BatchQueueOperationKind.Query)
+                             .GroupBy(x => x.Argument))
                 {
                     var argument = argumentGroup.Key;
                     try
                     {
                         var queryResult = await QueryAsync(repo, argument);
 
-                        foreach (var op in argumentGroup)
-                        {
-                            op.SetResult(queryResult);
-                        }
+                        foreach (var op in argumentGroup) op.SetResult(queryResult);
                     }
                     catch (Exception ex)
                     {
-                        foreach (var op in argumentGroup)
-                        {
-                            op.SetException(ex);
-                        }
+                        foreach (var op in argumentGroup) op.SetException(ex);
                         _exceptionCounter.AddOrUpdate(ex);
                         _logger.LogError(ex.ToString());
                     }
-
                 }
             }
             catch (Exception ex)
             {
                 _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
-
             }
             finally
             {
-
             }
-
-
-        }
     }
 
     private async Task<ListQueryResult<FileRecordModel>> QueryAsync(
@@ -93,12 +79,14 @@ public class FileRecordQueryService : BackgroundService
         {
             var queryParameters = argument.QueryParameters;
             queryResult = await repo.PaginationQueryAsync(
-            new FileRecordSpecification(
-            queryParameters.Category,
-            queryParameters.State,
-   DataFilterCollection<string>.Includes(queryParameters.NodeIdList),
-            DataFilterCollection<string>.Includes(string.IsNullOrEmpty(queryParameters.Keywords) ? [] : [queryParameters.Keywords]),
-            queryParameters.SortDescriptions),
+                new FileRecordSpecification(
+                    queryParameters.Category,
+                    queryParameters.State,
+                    DataFilterCollection<string>.Includes(queryParameters.NodeIdList),
+                    DataFilterCollection<string>.Includes(string.IsNullOrEmpty(queryParameters.Keywords)
+                        ? []
+                        : [queryParameters.Keywords]),
+                    queryParameters.SortDescriptions),
                 argument.PaginationInfo);
         }
         catch (Exception ex)
@@ -108,8 +96,8 @@ public class FileRecordQueryService : BackgroundService
         }
         finally
         {
-
         }
+
         return queryResult;
     }
 }

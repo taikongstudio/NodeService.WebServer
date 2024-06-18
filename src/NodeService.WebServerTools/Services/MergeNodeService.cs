@@ -47,60 +47,51 @@ public class MergeNodeService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         while (true)
-        {
             try
             {
                 using var dbContext = _dbContextFactory.CreateDbContext();
-                int pageIndex = 0;
-                int pageSize = 10000;
-                List<FileRecordModel> records = new List<FileRecordModel>();
+                var pageIndex = 0;
+                var pageSize = 10000;
+                List<FileRecordModel> records = new();
                 while (true)
                 {
                     _logger.LogInformation($"Fetch page {pageIndex} ");
-                    var dataList = await dbContext.FileRecordsDbSet.Skip(pageIndex * pageSize).Take(pageSize).ToListAsync();
-                    if (dataList.Count == 0)
-                    {
-                        break;
-                    }
+                    var dataList = await dbContext.FileRecordsDbSet.Skip(pageIndex * pageSize).Take(pageSize)
+                        .ToListAsync();
+                    if (dataList.Count == 0) break;
                     records.AddRange(dataList);
                     pageIndex++;
                 }
+
                 try
                 {
                     var groups = records.GroupBy(x => (x.Id, x.Name)).Where(x => x.Count() > 1).ToArray();
                     foreach (var group in groups)
                     {
                         _logger.LogInformation($"Processing {group.Key.Id} {group.Key.Name} {group.Count()}");
-                        
+
                         foreach (var item in group.OrderByDescending(x => x.EntityVersion).Skip(1))
-                        {
                             try
                             {
-                                int count = await dbContext.FileRecordsDbSet.Where(x => x.Id == item.Id && x.Name == item.Name)
-                 .ExecuteDeleteAsync();
+                                var count = await dbContext.FileRecordsDbSet
+                                    .Where(x => x.Id == item.Id && x.Name == item.Name)
+                                    .ExecuteDeleteAsync();
                                 _logger.LogInformation($"Delete {item.Id} {item.Name} ");
                             }
                             catch (Exception ex)
                             {
                                 _logger.LogError(ex.ToString());
                             }
-
-                        }
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex.ToString());
                 }
-
-
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
             }
-        }
-
-
     }
 }

@@ -1,9 +1,9 @@
 ﻿namespace NodeService.WebServer.Services.VirtualSystem;
+
 using NodeService.Infrastructure.Models;
+
 public class VirtualFileSystemInfoHelper
 {
-
-
     public static VirtualFileSystemObjectInfo FromFtpListItem(FtpListItem ftpListItem)
     {
         return new VirtualFileSystemObjectInfo

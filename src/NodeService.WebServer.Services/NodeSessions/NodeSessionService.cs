@@ -30,7 +30,6 @@ public record class TaskExecutionReportMessage : NodeSessionMessage<TaskExecutio
 
 public record class FileSystemWatchEventReportMessage : NodeSessionMessage<FileSystemWatchEventReport>
 {
-
 }
 
 public class NodeSessionService : INodeSessionService
@@ -135,9 +134,9 @@ public class NodeSessionService : INodeSessionService
     }
 
     public async ValueTask PostTaskExecutionEventAsync(
-    NodeSessionId nodeSessionId,
-    TaskExecutionEventRequest taskExecutionEventRequest,
-    CancellationToken cancellationToken = default)
+        NodeSessionId nodeSessionId,
+        TaskExecutionEventRequest taskExecutionEventRequest,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(taskExecutionEventRequest);
         var subscribeEvent = new SubscribeEvent

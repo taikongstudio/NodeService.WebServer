@@ -84,10 +84,7 @@ public class HeartBeatRequestProducerService : BackgroundService
         foreach (var nodeSessionId in nodeSessionArray)
         {
             if (nodeSessionId.NodeId.IsNullOrEmpty) continue;
-            if (_nodeSessionService.GetNodeStatus(nodeSessionId) != NodeStatus.Online)
-            {
-                continue;
-            }
+            if (_nodeSessionService.GetNodeStatus(nodeSessionId) != NodeStatus.Online) continue;
 
             var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);
             _logger.LogInformation($"Send heart beat to {nodeSessionId}:{nodeName}");

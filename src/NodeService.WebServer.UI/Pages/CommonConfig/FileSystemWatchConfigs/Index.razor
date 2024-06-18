@@ -35,7 +35,7 @@
                 <FormItem Required Label="节点">
                     <NodeSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="_selectedNodes"/>
                 </FormItem>
-                <FormItem Label="启动">
+                <FormItem Label="启用">
                     <Switch @bind-Value="@context.EnableRaisingEvents"/>
                 </FormItem>
                 <FormItem Required Label="路径">
@@ -101,10 +101,10 @@
                             }
 
                             <Tag Class="site-tag-plus" OnClick="ShowTaskDefinitionSelectorDialogAsync">
-                                <Icon Type="@IconType.Outline.Search" />
+                                <Icon Type="@IconType.Outline.Search"/>
                             </Tag>
                             <CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
-                                <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
+                                <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single"/>
                             </CommonDialog>
                             break;
                         case FileSystemWatchEventHandler.AutoSync:
@@ -118,21 +118,24 @@
                             }
 
                             <Tag Class="site-tag-plus" OnClick="ShowFtpUploadConfigSelectorDialogAsync">
-                                <Icon Type="@IconType.Outline.Search" />
+                                <Icon Type="@IconType.Outline.Search"/>
                             </Tag>
                             <CommonDialog @ref="_ftpUploadConfigDialog" Closed="OnFtpConfigSelectorDialogClosed">
-                                <FtpUploadConfigSelector @ref="_ftpUploadConfigSelector" @bind-SelectedItems="@_selectedFtpUploadConfigs" Mode="SelectionMode.Single" />
+                                <FtpUploadConfigSelector @ref="_ftpUploadConfigSelector" @bind-SelectedItems="@_selectedFtpUploadConfigs" Mode="SelectionMode.Single"/>
                             </CommonDialog>
                             break;
                     }
 
 
                 </FormItem>
+                <FormItem Label="压缩阈值" Help="当文件大小大于此阈值时启用压缩">
+                    <AntDesign.InputNumber Style="width:200px" @bind-Value="@context.CompressThreshold" />
+                </FormItem>
                 <FormItem Label="触发阈值">
-                    <AntDesign.InputNumber DefaultValue="100" @bind-Value="@context.TriggerThreshold"/>
+                    <AntDesign.InputNumber Style="width:200px" DefaultValue="100" @bind-Value="@context.TriggerThreshold" />
                 </FormItem>
                 <FormItem Label="最短触发间隔(秒)">
-                    <AntDesign.InputNumber DefaultValue="60" @bind-Value="@context.TimeThreshold"/>
+                    <AntDesign.InputNumber Style="width:200px" DefaultValue="60" @bind-Value="@context.TimeThreshold"/>
                 </FormItem>
             }
         </Form>
@@ -236,7 +239,7 @@
         new() { Label = "最后写入时间", Value = nameof(NotifyFilters.LastWrite), Checked = true },
         new() { Label = "最后访问时间", Value = nameof(NotifyFilters.LastAccess), Checked = true },
         new() { Label = "创建时间", Value = nameof(NotifyFilters.CreationTime), Checked = true },
-        new() { Label = "安全设置", Value = nameof(NotifyFilters.Security), Checked = true },
+        new() { Label = "安全设置", Value = nameof(NotifyFilters.Security), Checked = true }
     };
 
     void CheckAllChanged(bool value)
@@ -259,7 +262,7 @@
         _fileSystemWatchEventHandlers =
         [
             new EnumModel<FileSystemWatchEventHandler>("任务流", FileSystemWatchEventHandler.Taskflow),
-            new EnumModel<FileSystemWatchEventHandler>("自动同步", FileSystemWatchEventHandler.AutoSync),
+            new EnumModel<FileSystemWatchEventHandler>("自动同步", FileSystemWatchEventHandler.AutoSync)
         ];
         _dataSource = new RoutedPaginationDataSource<FileSystemWatchConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,

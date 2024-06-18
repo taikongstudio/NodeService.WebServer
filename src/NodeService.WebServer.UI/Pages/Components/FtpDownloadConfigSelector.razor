@@ -60,10 +60,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()

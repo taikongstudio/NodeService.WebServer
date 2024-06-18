@@ -37,7 +37,7 @@
                 <InputPassword @bind-Value="@context.Password"/>
             </FormItem>
             <FormItem Required Label="默认工作区目录">
-                <Input @bind-Value="@context.DefaultWorkingDirectory" />
+                <Input @bind-Value="@context.DefaultWorkingDirectory"/>
             </FormItem>
             <FormItem Label="读取超时">
                 <AntDesign.InputNumber Style="width:300px" PlaceHolder="请输入超时（毫秒）" @bind-Value="@context.ReadTimeout"/>
@@ -58,7 +58,8 @@
                         TItemValue="int"
                         ValueChanged="OnDataConnectionTypeChanged"
                         LabelName="@nameof(EnumModel<int>.Name)"
-                        ValueName="@nameof(EnumModel<int>.Value)"></Select>
+                        ValueName="@nameof(EnumModel<int>.Value)">
+                </Select>
             </FormItem>
         </Form>
     </Modal>
@@ -163,14 +164,14 @@
         _dataConnectionTypes =
         [
             new EnumModel<int>("AutoActive", 0),
-    new EnumModel<int>("AutoPassive", 1),
-    new EnumModel<int>("PASV", 2),
-    new EnumModel<int>("EPSV", 3),
-    new EnumModel<int>("PORT", 4),
-    new EnumModel<int>("EPRT", 5),
-    new EnumModel<int>("PassiveExtended", 6),
-    new EnumModel<int>("PassiveAllowUnroutable", 7),
-    ];
+            new EnumModel<int>("AutoPassive", 1),
+            new EnumModel<int>("PASV", 2),
+            new EnumModel<int>("EPSV", 3),
+            new EnumModel<int>("PORT", 4),
+            new EnumModel<int>("EPRT", 5),
+            new EnumModel<int>("PassiveExtended", 6),
+            new EnumModel<int>("PassiveAllowUnroutable", 7)
+        ];
         _dataSource = new RoutedPaginationDataSource<FtpConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
             ApiService.QueryFtpConfigurationListAsync,
@@ -182,10 +183,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
@@ -351,4 +352,5 @@
     {
         _editModel.DataConnectionType = dataConnectionType;
     }
+
 }

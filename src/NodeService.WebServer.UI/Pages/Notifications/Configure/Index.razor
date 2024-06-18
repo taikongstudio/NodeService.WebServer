@@ -32,7 +32,8 @@
                         TItemValue="NotificationConfigurationType"
                         ValueChanged="OnSelectedConfigurationTypeChanged"
                         LabelName="@nameof(NotificationConfigurationTypeModel.Name)"
-                        ValueName="@nameof(NotificationConfigurationTypeModel.Type)"></Select>
+                        ValueName="@nameof(NotificationConfigurationTypeModel.Type)">
+                </Select>
             </FormItem>
             @switch (_editModel.ConfigurationType)
             {
@@ -166,10 +167,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
@@ -319,6 +320,7 @@
 
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
+
         await _dataSource.RequestAsync();
     }
 

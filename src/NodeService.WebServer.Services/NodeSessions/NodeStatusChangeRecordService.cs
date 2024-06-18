@@ -10,71 +10,60 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.NodeSessions
+namespace NodeService.WebServer.Services.NodeSessions;
+
+public class NodeStatusChangeRecordService : BackgroundService
 {
-    public class NodeStatusChangeRecordService : BackgroundService
+    private readonly ILogger<NodeStatusChangeRecordService> _logger;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ApplicationRepositoryFactory<NodeStatusChangeRecordModel> _recordRepoFactory;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    private readonly BatchQueue<NodeStatusChangeRecordModel> _recordBatchQueue;
+    private readonly WebServerCounter _webServerCounter;
+
+    public NodeStatusChangeRecordService(
+        ILogger<NodeStatusChangeRecordService> logger,
+        ExceptionCounter exceptionCounter,
+        ApplicationRepositoryFactory<NodeStatusChangeRecordModel> recordRepoFactory,
+        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
+        BatchQueue<NodeStatusChangeRecordModel> recordBatchQueue,
+        WebServerCounter webServerCounter)
     {
-        private readonly ILogger<NodeStatusChangeRecordService> _logger;
-        private readonly ExceptionCounter _exceptionCounter;
-        readonly ApplicationRepositoryFactory<NodeStatusChangeRecordModel> _recordRepoFactory;
-        private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
-        readonly BatchQueue<NodeStatusChangeRecordModel> _recordBatchQueue;
-        private readonly WebServerCounter _webServerCounter;
+        _logger = logger;
+        _exceptionCounter = exceptionCounter;
+        _recordRepoFactory = recordRepoFactory;
+        _nodeInfoRepoFactory = nodeInfoRepoFactory;
+        _recordBatchQueue = recordBatchQueue;
+        _webServerCounter = webServerCounter;
+    }
 
-        public NodeStatusChangeRecordService(
-            ILogger<NodeStatusChangeRecordService> logger,
-            ExceptionCounter exceptionCounter,
-            ApplicationRepositoryFactory<NodeStatusChangeRecordModel> recordRepoFactory,
-            ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
-            BatchQueue<NodeStatusChangeRecordModel> recordBatchQueue,
-            WebServerCounter webServerCounter)
-        {
-            _logger = logger;
-            _exceptionCounter = exceptionCounter;
-            _recordRepoFactory = recordRepoFactory;
-            _nodeInfoRepoFactory = nodeInfoRepoFactory;
-            _recordBatchQueue = recordBatchQueue;
-            _webServerCounter = webServerCounter;
-        }
-
-        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
-        {
-            await foreach (var arrayPoolCollection in _recordBatchQueue.ReceiveAllAsync(cancellationToken))
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    {
+        await foreach (var arrayPoolCollection in _recordBatchQueue.ReceiveAllAsync(cancellationToken))
+            try
             {
-                try
+                using var recordRepo = _recordRepoFactory.CreateRepository();
+                using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+                recordRepo.DbContext.ChangeTracker.AutoDetectChangesEnabled = false;
+                foreach (var recordGroup in arrayPoolCollection.GroupBy(static x => x.NodeId))
                 {
-                    using var recordRepo = _recordRepoFactory.CreateRepository();
-                    using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-                    recordRepo.DbContext.ChangeTracker.AutoDetectChangesEnabled = false;
-                    foreach (var recordGroup in arrayPoolCollection.GroupBy(static x => x.NodeId))
-                    {
-                        var nodeId = recordGroup.Key;
-                        var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId);
-                        foreach (var record in recordGroup)
-                        {
-                            if (nodeInfo != null)
-                            {
-                                record.Name = nodeInfo.Name;
-                            }
-                            else
-                            {
-                                record.Name = "<Unknown>";
-                            }
-                        }
+                    var nodeId = recordGroup.Key;
+                    var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId);
+                    foreach (var record in recordGroup)
+                        if (nodeInfo != null)
+                            record.Name = nodeInfo.Name;
+                        else
+                            record.Name = "<Unknown>";
+                }
 
-                    }
-                    await recordRepo.AddRangeAsync(arrayPoolCollection);
-                }
-                catch (Exception ex)
-                {
-                    _exceptionCounter.AddOrUpdate(ex);
-                }
-                finally
-                {
-
-                }
+                await recordRepo.AddRangeAsync(arrayPoolCollection);
             }
-        }
-
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+            }
+            finally
+            {
+            }
     }
 }

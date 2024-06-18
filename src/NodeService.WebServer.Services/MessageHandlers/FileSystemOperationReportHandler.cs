@@ -6,18 +6,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.MessageHandlers
-{
-    public class FileSystemOperationReportHandler : IMessageHandler
-    {
-        public ValueTask DisposeAsync()
-        {
-            return ValueTask.CompletedTask;
-        }
+namespace NodeService.WebServer.Services.MessageHandlers;
 
-        public ValueTask HandleAsync(NodeSessionId nodeSessionId, HttpContext httpContext, IMessage message)
-        {
-            return ValueTask.CompletedTask;
-        }
+public class FileSystemOperationReportHandler : IMessageHandler
+{
+    public ValueTask DisposeAsync()
+    {
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask HandleAsync(NodeSessionId nodeSessionId, HttpContext httpContext, IMessage message)
+    {
+        return ValueTask.CompletedTask;
     }
 }

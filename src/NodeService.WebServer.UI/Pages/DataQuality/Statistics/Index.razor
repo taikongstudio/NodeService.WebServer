@@ -9,11 +9,10 @@
 @inject ClipboardService ClipboardService
 @implements IDisposable
 <GridContent>
-  
-    <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
-        <NodeSelector @ref="_nodeSelector" @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple" />
-    </CommonDialog>
 
+    <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
+        <NodeSelector @ref="_nodeSelector" @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple"/>
+    </CommonDialog>
 
 
     <Table Size="TableSize.Small"
@@ -34,7 +33,7 @@
                     <Title Level="3">数据质量分析</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow Wrap Style="min-height:30px">
@@ -58,9 +57,9 @@
             <GridRow>
                 <Space Wrap Style="margin-bottom:16px">
                     <SpaceItem>
-                        <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged" />
+                        <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged"/>
                     </SpaceItem>
-@*                     <SpaceItem>
+                    @*                     <SpaceItem>
                         <Select TItem="CategoryModel"
                                 TItemValue="string"
                                 DataSource="@_categories"
@@ -81,12 +80,12 @@
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
-            <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox" />
+            <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox"/>
             <PropertyColumn Title="标志" Width="150px" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="名称" Width="150px" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="创建时间" Width="100px" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
             <PropertyColumn Title="修改时间" Width="100px" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ModifiedDateTime"></PropertyColumn>
-            <PropertyColumn Title="进度"  Property="c => c.Value.Entries">
+            <PropertyColumn Title="进度" Property="c => c.Value.Entries">
                 @if (context.Value.Entries != null)
                 {
                     <Descriptions Bordered Size="small" Column="1">
@@ -96,15 +95,15 @@
 
                                 @if (item.Value == null)
                                 {
-                                    <AntDesign.Progress Style="z-index:0;display:block" Percent=0 ShowInfo="true" Status="ProgressStatus.Exception" />
+                                    <AntDesign.Progress Style="z-index:0;display:block" Percent=0 ShowInfo="true" Status="ProgressStatus.Exception"/>
                                 }
                                 else if (item.Value.Value < 1)
                                 {
-                                    <AntDesign.Progress Style="z-index:0;display:block" Percent=@((double)item.Value.Value*100) Status="ProgressStatus.Normal" ShowInfo="true" />
+                                    <AntDesign.Progress Style="z-index:0;display:block" Percent=@((double)item.Value.Value * 100) Status="ProgressStatus.Normal" ShowInfo="true"/>
                                 }
                                 else if (item.Value.Value == 1)
                                 {
-                                    <AntDesign.Progress Style="z-index:0;display:block" Percent=@((double)item.Value.Value*100) Status="ProgressStatus.Success" ShowInfo="true" />
+                                    <AntDesign.Progress Style="z-index:0;display:block" Percent=@((double)item.Value.Value * 100) Status="ProgressStatus.Success" ShowInfo="true"/>
                                 }
                             </DescriptionsItem>
                         }
@@ -118,7 +117,6 @@
 </GridContent>
 
 @code {
-
 
 
     CommonDialog _nodeSelectorDialog;
@@ -170,10 +168,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
@@ -199,7 +197,6 @@
     }
 
 
-
     async Task QueryNodeStatisticsRecordListAsync()
     {
         try
@@ -219,10 +216,10 @@
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
     }
 
@@ -272,4 +269,5 @@
     {
         _dataSource.Dispose();
     }
+
 }

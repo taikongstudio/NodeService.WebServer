@@ -7,46 +7,46 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <_WebToolingArtifacts Remove="Properties\PublishProfiles\172.27.241.153.pubxml" />
-        <_WebToolingArtifacts Remove="Properties\PublishProfiles\43.163.8.23.pubxml" />
+        <_WebToolingArtifacts Remove="Properties\PublishProfiles\172.27.241.153.pubxml"/>
+        <_WebToolingArtifacts Remove="Properties\PublishProfiles\43.163.8.23.pubxml"/>
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
-        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.5" />
-        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.5" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0"/>
+        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.5"/>
+        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.5"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.5">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.5">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.2" />
+        <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.2"/>
 
-        <PackageReference Include="AntDesign.Charts" Version="0.5.1" />
-        <PackageReference Include="AntDesign.ProLayout" Version="0.19.0" />
+        <PackageReference Include="AntDesign.Charts" Version="0.5.1"/>
+        <PackageReference Include="AntDesign.ProLayout" Version="0.19.0"/>
 
-        <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
-        <PackageReference Include="CommandLineParser" Version="2.9.1" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0"/>
+        <PackageReference Include="CommandLineParser" Version="2.9.1"/>
 
-        <PackageReference Include="Grpc.Net.Client.Web" Version="2.62.0" />
+        <PackageReference Include="Grpc.Net.Client.Web" Version="2.62.0"/>
 
-        <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.8.0-rc.1" />
+        <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.8.0-rc.1"/>
 
-        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.8.1" />
+        <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.8.1"/>
 
 
-        <PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
-        <PackageReference Include="Grpc.AspNetCore.Server" Version="2.62.0" />
-        <PackageReference Include="Grpc.AspNetCore" Version="2.62.0" />
-        <PackageReference Include="Grpc.AspNetCore.Web" Version="2.62.0" />
+        <PackageReference Include="System.Net.Http.Json" Version="8.0.0"/>
+        <PackageReference Include="Grpc.AspNetCore.Server" Version="2.62.0"/>
+        <PackageReference Include="Grpc.AspNetCore" Version="2.62.0"/>
+        <PackageReference Include="Grpc.AspNetCore.Web" Version="2.62.0"/>
 
-        <PackageReference Include="NSwag.AspNetCore" Version="14.0.7" />
-        <PackageReference Include="NLog" Version="5.3.2" />
-        <PackageReference Include="NLog.Extensions.Logging" Version="5.3.11" />
-        <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.11" />
+        <PackageReference Include="NSwag.AspNetCore" Version="14.0.7"/>
+        <PackageReference Include="NLog" Version="5.3.2"/>
+        <PackageReference Include="NLog.Extensions.Logging" Version="5.3.11"/>
+        <PackageReference Include="NLog.Web.AspNetCore" Version="5.3.11"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -56,14 +56,14 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\NodeService.WebServer.Data.Repositories\NodeService.WebServer.Data.Repositories.csproj" />
-        <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj" />
-        <ProjectReference Include="..\NodeService.WebServer.Services\NodeService.WebServer.Services.csproj" />
-        <ProjectReference Include="..\NodeService.WebServer.UI\NodeService.WebServer.UI.csproj" />
+        <ProjectReference Include="..\NodeService.WebServer.Data.Repositories\NodeService.WebServer.Data.Repositories.csproj"/>
+        <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj"/>
+        <ProjectReference Include="..\NodeService.WebServer.Services\NodeService.WebServer.Services.csproj"/>
+        <ProjectReference Include="..\NodeService.WebServer.UI\NodeService.WebServer.UI.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Areas\Identity\Pages\Account\Components\" />
+        <Folder Include="Areas\Identity\Pages\Account\Components\"/>
     </ItemGroup>
 
 </Project>

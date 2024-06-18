@@ -6,30 +6,29 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.Tasks
+namespace NodeService.WebServer.Services.Tasks;
+
+public class JobFactory : IJobFactory
 {
-    public class JobFactory : IJobFactory
+    private readonly IServiceProvider _serviceProvider;
+
+    public JobFactory(IServiceProvider serviceProvider)
     {
-        readonly IServiceProvider _serviceProvider;
+        _serviceProvider = serviceProvider;
+    }
 
-        public JobFactory(IServiceProvider serviceProvider)
-        {
-            _serviceProvider = serviceProvider;
-        }
+    public IJob NewJob(TriggerFiredBundle bundle, IScheduler scheduler)
+    {
+        var job = _serviceProvider.GetService(bundle.JobDetail.JobType) as JobBase;
+        job.Properties = bundle.JobDetail.JobDataMap[nameof(JobBase.Properties)] as IDictionary<string, object?>;
+        job.TriggerSource = (TaskTriggerSource)bundle.JobDetail.JobDataMap[nameof(JobBase.TriggerSource)];
+        job.AsyncDispoable = bundle.JobDetail.JobDataMap[nameof(JobBase.AsyncDispoable)] as IAsyncDisposable;
+        return job;
+    }
 
-        public IJob NewJob(TriggerFiredBundle bundle, IScheduler scheduler)
-        {
-            var job = _serviceProvider.GetService(bundle.JobDetail.JobType) as JobBase;
-            job.Properties = bundle.JobDetail.JobDataMap[nameof(JobBase.Properties)] as IDictionary<string, object?>;
-            job.TriggerSource = (TaskTriggerSource)bundle.JobDetail.JobDataMap[nameof(JobBase.TriggerSource)];
-            job.AsyncDispoable = bundle.JobDetail.JobDataMap[nameof(JobBase.AsyncDispoable)] as IAsyncDisposable;
-            return job;
-        }
-
-        public void ReturnJob(IJob job)
-        {
-            var disposable = job as IDisposable;
-            disposable?.Dispose();
-        }
+    public void ReturnJob(IJob job)
+    {
+        var disposable = job as IDisposable;
+        disposable?.Dispose();
     }
 }

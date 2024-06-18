@@ -26,17 +26,17 @@ public class TaskLogPersistenceService : BackgroundService
         public int PageIndex { get; private set; }
     }
 
-    readonly ExceptionCounter _exceptionCounter;
-    readonly BatchQueue<TaskLogUnit> _taskLogUnitBatchQueue;
-    readonly WebServerCounter _webServerCounter;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly BatchQueue<TaskLogUnit> _taskLogUnitBatchQueue;
+    private readonly WebServerCounter _webServerCounter;
 
-    readonly IMemoryCache _memoryCache;
-    readonly ILogger<TaskLogPersistenceService> _logger;
-    readonly IServiceProvider _serviceProvider;
-    readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
-    readonly Timer _timer;
-    readonly ConcurrentDictionary<int, TaskLogHandler> _taskLogHandlers;
-    IEnumerable<int> _keys = [];
+    private readonly IMemoryCache _memoryCache;
+    private readonly ILogger<TaskLogPersistenceService> _logger;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
+    private readonly Timer _timer;
+    private readonly ConcurrentDictionary<int, TaskLogHandler> _taskLogHandlers;
+    private IEnumerable<int> _keys = [];
 
     public TaskLogPersistenceService(
         IServiceProvider serviceProvider,
@@ -59,7 +59,7 @@ public class TaskLogPersistenceService : BackgroundService
         _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(1));
     }
 
-    void OnTimer(object? state)
+    private void OnTimer(object? state)
     {
         _taskLogUnitBatchQueue.Post(new TaskLogUnit() { Id = null, LogEntries = [] });
     }
@@ -77,47 +77,47 @@ public class TaskLogPersistenceService : BackgroundService
         }
     }
 
-    int GetActiveTaskLogGroupCount(TaskLogHandler taskLogHandler)
+    private int GetActiveTaskLogGroupCount(TaskLogHandler taskLogHandler)
     {
         return taskLogHandler.ActiveTaskLogGroupCount;
     }
 
-    void Stat()
+    private void Stat()
     {
-        _webServerCounter.TaskExecutionReportLogEntriesPageCount = (ulong)_taskLogHandlers.Values.Sum(x => x.TotalPageCount);
-        _webServerCounter.TaskExecutionReportLogGroupConsumeCount = (ulong)_taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
-        _webServerCounter.TaskExecutionReportLogEntriesSavedCount = (ulong)_taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
-        _webServerCounter.TaskExecutionReportLogEntriesSaveMaxTimeSpan = _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
-        _webServerCounter.TaskExecutionReportLogEntriesQueryTimeSpan = _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
-        _webServerCounter.TaskExecutionReportLogEntriesSaveTimeSpan = _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
+        _webServerCounter.TaskExecutionReportLogEntriesPageCount =
+            (ulong)_taskLogHandlers.Values.Sum(x => x.TotalPageCount);
+        _webServerCounter.TaskExecutionReportLogGroupConsumeCount =
+            (ulong)_taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
+        _webServerCounter.TaskExecutionReportLogEntriesSavedCount =
+            (ulong)_taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
+        _webServerCounter.TaskExecutionReportLogEntriesSaveMaxTimeSpan =
+            _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
+        _webServerCounter.TaskExecutionReportLogEntriesQueryTimeSpan =
+            _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
+        _webServerCounter.TaskExecutionReportLogEntriesSaveTimeSpan =
+            _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
         _webServerCounter.TaskExecutionReportLogGroupAvailableCount = (uint)_taskLogUnitBatchQueue.AvailableCount;
     }
 
-    async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogUnit> taskLogUnitGroup, CancellationToken cancellationToken)
+    private async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogUnit> taskLogUnitGroup,
+        CancellationToken cancellationToken)
     {
         var key = taskLogUnitGroup.Key;
         var handler = _taskLogHandlers.GetOrAdd(key, CreateTaskLogHandlerFactory);
         await handler.ProcessAsync(taskLogUnitGroup, cancellationToken);
-
     }
 
-    TaskLogHandler CreateTaskLogHandlerFactory(int id)
+    private TaskLogHandler CreateTaskLogHandlerFactory(int id)
     {
         var taskLogHandler = _serviceProvider.GetService<TaskLogHandler>();
         taskLogHandler.Id = id;
         return taskLogHandler;
     }
 
-    int TaskLogUnitGroupFunc(TaskLogUnit unit)
+    private int TaskLogUnitGroupFunc(TaskLogUnit unit)
     {
-        if (unit.Id == null)
-        {
-            return _keys.ElementAtOrDefault(Random.Shared.Next(0, _taskLogHandlers.Count));
-        }
-        Math.DivRem(unit.Id[0], 10, out int result);
+        if (unit.Id == null) return _keys.ElementAtOrDefault(Random.Shared.Next(0, _taskLogHandlers.Count));
+        Math.DivRem(unit.Id[0], 10, out var result);
         return result;
     }
-
-
-
 }

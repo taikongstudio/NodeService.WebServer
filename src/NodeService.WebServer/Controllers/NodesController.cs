@@ -11,22 +11,22 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class NodesController : Controller
 {
-    readonly ExceptionCounter _exceptionCounter;
-    readonly ILogger<NodesController> _logger;
-    readonly IMemoryCache _memoryCache;
-    readonly INodeSessionService _nodeSessionService;
-    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
-    readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertySnapshotRepoFactory;
-    readonly ApplicationRepositoryFactory<NodeStatusChangeRecordModel> _recordRepoFactory;
-    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
-    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
-    static readonly JsonSerializerOptions _jsonOptions;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly ILogger<NodesController> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    private readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertySnapshotRepoFactory;
+    private readonly ApplicationRepositoryFactory<NodeStatusChangeRecordModel> _recordRepoFactory;
+    private readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
+    private static readonly JsonSerializerOptions _jsonOptions;
 
     static NodesController()
     {
         _jsonOptions = _jsonOptions = new JsonSerializerOptions()
         {
-            PropertyNameCaseInsensitive = true,
+            PropertyNameCaseInsensitive = true
         };
     }
 
@@ -89,15 +89,14 @@ public partial class NodesController : Controller
                 foreach (var nodeInfo in queryResult.Items)
                 {
                     var propertyBag = await propertyBagRepo.GetByIdAsync(nodeInfo.GetPropertyBagId());
-                    if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value) || value is not string json)
-                    {
-                        continue;
-                    }
+                    if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value) ||
+                        value is not string json) continue;
 
                     var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json, _jsonOptions);
                     nodeInfo.Properties = dict;
                 }
             }
+
             apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
@@ -187,6 +186,7 @@ public partial class NodesController : Controller
                     await propertyBagRepo.UpdateAsync(propertyBag);
                 }
             }
+
             if (nodeInfoFromDb == null)
             {
                 nodeInfoFromDb = nodeInfo;
@@ -212,5 +212,4 @@ public partial class NodesController : Controller
 
         return apiResponse;
     }
-
 }

@@ -20,8 +20,8 @@ public class TasksController : Controller
     private readonly INodeSessionService _nodeSessionService;
     private readonly IServiceProvider _serviceProvider;
     private readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
-    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskInstanceRepositoryFactory;
-    readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
+    private readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskInstanceRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
 
     public TasksController(
         IServiceProvider serviceProvider,
@@ -154,7 +154,7 @@ public class TasksController : Controller
             }
             else
             {
-                int totalLogCount = taskInfoLog.ActualSize;
+                var totalLogCount = taskInfoLog.ActualSize;
                 apiResponse.SetTotalCount(totalLogCount);
                 if (totalLogCount > 0)
                 {
@@ -170,26 +170,21 @@ public class TasksController : Controller
 
                         var memoryStream = new MemoryStream();
                         using var streamWriter = new StreamWriter(memoryStream, leaveOpen: true);
-                        int pageIndex = 1;
+                        var pageIndex = 1;
                         while (true)
                         {
-                            var taskLogs = await taskLogRepo.ListAsync(new TaskLogSpecification(taskId, pageIndex, 100));
-                            if (taskLogs.Count == 0)
-                            {
-                                break;
-                            }
+                            var taskLogs =
+                                await taskLogRepo.ListAsync(new TaskLogSpecification(taskId, pageIndex, 100));
+                            if (taskLogs.Count == 0) break;
                             foreach (var taskLog in taskLogs)
                             {
                                 pageIndex++;
                                 foreach (var logEntry in taskLog.LogEntries)
-                                {
-                                    streamWriter.WriteLine($"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
-                                }
+                                    streamWriter.WriteLine(
+                                        $"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
                             }
-                            if (taskLogs.Count < 100)
-                            {
-                                break;
-                            }
+
+                            if (taskLogs.Count < 100) break;
                         }
 
                         await streamWriter.FlushAsync();
@@ -198,7 +193,9 @@ public class TasksController : Controller
                     }
                     else
                     {
-                        var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, queryParameters.PageIndex));
+                        var taskLog =
+                            await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId,
+                                queryParameters.PageIndex));
                         if (taskLog == null)
                         {
                             apiResponse.SetResult([]);
@@ -210,17 +207,12 @@ public class TasksController : Controller
                             apiResponse.SetPageSize(taskLog.PageSize);
                         }
                     }
-
-
                 }
                 else
                 {
                     apiResponse.SetResult([]);
                 }
-
-
             }
-
         }
         catch (Exception ex)
         {

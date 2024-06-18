@@ -24,33 +24,33 @@
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
             <FormItem Label="名称">
-                <Input @bind-Value="@context.Name" />
+                <Input @bind-Value="@context.Name"/>
             </FormItem>
             <FormItem Label="BrokerList">
-                <Input @bind-Value="@context.BrokerList" />
+                <Input @bind-Value="@context.BrokerList"/>
             </FormItem>
             <FormItem Label="主题">
                 <StringEntryTable ItemsSource="@context.Topics"
                                   NameTitle="键"
-                                  ValueTitle="主题" />
+                                  ValueTitle="主题"/>
             </FormItem>
         </Form>
     </Modal>
 
     <Table
 
-           Size="TableSize.Small"
-      
-           EnableVirtualization="false"
-           TItem="KafkaConfigModel"
-           Resizable
-           OnChange="OnTableChange"
-           DataSource="@_dataSource.ItemsSource"
-           PageIndex="@_dataSource.PageIndex"
-           PageSize="@_dataSource.PageSize"
-           Total="@_dataSource.TotalCount"
-           OnPageIndexChange="@_dataSource.OnPaginationEvent"
-           OnPageSizeChange="@_dataSource.OnPaginationEvent">
+        Size="TableSize.Small"
+
+        EnableVirtualization="false"
+        TItem="KafkaConfigModel"
+        Resizable
+        OnChange="OnTableChange"
+        DataSource="@_dataSource.ItemsSource"
+        PageIndex="@_dataSource.PageIndex"
+        PageSize="@_dataSource.PageSize"
+        Total="@_dataSource.TotalCount"
+        OnPageIndexChange="@_dataSource.OnPaginationEvent"
+        OnPageSizeChange="@_dataSource.OnPaginationEvent">
 
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
@@ -132,10 +132,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()

@@ -15,7 +15,10 @@ namespace NodeService.WebServer.Controllers;
 public partial class CommonConfigController : Controller
 {
     private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> _batchQueue;
+
+    private readonly BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>
+        _batchQueue;
+
     private readonly IAsyncQueue<ConfigurationChangedEvent> _eventQueue;
     private readonly ILogger<CommonConfigController> _logger;
     private readonly IMemoryCache _memoryCache;
@@ -34,7 +37,7 @@ public partial class CommonConfigController : Controller
         IAsyncQueue<NotificationMessage> notificationMessageQueue,
         BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> batchQueue,
         IAsyncQueue<ConfigurationChangedEvent> eventQueue
-        )
+    )
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
@@ -60,10 +63,8 @@ public partial class CommonConfigController : Controller
             ListQueryResult<T> result = default;
             var paramters = new CommonConfigBatchQueryParameters(typeof(T), queryParameters);
             var priority = queryParameters.QueryStrategy == QueryStrategy.QueryPreferred
-                ?
-                BatchQueueOperationPriority.High
-                :
-                BatchQueueOperationPriority.Normal;
+                ? BatchQueueOperationPriority.High
+                : BatchQueueOperationPriority.Normal;
             var op = new BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>(
                 paramters,
                 BatchQueueOperationKind.Query,
@@ -71,13 +72,11 @@ public partial class CommonConfigController : Controller
             await _batchQueue.SendAsync(op);
             var queryResult = await op.WaitAsync(cancellationToken);
             if (queryResult.HasValue)
-            {
                 result = new ListQueryResult<T>(
                     queryResult.TotalCount,
                     queryResult.PageSize,
                     queryResult.PageIndex,
                     queryResult.Items.Select(static x => (T)x));
-            }
             if (result.HasValue) apiResponse.SetResult(result);
         }
         catch (Exception ex)
@@ -103,13 +102,11 @@ public partial class CommonConfigController : Controller
             _logger.LogInformation($"{typeof(T)}:{id}");
             ListQueryResult<T> result = default;
             var paramters = new CommonConfigBatchQueryParameters(typeof(T), id);
-            var op = new BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>(paramters, BatchQueueOperationKind.Query);
+            var op = new BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>(paramters,
+                BatchQueueOperationKind.Query);
             await _batchQueue.SendAsync(op);
             var queryResult = await op.WaitAsync(cancellationToken);
-            if (queryResult.HasValue)
-            {
-                apiResponse.SetResult(queryResult.Items.FirstOrDefault() as T);
-            }
+            if (queryResult.HasValue) apiResponse.SetResult(queryResult.Items.FirstOrDefault() as T);
             if (apiResponse.Result != null && func != null) await func.Invoke(apiResponse.Result);
         }
         catch (Exception ex)
@@ -137,7 +134,6 @@ public partial class CommonConfigController : Controller
             _memoryCache.Remove(model.MemoryCacheKey);
             if (repo.LastChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
             if (repo.LastChangesCount > 0)
-            {
                 await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
                     ChangedType = ConfigurationChangedType.Delete,
@@ -146,7 +142,6 @@ public partial class CommonConfigController : Controller
                     Json = model.ToJson<T>(),
                     NodeIdList = []
                 });
-            }
         }
         catch (Exception ex)
         {
@@ -169,7 +164,7 @@ public partial class CommonConfigController : Controller
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
             using var repo = repoFactory.CreateRepository();
             var modelFromDb = await repo.GetByIdAsync(model.Id);
-            ConfigurationChangedType type = ConfigurationChangedType.None;
+            var type = ConfigurationChangedType.None;
             if (modelFromDb == null)
             {
                 model.EntityVersion = Guid.NewGuid().ToByteArray();
@@ -186,7 +181,6 @@ public partial class CommonConfigController : Controller
 
             if (repo.LastChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
             if (repo.LastChangesCount > 0)
-            {
                 await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
                     NodeIdList = model is INodeInfoIdentity nodeInfoIdentity ? nodeInfoIdentity.NodeIdList : [],
@@ -195,7 +189,6 @@ public partial class CommonConfigController : Controller
                     Id = model.Id,
                     Json = modelFromDb.ToJson<T>()
                 });
-            }
         }
         catch (Exception ex)
         {

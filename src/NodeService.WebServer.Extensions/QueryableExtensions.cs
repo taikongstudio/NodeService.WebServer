@@ -7,7 +7,6 @@ namespace NodeService.WebServer.Extensions;
 
 public static class QueryableExtensions
 {
-
     public static IQueryable<T> OrderBy<T>(
         this IQueryable<T> queryable,
         IEnumerable<SortDescription> sortDescriptions,

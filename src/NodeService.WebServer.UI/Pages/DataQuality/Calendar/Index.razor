@@ -95,7 +95,7 @@
             OkButtonProps = new ButtonProps()
             {
                 Disabled = true
-            },
+            }
         };
         _modelRef = _modalService.Info(props);
         return Task.CompletedTask;
@@ -160,10 +160,10 @@
     {
         try
         {
-            PaginationQueryParameters paginationQueryParameters = new PaginationQueryParameters();
-            List<DataQualityStatisticsDefinitionModel> categoryList = new List<DataQualityStatisticsDefinitionModel>();
-            int pageIndex = 1;
-            int pageSize = 20;
+            var paginationQueryParameters = new PaginationQueryParameters();
+            List<DataQualityStatisticsDefinitionModel> categoryList = new();
+            var pageIndex = 1;
+            var pageSize = 20;
             while (true)
             {
                 paginationQueryParameters.PageSize = pageSize;

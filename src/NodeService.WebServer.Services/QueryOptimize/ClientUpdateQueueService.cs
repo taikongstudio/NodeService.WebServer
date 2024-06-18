@@ -12,238 +12,216 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.QueryOptimize
+namespace NodeService.WebServer.Services.QueryOptimize;
+
+public class ClientUpdateQueueService : BackgroundService
 {
-    public class ClientUpdateQueueService : BackgroundService
+    private readonly ILogger<ClientUpdateQueueService> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
+    private readonly ExceptionCounter _exceptionCounter;
+
+    private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>
+        _batchQueue;
+
+    public ClientUpdateQueueService(
+        ILogger<ClientUpdateQueueService> logger,
+        ExceptionCounter exceptionCounter,
+        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
+        ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
+        BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> batchQueue,
+        IMemoryCache memoryCache
+    )
     {
-        readonly ILogger<ClientUpdateQueueService> _logger;
-        readonly IMemoryCache _memoryCache;
-        readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
-        readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
-        readonly ExceptionCounter _exceptionCounter;
-        readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> _batchQueue;
+        _logger = logger;
+        _memoryCache = memoryCache;
+        _nodeInfoRepoFactory = nodeInfoRepoFactory;
+        _clientUpdateRepoFactory = clientUpdateRepoFactory;
+        _exceptionCounter = exceptionCounter;
+        _batchQueue = batchQueue;
+    }
 
-        public ClientUpdateQueueService(
-            ILogger<ClientUpdateQueueService> logger,
-            ExceptionCounter exceptionCounter,
-            ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
-            ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
-            BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> batchQueue,
-            IMemoryCache memoryCache
-            )
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    {
+        _ = Task.Factory.StartNew((state) => ShuffleNodesAsync((CancellationToken)state), cancellationToken,
+            cancellationToken);
+        while (!cancellationToken.IsCancellationRequested)
         {
-            _logger = logger;
-            _memoryCache = memoryCache;
-            _nodeInfoRepoFactory = nodeInfoRepoFactory;
-            _clientUpdateRepoFactory = clientUpdateRepoFactory;
-            _exceptionCounter = exceptionCounter;
-            _batchQueue = batchQueue;
+            await QueueAsync(cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
         }
+    }
 
-        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
-        {
-            _ = Task.Factory.StartNew((state) => ShuffleNodesAsync((CancellationToken)state), cancellationToken, cancellationToken);
-            while (!cancellationToken.IsCancellationRequested)
+    private async Task ShuffleNodesAsync(CancellationToken cancellationToken = default)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                await QueueAsync(cancellationToken);
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-            }
-        }
+                using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+                var nodeList = await nodeInfoRepo.ListAsync(cancellationToken);
+                var nodeArray = nodeList.ToArray();
+                Random.Shared.Shuffle(nodeArray);
+                Random.Shared.Shuffle(nodeArray);
+                Random.Shared.Shuffle(nodeArray);
+                var pageSize = 20;
+                var pageCount = Math.DivRem(nodeList.Count, pageSize, out var result);
+                if (result > 0) pageCount += 1;
+                if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(2));
+                for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
+                {
+                    var items = nodeArray.Skip(pageIndex * pageSize).Take(pageSize);
+                    foreach (var item in items)
+                    {
+                        var key = CreateKey(item.Profile.IpAddress);
+                        _memoryCache.Set(key, true, TimeSpan.FromMinutes(2));
+                    }
 
-        async Task ShuffleNodesAsync(CancellationToken cancellationToken = default)
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                try
-                {
-                    using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-                    var nodeList = await nodeInfoRepo.ListAsync(cancellationToken);
-                    var nodeArray = nodeList.ToArray();
-                    Random.Shared.Shuffle(nodeArray);
-                    Random.Shared.Shuffle(nodeArray);
-                    Random.Shared.Shuffle(nodeArray);
-                    int pageSize = 20;
-                    int pageCount = Math.DivRem(nodeList.Count, pageSize, out var result);
-                    if (result > 0)
-                    {
-                        pageCount += 1;
-                    }
-                    if (Debugger.IsAttached)
-                    {
-                        _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(2));
-                    }
-                    for (int pageIndex = 0; pageIndex < pageCount; pageIndex++)
-                    {
-                        var items = nodeArray.Skip(pageIndex * pageSize).Take(pageSize);
-                        foreach (var item in items)
-                        {
-                            string key = CreateKey(item.Profile.IpAddress);
-                            _memoryCache.Set(key, true, TimeSpan.FromMinutes(2));
-                        }
-                        await Task.Delay(TimeSpan.FromMinutes(2), cancellationToken);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _exceptionCounter.AddOrUpdate(ex);
-                    _logger.LogError(ex.ToString());
-                }
-                finally
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+                    await Task.Delay(TimeSpan.FromMinutes(2), cancellationToken);
                 }
             }
-        }
-
-        private static string CreateKey(string value)
-        {
-            return $"ClientUpdateEnabled:{value}";
-        }
-
-        private async Task QueueAsync(CancellationToken cancellationToken = default)
-        {
-
-
-            await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(cancellationToken))
+            catch (Exception ex)
             {
-                Stopwatch stopwatch = Stopwatch.StartNew();
-                try
-                {
-                    using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-                    foreach (var nameGroup in arrayPoolCollection.GroupBy(static x => x.Argument.Name))
-                    {
-                        var name = nameGroup.Key;
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+            finally
+            {
+                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            }
+    }
 
-                        var key = $"ClientUpdateConfig:{name}";
-                        ClientUpdateConfigModel? clientUpdateConfig = null;
-                        foreach (var op in nameGroup)
+    private static string CreateKey(string value)
+    {
+        return $"ClientUpdateEnabled:{value}";
+    }
+
+    private async Task QueueAsync(CancellationToken cancellationToken = default)
+    {
+        await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(cancellationToken))
+        {
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+                foreach (var nameGroup in arrayPoolCollection.GroupBy(static x => x.Argument.Name))
+                {
+                    var name = nameGroup.Key;
+
+                    var key = $"ClientUpdateConfig:{name}";
+                    ClientUpdateConfigModel? clientUpdateConfig = null;
+                    foreach (var op in nameGroup)
+                        try
                         {
-                            try
+                            var ipAddress = op.Argument.IpAddress;
+                            var updateKey = CreateKey(ipAddress);
+                            if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
                             {
-                                var ipAddress = op.Argument.IpAddress;
-                                var updateKey = CreateKey(ipAddress);
-                                if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
+                                if (clientUpdateConfig == null)
+                                    clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                                clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
+                                op.SetResult(clientUpdateConfig);
+                            }
+                            else
+                            {
+                                var hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
+                                        null,
+                                        op.Argument.IpAddress,
+                                        NodeDeviceType.Computer),
+                                    cancellationToken);
+                                if (!hasNodeInfo)
                                 {
                                     if (clientUpdateConfig == null)
-                                    {
                                         clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                                    }
-                                    clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
                                     op.SetResult(clientUpdateConfig);
                                 }
                                 else
                                 {
-
-                                    var hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
-                                        null,
-                                        op.Argument.IpAddress,
-                                         NodeDeviceType.Computer),
-                                        cancellationToken);
-                                    if (!hasNodeInfo)
-                                    {
-                                        if (clientUpdateConfig == null)
-                                        {
-                                            clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                                        }
-                                        op.SetResult(clientUpdateConfig);
-                                    }
-                                    else
-                                    {
-                                        op.SetResult(null);
-                                    }
+                                    op.SetResult(null);
                                 }
                             }
-                            catch (Exception ex)
-                            {
-                                op.SetException(ex);
-                                _exceptionCounter.AddOrUpdate(ex);
-                                _logger.LogError(ex.ToString());
-                            }
-
                         }
-
-                    }
-
-                }
-                catch (Exception ex)
-                {
-                    _exceptionCounter.AddOrUpdate(ex);
-                    _logger.LogError(ex.ToString());
-                }
-                finally
-                {
-                    stopwatch.Stop();
-                    _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed:{stopwatch.Elapsed}");
+                        catch (Exception ex)
+                        {
+                            op.SetException(ex);
+                            _exceptionCounter.AddOrUpdate(ex);
+                            _logger.LogError(ex.ToString());
+                        }
                 }
             }
-
-        }
-
-        private async Task<ClientUpdateConfigModel?> IsFiltered(ClientUpdateConfigModel? clientUpdateConfig, string ipAddress)
-        {
-            if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null && clientUpdateConfig.DnsFilters.Any())
+            catch (Exception ex)
             {
-                var key = $"ClientUpdateConfig:Filter:{clientUpdateConfig.Id}:{ipAddress}";
-                if (!_memoryCache.TryGetValue<bool>(key, out var value))
-                {
-                    using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+            finally
+            {
+                stopwatch.Stop();
+                _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed:{stopwatch.Elapsed}");
+            }
+        }
+    }
 
-                    var dataFilterType = DataFilterTypes.None;
+    private async Task<ClientUpdateConfigModel?> IsFiltered(ClientUpdateConfigModel? clientUpdateConfig,
+        string ipAddress)
+    {
+        if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null && clientUpdateConfig.DnsFilters.Any())
+        {
+            var key = $"ClientUpdateConfig:Filter:{clientUpdateConfig.Id}:{ipAddress}";
+            if (!_memoryCache.TryGetValue<bool>(key, out var value))
+            {
+                using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
 
-                    if (clientUpdateConfig.DnsFilterType.Equals("include", StringComparison.OrdinalIgnoreCase))
-                        dataFilterType = DataFilterTypes.Include;
-                    else if (clientUpdateConfig.DnsFilterType.Equals("exclude", StringComparison.OrdinalIgnoreCase))
-                        dataFilterType = DataFilterTypes.Exclude;
+                var dataFilterType = DataFilterTypes.None;
 
-                    var nodeList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
-                        AreaTags.Any,
-                        NodeStatus.All,
-                        NodeDeviceType.Computer,
-                        new DataFilterCollection<string>(
+                if (clientUpdateConfig.DnsFilterType.Equals("include", StringComparison.OrdinalIgnoreCase))
+                    dataFilterType = DataFilterTypes.Include;
+                else if (clientUpdateConfig.DnsFilterType.Equals("exclude", StringComparison.OrdinalIgnoreCase))
+                    dataFilterType = DataFilterTypes.Exclude;
+
+                var nodeList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
+                    AreaTags.Any,
+                    NodeStatus.All,
+                    NodeDeviceType.Computer,
+                    new DataFilterCollection<string>(
                         dataFilterType,
                         clientUpdateConfig.DnsFilters.Select(x => x.Value)),
-                        default));
-                    if (nodeList.Count != 0 && nodeList.Any(x => x.Profile.IpAddress == ipAddress))
-                    {
-                        if (dataFilterType == DataFilterTypes.Exclude)
-                        {
-                            clientUpdateConfig = null;
-                        }
-                    }
-                    else
-                    {
-                        clientUpdateConfig = null;
-                    }
-                    value = clientUpdateConfig != null;
-                    _memoryCache.Set(key, value, TimeSpan.FromMinutes(10));
+                    default));
+                if (nodeList.Count != 0 && nodeList.Any(x => x.Profile.IpAddress == ipAddress))
+                {
+                    if (dataFilterType == DataFilterTypes.Exclude) clientUpdateConfig = null;
                 }
-                if (!value)
+                else
                 {
                     clientUpdateConfig = null;
                 }
+
+                value = clientUpdateConfig != null;
+                _memoryCache.Set(key, value, TimeSpan.FromMinutes(10));
             }
 
-            return clientUpdateConfig;
+            if (!value) clientUpdateConfig = null;
         }
 
-        private async Task<ClientUpdateConfigModel?> QueryAsync(string name, string key, string ipAddress)
+        return clientUpdateConfig;
+    }
+
+    private async Task<ClientUpdateConfigModel?> QueryAsync(string name, string key, string ipAddress)
+    {
+        ClientUpdateConfigModel? clientUpdateConfig = null;
+        if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue) || cacheValue == null)
         {
-            ClientUpdateConfigModel? clientUpdateConfig = null;
-            if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue) || cacheValue == null)
-            {
-                using var repo = _clientUpdateRepoFactory.CreateRepository();
+            using var repo = _clientUpdateRepoFactory.CreateRepository();
 
-                cacheValue =
-                    await repo.FirstOrDefaultAsync(
-                        new ClientUpdateConfigSpecification(ClientUpdateStatus.Public, name));
+            cacheValue =
+                await repo.FirstOrDefaultAsync(
+                    new ClientUpdateConfigSpecification(ClientUpdateStatus.Public, name));
 
-                if (cacheValue != null) _memoryCache.Set(key, cacheValue, TimeSpan.FromMinutes(2));
-            }
-
-            if (cacheValue != null) clientUpdateConfig = cacheValue;
-
-            return clientUpdateConfig;
+            if (cacheValue != null) _memoryCache.Set(key, cacheValue, TimeSpan.FromMinutes(2));
         }
 
+        if (cacheValue != null) clientUpdateConfig = cacheValue;
+
+        return clientUpdateConfig;
     }
 }

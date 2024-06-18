@@ -1,5 +1,4 @@
-﻿
-@if (IsEditable)
+﻿@if (IsEditable)
 {
     <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddNewItem" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
     </Button>
@@ -7,14 +6,14 @@
     </Button>
 }
 
-<Table 
-       Context="mappingEntry"
-       TItem="FileLengthFilter"
-       DataSource="@ItemsSource"
-       Size="TableSize.Small"
-       SelectedRows="SelectedItems"
-       SelectedRowsChanged="@OnSelectedItemsChanged"
-       RowKey="x => x.Id">
+<Table
+    Context="mappingEntry"
+    TItem="FileLengthFilter"
+    DataSource="@ItemsSource"
+    Size="TableSize.Small"
+    SelectedRows="SelectedItems"
+    SelectedRowsChanged="@OnSelectedItemsChanged"
+    RowKey="x => x.Id">
     <Selection Key="@mappingEntry.Id" Type="checkbox"/>
     <PropertyColumn Hidden="@IsOperatorHidden" Title="@OperatorTitle" Property="c => c.Operator" Sortable>
         @if (mappingEntry.IsEditing && IsOperatorEditable)
@@ -27,7 +26,7 @@
                         AutoFocus
                         TItemValue="CompareOperator"
                         LabelName="@nameof(EnumModel<CompareOperator>.Name)"
-                        ValueName="@nameof(EnumModel<CompareOperator>.Value)" />
+                        ValueName="@nameof(EnumModel<CompareOperator>.Value)"/>
             }
         }
         else
@@ -40,12 +39,13 @@
         {
             if (mappingEntry.Operator == CompareOperator.WithinRange || mappingEntry.Operator == CompareOperator.OutOfRange)
             {
-                <AntDesign.InputNumber Value="@mappingEntry.Values[0]" OnChange="(double value)=>OnValuesChanged(mappingEntry,[value,mappingEntry.Values[1]])"/>
+                <AntDesign.InputNumber Value="@mappingEntry.Values[0]" OnChange="(double value) => OnValuesChanged(mappingEntry, [value, mappingEntry.Values[1]])"/>
                 <Text>~</text>
-                <AntDesign.InputNumber Value="@mappingEntry.Values[1]" OnChange="(double value)=>OnValuesChanged(mappingEntry,[mappingEntry.Values[0],value])"/>
-            }else
+                <AntDesign.InputNumber Value="@mappingEntry.Values[1]" OnChange="(double value) => OnValuesChanged(mappingEntry, [mappingEntry.Values[0], value])"/>
+            }
+            else
             {
-                <AntDesign.InputNumber Value="@mappingEntry.Values[0]" OnChange="(double value)=>OnValuesChanged(mappingEntry,[value,mappingEntry.Values[0]])" />
+                <AntDesign.InputNumber Value="@mappingEntry.Values[0]" OnChange="(double value) => OnValuesChanged(mappingEntry, [value, mappingEntry.Values[0]])"/>
             }
         }
         else
@@ -71,7 +71,7 @@
                         AutoFocus
                         TItemValue="BinaryLengthUnit"
                         LabelName="@nameof(EnumModel<BinaryLengthUnit>.Name)"
-                        ValueName="@nameof(EnumModel<BinaryLengthUnit>.Value)" />
+                        ValueName="@nameof(EnumModel<BinaryLengthUnit>.Value)"/>
             }
         }
         else
@@ -174,64 +174,66 @@
 
     protected override void OnInitialized()
     {
-        CompareOperatorList = [
+        CompareOperatorList =
+        [
             new EnumModel<CompareOperator>()
             {
-                 Name = "小于",
-                 Value = CompareOperator.LessThan,
+                Name = "小于",
+                Value = CompareOperator.LessThan
             },
             new EnumModel<CompareOperator>()
-                {
-                     Name = "小于等于",
-                     Value = CompareOperator.LessThan,
-                },
+            {
+                Name = "小于等于",
+                Value = CompareOperator.LessThan
+            },
             new EnumModel<CompareOperator>()
-                {
-                     Name = "等于",
-                     Value = CompareOperator.Equals,
-                },
+            {
+                Name = "等于",
+                Value = CompareOperator.Equals
+            },
             new EnumModel<CompareOperator>()
-                {
-                     Name = "大于",
-                     Value = CompareOperator.GreatThan,
-                },
+            {
+                Name = "大于",
+                Value = CompareOperator.GreatThan
+            },
             new EnumModel<CompareOperator>()
-                {
-                     Name = "大于等于",
-                     Value = CompareOperator.GreatThanEqual,
-                },
+            {
+                Name = "大于等于",
+                Value = CompareOperator.GreatThanEqual
+            },
             new EnumModel<CompareOperator>()
-                {
-                     Name = "范围内",
-                     Value = CompareOperator.WithinRange,
-                },
+            {
+                Name = "范围内",
+                Value = CompareOperator.WithinRange
+            },
             new EnumModel<CompareOperator>()
-                {
-                     Name = "范围外",
-                     Value = CompareOperator.OutOfRange,
-                },
+            {
+                Name = "范围外",
+                Value = CompareOperator.OutOfRange
+            }
         ];
-        LengthUnitList = [
+        LengthUnitList =
+        [
             new EnumModel<BinaryLengthUnit>()
-                {
-                     Name = "KB",
-                     Value = BinaryLengthUnit.KB,
-                },
+            {
+                Name = "KB",
+                Value = BinaryLengthUnit.KB
+            },
             new EnumModel<BinaryLengthUnit>()
-                {
-                     Name = "MB",
-                     Value = BinaryLengthUnit.MB,
-                },
+            {
+                Name = "MB",
+                Value = BinaryLengthUnit.MB
+            },
             new EnumModel<BinaryLengthUnit>()
-                {
-                     Name = "GB",
-                     Value = BinaryLengthUnit.GB,
-                },
+            {
+                Name = "GB",
+                Value = BinaryLengthUnit.GB
+            },
             new EnumModel<BinaryLengthUnit>()
-                {
-                     Name = "PB",
-                     Value = BinaryLengthUnit.PB,
-                },
+            {
+                Name = "PB",
+                Value = BinaryLengthUnit.PB
+            }
         ];
         base.OnInitialized();
     }
@@ -241,7 +243,7 @@
         return CompareOperatorList.FirstOrDefault(x => x.Value == op)?.Name ?? op.ToString();
     }
 
-    private string FindLengthUnitName(BinaryLengthUnit  unit)
+    private string FindLengthUnitName(BinaryLengthUnit unit)
     {
         return LengthUnitList.FirstOrDefault(x => x.Value == unit)?.Name ?? unit.ToString();
     }
@@ -284,6 +286,7 @@
         {
             await ValuesChanged.InvokeAsync(e);
         }
+
         if (!e.Handled)
         {
             filter.Values = values;
@@ -297,6 +300,7 @@
         {
             await SelectedOperatorChanged.InvokeAsync(e);
         }
+
         if (!e.Handled)
         {
             filter.Operator = value;
@@ -310,6 +314,7 @@
         {
             await SelectedLengthUnitChanged.InvokeAsync(e);
         }
+
         if (!e.Handled)
         {
             filter.LengthUnit = value;

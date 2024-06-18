@@ -12,19 +12,19 @@ namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskActivationService : BackgroundService
 {
-    readonly ExceptionCounter _exceptionCounter;
-    readonly BatchQueue<FireTaskParameters> _fireTaskBatchQueue;
-    readonly ILogger<TaskActivationService> _logger;
-    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    readonly INodeSessionService _nodeSessionService;
-    readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
-    readonly BatchQueue<TaskCancellationParameters> _taskCancellationQueue;
-    readonly ITaskPenddingContextManager _taskPenddingContextManager;
-    readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
-    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
-    readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
-    readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepositoryFactory;
-    readonly ApplicationRepositoryFactory<TaskTypeDescConfigModel> _taskTypeDescConfigRepositoryFactory;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly BatchQueue<FireTaskParameters> _fireTaskBatchQueue;
+    private readonly ILogger<TaskActivationService> _logger;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
+    private readonly BatchQueue<TaskCancellationParameters> _taskCancellationQueue;
+    private readonly ITaskPenddingContextManager _taskPenddingContextManager;
+    private readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
+    private readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
+    private readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<TaskTypeDescConfigModel> _taskTypeDescConfigRepositoryFactory;
 
     public TaskActivationService(
         ILogger<TaskActivationService> logger,
@@ -56,11 +56,11 @@ public class TaskActivationService : BackgroundService
         _taskCancellationQueue = taskCancellationQueue;
         _taskPenddingContextManager = taskPenddingContextManager;
         PenddingActionBlock = new ActionBlock<TaskPenddingContext>(ProcessPenddingContextAsync,
-        new ExecutionDataflowBlockOptions
-        {
-            EnsureOrdered = true,
-            MaxDegreeOfParallelism = Environment.ProcessorCount / 2
-        });
+            new ExecutionDataflowBlockOptions
+            {
+                EnsureOrdered = true,
+                MaxDegreeOfParallelism = Environment.ProcessorCount / 2
+            });
     }
 
     public Channel<TaskPenddingContext> PenddingContextChannel { get; }
@@ -77,11 +77,9 @@ public class TaskActivationService : BackgroundService
             while (_priorityQueue.Count > 0)
             {
                 while (PenddingActionBlock.InputCount < 128
-                   &&
-                   _priorityQueue.TryDequeue(out var penddingContext, out var _))
-                {
+                       &&
+                       _priorityQueue.TryDequeue(out var penddingContext, out var _))
                     PenddingActionBlock.Post(penddingContext);
-                }
 
                 await Task.Delay(TimeSpan.FromMilliseconds(10), cancellationToken);
             }
@@ -146,8 +144,8 @@ public class TaskActivationService : BackgroundService
         {
             if (ex.CancellationToken == context.CancellationToken)
             {
-
             }
+
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError($"{context.Id}:{ex}");
         }
@@ -196,19 +194,15 @@ public class TaskActivationService : BackgroundService
             foreach (var nodeEntry in taskDefinition.NodeList)
                 try
                 {
-                    if (string.IsNullOrEmpty(nodeEntry.Value))
-                    {
-                        continue;
-                    }
-                    NodeId nodeId = NodeId.Null;
+                    if (string.IsNullOrEmpty(nodeEntry.Value)) continue;
+                    var nodeId = NodeId.Null;
                     foreach (var nodeInfo in nodeInfoList)
-                    {
                         if (nodeInfo.Id == nodeEntry.Value)
                         {
                             nodeId = new NodeId(nodeEntry.Value);
                             break;
                         }
-                    }
+
                     if (nodeId.IsNullOrEmpty) continue;
                     foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
                     {
@@ -222,16 +216,14 @@ public class TaskActivationService : BackgroundService
                         {
                             NodeSessionService = _nodeSessionService,
                             NodeSessionId = nodeSessionId,
-                            TriggerEvent = taskExecutionInstance.ToTriggerEvent(taskDefinition, parameters.EnvironmentVariables),
+                            TriggerEvent =
+                                taskExecutionInstance.ToTriggerEvent(taskDefinition, parameters.EnvironmentVariables),
                             FireParameters = parameters,
                             TaskDefinition = taskDefinition
                         };
-                       
-                        if (_taskPenddingContextManager.AddContext(context))
-                        {
-                            await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
-                        }
 
+                        if (_taskPenddingContextManager.AddContext(context))
+                            await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
                     }
                 }
                 catch (Exception ex)
@@ -340,7 +332,8 @@ public class TaskActivationService : BackgroundService
                         taskDefinitionId,
                         cancellationToken);
 
-                    if (taskDefinitionModel == null || string.IsNullOrEmpty(taskDefinitionModel.JobTypeDescId)) continue;
+                    if (taskDefinitionModel == null || string.IsNullOrEmpty(taskDefinitionModel.JobTypeDescId))
+                        continue;
                     if (taskDefinitionModel.NodeList.Count == 0) continue;
 
 
@@ -378,7 +371,6 @@ public class TaskActivationService : BackgroundService
             }
             finally
             {
-
             }
     }
 }

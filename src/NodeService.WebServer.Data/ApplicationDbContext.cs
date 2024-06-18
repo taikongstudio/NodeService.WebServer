@@ -27,7 +27,7 @@ public partial class ApplicationDbContext : DbContext
                 ProviderType = DatabaseProviderType.MySql;
             else if (extension is SqlServerOptionsExtension)
                 ProviderType = DatabaseProviderType.SqlServer;
-            else if (extension is SqliteOptionsExtension) 
+            else if (extension is SqliteOptionsExtension)
                 ProviderType = DatabaseProviderType.Sqlite;
         }
     }
@@ -85,11 +85,11 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<WindowsTaskConfigModel> WindowsTaskConfigurationDbSet { get; set; }
 
-    public DbSet<NodeStatusChangeRecordModel> NodeStatusChangeRecordDbSet {  get; set; }
+    public DbSet<NodeStatusChangeRecordModel> NodeStatusChangeRecordDbSet { get; set; }
 
     public DbSet<DataQualityStatisticsDefinitionModel> DataQualityStatisticsDefinitionDbSet { get; set; }
 
-    public DbSet<DataQualityNodeStatisticsRecordModel> DataQualityNodeStatisticsReportDbSet {  get; set; }
+    public DbSet<DataQualityNodeStatisticsRecordModel> DataQualityNodeStatisticsReportDbSet { get; set; }
 
     public DbSet<FileSystemWatchConfigModel> FileSystemWatchConfigurationDbSet { get; set; }
 
@@ -134,17 +134,10 @@ public partial class ApplicationDbContext : DbContext
     private static IEnumerable<T> Snapshot<T>(IEnumerable<T> source)
     {
         if (source is List<T>)
-        {
             return source.ToList();
-        }
         else if (source is T[])
-        {
             return source.ToArray();
-        }
-        else if (source is IDictionary dictionary)
-        {
-            return source;
-        }
+        else if (source is IDictionary dictionary) return source;
         return source;
     }
 

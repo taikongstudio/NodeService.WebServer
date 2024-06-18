@@ -4,12 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Models
-{
-    public class CategoryModel
-    {
-        public string Value { get; set; }
+namespace NodeService.WebServer.Models;
 
-        public string Name { get; set; }
-    }
+public class CategoryModel
+{
+    public string Value { get; set; }
+
+    public string Name { get; set; }
 }

@@ -50,7 +50,7 @@
                 </RadioGroup>
             </FormItem>
             <FormItem Label="Dns过滤">
-                <NodeSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="_selectedNodes" />
+                <NodeSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="_selectedNodes"/>
             </FormItem>
         </Form>
     </Modal>
@@ -158,6 +158,7 @@
             {
                 _editModel.DnsFilters = new List<StringEntry>();
             }
+
             _editModel.DnsFilters.Clear();
             _editModel.DnsFilters.AddRange(_selectedNodes.Select(x => new StringEntry(x.Name, x.Id)));
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
@@ -293,10 +294,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     string ConvertFilterType(string filerType)

@@ -5,39 +5,38 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services
+namespace NodeService.WebServer.Services;
+
+public interface ITaskPenddingContextManager
 {
-    public interface ITaskPenddingContextManager
+    bool TryGetContext(string id, out TaskPenddingContext? context);
+
+    bool AddContext(TaskPenddingContext context);
+
+    bool RemoveContext(string id, out TaskPenddingContext? context);
+}
+
+public class TaskPenddingContextManager : ITaskPenddingContextManager
+{
+    private ConcurrentDictionary<string, TaskPenddingContext> _contexts;
+
+    public TaskPenddingContextManager()
     {
-        bool TryGetContext(string id, out TaskPenddingContext? context);
-
-        bool AddContext(TaskPenddingContext context);
-
-        bool RemoveContext(string id, out TaskPenddingContext? context);
+        _contexts = new ConcurrentDictionary<string, TaskPenddingContext>();
     }
 
-    public class TaskPenddingContextManager : ITaskPenddingContextManager
+    public bool AddContext(TaskPenddingContext context)
     {
-        private ConcurrentDictionary<string, TaskPenddingContext> _contexts;
+        return _contexts.TryAdd(context.Id, context);
+    }
 
-        public TaskPenddingContextManager()
-        {
-            _contexts = new ConcurrentDictionary<string, TaskPenddingContext>();
-        }
+    public bool RemoveContext(string id, out TaskPenddingContext? context)
+    {
+        return _contexts.TryRemove(id, out context);
+    }
 
-        public bool AddContext(TaskPenddingContext context)
-        {
-            return _contexts.TryAdd(context.Id, context);
-        }
-
-        public bool RemoveContext(string id, out TaskPenddingContext? context)
-        {
-            return _contexts.TryRemove(id, out context);
-        }
-
-        public bool TryGetContext(string id, out TaskPenddingContext? context)
-        {
-            return _contexts.TryGetValue(id, out context);
-        }
+    public bool TryGetContext(string id, out TaskPenddingContext? context)
+    {
+        return _contexts.TryGetValue(id, out context);
     }
 }

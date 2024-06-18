@@ -26,7 +26,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     public bool IsLoading { get; set; }
 
-    public Func<TElement?,CancellationToken, ValueTask> ItemInitializer { get; set; }
+    public Func<TElement?, CancellationToken, ValueTask> ItemInitializer { get; set; }
 
     public Func<Exception, Task> ExceptionHandler { get; set; }
 
@@ -51,25 +51,21 @@ public class PaginationDataSource<TElement, TQueryParameters>
             IsLoading = true;
             RaiseStateChanged();
             QueryParameters.QueryStrategy = QueryStrategy.QueryPreferred;
-            if (Ready != null)
-            {
-                await Ready();
-
-            }
+            if (Ready != null) await Ready();
             var rsp = await _queryFunc.Invoke(QueryParameters, default);
             if (rsp.ErrorCode != 0)
-            {
                 if (ExceptionHandler != null)
                 {
                     await ExceptionHandler(new Exception(rsp.Message) { HResult = rsp.ErrorCode });
                     return;
                 }
-            }
+
             if (rsp.TotalCount == 0 && TotalCount == 0)
             {
                 await RaiseCompleted();
                 return;
             }
+
             PageSize = rsp.PageSize;
             PageIndex = rsp.PageIndex;
             TotalCount = Math.Max(rsp.TotalCount, rsp.PageSize);
@@ -79,11 +75,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
         }
         catch (Exception ex)
         {
-            if (ExceptionHandler != null)
-            {
-                await ExceptionHandler(ex);
-            }
-
+            if (ExceptionHandler != null) await ExceptionHandler(ex);
         }
         finally
         {
@@ -94,10 +86,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     private async Task RaiseCompleted()
     {
-        if (Completed != null)
-        {
-            await Completed();
-        }
+        if (Completed != null) await Completed();
     }
 
     protected void RaiseStateChanged()

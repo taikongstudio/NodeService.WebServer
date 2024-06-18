@@ -36,7 +36,7 @@
                         DefaultActiveFirstOption
                         TItemValue="string"
                         LabelName="@nameof(StringEntry.Name)"
-                        ValueName="@nameof(StringEntry.Value)" />
+                        ValueName="@nameof(StringEntry.Value)"/>
             </FormItem>
             <FormItem Required Label="主机名称">
                 <Input @bind-Value="@context.Host"/>
@@ -56,19 +56,19 @@
         </Form>
     </Modal>
 
-    <Table 
-           Size="TableSize.Small"
-           Loading="@_dataSource.IsLoading"
-           EnableVirtualization="false"
-           TItem="DatabaseConfigModel"
-           OnChange="OnTableChange"
-           DataSource="@_dataSource.ItemsSource"
-           Resizable
-           PageIndex="@_dataSource.PageIndex"
-           PageSize="@_dataSource.PageSize"
-           Total="@_dataSource.TotalCount"
-           OnPageIndexChange="@_dataSource.OnPaginationEvent"
-           OnPageSizeChange="@_dataSource.OnPaginationEvent">
+    <Table
+        Size="TableSize.Small"
+        Loading="@_dataSource.IsLoading"
+        EnableVirtualization="false"
+        TItem="DatabaseConfigModel"
+        OnChange="OnTableChange"
+        DataSource="@_dataSource.ItemsSource"
+        Resizable
+        PageIndex="@_dataSource.PageIndex"
+        PageSize="@_dataSource.PageSize"
+        Total="@_dataSource.TotalCount"
+        OnPageIndexChange="@_dataSource.OnPaginationEvent"
+        OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
@@ -137,8 +137,8 @@
     {
         _databaseProviders = new List<StringEntry>()
         {
-            new StringEntry("MySql","MySql"),
-            new StringEntry("SqlServer","SqlServer"),
+            new("MySql", "MySql"),
+            new("SqlServer", "SqlServer")
         };
         _dataSource = new RoutedPaginationDataSource<DatabaseConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
@@ -151,10 +151,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()

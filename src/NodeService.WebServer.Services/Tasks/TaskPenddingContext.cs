@@ -69,12 +69,10 @@ public class TaskPenddingContext : IAsyncDisposable
 
             if (queryResult.IsEmpty) return true;
             foreach (var taskExecutionInstance in queryResult.Items)
-            {
                 await NodeSessionService.PostTaskExecutionEventAsync(
                     NodeSessionId,
                     taskExecutionInstance.ToCancelEvent(),
                     CancellationToken);
-            }
 
             await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken);
         }

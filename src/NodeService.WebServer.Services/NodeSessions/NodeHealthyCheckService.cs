@@ -13,25 +13,25 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public class NodeHealthyCheckService : BackgroundService
 {
-    class NodeHealthyCheckItem
+    private class NodeHealthyCheckItem
     {
         public NodeInfoModel Node { get; set; }
 
         public string Message { get; set; }
     }
 
-    readonly ExceptionCounter _exceptionCounter;
-    readonly NodeHealthyCounterDictionary _healthyCounterDict;
-    readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
-    readonly ILogger<NodeHealthyCheckService> _logger;
-    readonly INodeSessionService _nodeSessionService;
-    readonly IAsyncQueue<NotificationMessage> _notificationQueue;
-    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    readonly ApplicationRepositoryFactory<NotificationConfigModel> _notificationRepositoryFactory;
-    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
-    NodeSettings _nodeSettings;
-    NodeHealthyCheckConfiguration _nodeHealthyCheckConfiguration;
-    string _timeDiffWarningMsg;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly NodeHealthyCounterDictionary _healthyCounterDict;
+    private readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
+    private readonly ILogger<NodeHealthyCheckService> _logger;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly IAsyncQueue<NotificationMessage> _notificationQueue;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<NotificationConfigModel> _notificationRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
+    private NodeSettings _nodeSettings;
+    private NodeHealthyCheckConfiguration _nodeHealthyCheckConfiguration;
+    private string _timeDiffWarningMsg;
 
     public NodeHealthyCheckService(
         ILogger<NodeHealthyCheckService> logger,
@@ -64,7 +64,7 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    async Task CheckNodeHealthyAsync(CancellationToken cancellationToken = default)
+    private async Task CheckNodeHealthyAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -74,10 +74,10 @@ public class NodeHealthyCheckService : BackgroundService
             List<NodeHealthyCheckItem> nodeHealthyCheckItemList = [];
             using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
             var nodeInfoList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
-                AreaTags.Any,
-                NodeStatus.All,
-                NodeDeviceType.All,
-                []),
+                    AreaTags.Any,
+                    NodeStatus.All,
+                    NodeDeviceType.All,
+                    []),
                 cancellationToken);
             foreach (var nodeInfo in nodeInfoList)
             {
@@ -104,57 +104,50 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    IEnumerable<NodeHealthyCheckItem> GetNodeHealthyCheckItems(NodeInfoModel nodeInfo)
+    private IEnumerable<NodeHealthyCheckItem> GetNodeHealthyCheckItems(NodeInfoModel nodeInfo)
     {
         if (IsNodeOffline(nodeInfo))
-        {
             yield return new NodeHealthyCheckItem()
             {
                 Node = nodeInfo,
                 Message = "离线"
             };
-        }
         if (ShouldSendTimeDiffWarning(nodeInfo))
-        {
             yield return new NodeHealthyCheckItem()
             {
                 Node = nodeInfo,
                 Message = _timeDiffWarningMsg
             };
-        }
         yield break;
     }
 
-    bool IsNodeOffline(NodeInfoModel nodeInfo)
+    private bool IsNodeOffline(NodeInfoModel nodeInfo)
     {
         return nodeInfo.Status == NodeStatus.Offline
-                              &&
-                              DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc >
-                              TimeSpan.FromMinutes(_nodeHealthyCheckConfiguration.OfflineMinutes);
+               &&
+               DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc >
+               TimeSpan.FromMinutes(_nodeHealthyCheckConfiguration.OfflineMinutes);
     }
 
-    bool ShouldSendTimeDiffWarning(NodeInfoModel nodeInfo)
+    private bool ShouldSendTimeDiffWarning(NodeInfoModel nodeInfo)
     {
-        return Math.Abs((nodeInfo.Profile.ServerUpdateTimeUtc - nodeInfo.Profile.UpdateTime.ToUniversalTime()).TotalSeconds) > _nodeSettings.TimeDiffWarningSeconds;
+        return Math.Abs((nodeInfo.Profile.ServerUpdateTimeUtc - nodeInfo.Profile.UpdateTime.ToUniversalTime())
+            .TotalSeconds) > _nodeSettings.TimeDiffWarningSeconds;
     }
 
 
-    async Task SendNodeHealthyCheckNotificationAsync(
+    private async Task SendNodeHealthyCheckNotificationAsync(
         List<NodeHealthyCheckItem> nodeHealthyCheckItemList,
         CancellationToken cancellationToken = default)
     {
-
         using var repo = _notificationRepositoryFactory.CreateRepository();
 
-        StringBuilder stringBuilder = new StringBuilder();
+        var stringBuilder = new StringBuilder();
         foreach (var nodeHealthyCheckItemGroups in nodeHealthyCheckItemList.GroupBy(static x => x.Node))
-        {
-            foreach (var nodeHealthCheckItem in nodeHealthyCheckItemGroups.OrderBy(static x => x.Node.Profile.ServerUpdateTimeUtc))
-            {
-                stringBuilder.Append($"<tr><td>{nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc}</td><td>{nodeHealthCheckItem.Node.Name}</td><td>{nodeHealthCheckItem.Message}</td></tr>");
-
-            }
-        }
+        foreach (var nodeHealthCheckItem in nodeHealthyCheckItemGroups.OrderBy(static x =>
+                     x.Node.Profile.ServerUpdateTimeUtc))
+            stringBuilder.Append(
+                $"<tr><td>{nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc}</td><td>{nodeHealthCheckItem.Node.Name}</td><td>{nodeHealthCheckItem.Message}</td></tr>");
         var content = _nodeHealthyCheckConfiguration.ContentFormat.Replace("{0}", stringBuilder.ToString());
 
 
@@ -170,7 +163,7 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    bool CanSendNotification(NodeHealthyCounter healthCounter)
+    private bool CanSendNotification(NodeHealthyCounter healthCounter)
     {
         return healthCounter.SentNotificationCount > 0
                && (DateTime.UtcNow - healthCounter.LastSentNotificationDateTimeUtc) /
@@ -179,29 +172,28 @@ public class NodeHealthyCheckService : BackgroundService
                healthCounter.SentNotificationCount + 1;
     }
 
-    async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
+    private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
         using var repo = _propertyBagRepositoryFactory.CreateRepository();
-        var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
+        var propertyBag =
+            await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
         if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value))
-        {
             _nodeSettings = new NodeSettings();
-        }
 
         else
-        {
             _nodeSettings = JsonSerializer.Deserialize<NodeSettings>(value as string);
-        }
 
         _timeDiffWarningMsg = $"服务与节点时间差异大于{_nodeSettings.TimeDiffWarningSeconds}秒";
     }
 
 
-    async Task RefreshNodeConfigurationAsync(CancellationToken cancellationToken = default)
+    private async Task RefreshNodeConfigurationAsync(CancellationToken cancellationToken = default)
     {
         using var propertyBagRepo = _propertyBagRepositoryFactory.CreateRepository();
         using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
-        var propertyBag = await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck), cancellationToken);
+        var propertyBag =
+            await propertyBagRepo.FirstOrDefaultAsync(
+                new PropertyBagSpecification(NotificationSources.NodeHealthyCheck), cancellationToken);
 
         try
         {
@@ -210,14 +202,9 @@ public class NodeHealthyCheckService : BackgroundService
                 !propertyBag.TryGetValue("Value", out var value)
                 || value is not string json
                )
-            {
                 _nodeHealthyCheckConfiguration = new NodeHealthyCheckConfiguration();
-            }
             else
-            {
                 _nodeHealthyCheckConfiguration = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(json);
-            }
-
         }
         catch (Exception ex)
         {
@@ -225,5 +212,4 @@ public class NodeHealthyCheckService : BackgroundService
             _logger.LogError(ex.ToString());
         }
     }
-
 }

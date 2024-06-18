@@ -20,97 +20,232 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 
-namespace NodeService.WebServer.Services.NodeFileSystem
+namespace NodeService.WebServer.Services.NodeFileSystem;
+
+public class NodeFileSystemSyncService : BackgroundService, IProgress<FtpProgress>
 {
-    public class NodeFileSystemSyncService : BackgroundService, IProgress<FtpProgress>
+    private class FormFileUploadContext
     {
+        public FileSystemFileSyncInfo SyncInfo { get; set; }
 
-        class FormFileUploadContext
+        public FileSystemSyncProgress Progress { get; set; }
+
+        public AsyncFtpClient FtpClient { get; set; }
+    }
+
+
+    private class NodeFtpContext : IAsyncDisposable
+    {
+        public NodeInfoModel NodeInfo { get; set; }
+        public FtpConfigModel FtpConfig { get; set; }
+
+        public AsyncFtpClient AsyncFtpClient { get; set; }
+
+        public void Dispose()
         {
-            public FileSystemSyncInfo SyncInfo { get; set; }
-
-            public FileSystemSyncProgress Progress { get; set; }
-
-            public AsyncFtpClient FtpClient { get; set; }
-
-
+            if (AsyncFtpClient != null && !AsyncFtpClient.IsDisposed) AsyncFtpClient.Dispose();
         }
 
-
-        private class NodeFtpContext : IAsyncDisposable
+        public ValueTask DisposeAsync()
         {
-            public NodeInfoModel NodeInfo { get; set; }
-            public FtpConfigModel FtpConfig { get; set; }
+            return ((IAsyncDisposable)AsyncFtpClient).DisposeAsync();
+        }
+    }
 
-            public AsyncFtpClient AsyncFtpClient { get; set; }
 
-            public void Dispose()
+    private readonly ILogger<NodeFileSystemSyncService> _logger;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>> _fileSyncBatchQueue;
+    private readonly ApplicationRepositoryFactory<FtpConfigModel> _ftpConfigRepoFactory;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    private readonly ConcurrentDictionary<string, FileSystemSyncProgress> _progressesDictionary;
+
+    public NodeFileSystemSyncService(
+        ILogger<NodeFileSystemSyncService> logger,
+        ExceptionCounter exceptionCounter,
+        BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>> fileSyncBatchQueue,
+        ApplicationRepositoryFactory<FtpConfigModel> ftpConfigRepoFactory,
+        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory
+    )
+    {
+        _logger = logger;
+        _exceptionCounter = exceptionCounter;
+        _fileSyncBatchQueue = fileSyncBatchQueue;
+        _ftpConfigRepoFactory = ftpConfigRepoFactory;
+        _nodeInfoRepoFactory = nodeInfoRepoFactory;
+        _progressesDictionary = new ConcurrentDictionary<string, FileSystemSyncProgress>();
+    }
+
+    public void Report(FtpProgress ftpProgress)
+    {
+        if (!_progressesDictionary.TryGetValue(ftpProgress.RemotePath, out var fileSystemSyncProgress)) return;
+        fileSystemSyncProgress.Progress = ftpProgress.Progress;
+        fileSystemSyncProgress.Speed = ftpProgress.TransferSpeed;
+        fileSystemSyncProgress.TimeSpan = ftpProgress.ETA;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
+    {
+        await foreach (var arrayPoolCollection in _fileSyncBatchQueue.ReceiveAllAsync(cancellationToken))
+            try
             {
-                if (this.AsyncFtpClient != null && !this.AsyncFtpClient.IsDisposed)
+                using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+                using var ftpConfigRepo = _ftpConfigRepoFactory.CreateRepository();
+                foreach (var batchQueueOperationList in arrayPoolCollection.GroupBy(GroupFunc))
                 {
-                    this.AsyncFtpClient.Dispose();
+                    var (nodeId, ftpConfigId) = batchQueueOperationList.Key;
+                    await ProcessBatchQueueOperationListAsync(
+                        nodeInfoRepo,
+                        ftpConfigRepo,
+                        nodeId,
+                        ftpConfigId,
+                        batchQueueOperationList,
+                        cancellationToken);
                 }
             }
-
-            public ValueTask DisposeAsync()
+            catch (Exception ex)
             {
-                return ((IAsyncDisposable)AsyncFtpClient).DisposeAsync();
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
             }
+    }
+
+    private async ValueTask ProcessBatchQueueOperationListAsync(
+        IRepository<NodeInfoModel> nodeInfoRepo,
+        IRepository<FtpConfigModel> ftpConfigRepo,
+        string nodeId,
+        string ftpConfigId,
+        IEnumerable<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>> batchQueueOperationGroup,
+        CancellationToken cancellationToken = default)
+    {
+        var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
+        if (nodeInfo == null)
+        {
+            await ParallelProcessBatchQueueOperationListAsync(
+                batchQueueOperationGroup,
+                NodeInfoNotFound,
+                null,
+                cancellationToken);
+            return;
         }
 
-
-        readonly ILogger<NodeFileSystemSyncService> _logger;
-        readonly ExceptionCounter _exceptionCounter;
-        readonly BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>> _fileSyncBatchQueue;
-        readonly ApplicationRepositoryFactory<FtpConfigModel> _ftpConfigRepoFactory;
-        readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
-        readonly ConcurrentDictionary<string, FileSystemSyncProgress> _progressesDictionary;
-
-        public NodeFileSystemSyncService(
-            ILogger<NodeFileSystemSyncService> logger,
-            ExceptionCounter exceptionCounter,
-            BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>> fileSyncBatchQueue,
-            ApplicationRepositoryFactory<FtpConfigModel> ftpConfigRepoFactory,
-            ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory
-            )
+        var ftpConfig = await ftpConfigRepo.GetByIdAsync(ftpConfigId, cancellationToken);
+        if (ftpConfig == null)
         {
-            _logger = logger;
-            _exceptionCounter = exceptionCounter;
-            _fileSyncBatchQueue = fileSyncBatchQueue;
-            _ftpConfigRepoFactory = ftpConfigRepoFactory;
-            _nodeInfoRepoFactory = nodeInfoRepoFactory;
-            _progressesDictionary = new ConcurrentDictionary<string, FileSystemSyncProgress>();
+            await ParallelProcessBatchQueueOperationListAsync(
+                batchQueueOperationGroup,
+                FtpConfigNotFound,
+                null,
+                cancellationToken);
+            return;
         }
 
-        public void Report(FtpProgress ftpProgress)
+        await using var nodeFtpContext = new NodeFtpContext()
         {
-            if (!_progressesDictionary.TryGetValue(ftpProgress.RemotePath, out FileSystemSyncProgress? fileSystemSyncProgress))
+            NodeInfo = nodeInfo,
+            FtpConfig = ftpConfig,
+            AsyncFtpClient = CreateFtpClient(ftpConfig)
+        };
+        await ParallelProcessBatchQueueOperationListAsync(
+            batchQueueOperationGroup,
+            ProcessBatchQueueOperationAsync,
+            nodeFtpContext,
+            cancellationToken);
+    }
+
+    private AsyncFtpClient CreateFtpClient(FtpConfigModel ftpConfig)
+    {
+        var ftpClient = new AsyncFtpClient(ftpConfig.Host, ftpConfig.Username, ftpConfig.Password, ftpConfig.Port,
+            new FtpConfig()
             {
-                return;
-            }
-            fileSystemSyncProgress.Progress = ftpProgress.Progress;
+                ConnectTimeout = ftpConfig.ConnectTimeout,
+                ReadTimeout = ftpConfig.ReadTimeout,
+                DataConnectionReadTimeout = ftpConfig.DataConnectionReadTimeout,
+                DataConnectionConnectTimeout = ftpConfig.DataConnectionConnectTimeout,
+                DataConnectionType = (FtpDataConnectionType)ftpConfig.DataConnectionType
+            });
+        return ftpClient;
+    }
+
+    private async ValueTask NodeInfoNotFound(
+        BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse> batchQueueOperation,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var fileSyncResponse = new FileSystemSyncResponse();
+        foreach (var formFile in batchQueueOperation.Argument.FileList)
+        {
+            var progress = new FileSystemSyncProgress()
+            {
+                Directory = batchQueueOperation.Argument.TargetDirectory,
+                FileName = formFile.FileName,
+                NodeId = batchQueueOperation.Argument.NodeId,
+                Status = "Unknown"
+            };
+            fileSyncResponse.Progresses.Add(progress);
         }
 
-        protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
+        fileSyncResponse.ErrorCode = -1;
+        fileSyncResponse.Message = $"Node info not found";
+        batchQueueOperation.SetResult(fileSyncResponse);
+    }
+
+    private async ValueTask FtpConfigNotFound(
+        BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse> batchQueueOperation,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var fileSyncResponse = new FileSystemSyncResponse();
+        foreach (var formFile in batchQueueOperation.Argument.FileList)
         {
-            await foreach (var arrayPoolCollection in _fileSyncBatchQueue.ReceiveAllAsync(cancellationToken))
+            var progress = new FileSystemSyncProgress()
             {
+                Directory = batchQueueOperation.Argument.TargetDirectory,
+                FileName = formFile.FileName,
+                NodeId = batchQueueOperation.Argument.NodeId,
+                Status = "Unknown"
+            };
+            fileSyncResponse.Progresses.Add(progress);
+        }
+
+        fileSyncResponse.ErrorCode = -1;
+        fileSyncResponse.Message = $"Ftp configuration not found";
+        batchQueueOperation.SetResult(fileSyncResponse);
+    }
+
+    private async ValueTask ParallelProcessBatchQueueOperationListAsync(
+        IEnumerable<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>> batchQueueOperationList,
+        Func<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>, CancellationToken, ValueTask> func,
+        object? context,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var batchQueueOperation in batchQueueOperationList) batchQueueOperation.Context = context;
+        await Parallel.ForEachAsync(batchQueueOperationList, new ParallelOptions()
+        {
+            CancellationToken = cancellationToken,
+            MaxDegreeOfParallelism = 4
+        }, func);
+    }
+
+    private async ValueTask ProcessBatchQueueOperationAsync(
+        BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse> batchQueueOperation,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (batchQueueOperation.Context is not NodeFtpContext nodeFtpContext) return;
+            var ftpConfig = nodeFtpContext.FtpConfig;
+            var ftpClient = nodeFtpContext.AsyncFtpClient;
+            await ftpClient.AutoConnect(cancellationToken);
+            var fileSystemSyncResponse = new FileSystemSyncResponse();
+            foreach (var fileSyncInfo in batchQueueOperation.Argument.FileSyncInfoList)
                 try
                 {
-                    using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-                    using var ftpConfigRepo = _ftpConfigRepoFactory.CreateRepository();
-                    foreach (var batchQueueOperationList in arrayPoolCollection.GroupBy(GroupFunc))
-                    {
-                        var (nodeId, ftpConfigId) = batchQueueOperationList.Key;
-                        await ProcessBatchQueueOperationListAsync(
-                            nodeInfoRepo,
-                            ftpConfigRepo,
-                            nodeId,
-                            ftpConfigId,
-                            batchQueueOperationList,
-                            cancellationToken);
-
-                    }
+                    var formFileUploadContext = CreateFormFileUploadContext(batchQueueOperation.Argument, fileSyncInfo);
+                    formFileUploadContext.FtpClient = ftpClient;
+                    fileSystemSyncResponse.Progresses.Add(formFileUploadContext.Progress);
+                    await ProcessFormFileUploadContextAsync(formFileUploadContext, cancellationToken);
+                    await FinializeFormFileUploadContextAsync(formFileUploadContext, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -118,216 +253,84 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                     _logger.LogError(ex.ToString());
                 }
 
-            }
+            batchQueueOperation.SetResult(fileSystemSyncResponse);
         }
-
-        private async ValueTask ProcessBatchQueueOperationListAsync(
-            IRepository<NodeInfoModel> nodeInfoRepo,
-            IRepository<FtpConfigModel> ftpConfigRepo,
-            string nodeId,
-            string ftpConfigId,
-            IEnumerable<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>> batchQueueOperationGroup,
-            CancellationToken cancellationToken = default)
+        catch (Exception ex)
         {
-            var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
-            if (nodeInfo == null)
-            {
-                await ParallelProcessBatchQueueOperationListAsync(
-                    batchQueueOperationGroup,
-                    NodeInfoNotFound,
-                    null,
-                    cancellationToken);
-                return;
-            }
-            var ftpConfig = await ftpConfigRepo.GetByIdAsync(ftpConfigId, cancellationToken);
-            if (ftpConfig == null)
-            {
-                await ParallelProcessBatchQueueOperationListAsync(
-                    batchQueueOperationGroup,
-                    FtpConfigNotFound,
-                    null,
-                    cancellationToken);
-                return;
-            }
+            _logger.LogError(ex.ToString());
+        }
+    }
 
-            await using var nodeFtpContext = new NodeFtpContext()
-            {
-                NodeInfo = nodeInfo,
-                FtpConfig = ftpConfig,
-                AsyncFtpClient = CreateFtpClient(ftpConfig)
-            };
-            await ParallelProcessBatchQueueOperationListAsync(
-                batchQueueOperationGroup,
-                ProcessBatchQueueOperationAsync,
-                nodeFtpContext,
+    private FormFileUploadContext CreateFormFileUploadContext(FileSystemSyncRequest request,
+        FileSystemFileSyncInfo info)
+    {
+        var fileSystemSyncProgress = new FileSystemSyncProgress()
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = info.FileName,
+            ConfigurationId = request.FileSystemWatchConfigurationId,
+            NodeId = request.NodeId,
+            Directory = request.TargetDirectory,
+            FileName = info.FileName,
+            Status = "Unknown"
+        };
+
+        var context = new FormFileUploadContext()
+        {
+            Progress = fileSystemSyncProgress,
+            SyncInfo = info
+        };
+
+        return context;
+    }
+
+    private ValueTask FinializeFormFileUploadContextAsync(
+        FormFileUploadContext formFileUploadContext,
+        CancellationToken cancellationToken = default)
+    {
+        return ValueTask.CompletedTask;
+    }
+
+    private async ValueTask ProcessFormFileUploadContextAsync(
+        FormFileUploadContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _progressesDictionary.TryAdd(context.SyncInfo.TargetFilePath, context.Progress);
+            context.Progress.BeginUtc = DateTime.UtcNow;
+            var ftpStatus = await context.FtpClient.UploadStream(
+                context.SyncInfo.Stream,
+                context.SyncInfo.TargetFilePath,
+                FtpRemoteExists.Overwrite,
+                true,
+                this,
                 cancellationToken);
+            context.Progress.Status = ftpStatus.ToString();
         }
-
-        AsyncFtpClient CreateFtpClient(FtpConfigModel ftpConfig)
+        catch (Exception ex)
         {
-            var ftpClient = new AsyncFtpClient(ftpConfig.Host, ftpConfig.Username, ftpConfig.Password, ftpConfig.Port,
-                                        new FtpConfig()
-                                        {
-                                            ConnectTimeout = ftpConfig.ConnectTimeout,
-                                            ReadTimeout = ftpConfig.ReadTimeout,
-                                            DataConnectionReadTimeout = ftpConfig.DataConnectionReadTimeout,
-                                            DataConnectionConnectTimeout = ftpConfig.DataConnectionConnectTimeout,
-                                            DataConnectionType = (FtpDataConnectionType)ftpConfig.DataConnectionType,
-                                        });
-            return ftpClient;
+            context.Progress.ErrorCode = ex.HResult;
+            context.Progress.Message = ex.Message;
+            context.Progress.Message = "Fault";
         }
-
-        async ValueTask NodeInfoNotFound(
-            BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse> batchQueueOperation,
-            CancellationToken cancellationToken = default
-            )
+        finally
         {
-            var fileSyncResponse = new FileSystemSyncResponse();
-            foreach (var formFile in batchQueueOperation.Argument.Files)
+            context.Progress.EndUtc = DateTime.UtcNow;
+            if (context.SyncInfo.IsCompressed && context.SyncInfo.Stream is MemoryStream memoryStream)
             {
-                var progress = new FileSystemSyncProgress()
-                {
-                    Directory = batchQueueOperation.Argument.TargetDirectory,
-                    FileName = formFile.FileName,
-                    NodeId = batchQueueOperation.Argument.NodeId,
-                    Status = "Unknown",
-
-                };
-                fileSyncResponse.Progresses.Add(progress);
-            }
-            fileSyncResponse.ErrorCode = -1;
-            fileSyncResponse.Message = $"Node info not found";
-            batchQueueOperation.SetResult(fileSyncResponse);
-        }
-
-        async ValueTask FtpConfigNotFound(
-            BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse> batchQueueOperation,
-            CancellationToken cancellationToken = default
-            )
-        {
-            var fileSyncResponse = new FileSystemSyncResponse();
-            foreach (var formFile in batchQueueOperation.Argument.Files)
-            {
-                var progress = new FileSystemSyncProgress()
-                {
-                    Directory = batchQueueOperation.Argument.TargetDirectory,
-                    FileName = formFile.FileName,
-                    NodeId = batchQueueOperation.Argument.NodeId,
-                    Status = "Unknown",
-                };
-                fileSyncResponse.Progresses.Add(progress);
-            }
-            fileSyncResponse.ErrorCode = -1;
-            fileSyncResponse.Message = $"Ftp configuration not found";
-            batchQueueOperation.SetResult(fileSyncResponse);
-        }
-
-        async ValueTask ParallelProcessBatchQueueOperationListAsync(
-            IEnumerable<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>> batchQueueOperationList,
-            Func<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>, CancellationToken, ValueTask> func,
-            object? context,
-            CancellationToken cancellationToken = default)
-        {
-            foreach (var batchQueueOperation in batchQueueOperationList)
-            {
-                batchQueueOperation.Context = context;
-            }
-            await Parallel.ForEachAsync(batchQueueOperationList, new ParallelOptions()
-            {
-                CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = 4,
-            }, func);
-        }
-
-        async ValueTask ProcessBatchQueueOperationAsync(
-            BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse> batchQueueOperation,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                if (batchQueueOperation.Context is not NodeFtpContext nodeFtpContext)
-                {
-                    return;
-                }
-                var ftpConfig = nodeFtpContext.FtpConfig;
-                var ftpClient = nodeFtpContext.AsyncFtpClient;
-                await ftpClient.AutoConnect(cancellationToken);
-                var fileSyncResponse = new FileSystemSyncResponse();
-                var directory = batchQueueOperation.Argument.TargetDirectory;
-                var nodeId = batchQueueOperation.Argument.NodeId;
-
-                foreach (var formFile in batchQueueOperation.Argument.Files)
-                {
-                    var context = await CreateContextAsync(nodeId, directory, formFile);
-                    context.FtpClient = ftpClient;
-                    fileSyncResponse.Progresses.Add(context.Progress);
-                    await ProcessFileAsync(context, cancellationToken);
-                }
-                batchQueueOperation.SetResult(fileSyncResponse);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.ToString());
+                var array = memoryStream.GetBuffer();
+                ArrayPool<byte>.Shared.Return(array, true);
             }
 
+            if (context.SyncInfo.TargetFilePath != null)
+                _progressesDictionary.TryRemove(context.SyncInfo.TargetFilePath, out _);
         }
+    }
 
-        async Task<FormFileUploadContext> CreateContextAsync(string nodeId, string directory, IFormFile formFile)
-        {
-
-            var fileSystemSyncProgress = new FileSystemSyncProgress();
-            var fileSystemSyncInfo = await FileSystemSyncInfo.FromFormFileAsync(formFile);
-            var formFileUploadContext = new FormFileUploadContext()
-            {
-                Progress = fileSystemSyncProgress,
-                SyncInfo = fileSystemSyncInfo
-            };
-
-            fileSystemSyncProgress.Directory = directory;
-            fileSystemSyncProgress.FileName = fileSystemSyncInfo.FileName;
-            fileSystemSyncProgress.NodeId = nodeId;
-            fileSystemSyncProgress.Status = "Unknown";
-            return formFileUploadContext;
-        }
-
-        async ValueTask ProcessFileAsync(
-            FormFileUploadContext context,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                _progressesDictionary.TryAdd(context.SyncInfo.TargetFilePath, context.Progress);
-                var ftpStatus = await context.FtpClient.UploadStream(
-                    context.SyncInfo.Stream,
-                    context.SyncInfo.TargetFilePath,
-                    FtpRemoteExists.Overwrite,
-                    true,
-                    this,
-                    cancellationToken);
-                context.Progress.Status = ftpStatus.ToString();
-            }
-            catch (Exception ex)
-            {
-                context.Progress.ErrorCode = ex.HResult;
-                context.Progress.Message = ex.Message;
-            }
-            finally
-            {
-                if (context.SyncInfo.IsCompressed && context.SyncInfo.Stream is MemoryStream memoryStream)
-                {
-                    var bytes = memoryStream.GetBuffer();
-                    ArrayPool<byte>.Shared.Return(bytes, true);
-                }
-                if (context.SyncInfo.TargetFilePath != null)
-                {
-                    _progressesDictionary.TryRemove(context.SyncInfo.TargetFilePath, out _);
-                }
-            }
-        }
-
-        (string NodeId, string FtpConfigId) GroupFunc(BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse> batchQueueOperation)
-        {
-            return (batchQueueOperation.Argument.NodeId, batchQueueOperation.Argument.FtpConfigId);
-        }
+    private (string NodeId, string FtpConfigId) GroupFunc(
+        BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse> batchQueueOperation)
+    {
+        return (batchQueueOperation.Argument.NodeId, batchQueueOperation.Argument.FtpConfigId);
     }
 }

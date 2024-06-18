@@ -15,7 +15,7 @@
     <Template>
         @if (DataContext != null)
         {
-           <Form Model="@DataContext"
+            <Form Model="@DataContext"
                   LabelColSpan="8"
                   Layout="@FormLayout.Vertical"
                   Loading="@_loading"
@@ -32,21 +32,21 @@
                     </Button>
                 </FormItem>
 
-                 <FormItem Required Label="文件哈希值">
+                <FormItem Required Label="文件哈希值">
                     <Input @bind-Value="@DataContext.FileHashValue" Placeholder="请输入新Hash"
-                           TValue="string"></Input>
+                           TValue="string">
+                    </Input>
                 </FormItem>
                 <FormItem Label="压缩后文件大小">
-                    <AntDesign.InputNumber Style="width:250px" @bind-Value="@DataContext.Size" Placeholder="请输入大小" TValue="long" />
+                    <AntDesign.InputNumber Style="width:250px" @bind-Value="@DataContext.Size" Placeholder="请输入大小" TValue="long"/>
                 </FormItem>
                 <FormItem Required Label="压缩后文件哈希">
-                    <Input @bind-Value="@DataContext.CompressedFileHashValue" Placeholder="请输入压缩后Hash" TValue="string" />
+                    <Input @bind-Value="@DataContext.CompressedFileHashValue" Placeholder="请输入压缩后Hash" TValue="string"/>
                 </FormItem>
                 <FormItem Label="属性">
-                    <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_jsonCodeEditor" OnDidInit="InitAsync" CssClass="JsonCodeEditor" ConstructionOptions="BuildJsonEditorConstructionOptions" />
+                    <BlazorMonaco.Editor.StandaloneCodeEditor @ref="@_jsonCodeEditor" OnDidInit="InitAsync" CssClass="JsonCodeEditor" ConstructionOptions="BuildJsonEditorConstructionOptions"/>
 
                 </FormItem>
-
 
 
             </Form>
@@ -76,21 +76,20 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                    {
-                        Message = "错误提示",
-                        Description = rsp.Message
-                    });
+                {
+                    Message = "错误提示",
+                    Description = rsp.Message
+                });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
-
     }
 
     Task OnFinishFailed(EditContext editContext)
@@ -104,6 +103,7 @@
         {
             await Closed.InvokeAsync();
         }
+
         _jsonCodeEditor?.Dispose();
         StateHasChanged();
     }
@@ -119,9 +119,10 @@
     StandaloneEditorConstructionOptions BuildJsonEditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
-            {
-                AutomaticLayout = true,
-                Language = "json",
-            };
+        {
+            AutomaticLayout = true,
+            Language = "json"
+        };
     }
+
 }

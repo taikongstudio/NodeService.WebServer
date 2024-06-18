@@ -5,8 +5,7 @@ namespace NodeService.WebServer.Data.Repositories.Specifications;
 
 public class NodeInfoSpecification : Specification<NodeInfoModel>
 {
-
-    static string PathSelector(string name)
+    private static string PathSelector(string name)
     {
         return name switch
         {
@@ -21,10 +20,7 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         NodeDeviceType deviceType)
     {
         Query.AsSplitQuery();
-        if (deviceType != NodeDeviceType.All)
-        {
-            Query.Where(x => x.DeviceType == deviceType);
-        }
+        if (deviceType != NodeDeviceType.All) Query.Where(x => x.DeviceType == deviceType);
         Query.Where(x => !x.Deleted);
         Query.Where(x => x.Name == name || x.Profile.IpAddress == ipAddress);
         Query.OrderByDescending(x => x.Profile.ServerUpdateTimeUtc);
@@ -37,10 +33,7 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         IEnumerable<SortDescription>? sortDescriptions)
     {
         Query.AsSplitQuery();
-        if (deviceType != NodeDeviceType.All)
-        {
-            Query.Where(x => x.DeviceType == deviceType);
-        }
+        if (deviceType != NodeDeviceType.All) Query.Where(x => x.DeviceType == deviceType);
         Query.Where(x => !x.Deleted);
         if (!string.IsNullOrEmpty(areaTag) && areaTag != AreaTags.Any)
             Query.Where(x => x.Profile.FactoryName == areaTag);
@@ -67,22 +60,18 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         if (!string.IsNullOrEmpty(keywords))
         {
             if (!searchProfileProperties)
-            {
                 Query.Where(x =>
                     x.Name.Contains(keywords));
-            }
             else
-            {
                 Query.Where(x =>
                     x.Name.Contains(keywords) ||
-                    x.Profile != null && (
-                  (x.Profile.IpAddress != null && x.Profile.IpAddress.Contains(keywords)) ||
-                  (x.Profile.ClientVersion != null && x.Profile.ClientVersion.Contains(keywords)) ||
-                  (x.Profile.IpAddress != null && x.Profile.IpAddress.Contains(keywords)) ||
-                  (x.Profile.Usages != null && x.Profile.Usages.Contains(keywords)) ||
-                  (x.Profile.Remarks != null && x.Profile.Remarks.Contains(keywords)))
-                    );
-            }
+                    (x.Profile != null && (
+                        (x.Profile.IpAddress != null && x.Profile.IpAddress.Contains(keywords)) ||
+                        (x.Profile.ClientVersion != null && x.Profile.ClientVersion.Contains(keywords)) ||
+                        (x.Profile.IpAddress != null && x.Profile.IpAddress.Contains(keywords)) ||
+                        (x.Profile.Usages != null && x.Profile.Usages.Contains(keywords)) ||
+                        (x.Profile.Remarks != null && x.Profile.Remarks.Contains(keywords))))
+                );
         }
     }
 

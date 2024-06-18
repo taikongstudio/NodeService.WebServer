@@ -71,7 +71,8 @@ public class NodeServiceImpl : NodeServiceBase
         if (nodeInfo == null)
         {
             nodeInfo = NodeInfoModel.Create(nodeId, nodeName, NodeDeviceType.Computer);
-            var nodeProfile = await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileSpecification(nodeName), cancellationToken);
+            var nodeProfile =
+                await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileSpecification(nodeName), cancellationToken);
             if (nodeProfile != null)
             {
                 var oldNodeInfo = await nodeInfoRepo.GetByIdAsync(nodeProfile.NodeInfoId, cancellationToken);
@@ -79,6 +80,7 @@ public class NodeServiceImpl : NodeServiceBase
                 nodeProfile.NodeInfoId = nodeId;
                 nodeInfo.ProfileId = nodeProfile.Id;
             }
+
             nodeInfo.Status = NodeStatus.Online;
             await nodeInfoRepo.AddAsync(nodeInfo, cancellationToken);
         }
@@ -137,8 +139,9 @@ public class NodeServiceImpl : NodeServiceBase
     {
         using var fileSystemWatchConfigRepo = _fileSystemWatchConfigRepoFactory.CreateRepository();
         var fileSystemWatchCOnfigList = await fileSystemWatchConfigRepo.ListAsync(context.CancellationToken);
-        foreach (var configuration in fileSystemWatchCOnfigList.Where(x => x.EnableRaisingEvents && x.NodeList != null && x.NodeList.Any(x => x.Value == nodeSessionId.NodeId.Value)))
-        {
+        foreach (var configuration in fileSystemWatchCOnfigList.Where(x =>
+                     x.EnableRaisingEvents && x.NodeList != null &&
+                     x.NodeList.Any(x => x.Value == nodeSessionId.NodeId.Value)))
             await _notificationConfigChangedQueue.EnqueueAsync(new ConfigurationChangedEvent()
             {
                 NodeIdList = [nodeSessionId.NodeId.Value],
@@ -147,7 +150,6 @@ public class NodeServiceImpl : NodeServiceBase
                 Id = configuration.Id,
                 Json = configuration.ToJson<FileSystemWatchConfigModel>()
             });
-        }
     }
 
     private async Task DispatchSubscribeEvents(
@@ -210,7 +212,8 @@ public class NodeServiceImpl : NodeServiceBase
         return new Empty();
     }
 
-    public override async Task<Empty> SendFileSystemBulkOperationReport(FileSystemBulkOperationReport request, ServerCallContext context)
+    public override async Task<Empty> SendFileSystemBulkOperationReport(FileSystemBulkOperationReport request,
+        ServerCallContext context)
     {
         var httpContext = context.GetHttpContext();
         var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
@@ -254,7 +257,6 @@ public class NodeServiceImpl : NodeServiceBase
                 var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
                 await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(report, context.CancellationToken);
             }
-
         }
         catch (Exception ex)
         {
@@ -265,7 +267,8 @@ public class NodeServiceImpl : NodeServiceBase
         return new Empty();
     }
 
-    public override async Task<Empty> SendFileSystemWatchEventReport(IAsyncStreamReader<FileSystemWatchEventReport> requestStream, ServerCallContext context)
+    public override async Task<Empty> SendFileSystemWatchEventReport(
+        IAsyncStreamReader<FileSystemWatchEventReport> requestStream, ServerCallContext context)
     {
         try
         {
@@ -273,14 +276,11 @@ public class NodeServiceImpl : NodeServiceBase
             var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
             var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
             await foreach (var report in requestStream.ReadAllAsync(context.CancellationToken))
-            {
                 await _fileSystemWatchEventBatchQueue.SendAsync(new FileSystemWatchEventReportMessage()
                 {
                     NodeSessionId = nodeSessionId,
                     Message = report
                 }, context.CancellationToken);
-            }
-
         }
         catch (Exception ex)
         {

@@ -13,18 +13,13 @@ public class CommonConfigSpecification<T> : Specification<T> where T : ModelBase
     }
 
     public CommonConfigSpecification(
-    DataFilterCollection<string> idFilters)
+        DataFilterCollection<string> idFilters)
     {
         if (idFilters.HasValue)
         {
             if (idFilters.FilterType == DataFilterTypes.Include)
-            {
                 Query.Where(x => idFilters.Items.Contains(x.Id));
-            }
-            else if (idFilters.FilterType == DataFilterTypes.Exclude)
-            {
-                Query.Where(x => !idFilters.Items.Contains(x.Id));
-            }
+            else if (idFilters.FilterType == DataFilterTypes.Exclude) Query.Where(x => !idFilters.Items.Contains(x.Id));
         }
     }
 }

@@ -1,32 +1,31 @@
 ﻿@using System.Net.NetworkInformation
 <FormItem Label="IP地址">
-    <Input @bind-Value="@Settings.IpAddress" />
+    <Input @bind-Value="@Settings.IpAddress"/>
 </FormItem>
 
 <FormItem Label="端口">
-    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.Port" />
+    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.Port"/>
 </FormItem>
 
 <FormItem Label="Ping超时（秒）">
-    <AntDesign.InputNumber Min="1"  @bind-Value="@Settings.PingTimeOutSeconds" />
+    <AntDesign.InputNumber Min="1" @bind-Value="@Settings.PingTimeOutSeconds"/>
 </FormItem>
 
 <FormItem>
     <Button OnClick="PingAsync">测试</Button>
 </FormItem>
-    @if (_loading)
-    {
-        <Icon Type="loading" Theme="outline" />
-    }
+@if (_loading)
+{
+    <Icon Type="loading" Theme="outline"/>
+}
 @if (_showAlert)
 {
-    <Alert Type="@_alertType" Message="@_ipStatus.ToString()" />
+    <Alert Type="@_alertType" Message="@_ipStatus.ToString()"/>
 }
 
 
 @code {
-    [Parameter]
-    public IPAddressPortSettings Settings { get; set; } = new IPAddressPortSettings();
+    [Parameter] public IPAddressPortSettings Settings { get; set; } = new();
 
     bool _showAlert = false;
     bool _loading = false;
@@ -44,4 +43,5 @@
         _loading = false;
         _ipStatus = reply.Status;
     }
+
 }

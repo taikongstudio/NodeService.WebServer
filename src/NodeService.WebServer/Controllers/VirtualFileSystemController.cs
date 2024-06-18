@@ -56,7 +56,8 @@ public class VirtualFileSystemController : Controller
             {
                 var fileId = formFile.Headers["FileId"];
                 var remotePath = Path.Combine(nodeCachePath, Guid.NewGuid().ToString()).Replace("\\", "/");
-                var downloadUrl = $"{_configuration.GetValue<string>("Kestrel:Endpoints:MyHttpEndpoint:Url")}/api/virtualfilesystem/{remotePath}";
+                var downloadUrl =
+                    $"{_configuration.GetValue<string>("Kestrel:Endpoints:MyHttpEndpoint:Url")}/api/virtualfilesystem/{remotePath}";
                 if (await _virtualFileSystem.UploadStream(
                         remotePath, formFile.OpenReadStream()))
                     uploadFileResultRsp.Result.UploadedFiles.Add(new UploadedFile

@@ -32,10 +32,10 @@
                 <Input @bind-Value="@context.Name"/>
             </FormItem>
             <FormItem Label="启用">
-                <Switch @bind-Checked="@context.IsEnabled" />
+                <Switch @bind-Checked="@context.IsEnabled"/>
             </FormItem>
             <FormItem Label="节点">
-                <NodeSelector @bind-SelectedItems="_selectedNodes" Mode="SelectionMode.Multiple" />
+                <NodeSelector @bind-SelectedItems="_selectedNodes" Mode="SelectionMode.Multiple"/>
             </FormItem>
             <FormItem Required Label="数据库配置">
                 @if (_selectedDatabaseConfigs != null)
@@ -47,17 +47,17 @@
                     }
                 }
                 <Tag Class="site-tag-plus" OnClick="ShowDatabaseConfigSelectorDialogAsync">
-                    <Icon Type="@IconType.Outline.Search" />
+                    <Icon Type="@IconType.Outline.Search"/>
                 </Tag>
                 <CommonDialog @ref="_mySqlConfigDialog" Closed="OnSelectDatabaseConfigDialogClosed">
-                    <MysqlConfigSelector @ref="_mySqlConfigSelector" @bind-SelectedItems="_selectedDatabaseConfigs" Mode="SelectionMode.Single" />
+                    <MysqlConfigSelector @ref="_mySqlConfigSelector" @bind-SelectedItems="_selectedDatabaseConfigs" Mode="SelectionMode.Single"/>
                 </CommonDialog>
             </FormItem>
             <FormItem Required Label="脚本">
                 <StandaloneCodeEditor @ref="@_scriptsEditor"
                                       CssClass="ScriptsEditor"
                                       OnDidInit="ScriptEditorInitAsync"
-                                      ConstructionOptions="BuildScriptsEditorConstructionOptions" />
+                                      ConstructionOptions="BuildScriptsEditorConstructionOptions"/>
             </FormItem>
         </Form>
     </Modal>
@@ -158,10 +158,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
@@ -176,9 +176,9 @@
         if (model == null)
         {
             _editModel = new DataQualityStatisticsDefinitionModel
-                {
-                    Id = Guid.NewGuid().ToString()
-                };
+            {
+                Id = Guid.NewGuid().ToString()
+            };
             _modalTitle = "新建配置";
         }
         else
@@ -195,7 +195,6 @@
             {
                 _selectedDatabaseConfigs = [databaseConfig];
             }
-
         }
     }
 
@@ -209,6 +208,7 @@
             {
                 _editModel.NodeList = new List<StringEntry>();
             }
+
             _editModel.NodeList.Clear();
             _editModel.NodeList.AddRange(_selectedNodes.Select(x => new StringEntry(x.Name, x.Id)));
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
@@ -220,19 +220,19 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message
-                    });
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
         finally
         {
@@ -348,10 +348,10 @@
     StandaloneEditorConstructionOptions BuildScriptsEditorConstructionOptions(StandaloneCodeEditor editor)
     {
         return new StandaloneEditorConstructionOptions
-            {
-                AutomaticLayout = true,
-                Language = "sql",
-            };
+        {
+            AutomaticLayout = true,
+            Language = "sql"
+        };
     }
 
     async Task ShowDatabaseConfigSelectorDialogAsync()
@@ -370,12 +370,13 @@
 
     async ValueTask InitAsync(
         DataQualityStatisticsDefinitionModel model,
-        CancellationToken cancellationToken=default)
+        CancellationToken cancellationToken = default)
     {
         if (model == null || model.Value == null)
         {
             return;
         }
+
         if (!string.IsNullOrEmpty(model.Value.DatabaseConfigId))
         {
             var rsp = await ApiService.QueryDatabaseConfigAsync(model.Value.DatabaseConfigId);

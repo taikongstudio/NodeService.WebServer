@@ -6,14 +6,14 @@
     </Button>
 }
 
-<Table 
-       Context="mappingEntry"
-       TItem="StringEntry"
-       DataSource="@ItemsSource"
-       Size="TableSize.Small"
-       SelectedRows="SelectedItems"
-       SelectedRowsChanged="@OnSelectedItemsChanged"
-       RowKey="x => x.Id">
+<Table
+    Context="mappingEntry"
+    TItem="StringEntry"
+    DataSource="@ItemsSource"
+    Size="TableSize.Small"
+    SelectedRows="SelectedItems"
+    SelectedRowsChanged="@OnSelectedItemsChanged"
+    RowKey="x => x.Id">
     <Selection Key="@mappingEntry.Id" Type="checkbox"/>
     <PropertyColumn Hidden="@IsNameHidden" Title="@NameTitle" Property="c => c.Name" Sortable>
         @if (mappingEntry.IsEditing && IsNameEditable)
@@ -36,7 +36,7 @@
         else if (IsNameEditable)
         {
             <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
-                @(NameList.FirstOrDefault(x=>x.Value== mappingEntry.Name)?.Name??mappingEntry.Name)
+                @(NameList.FirstOrDefault(x => x.Value == mappingEntry.Name)?.Name ?? mappingEntry.Name)
             </div>
         }
         else
@@ -133,11 +133,11 @@
 
     [Parameter] public EventCallback<AddingNewItemEventArgs<StringEntry>> AddingNewItem { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry,string>> ValueChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry, string>> ValueChanged { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry,string>> NameChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry, string>> NameChanged { get; set; }
 
-    [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry,string>> TagChanged { get; set; }
+    [Parameter] public EventCallback<ValueChangedEventArgs<StringEntry, string>> TagChanged { get; set; }
 
     [Parameter] public EventCallback<StringEntry> EndEdit { get; set; }
 
@@ -233,6 +233,7 @@
         {
             await ValueChanged.InvokeAsync(e);
         }
+
         if (!e.Handled)
         {
             stringEntry.Value = value;
@@ -246,6 +247,7 @@
         {
             await NameChanged.InvokeAsync(e);
         }
+
         if (!e.Handled)
         {
             stringEntry.Name = value;
@@ -259,6 +261,7 @@
         {
             await TagChanged.InvokeAsync(e);
         }
+
         if (!e.Handled)
         {
             stringEntry.Tag = value;

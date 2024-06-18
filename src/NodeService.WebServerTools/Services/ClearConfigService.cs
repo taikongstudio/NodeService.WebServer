@@ -6,33 +6,32 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServerTools.Services
+namespace NodeService.WebServerTools.Services;
+
+internal class ClearConfigService : BackgroundService
 {
-    internal class ClearConfigService:BackgroundService
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ILogger<ClearConfigService> _logger;
+
+    public ClearConfigService(
+        ILogger<ClearConfigService> logger,
+        IDbContextFactory<ApplicationDbContext> dbContextFactory)
     {
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly ILogger<ClearConfigService> _logger;
+        _logger = logger;
+        _dbContextFactory = dbContextFactory;
+    }
 
-        public ClearConfigService(
-            ILogger<ClearConfigService> logger,
-            IDbContextFactory<ApplicationDbContext> dbContextFactory)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    {
+        var dbContext = _dbContextFactory.CreateDbContext();
+        var ftpUploadConfigs = await dbContext.FtpUploadConfigurationDbSet.ToListAsync();
+        foreach (var item in ftpUploadConfigs)
         {
-            _logger = logger;
-            _dbContextFactory = dbContextFactory;
+            item.FtpConfig = null;
+            item.Value.MatchType = MatchType.Win32;
+            dbContext.Update(item);
         }
 
-        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
-        {
-            var dbContext = _dbContextFactory.CreateDbContext();
-            var ftpUploadConfigs = await dbContext.FtpUploadConfigurationDbSet.ToListAsync();
-            foreach (var item in ftpUploadConfigs)
-            {
-                item.FtpConfig = null;
-                item.Value.MatchType = MatchType.Win32;
-                dbContext.Update(item);
-
-            }
-            int count = await dbContext.SaveChangesAsync();
-        }
+        var count = await dbContext.SaveChangesAsync();
     }
 }

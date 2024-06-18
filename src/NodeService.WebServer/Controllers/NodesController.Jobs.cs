@@ -56,12 +56,12 @@ public partial class NodesController
                 queryParameters.NodeIdList = [nodeId];
                 using var repo = _taskExecutionInstanceRepoFactory.CreateRepository();
                 var queryResult = await repo.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
-                    queryParameters.Keywords,
-                    queryParameters.Status,
-                    queryParameters.NodeIdList,
-                    queryParameters.TaskDefinitionIdList,
-                    queryParameters.TaskExecutionInstanceIdList,
-                    queryParameters.SortDescriptions),
+                        queryParameters.Keywords,
+                        queryParameters.Status,
+                        queryParameters.NodeIdList,
+                        queryParameters.TaskDefinitionIdList,
+                        queryParameters.TaskExecutionInstanceIdList,
+                        queryParameters.SortDescriptions),
                     new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
                     cancellationToken);
                 apiResponse.SetResult(queryResult);

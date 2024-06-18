@@ -36,7 +36,8 @@ public interface IVirtualFileSystem : IDisposable
 
     ValueTask<bool> DownloadStream(string path, Stream stream, CancellationToken cancellationToken = default);
 
-    ValueTask<bool> DownloadStream(string path, Stream stream, int position, int count, CancellationToken cancellationToken = default);
+    ValueTask<bool> DownloadStream(string path, Stream stream, int position, int count,
+        CancellationToken cancellationToken = default);
 
     ValueTask<bool> UploadStream(string path, Stream stream, FileExists remoteExists = FileExists.Overwrite,
         CancellationToken cancellationToken = default);
@@ -81,7 +82,9 @@ public abstract class VirtualFileSystemBase : IVirtualFileSystem
 
     public abstract ValueTask<bool> FileExits(string path, CancellationToken cancellationToken = default);
     public abstract ValueTask<bool> DirectoryExits(string path, CancellationToken cancellationToken = default);
-    public abstract ValueTask<bool> DownloadStream(string path, Stream stream, int position, int count, CancellationToken cancellationToken = default);
+
+    public abstract ValueTask<bool> DownloadStream(string path, Stream stream, int position, int count,
+        CancellationToken cancellationToken = default);
 }
 
 public class FtpVirtualFileSystem : VirtualFileSystemBase
@@ -146,10 +149,7 @@ public class FtpVirtualFileSystem : VirtualFileSystemBase
 
     public override void Dispose()
     {
-        if (!_client.IsDisposed)
-        {
-            _client.Dispose();
-        }
+        if (!_client.IsDisposed) _client.Dispose();
     }
 
     public override ValueTask<bool> DownloadStream(string path, Stream stream,
@@ -158,9 +158,11 @@ public class FtpVirtualFileSystem : VirtualFileSystemBase
         return new ValueTask<bool>(_client.DownloadStream(stream, path, 0, null, cancellationToken));
     }
 
-    public override ValueTask<bool> DownloadStream(string path, Stream stream, int position, int count, CancellationToken cancellationToken = default)
+    public override ValueTask<bool> DownloadStream(string path, Stream stream, int position, int count,
+        CancellationToken cancellationToken = default)
     {
-        return new ValueTask<bool>(_client.DownloadStream(stream, path, position, null, cancellationToken, position + count));
+        return new ValueTask<bool>(_client.DownloadStream(stream, path, position, null, cancellationToken,
+            position + count));
     }
 
     public override ValueTask<bool> FileExits(string path, CancellationToken cancellationToken = default)
@@ -202,7 +204,6 @@ public class FtpVirtualFileSystem : VirtualFileSystemBase
     public override async ValueTask<bool> UploadStream(string path, Stream stream,
         FileExists fileExists = FileExists.Overwrite, CancellationToken cancellationToken = default)
     {
-
         return await _client.UploadStream(stream, path, (FtpRemoteExists)fileExists, true, null, cancellationToken) ==
                FtpStatus.Success;
     }

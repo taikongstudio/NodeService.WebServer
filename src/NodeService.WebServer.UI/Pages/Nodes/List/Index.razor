@@ -10,14 +10,14 @@
 @implements IDisposable
 
 <GridContent>
-    <Drawer Closable="true"
-            OnClose="_ => CloseModifyNodeInfoDrawer()"
-            Title='"修改节点信息"'
-            Visible="_nodeInfoDrawerVisible"
-            Width="320">
-        <Template style="height:90%">
-            @if (_editingNodeInfoModel == null)
-            {
+<Drawer Closable="true"
+        OnClose="_ => CloseModifyNodeInfoDrawer()"
+        Title='"修改节点信息"'
+        Visible="_nodeInfoDrawerVisible"
+        Width="320">
+    <Template style="height:90%">
+        @if (_editingNodeInfoModel == null)
+        {
             <Row>
                 <AntDesign.Col Span="24">
                     <Alert>请选择一个节点</Alert>
@@ -32,23 +32,24 @@
                     <Button Type="primary" OnClick="CloseModifyNodeInfoDrawer">提交</Button>
                 </AntDesign.Col>
             </Row>
-            }
-            else
-            {
+        }
+        else
+        {
             @if (_modifyErrorMsg != null)
             {
-            <Row>
-                <AntDesign.Col Span="24">
-                    <Alert Message="@_modifyErrorMsg" Type="@AlertType.Error"/>
-                </AntDesign.Col>
-            </Row>
+                <Row>
+                    <AntDesign.Col Span="24">
+                        <Alert Message="@_modifyErrorMsg" Type="@AlertType.Error"/>
+                    </AntDesign.Col>
+                </Row>
             }
 
             <Row Gutter="24">
                 <AntDesign.Col Span="24">
                     <Text>测试分类</Text>
                     <Input @bind-Value="@_editingNodeInfoModel.TestInfo" Placeholder="请输入测试分类"
-                           TValue="string"></Input>
+                           TValue="string">
+                    </Input>
                 </AntDesign.Col>
                 <AntDesign.Col Span="24">
                     <Text>实验室区域</Text>
@@ -79,198 +80,197 @@
                     <Button Type="primary" OnClick="SubmitNodeProfileAsync">提交</Button>
                 </AntDesign.Col>
             </Row>
-            }
+        }
 
-        </Template>
-    </Drawer>
-    <Modal Width="800"
-           Style="top:0"
-           Title="@_modalTitle"
-           @bind-Visible="@_editFormVisible"
-           ConfirmLoading="@_editFormConfirmLoading"
-           OnOk="@HandleEditFormOk"
-           OnCancel="@HandleEditFormCancel">
-        <Form Model="@_editModel" Size="@AntSizeLDSType.Default"
-              LabelColSpan="4"
-              Layout="@FormLayout.Horizontal"
-              WrapperColSpan="20"
-              OnFinish="OnEditFormFinish"
-              OnFinishFailed="OnEditFormFinishFailed"
-              @ref="@_editForm">
-            <FormItem Label="设备名称">
-                <Input @bind-Value="@context.Name" />
-            </FormItem>
-            <FormItem Label="配置类型">
-                <Select DataSource="@_nodeDeviceTypes"
-                        Value="@context.DeviceType"
-                        TItem="EnumModel<NodeDeviceType>"
-                        TItemValue="NodeDeviceType"
-                        ValueChanged="OnSelectedDeviceTypeChanged"
-                        LabelName="@nameof(EnumModel<NodeDeviceType>.Name)"
-                        ValueName="@nameof(EnumModel<NodeDeviceType>.Value)"></Select>
-            </FormItem>
-            @switch (context.DeviceType)
-            {
-                case NodeDeviceType.NetworkDevice:
-                    <NetworkDeviceConfiguration Settings="@_ipAddressPortSettings"/>
-                    break;
-                case NodeDeviceType.SerialPortDevice:
-                    <SerialPortConfiguration Settings="@_serialPortSettings" />
-                    break;
+    </Template>
+</Drawer>
+<Modal Width="800"
+       Style="top:0"
+       Title="@_modalTitle"
+       @bind-Visible="@_editFormVisible"
+       ConfirmLoading="@_editFormConfirmLoading"
+       OnOk="@HandleEditFormOk"
+       OnCancel="@HandleEditFormCancel">
+    <Form Model="@_editModel" Size="@AntSizeLDSType.Default"
+          LabelColSpan="4"
+          Layout="@FormLayout.Horizontal"
+          WrapperColSpan="20"
+          OnFinish="OnEditFormFinish"
+          OnFinishFailed="OnEditFormFinishFailed"
+          @ref="@_editForm">
+        <FormItem Label="设备名称">
+            <Input @bind-Value="@context.Name"/>
+        </FormItem>
+        <FormItem Label="配置类型">
+            <Select DataSource="@_nodeDeviceTypes"
+                    Value="@context.DeviceType"
+                    TItem="EnumModel<NodeDeviceType>"
+                    TItemValue="NodeDeviceType"
+                    ValueChanged="OnSelectedDeviceTypeChanged"
+                    LabelName="@nameof(EnumModel<NodeDeviceType>.Name)"
+                    ValueName="@nameof(EnumModel<NodeDeviceType>.Value)">
+            </Select>
+        </FormItem>
+        @switch (context.DeviceType)
+        {
+            case NodeDeviceType.NetworkDevice:
+                <NetworkDeviceConfiguration Settings="@_ipAddressPortSettings"/>
+                break;
+            case NodeDeviceType.SerialPortDevice:
+                <SerialPortConfiguration Settings="@_serialPortSettings"/>
+                break;
+        }
 
-            }
+    </Form>
+</Modal>
+<GridRow Gutter="(8, 0)">
+    <GridCol Span="24">
+        <Table Loading="@_dataSource.IsLoading"
+               Size="TableSize.Small"
+               EnableVirtualization="false"
+               OnChange="OnNodeTableChanged"
+               TItem="NodeInfoModel"
+               PageIndex="@_dataSource.PageIndex"
+               PageSize="@_dataSource.PageSize"
+               Total="@_dataSource.TotalCount"
+               OnPageIndexChange="@_dataSource.OnPaginationEvent"
+               OnPageSizeChange="@_dataSource.OnPaginationEvent"
+               DataSource="@_dataSource.ItemsSource"
 
-        </Form>
-    </Modal>
-    <GridRow Gutter="(8, 0)">
-        <GridCol Span="24">
-            <Table Loading="@_dataSource.IsLoading"
-                   Size="TableSize.Small"
-                   EnableVirtualization="false"
-                   OnChange="OnNodeTableChanged"
-                   TItem="NodeInfoModel"
-                   PageIndex="@_dataSource.PageIndex"
-                   PageSize="@_dataSource.PageSize"
-                   Total="@_dataSource.TotalCount"
-                   OnPageIndexChange="@_dataSource.OnPaginationEvent"
-                   OnPageSizeChange="@_dataSource.OnPaginationEvent"
-                   DataSource="@_dataSource.ItemsSource"
-
-                   OnRowClick="OnRowClick">
-                <TitleTemplate>
-                    <GridRow>
-                        <GridCol Span="6">
-                            <Title Level="3">节点列表</Title>
-                        </GridCol>
-                        <GridCol Span="6" Offset="12">
-                            <Search Placeholder="搜索节点" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.QueryAsync" />
-                        </GridCol>
-                    </GridRow>
-                    <GridRow>
-                        <GridCol Span="20" Offset="0">
-                            <Space Wrap>
-                                <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Plus" OnClick="()=>ShowEditNodeDeviceFormAsync()"></Button>
-                                </SpaceItem>
-                                <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="_dataSource.QueryAsync"></Button>
-                                </SpaceItem>
-                                <SpaceItem>
-                                    <Select DataSource="@_nodeSettings.IpAddressMappings"
-                                            @bind-value="@_selectedAreaTag"
-                                            TItem="StringEntry"
-                                            Style="width:200px"
-                                            TItemValue="string"
-                                            OnSelectedItemChanged="OnSelectedAreaTag"
-                                            DefaultActiveFirstOption
-                                            LabelName="@nameof(StringEntry.Name)"
-                                            ValueName="@nameof(StringEntry.Tag)" />
-                                </SpaceItem>
-                                <SpaceItem>
-                                    <RadioGroup Value="_nodeStatus" ValueChanged="(NodeStatus nodeStatus) => OnNodeStatusChanged(nodeStatus)" Size="middle">
-                                        <Radio RadioButton Value="@(NodeStatus.All)">全部</Radio>
-                                        <Radio RadioButton Value="@(NodeStatus.Online)">
-                                            <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线" />
-                                        </Radio>
-                                        <Radio RadioButton Value="@(NodeStatus.Offline)">
-                                            <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="离线" />
-                                        </Radio>
-                                    </RadioGroup>
-                                </SpaceItem>
-
-                                 <SpaceItem>
-                                    <RadioGroup Value="_nodeDeviceType" ValueChanged="(NodeDeviceType nodeDeviceType) => OnNodeDeviceTypeChanged(nodeDeviceType)" Size="middle">
-                                        <Radio RadioButton Value="@(NodeDeviceType.All)">全部</Radio>
-                                        <Radio RadioButton Value="@(NodeDeviceType.Computer)">
-                                            <Icon Type="desktop" Theme="outline" /><Text>计算机</Text>
-                                        </Radio>
-                                        <Radio RadioButton Value="@(NodeDeviceType.NetworkDevice)">
-                                            <Icon Type="cluster" Theme="outline" /><Text>设备</Text>
-                                        </Radio>
-                                    </RadioGroup>
-                                </SpaceItem>
-          
-                            </Space>
-                        </GridCol>
-                    </GridRow>
-                </TitleTemplate>
-                <ColumnDefinitions>
-                    <PropertyColumn Title="厂区" Sortable="true" Property="c => c.Profile.FactoryName">
-                        <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
-                    </PropertyColumn>
-                    <PropertyColumn Title="状态" Sortable="true" Hidden  Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
-                    <PropertyColumn
-                        Title="节点名称"
-                        Sortable="true"
-                        Property="c => c.Name">
-                        @switch (context.Status)
-                        {
-                            case NodeStatus.Online:
-                                <Badge Style="margin-right:5px" Status="@BadgeStatus.Success"></Badge>
-                                break;
-                            case NodeStatus.Offline:
-                                <Badge Style="margin-right:5px" Status="@BadgeStatus.Warning"></Badge>
-                                break;
-                            case NodeStatus.NotConfigured:
-                                <Badge Style="margin-right:5px" Status="@BadgeStatus.Error"></Badge>
-                                break;
-                        }
-                        @if (context.DeviceType == NodeDeviceType.Computer)
-                        {
-                            <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
-                        }
-                        else
-                        {
-                            <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link"  OnClick="()=>ShowEditNodeDeviceFormAsync(context)">
-                                @context.Name
-                            </Button>
-                        }
-
-                    </PropertyColumn>
-                    <PropertyColumn
-                        Title="最后在线时间"
-                        Sortable="true"
-                        DefaultSortOrder="SortDirection.Descending"
-                        Property="c => c.Profile.ServerUpdateTimeUtc">
-                        <Text>
-                            @GetTimeDesc(context.Profile.ServerUpdateTimeUtc)
-                        </Text>
-                        @if(ShowTimeDiffWarning(context))
-                        {
-                            <Tooltip Title="@_timeDiffWarningMsg">
-                                <Icon Type="warning" Theme="twotone" TwotoneColor="#ff4d4f" Height="1.5em" Width="1.5em" />
-                            </Tooltip>
-                  
-                        }
-                    </PropertyColumn>
-                    <PropertyColumn Title="测试分类" Sortable="true" Property="c => c.Profile.TestInfo"></PropertyColumn>
-                    <PropertyColumn Title="实验室区域" Sortable="true" Property="c => c.Profile.LabArea"></PropertyColumn>
-                    <PropertyColumn Title="实验室名称" Sortable="true" Property="c => c.Profile.LabName"></PropertyColumn>
-
-                    <PropertyColumn Title="用途" Sortable="true" Property="c => c.Profile.Usages">
-                        <Tag>@(string.IsNullOrEmpty(context.Profile.Usages) ? "（空）" : context.Profile.Usages)</Tag>
-                    </PropertyColumn>
-                    <PropertyColumn Title="备注" Sortable="true" Property="c => c.Profile.Remarks">
-                        <Tag>@(string.IsNullOrEmpty(context.Profile.Remarks) ? "（空）" : context.Profile.Remarks)</Tag>
-                    </PropertyColumn>
-                    <PropertyColumn Title="IP地址" Sortable="true" Property="c => c.Profile.IpAddress">
-                        <Tag>@context.Profile.IpAddress</Tag>
-                    </PropertyColumn>
-                    <ActionColumn Fixed="right" Title="操作">
-                        <Space Size=@("middle")>
+               OnRowClick="OnRowClick">
+            <TitleTemplate>
+                <GridRow>
+                    <GridCol Span="6">
+                        <Title Level="3">节点列表</Title>
+                    </GridCol>
+                    <GridCol Span="6" Offset="12">
+                        <Search Placeholder="搜索节点" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.QueryAsync"/>
+                    </GridCol>
+                </GridRow>
+                <GridRow>
+                    <GridCol Span="20" Offset="0">
+                        <Space Wrap>
                             <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Size="default" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OpenModifyNodeInfoDrawer(context)"></Button>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Plus" OnClick="() => ShowEditNodeDeviceFormAsync()"></Button>
                             </SpaceItem>
                             <SpaceItem>
-                                <Button Shape="@ButtonShape.Circle" Size="default" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteNodeAsync(context)"></Button>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="_dataSource.QueryAsync"></Button>
                             </SpaceItem>
+                            <SpaceItem>
+                                <Select DataSource="@_nodeSettings.IpAddressMappings"
+                                        @bind-value="@_selectedAreaTag"
+                                        TItem="StringEntry"
+                                        Style="width:200px"
+                                        TItemValue="string"
+                                        OnSelectedItemChanged="OnSelectedAreaTag"
+                                        DefaultActiveFirstOption
+                                        LabelName="@nameof(StringEntry.Name)"
+                                        ValueName="@nameof(StringEntry.Tag)"/>
+                            </SpaceItem>
+                            <SpaceItem>
+                                <RadioGroup Value="_nodeStatus" ValueChanged="(NodeStatus nodeStatus) => OnNodeStatusChanged(nodeStatus)" Size="middle">
+                                    <Radio RadioButton Value="@(NodeStatus.All)">全部</Radio>
+                                    <Radio RadioButton Value="@(NodeStatus.Online)">
+                                        <Badge Status="@(NodeStatus.Online.GetBadgeStatus())" Text="在线"/>
+                                    </Radio>
+                                    <Radio RadioButton Value="@(NodeStatus.Offline)">
+                                        <Badge Status="@(NodeStatus.Offline.GetBadgeStatus())" Text="离线"/>
+                                    </Radio>
+                                </RadioGroup>
+                            </SpaceItem>
+
+                            <SpaceItem>
+                                <RadioGroup Value="_nodeDeviceType" ValueChanged="(NodeDeviceType nodeDeviceType) => OnNodeDeviceTypeChanged(nodeDeviceType)" Size="middle">
+                                    <Radio RadioButton Value="@(NodeDeviceType.All)">全部</Radio>
+                                    <Radio RadioButton Value="@(NodeDeviceType.Computer)">
+                                        <Icon Type="desktop" Theme="outline"/><Text>计算机</Text>
+                                    </Radio>
+                                    <Radio RadioButton Value="@(NodeDeviceType.NetworkDevice)">
+                                        <Icon Type="cluster" Theme="outline"/><Text>设备</Text>
+                                    </Radio>
+                                </RadioGroup>
+                            </SpaceItem>
+
                         </Space>
-                    </ActionColumn>
-                </ColumnDefinitions>
+                    </GridCol>
+                </GridRow>
+            </TitleTemplate>
+            <ColumnDefinitions>
+                <PropertyColumn Title="厂区" Sortable="true" Property="c => c.Profile.FactoryName">
+                    <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
+                </PropertyColumn>
+                <PropertyColumn Title="状态" Sortable="true" Hidden Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
+                <PropertyColumn
+                    Title="节点名称"
+                    Sortable="true"
+                    Property="c => c.Name">
+                    @switch (context.Status)
+                    {
+                        case NodeStatus.Online:
+                            <Badge Style="margin-right:5px" Status="@BadgeStatus.Success"></Badge>
+                            break;
+                        case NodeStatus.Offline:
+                            <Badge Style="margin-right:5px" Status="@BadgeStatus.Warning"></Badge>
+                            break;
+                        case NodeStatus.NotConfigured:
+                            <Badge Style="margin-right:5px" Status="@BadgeStatus.Error"></Badge>
+                            break;
+                    }
+                    @if (context.DeviceType == NodeDeviceType.Computer)
+                    {
+                        <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
+                    }
+                    else
+                    {
+                        <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link" OnClick="() => ShowEditNodeDeviceFormAsync(context)">
+                            @context.Name
+                        </Button>
+                    }
 
-            </Table>
-        </GridCol>
-    </GridRow>
+                </PropertyColumn>
+                <PropertyColumn
+                    Title="最后在线时间"
+                    Sortable="true"
+                    DefaultSortOrder="SortDirection.Descending"
+                    Property="c => c.Profile.ServerUpdateTimeUtc">
+                    <Text>
+                        @GetTimeDesc(context.Profile.ServerUpdateTimeUtc)
+                    </Text>
+                    @if (ShowTimeDiffWarning(context))
+                    {
+                        <Tooltip Title="@_timeDiffWarningMsg">
+                            <Icon Type="warning" Theme="twotone" TwotoneColor="#ff4d4f" Height="1.5em" Width="1.5em"/>
+                        </Tooltip>
+                    }
+                </PropertyColumn>
+                <PropertyColumn Title="测试分类" Sortable="true" Property="c => c.Profile.TestInfo"></PropertyColumn>
+                <PropertyColumn Title="实验室区域" Sortable="true" Property="c => c.Profile.LabArea"></PropertyColumn>
+                <PropertyColumn Title="实验室名称" Sortable="true" Property="c => c.Profile.LabName"></PropertyColumn>
+
+                <PropertyColumn Title="用途" Sortable="true" Property="c => c.Profile.Usages">
+                    <Tag>@(string.IsNullOrEmpty(context.Profile.Usages) ? "（空）" : context.Profile.Usages)</Tag>
+                </PropertyColumn>
+                <PropertyColumn Title="备注" Sortable="true" Property="c => c.Profile.Remarks">
+                    <Tag>@(string.IsNullOrEmpty(context.Profile.Remarks) ? "（空）" : context.Profile.Remarks)</Tag>
+                </PropertyColumn>
+                <PropertyColumn Title="IP地址" Sortable="true" Property="c => c.Profile.IpAddress">
+                    <Tag>@context.Profile.IpAddress</Tag>
+                </PropertyColumn>
+                <ActionColumn Fixed="right" Title="操作">
+                    <Space Size=@("middle")>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Size="default" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OpenModifyNodeInfoDrawer(context)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Size="default" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteNodeAsync(context)"></Button>
+                        </SpaceItem>
+                    </Space>
+                </ActionColumn>
+            </ColumnDefinitions>
+
+        </Table>
+    </GridCol>
+</GridRow>
 </GridContent>
 
 
@@ -300,8 +300,8 @@
 
     UpdateNodeProfileModel? _editingNodeInfoModel;
 
-    IPAddressPortSettings _ipAddressPortSettings = new IPAddressPortSettings();
-    SerialPortSettings _serialPortSettings = new SerialPortSettings();
+    IPAddressPortSettings _ipAddressPortSettings = new();
+    SerialPortSettings _serialPortSettings = new();
 
     string GetTimeDesc(DateTime dateTime)
     {
@@ -309,6 +309,7 @@
         {
             return "未知";
         }
+
         var timeDiff = DateTime.UtcNow - dateTime;
         if (timeDiff.TotalDays >= 1)
         {
@@ -326,6 +327,7 @@
         {
             return $"{(int)timeDiff.TotalHours}小时前";
         }
+
         return dateTime.ToString();
     }
 
@@ -335,6 +337,7 @@
         {
             return false;
         }
+
         var timeDiff = nodeInfo.Profile.ServerUpdateTimeUtc - nodeInfo.Profile.UpdateTime.ToUniversalTime();
         return Math.Abs(timeDiff.TotalSeconds) > _nodeSettings.TimeDiffWarningSeconds;
     }
@@ -392,7 +395,6 @@
     {
         try
         {
-
             var apiResponse = await ApiService.QueryNodeSettingsAsync();
             if (apiResponse.ErrorCode == 0)
             {
@@ -443,7 +445,7 @@
         _nodeDeviceTypes =
         [
             new EnumModel<NodeDeviceType>("网络设备", NodeDeviceType.NetworkDevice),
-    new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPortDevice)
+            new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPortDevice)
         ];
         _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager.BaseUri, ApiService.QueryNodeListAsync, StateHasChanged);
         _dataSource.QueryParameters.Status = NodeStatus.All;
@@ -458,10 +460,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
@@ -469,7 +471,6 @@
         await _dataSource.RequestAsync();
         await base.OnInitializedAsync();
     }
-
 
 
     public void Dispose()
@@ -508,6 +509,7 @@
             {
                 return;
             }
+
             var rsp = await ApiService.RemoveAsync(nodeInfo);
             if (rsp.ErrorCode == 0)
             {
@@ -517,36 +519,36 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                    {
-                        Message = "删除失败",
-                        Description = rsp.Message
-                    });
+                {
+                    Message = "删除失败",
+                    Description = rsp.Message
+                });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "删除失败",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "删除失败",
+                Description = ex.ToString()
+            });
         }
     }
 
     Task<ConfirmResult> ShowConfirmDialogAsync(string title, string content)
     {
         var options = new ConfirmButtonOptions
+        {
+            Button1Props = new ButtonProps
             {
-                Button1Props = new ButtonProps
-                {
-                    ChildContent = "确定",
-                    Type = ButtonType.Primary
-                },
-                Button2Props = new ButtonProps
-                {
-                    ChildContent = "取消"
-                }
-            };
+                ChildContent = "确定",
+                Type = ButtonType.Primary
+            },
+            Button2Props = new ButtonProps
+            {
+                ChildContent = "取消"
+            }
+        };
         return _confirmService.Show(
             content,
             title,
@@ -580,19 +582,19 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                    {
-                        Message = "错误提示",
-                        Description = apiResponse.Message
-                    });
+                {
+                    Message = "错误提示",
+                    Description = apiResponse.Message
+                });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.Message
-                });
+            {
+                Message = "错误提示",
+                Description = ex.Message
+            });
         }
         finally
         {
@@ -649,6 +651,7 @@
                 }
             }
         }
+
         return Task.CompletedTask;
     }
 
@@ -656,4 +659,5 @@
     {
         _editModel.DeviceType = nodeDeviceType;
     }
+
 }

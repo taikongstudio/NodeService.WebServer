@@ -396,6 +396,7 @@
             {
                 continue;
             }
+
             try
             {
                 switch (optionEditorType)
@@ -503,9 +504,7 @@
             }
             catch (Exception ex)
             {
-
             }
-
         }
     }
 
@@ -518,11 +517,11 @@
             if (CronExpression.IsValidExpression(e.DataItem.Value))
             {
                 var desc = ExpressionDescriptor.GetDescription(e.DataItem.Value, new Options
-                    {
-                        DayOfWeekStartIndexZero = false,
-                        Use24HourTimeFormat = true,
-                        Locale = "zh-cn"
-                    });
+                {
+                    DayOfWeekStartIndexZero = false,
+                    Use24HourTimeFormat = true,
+                    Locale = "zh-cn"
+                });
                 e.DataItem.Tag = desc;
             }
             else

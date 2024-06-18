@@ -80,19 +80,19 @@
         </Form>
     </Modal>
 
-    <Table 
-           Size="TableSize.Small"
-           Loading="@_dataSource.IsLoading"
-           EnableVirtualization="false"
-           TItem="PackageConfigModel"
-           DataSource="@_dataSource.ItemsSource"
-           Resizable
-           OnChange="OnTableChange"
-           PageIndex="@_dataSource.PageIndex"
-           PageSize="@_dataSource.PageSize"
-           Total="@_dataSource.TotalCount"
-           OnPageIndexChange="@_dataSource.OnPaginationEvent"
-           OnPageSizeChange="@_dataSource.OnPaginationEvent">
+    <Table
+        Size="TableSize.Small"
+        Loading="@_dataSource.IsLoading"
+        EnableVirtualization="false"
+        TItem="PackageConfigModel"
+        DataSource="@_dataSource.ItemsSource"
+        Resizable
+        OnChange="OnTableChange"
+        PageIndex="@_dataSource.PageIndex"
+        PageSize="@_dataSource.PageSize"
+        Total="@_dataSource.TotalCount"
+        OnPageIndexChange="@_dataSource.OnPaginationEvent"
+        OnPageSizeChange="@_dataSource.OnPaginationEvent">
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
@@ -170,6 +170,7 @@
 
 
 @code{
+
     readonly string[] platforms =
     {
         "X64",
@@ -222,10 +223,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()

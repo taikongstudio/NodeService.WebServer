@@ -12,14 +12,17 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class DataQualityController : Controller
 {
-    readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    readonly ExceptionCounter _exceptionCounter;
-    readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _insertUpdateDeleteOpBatchQueue;
-    readonly ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel> _nodeStatisticsRecordRepoFactory;
-    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _insertUpdateDeleteOpBatchQueue;
+
+    private readonly ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel>
+        _nodeStatisticsRecordRepoFactory;
+
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
     private readonly IServiceProvider _serviceProvider;
-    readonly ILogger<DataQualityController> _logger;
-    readonly IMemoryCache _memoryCache;
+    private readonly ILogger<DataQualityController> _logger;
+    private readonly IMemoryCache _memoryCache;
 
     private readonly BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>
         _queryOpBatchQueue;
@@ -28,7 +31,8 @@ public partial class DataQualityController : Controller
         ILogger<DataQualityController> logger,
         ExceptionCounter exceptionCounter,
         IServiceProvider serviceProvider,
-        BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>> queryOpBatchQueue,
+        BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>
+            queryOpBatchQueue,
         BatchQueue<BatchQueueOperation<FileRecordModel, bool>> insertUpdateDeleteOpBatchQueue,
         ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel> nodeStatisticsRecordRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
@@ -45,6 +49,4 @@ public partial class DataQualityController : Controller
         _nodeInfoRepoFactory = nodeInfoRepoFactory;
         _serviceProvider = serviceProvider;
     }
-
-
 }

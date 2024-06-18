@@ -26,7 +26,6 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
 
     public void Dispose()
     {
-
     }
 
     public override async Task QueryAsync()
@@ -67,7 +66,7 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
 
     public async Task RequestAsync()
     {
-       await RequestCoreAsync(true);
+        await RequestCoreAsync(true);
     }
 
     private async Task RequestCoreAsync(bool force)
@@ -77,10 +76,7 @@ public class RoutedPaginationDataSource<TElement, TQueryParameters> : Pagination
         QueryParameters.PageIndex = PageIndex;
         QueryParameters.PageSize = PageSize;
         QueryParameters.QueryStrategy = QueryStrategy.QueryPreferred;
-        if (_uri == null)
-        {
-            _uri = _baseAddress;
-        }
+        if (_uri == null) _uri = _baseAddress;
         var uri = new Uri(_uri);
         var uriBuilder = new UriBuilder(uri);
         var oldQuery = uriBuilder.Query;

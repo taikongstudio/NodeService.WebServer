@@ -1,24 +1,23 @@
 ﻿<FormItem Label="端口名称">
-    <Input @bind-Value="@Settings.PortName" />
+    <Input @bind-Value="@Settings.PortName"/>
 </FormItem>
 
 <FormItem Label="波特率">
-    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.BaudRate" />
+    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.BaudRate"/>
 </FormItem>
 
 <FormItem Label="起始位">
-    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.Parity" />
+    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.Parity"/>
 </FormItem>
 
 <FormItem Label="数据位">
-    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.DataBits" />
+    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.DataBits"/>
 </FormItem>
 
 <FormItem Label="停止位">
-    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.StopBits" />
+    <AntDesign.InputNumber Min="0" Max="65535" @bind-Value="@Settings.StopBits"/>
 </FormItem>
 
 @code {
-    [Parameter]
-    public SerialPortSettings Settings { get; set; } = new SerialPortSettings();
+    [Parameter] public SerialPortSettings Settings { get; set; } = new();
 }

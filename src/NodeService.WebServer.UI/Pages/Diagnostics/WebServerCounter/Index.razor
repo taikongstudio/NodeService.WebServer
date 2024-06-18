@@ -34,7 +34,6 @@
 
     IEnumerable<(string Desc, string Value)> GetStatistics()
     {
-
         yield return (nameof(WebServerCounter.TaskExecutionReportAvailableCount), WebServerCounter.TaskExecutionReportAvailableCount.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportProcessTimeSpan), WebServerCounter.TaskExecutionReportProcessTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportQueryTimeSpan), WebServerCounter.TaskExecutionReportQueryTimeSpan.ToString());

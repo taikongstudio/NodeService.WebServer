@@ -1,6 +1,4 @@
-﻿
-
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using NodeService.Infrastructure.Logging;
 
 namespace NodeService.WebServer.Data;
@@ -26,7 +24,6 @@ public partial class ApplicationDbContext
     private void SqlServer_BuildNodeStatisticsRecordModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<DataQualityNodeStatisticsRecordModel>(builder =>
-
             builder.OwnsOne(
                 model => model.Value, ownedNavigationBuilder =>
                 {
@@ -72,10 +69,7 @@ public partial class ApplicationDbContext
         {
             builder.HasKey(nameof(TaskActivationRecordModel.Id));
             builder.OwnsOne(
-                model => model.Value, ownedNavigationBuilder =>
-                {
-                    ownedNavigationBuilder.ToJson();
-                });
+                model => model.Value, ownedNavigationBuilder => { ownedNavigationBuilder.ToJson(); });
         });
     }
 
@@ -195,16 +189,19 @@ public partial class ApplicationDbContext
                         .SetValueComparer(GetEnumerableComparer<StringEntry>());
 
                     ownedNavigationBuilder.Property(x => x.DateTimeFilters)
-                        .HasConversion(x => Serialize(x),
-                            x => Deserialize<List<DateTimeFilter>>(x))
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<DateTimeFilter>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<DateTimeFilter>());
 
                     ownedNavigationBuilder.Property(x => x.LengthFilters)
-                        .HasConversion(x => Serialize(x),
-                            x => Deserialize<List<FileLengthFilter>>(x))
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<FileLengthFilter>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<FileLengthFilter>());
+
+                    ownedNavigationBuilder.Property(x => x.DirectoryFilters)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<StringEntry>());
                 });
         });
 
@@ -315,8 +312,7 @@ public partial class ApplicationDbContext
                 {
                     ownedNavigationBuilder.ToJson();
                     ownedNavigationBuilder.Property(x => x.NodeList)
-                        .HasConversion(x => Serialize(x),
-                            x => Deserialize<List<StringEntry>>(x))
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<StringEntry>());
                 });
@@ -330,20 +326,17 @@ public partial class ApplicationDbContext
                     ownedNavigationBuilder.ToJson();
 
                     ownedNavigationBuilder.Property(x => x.Filters)
-                        .HasConversion(x => Serialize(x),
-                            x => Deserialize<List<StringEntry>>(x))
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
                         .Metadata
-                        .SetValueComparer(GetEnumerableComparer<StringEntry> ());
+                        .SetValueComparer(GetEnumerableComparer<StringEntry>());
 
                     ownedNavigationBuilder.Property(x => x.NodeList)
-                        .HasConversion(x => Serialize(x),
-                            x => Deserialize<List<StringEntry>>(x))
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<StringEntry>());
 
                     ownedNavigationBuilder.Property(x => x.Feedbacks)
-                        .HasConversion(x => Serialize(x),
-                            x => Deserialize<List<StringEntry>>(x))
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<StringEntry>());
                 });
@@ -357,8 +350,7 @@ public partial class ApplicationDbContext
                 {
                     ownedNavigationBuilder.ToJson();
                     ownedNavigationBuilder.Property(x => x.LogEntries)
-                        .HasConversion(x => Serialize(x),
-                            x => Deserialize<List<LogEntry>>(x))
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<LogEntry>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<LogEntry>());
                 });

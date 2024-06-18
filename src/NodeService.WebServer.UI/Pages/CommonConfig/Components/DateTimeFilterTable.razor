@@ -171,37 +171,37 @@
             new EnumModel<CompareOperator>()
             {
                 Name = "小于",
-                Value = CompareOperator.LessThan,
+                Value = CompareOperator.LessThan
             },
             new EnumModel<CompareOperator>()
             {
                 Name = "小于等于",
-                Value = CompareOperator.LessThan,
+                Value = CompareOperator.LessThan
             },
             new EnumModel<CompareOperator>()
             {
                 Name = "等于",
-                Value = CompareOperator.Equals,
+                Value = CompareOperator.Equals
             },
             new EnumModel<CompareOperator>()
             {
                 Name = "大于",
-                Value = CompareOperator.GreatThan,
+                Value = CompareOperator.GreatThan
             },
             new EnumModel<CompareOperator>()
             {
                 Name = "大于等于",
-                Value = CompareOperator.GreatThanEqual,
+                Value = CompareOperator.GreatThanEqual
             },
             new EnumModel<CompareOperator>()
             {
                 Name = "范围内",
-                Value = CompareOperator.WithinRange,
+                Value = CompareOperator.WithinRange
             },
             new EnumModel<CompareOperator>()
             {
                 Name = "范围外",
-                Value = CompareOperator.OutOfRange,
+                Value = CompareOperator.OutOfRange
             }
         ];
         DateTimeFilterKindList =
@@ -209,32 +209,32 @@
             new EnumModel<DateTimeFilterKind>()
             {
                 Name = "日期",
-                Value = DateTimeFilterKind.DateTime,
+                Value = DateTimeFilterKind.DateTime
             },
             new EnumModel<DateTimeFilterKind>()
             {
                 Name = "时刻",
-                Value = DateTimeFilterKind.TimeOnly,
+                Value = DateTimeFilterKind.TimeOnly
             },
             new EnumModel<DateTimeFilterKind>()
             {
                 Name = "天",
-                Value = DateTimeFilterKind.Days,
+                Value = DateTimeFilterKind.Days
             },
             new EnumModel<DateTimeFilterKind>()
             {
                 Name = "小时",
-                Value = DateTimeFilterKind.Hours,
+                Value = DateTimeFilterKind.Hours
             },
             new EnumModel<DateTimeFilterKind>()
             {
                 Name = "分钟",
-                Value = DateTimeFilterKind.Minutes,
+                Value = DateTimeFilterKind.Minutes
             },
             new EnumModel<DateTimeFilterKind>()
             {
                 Name = "秒",
-                Value = DateTimeFilterKind.Seconds,
+                Value = DateTimeFilterKind.Seconds
             }
         ];
         base.OnInitialized();
@@ -393,8 +393,8 @@
             else
             {
                 return @<div class="editable-cell-value-wrap" style="padding-right:24px">
-                           @($"{dateTimeFilter.DateTimeValues[0].ToString("yyyy-MM-dd HH:mm:ss")}")
-                       </div>;
+                    @($"{dateTimeFilter.DateTimeValues[0].ToString("yyyy-MM-dd HH:mm:ss")}")
+                </div>;
             }
         }
     }
@@ -408,7 +408,7 @@
                 return @<text>
                             <AntDesign.TimePicker Style="width:120px" Value="@dateTimeFilter.TimeOnlyValues[0]" OnChange="(DateTimeChangedEventArgs<TimeOnly> value) => OnValuesChanged(dateTimeFilter, [value.Date, dateTimeFilter.TimeOnlyValues[1]])"/>
                             <Text>~</Text>
-                            <AntDesign.TimePicker Style="width:120px" Value="@dateTimeFilter.TimeOnlyValues[1]" OnChange="(DateTimeChangedEventArgs<TimeOnly> value) => OnValuesChanged(dateTimeFilter, [dateTimeFilter.TimeOnlyValues[0], value.Date])" />
+                            <AntDesign.TimePicker Style="width:120px" Value="@dateTimeFilter.TimeOnlyValues[1]" OnChange="(DateTimeChangedEventArgs<TimeOnly> value) => OnValuesChanged(dateTimeFilter, [dateTimeFilter.TimeOnlyValues[0], value.Date])"/>
                         </text>;
             }
             else
@@ -427,6 +427,7 @@
                 return@<div class="editable-cell-value-wrap" @onclick="() => dateTimeFilter.BeginEdit()" style="padding-right:24px">@($"{dateTimeFilter.TimeOnlyValues[0]}")</div>;
             }
         }
+
         return @<Text></Text>;
     }
 

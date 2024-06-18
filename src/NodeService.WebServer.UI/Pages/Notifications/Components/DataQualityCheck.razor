@@ -11,13 +11,13 @@
       OnFinishFailed="HandleEditFormFailed"
       @ref="@_editForm">
     <FormItem Required Label="启用">
-        <Switch @bind-Value="@context.IsEnabled" />
+        <Switch @bind-Value="@context.IsEnabled"/>
     </FormItem>
     <FormItem Label="晚于此时间通知">
-        <AntDesign.TimePicker Min="1" @bind-Value="@context.NotificationTime" />
+        <AntDesign.TimePicker Min="1" @bind-Value="@context.NotificationTime"/>
     </FormItem>
     <FormItem Label="通知间隔（分钟）">
-        <AntDesign.InputNumber Min="1" @bind-Value="@context.NotificationDuration" />
+        <AntDesign.InputNumber Min="1" @bind-Value="@context.NotificationDuration"/>
     </FormItem>
     <FormItem Required Label="主题">
         <Input @bind-Value="@context.Subject"/>
@@ -28,7 +28,7 @@
     </FormItem>
     <FormItem Label="配置类型">
 
-        <NotificationConfigSelector @bind-SelectedItems="_selectedNotificationConfigs" />
+        <NotificationConfigSelector @bind-SelectedItems="_selectedNotificationConfigs"/>
     </FormItem>
 
     <FormItem WrapperColOffset="4" WrapperColSpan="20">

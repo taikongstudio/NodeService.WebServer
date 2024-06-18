@@ -16,7 +16,8 @@ public partial class CommonConfigController
             {
                 var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
                 using var propertyBagRepo = repoFactory.CreateRepository();
-                var propertyBag = await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
+                var propertyBag =
+                    await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
                 if (propertyBag == null)
                 {
                     result = new NodeSettings();
@@ -30,6 +31,7 @@ public partial class CommonConfigController
                 {
                     result = JsonSerializer.Deserialize<NodeSettings>(propertyBag["Value"] as string);
                 }
+
                 _memoryCache.Set(nameof(NodeSettings), result);
             }
 

@@ -4,17 +4,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.QueryOptimize
-{
-    public class ClientUpdateBatchQueryParameters
-    {
-        public ClientUpdateBatchQueryParameters(string name, string ipAddress)
-        {
-            Name = name;
-            IpAddress = ipAddress;
-        }
+namespace NodeService.WebServer.Services.QueryOptimize;
 
-        public string Name { get; private set; }
-        public string IpAddress { get; private set; }
+public class ClientUpdateBatchQueryParameters
+{
+    public ClientUpdateBatchQueryParameters(string name, string ipAddress)
+    {
+        Name = name;
+        IpAddress = ipAddress;
     }
+
+    public string Name { get; private set; }
+    public string IpAddress { get; private set; }
 }

@@ -8,7 +8,7 @@
 @implements IDisposable
 
 <GridContent>
-    <TaskDefinitionEditor 
+    <TaskDefinitionEditor
         Closed="OnTaskDefinitionEditorClosed"
         @ref="_taskDefinitionEditor"/>
     <InvokeTaskDialog
@@ -34,7 +34,7 @@
                     <Title Level="3">任务流定义</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
                 </GridCol>
             </GridRow>
             <GridRow>
@@ -111,10 +111,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
@@ -248,4 +248,5 @@
     {
         _dataSource.Dispose();
     }
+
 }

@@ -252,15 +252,14 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
     {
-
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
         _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待中" });
@@ -381,6 +380,7 @@
         {
             return;
         }
+
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
         {
@@ -485,4 +485,5 @@
     {
         _dataSource.Dispose();
     }
+
 }

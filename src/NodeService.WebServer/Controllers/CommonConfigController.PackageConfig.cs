@@ -90,8 +90,8 @@ public partial class CommonConfigController
                     apiResponse.Message = "Upload stream fail";
                     return apiResponse;
                 }
-                package.DownloadUrl = remotePath;
 
+                package.DownloadUrl = remotePath;
             }
 
 
@@ -110,7 +110,6 @@ public partial class CommonConfigController
                 _memoryCache.Remove(packageCacheKey);
                 if (model.DownloadUrl != null) await virtualFileSystem.DeleteFileAsync(model.DownloadUrl);
                 model.With(package);
-
             }
 
             if (package.File != null)
@@ -119,6 +118,7 @@ public partial class CommonConfigController
                 model.FileName = package.File.FileName;
                 model.FileSize = package.File.Length;
             }
+
             await repo.SaveChangesAsync();
         }
         catch (Exception ex)

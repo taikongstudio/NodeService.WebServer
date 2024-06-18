@@ -22,7 +22,7 @@ public class EfRepository<T> :
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         LastChangesCount = await base.SaveChangesAsync(cancellationToken);
         stopwatch.Stop();
         LastSaveChangesTimeSpan = stopwatch.Elapsed;

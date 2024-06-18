@@ -8,7 +8,7 @@
 @inject ClipboardService ClipboardService
 @implements IDisposable
 <GridContent>
-    <FileRecordPropertyWindow Visible="_isFileRecordPropertyWindowVisible" DataContext="_editingFileRecord" Closed="OnFileRecordPropertyWindowClosed" />
+    <FileRecordPropertyWindow Visible="_isFileRecordPropertyWindowVisible" DataContext="_editingFileRecord" Closed="OnFileRecordPropertyWindowClosed"/>
     <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
         <NodeSelector @ref="_nodeSelector" @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple"/>
     </CommonDialog>
@@ -66,7 +66,7 @@
                                 LabelName="@nameof(CategoryModel.Name)"
                                 ValueName="@nameof(CategoryModel.Value)"
                                 Placeholder="选择分类"
-                               
+
                                 DefaultActiveFirstOption="true"
                                 Style="width:200px">
                         </Select>
@@ -98,12 +98,12 @@
             <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="原始文件名称" Sortable="true" Ellipsis Property="c => c.OriginalFileName"></PropertyColumn>
             <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.State">
-                <Text>@_stateList.FirstOrDefault(x=>x.Value==context.State)?.Name</Text>
+                <Text>@_stateList.FirstOrDefault(x => x.Value == context.State)?.Name</Text>
             </PropertyColumn>
-            <PropertyColumn Title="原始大小"  Sortable="true" Property="c => c.Size"></PropertyColumn>
+            <PropertyColumn Title="原始大小" Sortable="true" Property="c => c.Size"></PropertyColumn>
             <PropertyColumn Title="文件哈希" Ellipsis Sortable="true" Property="c => c.FileHashValue"></PropertyColumn>
-            <PropertyColumn Title="创建时间"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
-            <PropertyColumn Title="修改时间"  Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ModifiedDateTime"></PropertyColumn>
+            <PropertyColumn Title="创建时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="修改时间" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ModifiedDateTime"></PropertyColumn>
 
             <ActionColumn Fixed="right" Width="200" Title="操作">
                 <CellRender Context="cellData">
@@ -173,10 +173,10 @@
     async Task OnExepction(Exception ex)
     {
         await _notice.Open(new NotificationConfig
-            {
-                Message = "加载失败",
-                Description = ex.ToString()
-            });
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
     }
 
     protected override async Task OnInitializedAsync()
@@ -221,17 +221,16 @@
     {
         try
         {
-            PaginationQueryParameters paginationQueryParameters = new PaginationQueryParameters();
-            List<CategoryModel> categoryList = new List<CategoryModel>();
+            var paginationQueryParameters = new PaginationQueryParameters();
+            List<CategoryModel> categoryList = new();
             categoryList.Add(new CategoryModel()
-                {
-                    Name = "全部分类"
-                });
-            int pageIndex = 1;
-            int pageSize = 20;
+            {
+                Name = "全部分类"
+            });
+            var pageIndex = 1;
+            var pageSize = 20;
             while (true)
             {
-
                 paginationQueryParameters.PageSize = pageSize;
                 paginationQueryParameters.PageIndex = pageIndex;
                 var rsp = await ApiService.QueryFileRecordCategoryListAsync(paginationQueryParameters);
@@ -241,23 +240,23 @@
                     {
                         break;
                     }
+
                     categoryList.AddRange(rsp.Result.Select(x => new CategoryModel()
-                        {
-                            Name = x,
-                            Value = x,
-                        }));
+                    {
+                        Name = x,
+                        Value = x
+                    }));
                     pageIndex++;
                 }
                 else
                 {
                     await _notice.Open(new NotificationConfig
-                        {
-                            Message = "错误提示",
-                            Description = rsp.Message
-                        });
+                    {
+                        Message = "错误提示",
+                        Description = rsp.Message
+                    });
                     break;
                 }
-
             }
 
             _categories = categoryList;
@@ -266,10 +265,10 @@
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = ex.ToString()
-                });
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
         }
     }
 
@@ -288,7 +287,7 @@
                 _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
             }
 
-            if (_selectedState !=  FileRecordState.None)
+            if (_selectedState != FileRecordState.None)
             {
                 _dataSource.QueryParameters.State = _selectedState;
             }

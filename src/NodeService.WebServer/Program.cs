@@ -51,11 +51,8 @@ public class Program
 
     private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
     {
-        string crashFileName = $"./crash.{DateTime.Now:yyyy-MM-dd_HH_mm_ss}.log";
-        if (e.IsTerminating)
-        {
-            crashFileName = $"./crash.terminate.{DateTime.Now:yyyy-MM-dd_HH_mm_ss}.log";
-        }
+        var crashFileName = $"./crash.{DateTime.Now:yyyy-MM-dd_HH_mm_ss}.log";
+        if (e.IsTerminating) crashFileName = $"./crash.terminate.{DateTime.Now:yyyy-MM-dd_HH_mm_ss}.log";
         try
         {
             using var crashWriter = File.CreateText(crashFileName);
@@ -66,7 +63,6 @@ public class Program
         {
             Console.Error.WriteLine(ex.ToString());
         }
-
     }
 
     private static async Task RunWithOptions(CommandLineOptions options, string[] args)
@@ -227,10 +223,7 @@ public class Program
 
     private static void ConfigureGrpc(WebApplicationBuilder builder)
     {
-        builder.Services.AddGrpc(grpcServiceOptions =>
-        {
-            grpcServiceOptions.MaxReceiveMessageSize = null;
-        });
+        builder.Services.AddGrpc(grpcServiceOptions => { grpcServiceOptions.MaxReceiveMessageSize = null; });
     }
 
     private static void ConfifureCor(WebApplicationBuilder builder)
@@ -354,7 +347,7 @@ public class Program
                 var messageHandlerDictionary = new MessageHandlerDictionary
                 {
                     { HeartBeatResponse.Descriptor, sp.GetService<HeartBeatResponseHandler>() },
-                    { TaskExecutionReport.Descriptor, sp.GetService<TaskExecutionReportHandler>() },
+                    { TaskExecutionReport.Descriptor, sp.GetService<TaskExecutionReportHandler>() }
                     //{ FileSystemBulkOperationReport.Descriptor, sp.GetService<FileSystemOperationReportHandler>() },
                 };
                 return messageHandlerDictionary;
@@ -436,14 +429,23 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<FireTaskParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(1024, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(1024, TimeSpan.FromMinutes(30)));
-        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>(1024 * 2, TimeSpan.FromSeconds(5)));
-        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(5)));
-        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>(64, TimeSpan.FromMilliseconds(100)));
-        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(1024 * 2, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(
+            new BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>(
+                1024 * 2, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(
+            new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(
+            new BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>(64,
+                TimeSpan.FromMilliseconds(100)));
+        builder.Services.AddSingleton(
+            new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(1024 * 2,
+                TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(1024, TimeSpan.FromSeconds(1)));
-        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>>(64, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(
+            new BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>>(64,
+                TimeSpan.FromSeconds(5)));
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)
@@ -503,6 +505,5 @@ public class Program
                         mySqlOptionBuilder.EnableStringComparisonTranslations();
                     }));
         }
-
     }
 }

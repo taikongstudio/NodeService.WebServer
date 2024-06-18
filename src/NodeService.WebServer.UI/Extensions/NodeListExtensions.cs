@@ -7,63 +7,53 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.UI.Extensions
+namespace NodeService.WebServer.UI.Extensions;
+
+public static class NodeListExtensions
 {
-    public static class NodeListExtensions
+    public static async Task<List<NodeInfoModel>> QueryNodeListAsync(this IEnumerable<StringEntry> stringEntries,
+        ApiService apiService)
     {
-        public static async Task<List<NodeInfoModel>> QueryNodeListAsync(this IEnumerable<StringEntry> stringEntries, ApiService apiService)
+        if (stringEntries == null || !stringEntries.Any()) return [];
+        var nodeList = new List<NodeInfoModel>();
+        var queryPageIndex = 0;
+        var queryPageSize = 50;
+        while (true)
         {
-            if (stringEntries == null || !stringEntries.Any())
-            {
-                return [];
-            }
-            var nodeList = new List<NodeInfoModel>();
-            var queryPageIndex = 0;
-            var queryPageSize = 50;
+            var idList = stringEntries
+                .Skip(queryPageIndex * queryPageSize)
+                .Take(queryPageSize)
+                .Select(x => x.Value)
+                .ToList();
+            if (idList.Count == 0) break;
+
+            queryPageIndex++;
+            var pageIndex = 0;
+            var pageSize = 50;
+            var count = 0;
             while (true)
             {
-                var idList = stringEntries
-                    .Skip(queryPageIndex * queryPageSize)
-                    .Take(queryPageSize)
-                    .Select(x => x.Value)
-                    .ToList();
-                if (idList.Count == 0)
+                pageIndex++;
+                var rsp = await apiService.QueryNodeListAsync(new QueryNodeListParameters
                 {
-                    break;
+                    AreaTag = "*",
+                    Status = NodeStatus.All,
+                    IdList = idList,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize
+                });
+
+                if (rsp.ErrorCode == 0 && rsp.Result != null)
+                {
+                    nodeList.AddRange(rsp.Result);
+                    count += rsp.Result.Count();
                 }
 
-                queryPageIndex++;
-                var pageIndex = 0;
-                var pageSize = 50;
-                var count = 0;
-                while (true)
-                {
-                    pageIndex++;
-                    var rsp = await apiService.QueryNodeListAsync(new QueryNodeListParameters
-                    {
-                        AreaTag = "*",
-                        Status = NodeStatus.All,
-                        IdList = idList,
-                        PageIndex = pageIndex,
-                        PageSize = pageSize
-                    });
-
-                    if (rsp.ErrorCode == 0 && rsp.Result != null)
-                    {
-                        nodeList.AddRange(rsp.Result);
-                        count += rsp.Result.Count();
-                    }
-
-                    if (rsp.TotalCount == count)
-                    {
-                        break;
-                    }
-                }
+                if (rsp.TotalCount == count) break;
             }
-
-
-            return nodeList;
         }
 
+
+        return nodeList;
     }
 }

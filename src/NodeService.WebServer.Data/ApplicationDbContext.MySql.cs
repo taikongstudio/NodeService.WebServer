@@ -140,7 +140,7 @@ public partial class ApplicationDbContext
             .Navigation(x => x.Profile)
             .AutoInclude();
     }
-    
+
     private static void MySql_BuildJsonBasedDataModels(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<FtpConfigModel>(builder =>

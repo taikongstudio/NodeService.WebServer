@@ -28,7 +28,6 @@ public partial class ClientUpdateController
             }
             else
             {
-
                 var newCounterList = counter.Counters.ToList();
                 ClientUpdateCategoryModel? category = null;
                 foreach (var item in newCounterList)
@@ -51,7 +50,6 @@ public partial class ClientUpdateController
                 counter.Counters = newCounterList;
                 await repo.SaveChangesAsync();
             }
-
 
 
             apiResponse.SetResult(true);

@@ -67,6 +67,7 @@ public class HeartBeatResponseHandler : IMessageHandler
                 Message = $"Online"
             });
         }
+
         _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);
         await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
         {

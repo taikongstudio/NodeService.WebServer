@@ -12,19 +12,19 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public class HeartBeatResponseConsumerService : BackgroundService
 {
-    readonly ExceptionCounter _exceptionCounter;
-    readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
-    readonly ILogger<HeartBeatResponseConsumerService> _logger;
-    readonly IMemoryCache _memoryCache;
-    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertyRepositoryFactory;
-    readonly INodeSessionService _nodeSessionService;
-    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
-    readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
-    readonly WebServerCounter _webServerCounter;
-    readonly IAsyncQueue<NotificationMessage> _notificationQueue;
-    readonly WebServerOptions _webServerOptions;
-    NodeSettings _nodeSettings;
+    private readonly ExceptionCounter _exceptionCounter;
+    private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
+    private readonly ILogger<HeartBeatResponseConsumerService> _logger;
+    private readonly IMemoryCache _memoryCache;
+    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertyRepositoryFactory;
+    private readonly INodeSessionService _nodeSessionService;
+    private readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
+    private readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
+    private readonly WebServerCounter _webServerCounter;
+    private readonly IAsyncQueue<NotificationMessage> _notificationQueue;
+    private readonly WebServerOptions _webServerOptions;
+    private NodeSettings _nodeSettings;
 
     public HeartBeatResponseConsumerService(
         ExceptionCounter exceptionCounter,
@@ -137,6 +137,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     $"process heartbeat {hearBeatSessionMessage.NodeSessionId} spent:{stopwatch.Elapsed}");
                 stopwatch.Reset();
             }
+
             stopwatch.Start();
             await nodeInfoRepo.UpdateRangeAsync(nodeChangedList, cancellationToken);
             stopwatch.Stop();
@@ -190,11 +191,15 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
             var nodeStatus = _nodeSessionService.GetNodeStatus(hearBeatMessage.NodeSessionId);
             nodeInfo.Status = nodeStatus;
-            var propsDict = await _memoryCache.GetOrCreateAsync<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id, TimeSpan.FromHours(1));
+            var propsDict =
+                await _memoryCache.GetOrCreateAsync<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id,
+                    TimeSpan.FromHours(1));
             nodeList.Add(nodeInfo);
             if (hearBeatResponse != null)
             {
-                nodeInfo.Profile.UpdateTime = DateTime.ParseExact(hearBeatResponse.Properties[NodePropertyModel.LastUpdateDateTime_Key], NodePropertyModel.DateTimeFormatString, DateTimeFormatInfo.InvariantInfo);
+                nodeInfo.Profile.UpdateTime = DateTime.ParseExact(
+                    hearBeatResponse.Properties[NodePropertyModel.LastUpdateDateTime_Key],
+                    NodePropertyModel.DateTimeFormatString, DateTimeFormatInfo.InvariantInfo);
                 nodeInfo.Profile.ServerUpdateTimeUtc = DateTime.UtcNow;
                 nodeInfo.Profile.Name = nodeInfo.Name;
                 nodeInfo.Profile.NodeInfoId = nodeInfo.Id;
@@ -216,19 +221,18 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 }
 
                 if (propsDict != null && !propsDict.IsEmpty
-                    &&
-                    propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key, out var processString)
-                    &&
-                    !string.IsNullOrEmpty(processString)
-                    &&
-                    processString.Contains('['))
+                                      &&
+                                      propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key,
+                                          out var processString)
+                                      &&
+                                      !string.IsNullOrEmpty(processString)
+                                      &&
+                                      processString.Contains('['))
                 {
                     var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
-                    if (processInfoList != null)
-                    {
-                        AnalysisNodeProcessInfoList(nodeInfo, processInfoList);
-                    }
+                    if (processInfoList != null) AnalysisNodeProcessInfoList(nodeInfo, processInfoList);
                 }
+
                 AnalysisNodeInfo(nodeInfo);
             }
 
@@ -247,7 +251,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 await nodePropertyRepo.AddAsync(nodeProps, cancellationToken);
                 var oldId = nodeInfo.LastNodePropertySnapshotId;
                 nodeInfo.LastNodePropertySnapshotId = nodeProps.Id;
-                await nodePropertyRepo.DbContext.Set<NodePropertySnapshotModel>().Where(x => x.Id == oldId).ExecuteDeleteAsync(cancellationToken);
+                await nodePropertyRepo.DbContext.Set<NodePropertySnapshotModel>().Where(x => x.Id == oldId)
+                    .ExecuteDeleteAsync(cancellationToken);
             }
         }
         catch (Exception ex)
@@ -259,7 +264,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     private void AnalysisNodeInfo(NodeInfoModel nodeInfo)
     {
-
     }
 
     private void AnalysisNodeProcessInfoList(NodeInfoModel nodeInfo, ProcessInfo[] processInfoList)

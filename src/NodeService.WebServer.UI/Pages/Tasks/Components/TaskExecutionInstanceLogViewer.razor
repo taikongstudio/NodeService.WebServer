@@ -84,10 +84,10 @@
         _lastFullTaskLogPageEndLineNumber = 0;
 
         await _viewer.UpdateOptions(new EditorUpdateOptions
-            {
-                ReadOnly = true,
-                LineNumbersMinChars = 10
-            });
+        {
+            ReadOnly = true,
+            LineNumbersMinChars = 10
+        });
 
         await _viewer.SetValue(string.Empty);
     }
@@ -193,11 +193,11 @@
             }
 
             var op = new IdentifiedSingleEditOperation()
-                {
-                    ForceMoveMarkers = false,
-                    Range = new BlazorMonaco.Range(startLineNumber, startColumn, endLineNumber, endColumn),
-                    Text = currentLogText
-                };
+            {
+                ForceMoveMarkers = false,
+                Range = new BlazorMonaco.Range(startLineNumber, startColumn, endLineNumber, endColumn),
+                Text = currentLogText
+            };
             await model.ApplyEdits([op]);
 
             if (entiresCount == apiResponse.PageSize)
@@ -253,6 +253,7 @@
         {
             await _cancellationTokenSource.CancelAsync();
         }
+
         TaskExecutionInstanceId = null;
         _totalLogEntriesCount = 0;
         _loadedLogEntriesCount = 0;

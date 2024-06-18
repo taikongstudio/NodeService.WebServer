@@ -59,19 +59,23 @@ public class ClientUpdateQueueService : BackgroundService
             try
             {
                 using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-                var nodeList = await nodeInfoRepo.ListAsync(cancellationToken);
-                var nodeArray = nodeList.ToArray();
-                Random.Shared.Shuffle(nodeArray);
-                Random.Shared.Shuffle(nodeArray);
-                Random.Shared.Shuffle(nodeArray);
+
+                var itemsCount = await nodeInfoRepo.CountAsync(cancellationToken);
                 var pageSize = 20;
-                var pageCount = Math.DivRem(nodeList.Count, pageSize, out var result);
+                var pageCount = Math.DivRem(itemsCount, pageSize, out var result);
                 if (result > 0) pageCount += 1;
                 if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(2));
                 for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
                 {
-                    var items = nodeArray.Skip(pageIndex * pageSize).Take(pageSize);
-                    foreach (var item in items)
+                    var nodeList = await nodeInfoRepo.PaginationQueryAsync(
+                        new NodeInfoSpecification(),
+                        new PaginationInfo(pageIndex, pageSize),
+                        cancellationToken);
+                    var nodeArray = nodeList.Items.ToArray();
+                    Random.Shared.Shuffle(nodeArray);
+                    Random.Shared.Shuffle(nodeArray);
+                    Random.Shared.Shuffle(nodeArray);
+                    foreach (var item in nodeArray)
                     {
                         var key = CreateKey(item.Profile.IpAddress);
                         _memoryCache.Set(key, true, TimeSpan.FromMinutes(2));
@@ -91,20 +95,24 @@ public class ClientUpdateQueueService : BackgroundService
             }
     }
 
-    private static string CreateKey(string value)
+    private static string CreateKey(string ipAddress)
     {
-        return $"ClientUpdateEnabled:{value}";
+        return $"ClientUpdateEnabled:{ipAddress}";
     }
 
-    private async Task QueueAsync(CancellationToken cancellationToken = default)
+    async Task QueueAsync(CancellationToken cancellationToken = default)
     {
-        await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(cancellationToken))
+        await foreach (var array in _batchQueue.ReceiveAllAsync(cancellationToken))
         {
+            if (array == null)
+            {
+                continue;
+            }
             var stopwatch = Stopwatch.StartNew();
             try
             {
                 using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-                foreach (var nameGroup in arrayPoolCollection.GroupBy(static x => x.Argument.Name))
+                foreach (var nameGroup in array.GroupBy(static x => x.Argument.Name))
                 {
                     var name = nameGroup.Key;
 
@@ -157,7 +165,7 @@ public class ClientUpdateQueueService : BackgroundService
             finally
             {
                 stopwatch.Stop();
-                _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed:{stopwatch.Elapsed}");
+                _logger.LogInformation($"{array.Length} requests,Ellapsed:{stopwatch.Elapsed}");
             }
         }
     }

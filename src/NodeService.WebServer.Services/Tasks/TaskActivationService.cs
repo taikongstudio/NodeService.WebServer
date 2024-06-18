@@ -69,7 +69,7 @@ public class TaskActivationService : BackgroundService
     private async Task SchedulePenddingContextAsync(object? state)
     {
         if (state is not CancellationToken cancellationToken) return;
-        while (true)
+        while (!cancellationToken.IsCancellationRequested)
         {
             await PenddingContextChannel.Reader.WaitToReadAsync(cancellationToken);
             while (PenddingContextChannel.Reader.TryRead(out var penddingContext))
@@ -154,8 +154,10 @@ public class TaskActivationService : BackgroundService
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
-
-        _taskPenddingContextManager.RemoveContext(context.Id, out _);
+        finally
+        {
+            _taskPenddingContextManager.RemoveContext(context.Id, out _);
+        }
         if (context.CancellationToken.IsCancellationRequested)
         {
             await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
@@ -183,13 +185,12 @@ public class TaskActivationService : BackgroundService
     {
         try
         {
-            var nodeIdListFilter = DataFilterCollection<string>.Includes(taskDefinition.NodeList.Select(x => x.Value));
             var nodeInfoList = await nodeInfoRepo.ListAsync(
                 new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.All,
                     NodeDeviceType.Computer,
-                    nodeIdListFilter),
+                    DataFilterCollection<string>.Includes(taskDefinition.NodeList.Select(x => x.Value))),
                 cancellationToken);
             foreach (var nodeEntry in taskDefinition.NodeList)
                 try

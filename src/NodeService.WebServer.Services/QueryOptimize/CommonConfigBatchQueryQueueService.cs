@@ -45,14 +45,18 @@ public class CommonConfigBatchQueryQueueService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        await foreach (var arrayPoolCollection in _batchQueue.ReceiveAllAsync(cancellationToken))
+        await foreach (var array in _batchQueue.ReceiveAllAsync(cancellationToken))
         {
+            if (array == null)
+            {
+                continue;
+            }
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                await ProcessQueryByIdAsync(arrayPoolCollection);
+                await ProcessQueryByIdAsync(array);
 
-                await ProcessQueryByParameterAsync(arrayPoolCollection);
+                await ProcessQueryByParameterAsync(array);
             }
             catch (Exception ex)
             {
@@ -62,16 +66,15 @@ public class CommonConfigBatchQueryQueueService : BackgroundService
             finally
             {
                 stopwatch.Stop();
-                _logger.LogInformation($"{arrayPoolCollection.Count} requests,Ellapsed:{stopwatch.Elapsed}");
+                _logger.LogInformation($"{array.Length} requests,Ellapsed:{stopwatch.Elapsed}");
             }
         }
     }
 
     private async Task ProcessQueryByParameterAsync(
-        ArrayPoolCollection<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>
-            arrayPoolCollection)
+        BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>[] array)
     {
-        foreach (var batchQueueOperationGroup in arrayPoolCollection
+        foreach (var batchQueueOperationGroup in array
                      .Where(static x => x != null && x.Argument.QueryParameters != null)
                      .OrderByDescending(static x => x.Priority)
                      .GroupBy(static x => x.Argument))
@@ -105,10 +108,9 @@ public class CommonConfigBatchQueryQueueService : BackgroundService
     }
 
     private async Task ProcessQueryByIdAsync(
-        ArrayPoolCollection<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>
-            arrayPoolCollection)
+        BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>[] array)
     {
-        foreach (var batchQueueOperationGroup in arrayPoolCollection
+        foreach (var batchQueueOperationGroup in array
                      .Where(static x => x != null && x.Argument.Id != null)
                      .OrderByDescending(x => x.Priority)
                      .GroupBy(x => x.Argument.Type))

@@ -60,16 +60,16 @@ public class HeartBeatResponseConsumerService : BackgroundService
     {
         if (!_webServerOptions.DebugProductionMode) await InvalidateAllNodeStatusAsync(cancellationToken);
 
-        await foreach (var arrayPoolCollection in _hearBeatMessageBatchQueue.ReceiveAllAsync(cancellationToken))
+        await foreach (var array in _hearBeatMessageBatchQueue.ReceiveAllAsync(cancellationToken))
         {
             var stopwatch = new Stopwatch();
-            var count = arrayPoolCollection.Count;
+            var count = array.Length;
             try
             {
                 stopwatch.Start();
-                await ProcessHeartBeatMessagesAsync(arrayPoolCollection);
+                await ProcessHeartBeatMessagesAsync(array);
                 _logger.LogInformation(
-                    $"process {arrayPoolCollection.Count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
+                    $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
                 _webServerCounter.HeartBeatAvailableCount = (uint)_hearBeatMessageBatchQueue.AvailableCount;
                 _webServerCounter.HeartBeatTotalProcessTimeSpan += stopwatch.Elapsed;
                 _webServerCounter.HeartBeatConsumeCount += (uint)count;
@@ -112,7 +112,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
     }
 
     private async Task ProcessHeartBeatMessagesAsync(
-        ArrayPoolCollection<NodeHeartBeatSessionMessage> arrayPoolCollection,
+        NodeHeartBeatSessionMessage[] array,
         CancellationToken cancellationToken = default)
     {
         var stopwatch = new Stopwatch();
@@ -122,7 +122,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             using var nodePropsRepo = _nodePropertyRepositoryFactory.CreateRepository();
             await RefreshNodeSettingsAsync(cancellationToken);
             var nodeChangedList = new List<NodeInfoModel>();
-            foreach (var hearBeatSessionMessage in arrayPoolCollection)
+            foreach (var hearBeatSessionMessage in array)
             {
                 if (hearBeatSessionMessage == null) continue;
                 stopwatch.Start();
@@ -150,7 +150,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         finally
         {
             _logger.LogInformation(
-                $"Process {arrayPoolCollection.Count} messages, SaveElapsed:{stopwatch.Elapsed}");
+                $"Process {array.Length} messages, SaveElapsed:{stopwatch.Elapsed}");
             stopwatch.Reset();
         }
     }

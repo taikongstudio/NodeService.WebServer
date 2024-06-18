@@ -14,6 +14,11 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         };
     }
 
+    public NodeInfoSpecification()
+    {
+
+    }
+
     public NodeInfoSpecification(
         string? name,
         string? ipAddress,

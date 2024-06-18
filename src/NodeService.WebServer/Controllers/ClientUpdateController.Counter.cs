@@ -4,7 +4,7 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class ClientUpdateController
 {
-    [HttpPost("/api/clientupdate/counters/AddOrUpdate")]
+    [HttpPost("/api/ClientUpdate/counters/AddOrUpdate")]
     public async Task<ApiResponse<bool>>
         AddOrUpdateCountersAsync([FromBody] AddOrUpdateCounterParameters model)
     {

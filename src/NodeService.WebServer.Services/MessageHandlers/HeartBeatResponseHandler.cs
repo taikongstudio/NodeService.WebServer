@@ -6,10 +6,10 @@ namespace NodeService.WebServer.Services.MessageHandlers;
 
 public class HeartBeatResponseHandler : IMessageHandler
 {
-    private readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
-    private readonly BatchQueue<NodeStatusChangeRecordModel> _nodeStatusChangeRecordBatchQueue;
-    private readonly ILogger<HeartBeatResponseHandler> _logger;
-    private readonly INodeSessionService _nodeSessionService;
+    readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
+    readonly BatchQueue<NodeStatusChangeRecordModel> _nodeStatusChangeRecordBatchQueue;
+    readonly ILogger<HeartBeatResponseHandler> _logger;
+    readonly INodeSessionService _nodeSessionService;
 
     public HeartBeatResponseHandler(
         ILogger<HeartBeatResponseHandler> logger,

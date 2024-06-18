@@ -67,21 +67,25 @@ public class TaskExecutionReportConsumerService : BackgroundService
             }
         });
 
-        await foreach (var arrayPoolCollection in _taskExecutionReportBatchQueue.ReceiveAllAsync(cancellationToken))
+        await foreach (var array in _taskExecutionReportBatchQueue.ReceiveAllAsync(cancellationToken))
         {
+            if (array == null)
+            {
+                continue;
+            }
             var stopwatch = new Stopwatch();
 
             try
             {
                 stopwatch.Start();
-                await ProcessTaskExecutionReportsAsync(arrayPoolCollection, cancellationToken);
+                await ProcessTaskExecutionReportsAsync(array, cancellationToken);
                 stopwatch.Stop();
                 _logger.LogInformation(
-                    $"process {arrayPoolCollection.Count} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
+                    $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
                 _webServerCounter.TaskExecutionReportAvailableCount =
                     (uint)_taskExecutionReportBatchQueue.AvailableCount;
                 _webServerCounter.TaskExecutionReportTotalTimeSpan += stopwatch.Elapsed;
-                _webServerCounter.TaskExecutionReportConsumeCount += (uint)arrayPoolCollection.Count;
+                _webServerCounter.TaskExecutionReportConsumeCount += (uint)array.Length;
                 stopwatch.Reset();
             }
             catch (Exception ex)
@@ -178,7 +182,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     }
 
     private async Task ProcessTaskExecutionReportsAsync(
-        ArrayPoolCollection<TaskExecutionReportMessage?> arrayPoolCollection,
+        TaskExecutionReportMessage[] array,
         CancellationToken cancellationToken = default)
     {
         var stopwatchSaveTimeSpan = TimeSpan.Zero;
@@ -190,7 +194,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
             var stopwatchQuery = new Stopwatch();
             var stopwatchProcessLogEntries = new Stopwatch();
             var stopwatchProcessMessage = new Stopwatch();
-            foreach (var taskReportGroup in arrayPoolCollection
+            foreach (var taskReportGroup in array
                          .GroupBy(GetTaskId))
             {
                 if (taskReportGroup.Key == null) continue;
@@ -227,7 +231,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                             Id = taskId,
                             LogEntries = report.LogEntries.Select(Convert).ToImmutableArray()
                         };
-                        await _taskLogUnitBatchQueue.SendAsync(taskLogUnit);
+                        await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);
                     }
                 }
 
@@ -239,7 +243,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 var messsage = taskExecutionInstance.Message;
                 var executionBeginTime = taskExecutionInstance.ExecutionBeginTimeUtc;
                 var executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
-                foreach (var messageStatusGroup in taskReportGroup.GroupBy(static x => x.GetMessage().Status))
+                foreach (var messageStatusGroup in taskReportGroup.GroupBy(static x => x.GetMessage().Status).OrderBy(static x => x.Key))
                 {
                     stopwatchProcessMessage.Restart();
                     var status = messageStatusGroup.Key;
@@ -318,8 +322,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
         finally
         {
-            _logger.LogInformation(
-                $"Process {arrayPoolCollection.Count} messages, SaveElapsed:{stopwatchSaveTimeSpan}");
+            _logger.LogInformation($"Process {array.Length} messages, SaveElapsed:{stopwatchSaveTimeSpan}");
         }
     }
 

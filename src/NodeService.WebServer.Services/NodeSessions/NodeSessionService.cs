@@ -34,23 +34,18 @@ public record class FileSystemWatchEventReportMessage : NodeSessionMessage<FileS
 
 public class NodeSessionService : INodeSessionService
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatBatchQueue;
     private readonly ILogger<NodeSessionService> _logger;
     private readonly NodeHealthyCounterDictionary _nodeHealthyCounterDictionary;
     private readonly ConcurrentDictionary<NodeSessionId, NodeSession> _nodeSessionDict;
 
     public NodeSessionService(
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
         ILogger<NodeSessionService> logger,
         BatchQueue<NodeHeartBeatSessionMessage> hearBeatBatchQueue,
         NodeHealthyCounterDictionary nodeHealthyCounterDictionary
     )
     {
-        _dbContextFactory = dbContextFactory;
         _nodeSessionDict = new ConcurrentDictionary<NodeSessionId, NodeSession>();
         _logger = logger;
-        _hearBeatBatchQueue = hearBeatBatchQueue;
         _nodeHealthyCounterDictionary = nodeHealthyCounterDictionary;
     }
 

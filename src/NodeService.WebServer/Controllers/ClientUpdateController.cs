@@ -39,7 +39,7 @@ public partial class ClientUpdateController : Controller
         _batchQueue = batchQueue;
     }
 
-    [HttpGet("/api/clientupdate/GetUpdate")]
+    [HttpGet("/api/ClientUpdate/GetUpdate")]
     public async Task<ApiResponse<ClientUpdateConfigModel>> GetUpdateAsync(
         [FromQuery] string? name,
         CancellationToken cancellationToken = default)
@@ -53,7 +53,7 @@ public partial class ClientUpdateController : Controller
             var batchQueueOperation =
                 new BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>(paramters,
                     BatchQueueOperationKind.Query);
-            await _batchQueue.SendAsync(batchQueueOperation);
+            await _batchQueue.SendAsync(batchQueueOperation, cancellationToken);
             var clientUpdateConfig = await batchQueueOperation.WaitAsync(cancellationToken);
             apiResponse.SetResult(clientUpdateConfig);
         }
@@ -68,7 +68,7 @@ public partial class ClientUpdateController : Controller
         return apiResponse;
     }
 
-    [HttpPost("/api/clientupdate/AddOrUpdate")]
+    [HttpPost("/api/ClientUpdate/AddOrUpdate")]
     public async Task<ApiResponse> AddOrUpdateAsync([FromBody] ClientUpdateConfigModel model)
     {
         var apiResponse = new ApiResponse();
@@ -108,7 +108,7 @@ public partial class ClientUpdateController : Controller
         return apiResponse;
     }
 
-    [HttpGet("/api/clientupdate/List")]
+    [HttpGet("/api/ClientUpdate/List")]
     public async Task<PaginationResponse<ClientUpdateConfigModel>> QueryClientUpdateListAsync(
         [FromQuery] PaginationQueryParameters queryParameters
     )
@@ -137,7 +137,7 @@ public partial class ClientUpdateController : Controller
     }
 
 
-    [HttpPost("/api/clientupdate/Remove")]
+    [HttpPost("/api/ClientUpdate/Remove")]
     public async Task<ApiResponse> RemoveAsync([FromBody] ClientUpdateConfigModel model)
     {
         var apiResponse = new ApiResponse();

@@ -123,6 +123,11 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 taskExecutionInstanceList.Clear();
                 foreach (var taskExecutionInstance in taskExecutionInstanceGroup)
                 {
+                    if (taskExecutionInstance.FireTimeUtc == DateTime.MinValue)
+                    {
+                        continue;
+                    }
+
                     if (DateTime.UtcNow - taskExecutionInstance.FireTimeUtc < TimeSpan.FromDays(7)) continue;
                     if (taskExecutionInstance.FireTimeUtc +
                         TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds) < DateTime.UtcNow)

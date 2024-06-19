@@ -2,11 +2,13 @@
 using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,12 +17,14 @@ namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskCancellationQueueService : BackgroundService
 {
-    private readonly ILogger<TaskCancellationQueueService> _logger;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly ITaskPenddingContextManager _taskPenddingContextManager;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
-    private readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
+    readonly ILogger<TaskCancellationQueueService> _logger;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly ITaskPenddingContextManager _taskPenddingContextManager;
+    readonly INodeSessionService _nodeSessionService;
+    readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
+    readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
+    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
+    readonly IMemoryCache _memoryCache;
 
     public TaskCancellationQueueService(
         ILogger<TaskCancellationQueueService> logger,
@@ -28,41 +32,86 @@ public class TaskCancellationQueueService : BackgroundService
         ITaskPenddingContextManager taskPenddingContextManager,
         INodeSessionService nodeSessionService,
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
-        ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepoFactory)
+        BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
+        ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepoFactory,
+        IMemoryCache memoryCache)
     {
         _logger = logger;
         _exceptionCounter = exceptionCounter;
         _taskPenddingContextManager = taskPenddingContextManager;
         _nodeSessionService = nodeSessionService;
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
+        _taskExecutionReportBatchQueue = taskExecutionReportBatchQueue;
         _taskExecutionInstanceRepoFactory = taskExecutionInstanceRepoFactory;
+        _memoryCache = memoryCache;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        await foreach (var arrayPoolCollection in _taskCancellationBatchQueue.ReceiveAllAsync(cancellationToken))
+
+        await foreach (var array in _taskCancellationBatchQueue.ReceiveAllAsync(cancellationToken))
+        {
             try
             {
-                using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
-                foreach (var taskCancellationParameters in arrayPoolCollection)
+                if (array == null)
                 {
+                    continue;
+                }
+                using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
+                foreach (var taskCancellationParameters in array)
+                {
+                    if (taskCancellationParameters == null)
+                    {
+                        continue;
+                    }
+                    var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(
+                                                taskCancellationParameters.TaskExeuctionInstanceId,
+                                                cancellationToken);
+                    if (taskExecutionInstance == null) continue;
+                    if (taskExecutionInstance.Status >= TaskExecutionStatus.Cancelled) continue;
                     if (_taskPenddingContextManager.TryGetContext(
                             taskCancellationParameters.TaskExeuctionInstanceId,
                             out var context)
                         &&
                         context != null)
+                    {
                         await context.CancelAsync();
-                    var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(
-                        taskCancellationParameters.TaskExeuctionInstanceId,
-                        cancellationToken);
-                    if (taskExecutionInstance == null) continue;
-                    if (taskExecutionInstance.Status >= TaskExecutionStatus.Cancelled) continue;
-                    foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(
-                                 new NodeId(taskExecutionInstance.NodeInfoId)))
-                        await _nodeSessionService.PostTaskExecutionEventAsync(
-                            nodeSessionId,
-                            taskExecutionInstance.ToCancelEvent(),
-                            cancellationToken);
+                    }
+                    if (taskExecutionInstance.Status >= TaskExecutionStatus.Started)
+                    {
+                        var nodeSessions = _nodeSessionService.EnumNodeSessions(new NodeId(taskExecutionInstance.NodeInfoId), NodeStatus.Online);
+                        if (nodeSessions.Any())
+                        {
+                            var req = taskExecutionInstance.ToCancelEvent(taskCancellationParameters);
+                            _memoryCache.Set($"{nameof(TaskCancellationQueueService)}:{taskExecutionInstance.Id}", taskCancellationParameters, TimeSpan.FromHours(1));
+                            foreach (var nodeSessionId in nodeSessions)
+                            {
+                                await _nodeSessionService.PostTaskExecutionEventAsync(
+                                    nodeSessionId,
+                                    req,
+                                    null,
+                                    cancellationToken);
+                            }
+
+                        }
+                        else
+                        {
+                            await _taskExecutionReportBatchQueue.SendAsync(
+                                new TaskExecutionReportMessage()
+                                {
+                                    NodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId),
+                                    Message = new TaskExecutionReport()
+                                    {
+                                        Status = TaskExecutionStatus.Cancelled,
+                                        Id = taskExecutionInstance.Id,
+                                        Message = $"Cancelled by {taskCancellationParameters.Source} on {taskCancellationParameters.IpAddressOrHostName}"
+                                    }
+                                },
+                                cancellationToken);
+                        }
+                    }
+
+
                 }
             }
             catch (Exception ex)
@@ -73,5 +122,8 @@ public class TaskCancellationQueueService : BackgroundService
             finally
             {
             }
+        }
+
     }
+
 }

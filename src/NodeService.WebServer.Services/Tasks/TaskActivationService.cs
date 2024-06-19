@@ -28,14 +28,14 @@ public class TaskActivationService : BackgroundService
 
     public TaskActivationService(
         ILogger<TaskActivationService> logger,
+        INodeSessionService nodeSessionService,
+        ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
-        ApplicationRepositoryFactory<TaskActivationRecordModel> jobFireConfigRepositoryFactory,
+        ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRepositoryFactory,
         ApplicationRepositoryFactory<TaskTypeDescConfigModel> taskTypeDescConfigRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
         BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
-        INodeSessionService nodeSessionService,
-        ExceptionCounter exceptionCounter,
         BatchQueue<FireTaskParameters> fireTaskBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationQueue,
         ITaskPenddingContextManager taskPenddingContextManager)
@@ -46,7 +46,7 @@ public class TaskActivationService : BackgroundService
         _nodeSessionService = nodeSessionService;
         _taskDefinitionRepositoryFactory = taskDefinitionRepositoryFactory;
         _taskExecutionInstanceRepositoryFactory = taskExecutionInstanceRepositoryFactory;
-        _taskActivationRecordRepositoryFactory = jobFireConfigRepositoryFactory;
+        _taskActivationRecordRepositoryFactory = taskActivationRepositoryFactory;
         _taskTypeDescConfigRepositoryFactory = taskTypeDescConfigRepositoryFactory;
         _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
 
@@ -103,7 +103,7 @@ public class TaskActivationService : BackgroundService
                     readyToRun = await context.WaitForRunningTasksAsync(repo);
                     break;
                 case TaskExecutionStrategy.Stop:
-                    readyToRun = await context.StopRunningTasksAsync(repo);
+                    readyToRun = await context.StopRunningTasksAsync(repo, _taskCancellationQueue);
                     break;
                 case TaskExecutionStrategy.Skip:
                     return;

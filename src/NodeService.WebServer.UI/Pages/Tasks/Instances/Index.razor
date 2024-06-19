@@ -354,19 +354,15 @@
     {
         try
         {
-            await ApiService.CancelTaskAsync(model.Id, new TaskCancellationParameters
-            {
-                UserName = "WebUser",
-                TaskExeuctionInstanceId = model.Id
-            });
+            await ApiService.CancelTaskAsync(model.Id, new TaskCancellationParameters("WebUser", System.Net.Dns.GetHostName(), model.Id));
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = ex.ToString()
-            });
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
         }
     }
 

@@ -2,6 +2,7 @@
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.NodeSessions;
 using System;
+using System.Net;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -19,10 +20,6 @@ public class TaskExecutionTimeLimitJob : JobBase
     {
         var nodeSessionService = ServiceProvider.GetService<INodeSessionService>();
         var taskExecutionInstance = Properties["TaskExecutionInstance"] as TaskExecutionInstanceModel;
-        await _batchQueue.SendAsync(new TaskCancellationParameters()
-        {
-            TaskExeuctionInstanceId = taskExecutionInstance.Id,
-            UserName = "System"
-        });
+        await _batchQueue.SendAsync(new TaskCancellationParameters(nameof(TaskExecutionTimeLimitJob), Dns.GetHostName(), taskExecutionInstance.Id));
     }
 }

@@ -131,6 +131,7 @@ public class NodeSessionService : INodeSessionService
     public async ValueTask PostTaskExecutionEventAsync(
         NodeSessionId nodeSessionId,
         TaskExecutionEventRequest taskExecutionEventRequest,
+        Func<IMessage, ValueTask>? interceptor = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(taskExecutionEventRequest);
@@ -141,20 +142,43 @@ public class NodeSessionService : INodeSessionService
             Topic = "task",
             TaskExecutionEventRequest = taskExecutionEventRequest
         };
+        if (interceptor == null)
+        {
+            await this.PostMessageAsync(
+                nodeSessionId,
+                subscribeEvent,
+                cancellationToken);
+        }
+        else
+        {
+            await this.PostMessageWithInterceptorAsync<SubscribeEvent>(
+                nodeSessionId,
+                subscribeEvent,
+                interceptor,
+                cancellationToken);
+        }
 
-        await this.PostMessageAsync<SubscribeEvent>(
-            nodeSessionId,
-            subscribeEvent,
-            cancellationToken);
     }
 
-    public IEnumerable<NodeSessionId> EnumNodeSessions(NodeId nodeId)
+    public IEnumerable<NodeSessionId> EnumNodeSessions(NodeId nodeId, NodeStatus nodeStatus = NodeStatus.All)
     {
-        foreach (var nodeSessionId in _nodeSessionDict.Keys)
+        foreach (var kv in _nodeSessionDict)
         {
-            if (nodeId == NodeId.Any) yield return nodeSessionId;
-            if (nodeSessionId.NodeId == nodeId) yield return nodeSessionId;
+            if (nodeId == NodeId.Any) yield return kv.Key;
+            if (kv.Key.NodeId == nodeId)
+            {
+                if (kv.Value.Status == nodeStatus)
+                {
+                    yield return kv.Key;
+                }
+                else if (nodeStatus == NodeStatus.All && (kv.Value.Status == NodeStatus.Online || kv.Value.Status == NodeStatus.Offline))
+                {
+                    yield return kv.Key;
+                }
+            }
+
         }
+        yield break;
     }
 
     public string GetNodeName(NodeSessionId nodeSessionId)

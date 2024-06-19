@@ -2,6 +2,7 @@
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories.Specifications;
+using System.Net;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -55,7 +56,7 @@ public class TaskPenddingContext : IAsyncDisposable
         return false;
     }
 
-    public async Task<bool> StopRunningTasksAsync(IRepository<TaskExecutionInstanceModel> repository)
+    public async Task<bool> StopRunningTasksAsync(IRepository<TaskExecutionInstanceModel> repository, BatchQueue<TaskCancellationParameters> taskCancellationQueue)
     {
         while (!CancellationToken.IsCancellationRequested)
         {
@@ -69,10 +70,9 @@ public class TaskPenddingContext : IAsyncDisposable
 
             if (queryResult.IsEmpty) return true;
             foreach (var taskExecutionInstance in queryResult.Items)
-                await NodeSessionService.PostTaskExecutionEventAsync(
-                    NodeSessionId,
-                    taskExecutionInstance.ToCancelEvent(),
-                    CancellationToken);
+            {
+                await taskCancellationQueue.SendAsync(new TaskCancellationParameters(nameof(TaskPenddingContext), Dns.GetHostName(), taskExecutionInstance.Id));
+            }
 
             await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken);
         }

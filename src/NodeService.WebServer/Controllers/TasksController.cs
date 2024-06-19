@@ -121,10 +121,10 @@ public class TasksController : Controller
         var apiResponse = new ApiResponse<TaskExecutionInstanceModel>();
         try
         {
-            await _taskCancellationAsyncQueue.SendAsync(new TaskCancellationParameters
-            {
-                TaskExeuctionInstanceId = id
-            });
+            await _taskCancellationAsyncQueue.SendAsync(new TaskCancellationParameters(
+                taskCancellationParameters.Source,
+                HttpContext.Connection.RemoteIpAddress.ToString(),
+                taskCancellationParameters.TaskExeuctionInstanceId));
         }
         catch (Exception ex)
         {
@@ -173,18 +173,18 @@ public class TasksController : Controller
                         var pageIndex = 1;
                         while (true)
                         {
-                            var taskLogs =
-                                await taskLogRepo.ListAsync(new TaskLogSpecification(taskId, pageIndex, 100));
+                            var taskLogs = await taskLogRepo.ListAsync(new TaskLogSpecification(taskId, pageIndex, 10));
                             if (taskLogs.Count == 0) break;
                             foreach (var taskLog in taskLogs)
                             {
                                 pageIndex++;
                                 foreach (var logEntry in taskLog.LogEntries)
-                                    streamWriter.WriteLine(
-                                        $"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
+                                {
+                                    streamWriter.WriteLine($"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
+                                }
                             }
 
-                            if (taskLogs.Count < 100) break;
+                            if (taskLogs.Count < 10) break;
                         }
 
                         await streamWriter.FlushAsync();

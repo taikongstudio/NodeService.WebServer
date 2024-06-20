@@ -306,7 +306,7 @@
 
     UpdateNodeProfileModel? _editingNodeInfoModel;
 
-    IPAddressPortSettings _ipAddressPortSettings = new();
+    HostPortSettings _ipAddressPortSettings = new();
     SerialPortSettings _serialPortSettings = new();
 
     string GetTimeDesc(DateTime dateTime)
@@ -646,7 +646,7 @@
                 {
                     case NodeDeviceType.NetworkDevice:
 
-                        _ipAddressPortSettings = jsonElement.Deserialize<IPAddressPortSettings>(new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+                        _ipAddressPortSettings = jsonElement.Deserialize<HostPortSettings>(new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
 
                         break;
                     case NodeDeviceType.SerialPortDevice:

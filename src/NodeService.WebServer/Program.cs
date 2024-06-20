@@ -223,7 +223,10 @@ public class Program
 
     private static void ConfigureGrpc(WebApplicationBuilder builder)
     {
-        builder.Services.AddGrpc(grpcServiceOptions => { grpcServiceOptions.MaxReceiveMessageSize = null; });
+        builder.Services.AddGrpc(grpcServiceOptions =>
+        {
+            grpcServiceOptions.MaxReceiveMessageSize = null;
+        });
     }
 
     private static void ConfifureCor(WebApplicationBuilder builder)

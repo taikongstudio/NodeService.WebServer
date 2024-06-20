@@ -96,12 +96,12 @@ public class NetworkDeviceScanService : BackgroundService
                         var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json, _jsonOptions);
                         if (dict == null || !dict.TryGetValue("Settings", out var settings) ||
                             settings is not JsonElement element) return;
-                        var ipAddressPortSettings = element.Deserialize<IPAddressPortSettings>(_jsonOptions);
-                        if (ipAddressPortSettings == null || ipAddressPortSettings.IpAddress == null) return;
+                        var hostPortSettings = element.Deserialize<HostPortSettings>(_jsonOptions);
+                        if (hostPortSettings == null || hostPortSettings.IpAddress == null) return;
 
                         var pingReply = await PingNetworkDeviceAsync(
-                                    ipAddressPortSettings.IpAddress,
-                                    TimeSpan.FromSeconds(ipAddressPortSettings.PingTimeOutSeconds),
+                                    hostPortSettings.IpAddress,
+                                    TimeSpan.FromSeconds(hostPortSettings.PingTimeOutSeconds),
                                     cancellationToken);
                         if (pingReply == null || pingReply.Status != IPStatus.Success)
                         {
@@ -114,7 +114,7 @@ public class NetworkDeviceScanService : BackgroundService
                             nodeInfo.Profile.ServerUpdateTimeUtc = DateTime.UtcNow;
                         }
 
-                        nodeInfo.Profile.IpAddress = ipAddressPortSettings.IpAddress;
+                        nodeInfo.Profile.IpAddress = hostPortSettings.IpAddress;
                         _nodeSettings.MatchAreaTag(nodeInfo);
                     }
                     break;

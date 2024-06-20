@@ -24,11 +24,10 @@ internal class ClearConfigService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         var dbContext = _dbContextFactory.CreateDbContext();
-        var ftpUploadConfigs = await dbContext.FtpUploadConfigurationDbSet.ToListAsync();
+        var ftpUploadConfigs = await dbContext.TaskDefinitionDbSet.ToListAsync();
         foreach (var item in ftpUploadConfigs)
         {
-            item.FtpConfig = null;
-            item.Value.MatchType = MatchType.Win32;
+            item.Value.PenddingLimitTimeSeconds = 3000;
             dbContext.Update(item);
         }
 

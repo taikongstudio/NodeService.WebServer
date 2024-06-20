@@ -94,90 +94,116 @@ public class NodeServiceImpl : NodeServiceBase
         IServerStreamWriter<SubscribeEvent> responseStream,
         ServerCallContext context)
     {
-        var httpContext = context.GetHttpContext();
-        var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
-        var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
+
         try
         {
+            var httpContext = context.GetHttpContext();
+            var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
+            var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
             if (nodeSessionId.NodeId.IsNullOrEmpty) return;
-            var messageHandlerDictionary = _serviceProvider.GetService<MessageHandlerDictionary>();
+
             await EnsureNodeInfoAsync(nodeSessionId, nodeClientHeaders.HostName);
             _nodeSessionService.UpdateNodeStatus(nodeSessionId, NodeStatus.Online);
             _nodeSessionService.UpdateNodeName(nodeSessionId, nodeClientHeaders.HostName);
             _nodeSessionService.SetHttpContext(nodeSessionId, httpContext);
-            await DispatchFileSystemWatchConfigurations(context, nodeSessionId);
 
-            var inputQueue = _nodeSessionService.GetInputQueue(nodeSessionId);
-            _ = Task.Factory.StartNew(async () =>
-            {
-                try
-                {
-                    await foreach (var message in inputQueue.ReadAllAsync(context.CancellationToken))
-                    {
-                        _webServerCounter.NodeServiceInputMessagesCount++;
-                        if (!messageHandlerDictionary.TryGetValue(message.Descriptor, out var messageHandler)) continue;
-                        await messageHandler.HandleAsync(nodeSessionId, httpContext, message);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _exceptionCounter.AddOrUpdate(ex);
-                    _logger.LogError(ex.ToString());
-                }
-            }, context.CancellationToken);
+            Task[] tasks = 
+                [
+                    PostFileSystemWatchConfigurationsAsync(nodeSessionId, context.CancellationToken),
+                    ProcessOutputQueueAsync(nodeSessionId, context.CancellationToken),
+                    ProcessInputQueueAsync(nodeSessionId, context.CancellationToken),
+                ];
 
-            await DispatchSubscribeEvents(nodeSessionId, responseStream, context);
+            await Task.WhenAll(tasks);
         }
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
-    }
 
-    private async Task DispatchFileSystemWatchConfigurations(ServerCallContext context, NodeSessionId nodeSessionId)
-    {
-        using var fileSystemWatchConfigRepo = _fileSystemWatchConfigRepoFactory.CreateRepository();
-        var fileSystemWatchCOnfigList = await fileSystemWatchConfigRepo.ListAsync(context.CancellationToken);
-        foreach (var configuration in fileSystemWatchCOnfigList.Where(x =>
-                     x.EnableRaisingEvents && x.NodeList != null &&
-                     x.NodeList.Any(x => x.Value == nodeSessionId.NodeId.Value)))
-            await _notificationConfigChangedQueue.EnqueueAsync(new ConfigurationChangedEvent()
-            {
-                NodeIdList = [nodeSessionId.NodeId.Value],
-                ChangedType = ConfigurationChangedType.Update,
-                TypeName = typeof(FileSystemWatchConfigModel).FullName,
-                Id = configuration.Id,
-                Json = configuration.ToJson<FileSystemWatchConfigModel>()
-            });
-    }
-
-    private async Task DispatchSubscribeEvents(
-        NodeSessionId nodeContextId,
-        IServerStreamWriter<SubscribeEvent> responseStream,
-        ServerCallContext context)
-    {
-        var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
-        var outputQueue = _nodeSessionService.GetOutputQueue(nodeContextId);
-
-        await foreach (var message in outputQueue.ReadAllAsync(context.CancellationToken))
+        async Task ProcessInputQueueAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)
         {
-            if (message is not INodeMessage nodeMessage || nodeMessage.IsExpired)
+            try
             {
-                _webServerCounter.NodeServiceExpiredMessagesCount++;
-                continue;
+                var inputQueue = _nodeSessionService.GetInputQueue(nodeSessionId);
+                var httpContext = _nodeSessionService.GetHttpContext(nodeSessionId);
+                var messageHandlerDictionary = _serviceProvider.GetService<MessageHandlerDictionary>();
+                await foreach (var message in inputQueue.ReadAllAsync(cancellationToken))
+                {
+                    _webServerCounter.NodeServiceInputMessagesCount++;
+                    if (!messageHandlerDictionary.TryGetValue(message.Descriptor, out var messageHandler)) continue;
+                    await messageHandler.HandleAsync(nodeSessionId, httpContext, message);
+                }
             }
-
-            if (message.Descriptor == SubscribeEvent.Descriptor)
+            catch (Exception ex)
             {
-                if (message is not SubscribeEvent subscribeEvent) continue;
-                subscribeEvent.Properties.TryAdd("DateTime",
-                    nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
-                await responseStream.WriteAsync(subscribeEvent);
-                _webServerCounter.NodeServiceOutputMessagesCount++;
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
             }
         }
+
+        async Task ProcessOutputQueueAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var outputQueue = _nodeSessionService.GetOutputQueue(nodeSessionId);
+
+                await foreach (var message in outputQueue.ReadAllAsync(cancellationToken))
+                {
+                    if (message is not INodeMessage nodeMessage || nodeMessage.IsExpired)
+                    {
+                        _webServerCounter.NodeServiceExpiredMessagesCount++;
+                        continue;
+                    }
+
+                    if (message.Descriptor == SubscribeEvent.Descriptor)
+                    {
+                        if (message is not SubscribeEvent subscribeEvent) continue;
+                        subscribeEvent.Properties.TryAdd("DateTime",
+                            nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
+                        await responseStream.WriteAsync(subscribeEvent);
+                        _webServerCounter.NodeServiceOutputMessagesCount++;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+
+
+        }
+
+        async Task PostFileSystemWatchConfigurationsAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var fileSystemWatchConfigRepo = _fileSystemWatchConfigRepoFactory.CreateRepository();
+                var fileSystemWatchCOnfigList = await fileSystemWatchConfigRepo.ListAsync(cancellationToken);
+                foreach (var configuration in fileSystemWatchCOnfigList.Where(x =>
+                             x.EnableRaisingEvents && x.NodeList != null &&
+                             x.NodeList.Any(x => x.Value == nodeSessionId.NodeId.Value)))
+                    await _notificationConfigChangedQueue.EnqueueAsync(new ConfigurationChangedEvent()
+                    {
+                        NodeIdList = [nodeSessionId.NodeId.Value],
+                        ChangedType = ConfigurationChangedType.Update,
+                        TypeName = typeof(FileSystemWatchConfigModel).FullName,
+                        Id = configuration.Id,
+                        Json = configuration.ToJson<FileSystemWatchConfigModel>()
+                    });
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+
+        }
     }
+
+
 
     public override async Task<Empty> SendFileSystemListDirectoryResponse(
         FileSystemListDirectoryResponse response,
@@ -276,11 +302,13 @@ public class NodeServiceImpl : NodeServiceBase
             var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
             var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
             await foreach (var report in requestStream.ReadAllAsync(context.CancellationToken))
+            {
                 await _fileSystemWatchEventBatchQueue.SendAsync(new FileSystemWatchEventReportMessage()
                 {
                     NodeSessionId = nodeSessionId,
                     Message = report
                 }, context.CancellationToken);
+            }
         }
         catch (Exception ex)
         {

@@ -47,14 +47,19 @@ public class HeartBeatResponseHandler : IMessageHandler
         }
     }
 
-    public ValueTask HandleAsync(NodeSessionId nodeSessionId, HttpContext httpContext, IMessage message)
+    public ValueTask HandleAsync(
+        NodeSessionId nodeSessionId,
+        HttpContext httpContext,
+        IMessage message)
     {
         var heartBeapResponse = message as HeartBeatResponse;
         heartBeapResponse.Properties.TryAdd("RemoteIpAddress", httpContext.Connection.RemoteIpAddress.ToString());
         return HandleAsync(nodeSessionId, heartBeapResponse);
     }
 
-    public async ValueTask HandleAsync(NodeSessionId nodeSessionId, HeartBeatResponse heartBeatResponse)
+    public async ValueTask HandleAsync(
+        NodeSessionId nodeSessionId,
+        HeartBeatResponse heartBeatResponse)
     {
         if (NodeSessionId.IsNullOrEmpty)
         {

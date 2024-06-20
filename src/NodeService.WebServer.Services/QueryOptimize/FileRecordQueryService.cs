@@ -43,7 +43,7 @@ public class FileRecordQueryService : BackgroundService
                 using var repo = _repositoryFactory.CreateRepository();
                 foreach (var argumentGroup in arrayPoolCollection
                              .Where(static x => x.Kind == BatchQueueOperationKind.Query)
-                             .GroupBy(x => x.Argument))
+                             .GroupBy(static x => x.Argument))
                 {
                     var argument = argumentGroup.Key;
                     try

@@ -17,7 +17,7 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));
         if (taskDefinitionIdList != null && taskDefinitionIdList.Any())
-            Query.Where(x => taskDefinitionIdList.Contains(x.JobScheduleConfigId));
+            Query.Where(x => taskDefinitionIdList.Contains(x.TaskDefinitionId));
         if (taskExecutionIdList != null && taskExecutionIdList.Any())
             Query.Where(x => taskExecutionIdList.Contains(x.Id));
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
@@ -37,7 +37,7 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));
         if (taskDefinitionIdList != null && taskDefinitionIdList.Any())
-            Query.Where(x => taskDefinitionIdList.Contains(x.JobScheduleConfigId));
+            Query.Where(x => taskDefinitionIdList.Contains(x.TaskDefinitionId));
         if (taskExecutionIdInstanceList != null && taskExecutionIdInstanceList.Any())
             Query.Where(x => taskExecutionIdInstanceList.Contains(x.Id));
         if (startTime != null && startTime.HasValue && endTime != null && endTime.HasValue)
@@ -48,6 +48,58 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
             Query.Where(x => x.FireTimeUtc >= startTime);
 
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
+    }
+
+    public TaskExecutionInstanceSpecification(
+        DataFilterCollection<TaskExecutionStatus> statusFilters,
+        DataFilterCollection<string> parentInstanceIdFilters,
+        DataFilterCollection<string> childTaskDefinitionIdFilters
+        )
+    {
+        if (statusFilters.HasValue)
+        {
+            if (statusFilters.FilterType == DataFilterTypes.Include)
+                Query.Where(x => statusFilters.Items.Contains(x.Status));
+            else if (statusFilters.FilterType == DataFilterTypes.Exclude)
+                Query.Where(x => !statusFilters.Items.Contains(x.Status));
+        }
+        if (parentInstanceIdFilters.HasValue)
+        {
+            if (parentInstanceIdFilters.FilterType == DataFilterTypes.Include)
+            {
+                Query.Where(x => parentInstanceIdFilters.Items.Contains(x.ParentId));
+            }
+            else if (parentInstanceIdFilters.FilterType == DataFilterTypes.Exclude)
+            {
+                Query.Where(x => !parentInstanceIdFilters.Items.Contains(x.ParentId));
+            }
+        }
+        if (childTaskDefinitionIdFilters.HasValue)
+        {
+            if (childTaskDefinitionIdFilters.FilterType == DataFilterTypes.Include)
+                Query.Where(x => childTaskDefinitionIdFilters.Items.Contains(x.TaskDefinitionId));
+            else if (childTaskDefinitionIdFilters.FilterType == DataFilterTypes.Exclude)
+                Query.Where(x => !childTaskDefinitionIdFilters.Items.Contains(x.TaskDefinitionId));
+        }
+
+    }
+
+    public TaskExecutionInstanceSpecification(
+        DataFilterCollection<TaskExecutionStatus> statusFilters,
+        bool includeChildTasks
+    )
+    {
+        if (statusFilters.HasValue)
+        {
+            if (statusFilters.FilterType == DataFilterTypes.Include)
+                Query.Where(x => statusFilters.Items.Contains(x.Status));
+            else if (statusFilters.FilterType == DataFilterTypes.Exclude)
+                Query.Where(x => !statusFilters.Items.Contains(x.Status));
+        }
+        if (includeChildTasks)
+        {
+            Query.Where(x => x.ParentId != null);
+        }
     }
 
     public TaskExecutionInstanceSpecification(
@@ -75,9 +127,9 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         if (taskDefinitionIdFilters.HasValue)
         {
             if (nodeIdFilters.FilterType == DataFilterTypes.Include)
-                Query.Where(x => nodeIdFilters.Items.Contains(x.JobScheduleConfigId));
+                Query.Where(x => nodeIdFilters.Items.Contains(x.TaskDefinitionId));
             else if (nodeIdFilters.FilterType == DataFilterTypes.Exclude)
-                Query.Where(x => !nodeIdFilters.Items.Contains(x.JobScheduleConfigId));
+                Query.Where(x => !nodeIdFilters.Items.Contains(x.TaskDefinitionId));
         }
 
         if (taskExecutionInstanceIdFilters.HasValue)
@@ -87,5 +139,6 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
             else if (nodeIdFilters.FilterType == DataFilterTypes.Exclude)
                 Query.Where(x => !nodeIdFilters.Items.Contains(x.Id));
         }
+
     }
 }

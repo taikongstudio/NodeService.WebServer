@@ -298,7 +298,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
             if (taskExecutionInstances == null || !taskExecutionInstances.Any()) return;
             using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
             foreach (var taskExecutionInstanceGroup in
-                     taskExecutionInstances.GroupBy(static x => x.JobScheduleConfigId))
+                     taskExecutionInstances.GroupBy(static x => x.TaskDefinitionId))
             {
                 var taskDefinitionId = taskExecutionInstanceGroup.Key;
                 if (taskDefinitionId == null) continue;
@@ -470,11 +470,16 @@ public class TaskExecutionReportConsumerService : BackgroundService
         using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
         var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActivationRecord.TaskDefinitionJson);
         if (taskDefinition == null) return;
+
         foreach (var childTaskDefinition in taskDefinition.ChildTaskDefinitions)
         {
             var childTaskScheduleDefinition =
                 await taskDefinitionRepo.GetByIdAsync(childTaskDefinition.Value, cancellationToken);
-            if (childTaskScheduleDefinition == null) continue;
+            if (childTaskScheduleDefinition == null)
+            {
+                continue;
+            }
+
             var childTaskExectionInstances = await taskExecutionInstanceRepo.ListAsync(
                 new TaskExecutionInstanceSpecification(
                     DataFilterCollection<TaskExecutionStatus>.Includes(
@@ -482,10 +487,11 @@ public class TaskExecutionReportConsumerService : BackgroundService
                         TaskExecutionStatus.Triggered,
                         TaskExecutionStatus.Running
                     ]),
-                    default,
-                    DataFilterCollection<string>.Includes([childTaskDefinition.Id]),
-                    default), cancellationToken);
+                    DataFilterCollection<string>.Includes([parentTaskInstance.Id]),
+                    DataFilterCollection<string>.Includes([childTaskDefinition.Id])
+                    ), cancellationToken);
             if (childTaskExectionInstances.Count == 0) continue;
+
             foreach (var childTaskExectionInstance in childTaskExectionInstances)
             {
                 await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
@@ -505,17 +511,18 @@ public class TaskExecutionReportConsumerService : BackgroundService
             using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
             var taskExeuctionInstances = await taskExecutionInstanceRepo.ListAsync(
                 new TaskExecutionInstanceSpecification(
-                    DataFilterCollection<TaskExecutionStatus>.Includes([
-                        TaskExecutionStatus.Triggered, TaskExecutionStatus.Started, TaskExecutionStatus.Running
+                    DataFilterCollection<TaskExecutionStatus>.Includes(
+                    [
+                        TaskExecutionStatus.Triggered,
+                        TaskExecutionStatus.Started,
+                        TaskExecutionStatus.Running
                     ]),
-                    DataFilterCollection<string>.Empty,
-                    DataFilterCollection<string>.Empty,
-                    DataFilterCollection<string>.Empty),
-                cancellationToken);
+                    false), cancellationToken);
+
             if (taskExeuctionInstances.Count == 0) return;
             List<TaskExecutionInstanceModel> taskExecutionInstanceList = [];
             foreach (var taskExecutionInstanceGroup in
-                     taskExeuctionInstances.GroupBy(static x => x.JobScheduleConfigId))
+                     taskExeuctionInstances.GroupBy(static x => x.TaskDefinitionId))
             {
                 var taskDefinitionId = taskExecutionInstanceGroup.Key;
                 if (taskDefinitionId == null) continue;

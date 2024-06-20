@@ -193,6 +193,7 @@ public class TaskActivationService : BackgroundService
                     DataFilterCollection<string>.Includes(taskDefinition.NodeList.Select(x => x.Value))),
                 cancellationToken);
             foreach (var nodeEntry in taskDefinition.NodeList)
+            {
                 try
                 {
                     if (string.IsNullOrEmpty(nodeEntry.Value)) continue;
@@ -232,6 +233,8 @@ public class TaskActivationService : BackgroundService
                     _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
                 }
+            }
+
 
             _logger.LogInformation($"Job initialized {parameters.FireInstanceId}");
         }
@@ -260,7 +263,7 @@ public class TaskActivationService : BackgroundService
             Message = string.Empty,
             FireType = "Server",
             TriggerSource = parameters.TriggerSource,
-            JobScheduleConfigId = taskDefinition.Id,
+            TaskDefinitionId = taskDefinition.Id,
             ParentId = parameters.ParentTaskId,
             FireInstanceId = parameters.FireInstanceId
         };

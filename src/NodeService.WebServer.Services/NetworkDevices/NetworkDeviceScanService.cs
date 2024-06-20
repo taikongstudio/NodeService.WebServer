@@ -7,6 +7,7 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
@@ -54,13 +55,13 @@ public class NetworkDeviceScanService : BackgroundService
         }
     }
 
-    private async ValueTask ScanNetworkDevicesAsync(CancellationToken cancellationToken = default)
+    async ValueTask ScanNetworkDevicesAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             await RefreshNodeSettingsAsync(cancellationToken);
             using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-            List<NodeInfoModel> networkDeviceList = await QueryNetworkDeviceListAsync(nodeInfoRepo, cancellationToken);
+            var networkDeviceList = await QueryNetworkDeviceListAsync(nodeInfoRepo, cancellationToken);
 
             await Parallel.ForEachAsync(networkDeviceList, new ParallelOptions()
             {
@@ -77,7 +78,7 @@ public class NetworkDeviceScanService : BackgroundService
         }
     }
 
-    private async ValueTask ProcessNodeInfoAsync(
+    async ValueTask ProcessNodeInfoAsync(
         NodeInfoModel nodeInfo,
         CancellationToken cancellationToken)
     {
@@ -87,35 +88,35 @@ public class NetworkDeviceScanService : BackgroundService
             switch (nodeInfo.DeviceType)
             {
                 case NodeDeviceType.NetworkDevice:
-                {
-                    var propertyBag =
-                        await propertyBagRepo.GetByIdAsync(nodeInfo.GetPropertyBagId(), cancellationToken);
-                    if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value) ||
-                        value is not string json) return;
-
-                    var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json, _jsonOptions);
-                    if (dict == null || !dict.TryGetValue("Settings", out var settings) ||
-                        settings is not JsonElement element) return;
-                    var ipAddressPortSettings = element.Deserialize<IPAddressPortSettings>(_jsonOptions);
-                    if (ipAddressPortSettings == null || ipAddressPortSettings.IpAddress == null) return;
-
-                    if (await TestNodeStatusAsync(
-                            ipAddressPortSettings.IpAddress,
-                            TimeSpan.FromSeconds(ipAddressPortSettings.PingTimeOutSeconds),
-                            cancellationToken))
                     {
-                        nodeInfo.Status = NodeStatus.Online;
-                        nodeInfo.Profile.UpdateTime = DateTime.Now;
-                        nodeInfo.Profile.ServerUpdateTimeUtc = DateTime.UtcNow;
-                    }
-                    else
-                    {
-                        nodeInfo.Status = NodeStatus.Offline;
-                    }
+                        var propertyBag = await propertyBagRepo.GetByIdAsync(nodeInfo.GetPropertyBagId(), cancellationToken);
+                        if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value) ||
+                            value is not string json) return;
 
-                    nodeInfo.Profile.IpAddress = ipAddressPortSettings.IpAddress;
-                    _nodeSettings.MatchAreaTag(nodeInfo);
-                }
+                        var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json, _jsonOptions);
+                        if (dict == null || !dict.TryGetValue("Settings", out var settings) ||
+                            settings is not JsonElement element) return;
+                        var ipAddressPortSettings = element.Deserialize<IPAddressPortSettings>(_jsonOptions);
+                        if (ipAddressPortSettings == null || ipAddressPortSettings.IpAddress == null) return;
+
+                        var pingReply = await PingNetworkDeviceAsync(
+                                    ipAddressPortSettings.IpAddress,
+                                    TimeSpan.FromSeconds(ipAddressPortSettings.PingTimeOutSeconds),
+                                    cancellationToken);
+                        if (pingReply == null || pingReply.Status != IPStatus.Success)
+                        {
+                            nodeInfo.Status = NodeStatus.Offline;
+                        }
+                        else
+                        {
+                            nodeInfo.Status = NodeStatus.Online;
+                            nodeInfo.Profile.UpdateTime = DateTime.Now;
+                            nodeInfo.Profile.ServerUpdateTimeUtc = DateTime.UtcNow;
+                        }
+
+                        nodeInfo.Profile.IpAddress = ipAddressPortSettings.IpAddress;
+                        _nodeSettings.MatchAreaTag(nodeInfo);
+                    }
                     break;
                 default:
                     break;
@@ -128,25 +129,32 @@ public class NetworkDeviceScanService : BackgroundService
         }
     }
 
-    private async ValueTask<bool> TestNodeStatusAsync(string ipAddress, TimeSpan timeout,
+    async ValueTask<PingReply?> PingNetworkDeviceAsync(
+        string ipAddress,
+        TimeSpan timeout,
         CancellationToken cancellationToken)
     {
+        var buffer = ArrayPool<byte>.Shared.Rent(65500);
         try
         {
+
             using var ping = new Ping();
             var reply = await ping.SendPingAsync(ipAddress, timeout, cancellationToken: cancellationToken);
-            return reply.Status == IPStatus.Success;
+            return reply;
         }
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
-
-        return false;
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(buffer, true);
+        }
+        return null;
     }
 
-    private async ValueTask<List<NodeInfoModel>> QueryNetworkDeviceListAsync(
+    async ValueTask<List<NodeInfoModel>> QueryNetworkDeviceListAsync(
         IRepository<NodeInfoModel> nodeInfoRepo,
         CancellationToken cancellationToken = default)
     {
@@ -160,11 +168,10 @@ public class NetworkDeviceScanService : BackgroundService
         return nodeInfoList;
     }
 
-    private async ValueTask RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
+    async ValueTask RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
         using var repo = _propertyBagRepoFactory.CreateRepository();
-        var propertyBag =
-            await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
+        var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
         if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value))
             _nodeSettings = new NodeSettings();
 

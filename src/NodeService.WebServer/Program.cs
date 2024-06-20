@@ -431,7 +431,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(1024, TimeSpan.FromMinutes(30)));
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>(
-                1024 * 2, TimeSpan.FromSeconds(5)));
+                1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(

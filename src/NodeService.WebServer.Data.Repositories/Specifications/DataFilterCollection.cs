@@ -4,7 +4,7 @@ public enum DataFilterTypes
 {
     None,
     Include,
-    Exclude
+    Exclude,
 }
 
 public readonly struct DataFilterCollection<T>

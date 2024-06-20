@@ -101,9 +101,12 @@
             <FormItem Required Label="设备名称">
             <Input @bind-Value="@context.Name"/>
         </FormItem>
-        <FormItem Required Label="制造商名称">
-            <Input @bind-Value="@context.Profile.Manufacturer" />
-        </FormItem>
+            @if (context.Profile != null)
+            {
+                <FormItem Required Label="制造商名称">
+                    <Input @bind-Value="@context.Profile.Manufacturer" />
+                </FormItem>
+            }
         <FormItem Label="配置类型">
             <Select DataSource="@_nodeDeviceTypes"
                     Value="@context.DeviceType"

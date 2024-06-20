@@ -199,6 +199,7 @@ public partial class NodesController : Controller
                 nodeInfoFromDb.DeviceType = nodeInfo.DeviceType;
                 nodeInfoFromDb.Status = nodeInfo.Status;
                 nodeInfoFromDb.Description = nodeInfo.Description;
+                nodeInfoFromDb.Profile.Manufacturer = nodeInfo.Profile.Manufacturer;
                 await nodeInfoRepo.UpdateAsync(nodeInfoFromDb);
             }
         }

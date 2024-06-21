@@ -145,6 +145,7 @@ public class TaskLogHandler
         {
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
             await taskLogRepo.UpdateAsync(taskLog, cancellationToken);
+            _logger.LogInformation($"Update task log:{taskLog.Id}");
         }
         catch (Exception ex)
         {
@@ -159,6 +160,7 @@ public class TaskLogHandler
         {
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
             await taskLogRepo.AddAsync(taskLog, cancellationToken);
+            _logger.LogInformation($"Add task log:{taskLog.Id}");
         }
         catch (Exception ex)
         {

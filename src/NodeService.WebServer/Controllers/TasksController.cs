@@ -1,11 +1,14 @@
 ﻿using System.Text;
+using System.Threading.Channels;
 using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Controllers;
@@ -14,14 +17,15 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class TasksController : Controller
 {
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly ILogger<NodesController> _logger;
-    private readonly IMemoryCache _memoryCache;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
-    private readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskInstanceRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly ILogger<NodesController> _logger;
+    readonly IMemoryCache _memoryCache;
+    readonly INodeSessionService _nodeSessionService;
+    readonly IServiceProvider _serviceProvider;
+    readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
+    readonly BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _queryBatchQueue;
+    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskInstanceRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
 
     public TasksController(
         IServiceProvider serviceProvider,
@@ -31,7 +35,8 @@ public class TasksController : Controller
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
-        BatchQueue<TaskCancellationParameters> taskCancellationAsyncQueue)
+        BatchQueue<TaskCancellationParameters> taskCancellationAsyncQueue,
+        BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> queryBatchQueue)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -41,6 +46,7 @@ public class TasksController : Controller
         _taskLogRepoFactory = taskLogRepoFactory;
         _exceptionCounter = exceptionCounter;
         _taskCancellationAsyncQueue = taskCancellationAsyncQueue;
+        _queryBatchQueue = queryBatchQueue;
     }
 
     [HttpGet("/api/Tasks/Instances/List")]
@@ -141,76 +147,64 @@ public class TasksController : Controller
     [HttpGet("/api/Tasks/Instances/{taskId}/Log")]
     public async Task<IActionResult> QueryTaskLogAsync(
         string taskId,
-        [FromQuery] PaginationQueryParameters queryParameters)
+        [FromQuery] PaginationQueryParameters queryParameters,
+        CancellationToken cancellationToken=default)
     {
         var apiResponse = new PaginationResponse<LogEntry>();
         try
         {
-            using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-            var taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, 0));
-            if (taskInfoLog == null)
+            var serviceParameters = new TaskLogQueryServiceParameters(
+                                        taskId,
+                                        queryParameters);
+            if (queryParameters.PageIndex == 0)
             {
-                apiResponse.SetResult([]);
+                var op = new BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>(
+                    serviceParameters,
+                    BatchQueueOperationKind.Query,
+                    BatchQueueOperationPriority.Lowest);
+                
+                await _queryBatchQueue.SendAsync(op, cancellationToken);
+
+                var result =await op.WaitAsync(cancellationToken);
+
+                var memoryStream = new MemoryStream();
+
+                using var streamWriter = new StreamWriter(memoryStream, leaveOpen: true);
+                await foreach (var listQueryResult in result.LogChannel.Reader.ReadAllAsync(cancellationToken))
+                {
+                    foreach (var taskLogEntry in listQueryResult.Items)
+                    {
+                        streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
+                    }
+        
+                }
+                await streamWriter.FlushAsync(cancellationToken);
+                memoryStream.Position = 0;
+                return File(memoryStream, "text/plain", result.LogFileName);
             }
             else
             {
-                var totalLogCount = taskInfoLog.ActualSize;
-                apiResponse.SetTotalCount(totalLogCount);
-                if (totalLogCount > 0)
+                var op = new BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>(
+                        serviceParameters,
+                        BatchQueueOperationKind.Query,
+                        BatchQueueOperationPriority.Lowest);
+
+                await _queryBatchQueue.SendAsync(op, cancellationToken);
+
+                var result = await op.WaitAsync(cancellationToken);
+
+                var listQueryResults = await result.LogChannel.Reader.ReadAllAsync(cancellationToken).ToArrayAsync(cancellationToken);
+                if (listQueryResults == null||listQueryResults.Length==0)
                 {
-                    if (queryParameters.PageIndex == 0)
-                    {
-                        using var repo = _taskInstanceRepositoryFactory.CreateRepository();
-                        var taskExecutionInstance = await repo.GetByIdAsync(taskId);
-                        var fileName = "x.log";
-                        if (taskExecutionInstance == null)
-                            fileName = $"{taskId}.log";
-                        else
-                            fileName = $"{taskExecutionInstance.Name}.log";
-
-                        var memoryStream = new MemoryStream();
-                        using var streamWriter = new StreamWriter(memoryStream, leaveOpen: true);
-                        var pageIndex = 1;
-                        while (true)
-                        {
-                            var taskLogs = await taskLogRepo.ListAsync(new TaskLogSpecification(taskId, pageIndex, 10));
-                            if (taskLogs.Count == 0) break;
-                            foreach (var taskLog in taskLogs)
-                            {
-                                pageIndex++;
-                                foreach (var logEntry in taskLog.LogEntries)
-                                {
-                                    streamWriter.WriteLine($"{logEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {logEntry.Value}");
-                                }
-                            }
-
-                            if (taskLogs.Count < 10) break;
-                        }
-
-                        await streamWriter.FlushAsync();
-                        memoryStream.Position = 0;
-                        return File(memoryStream, "text/plain", fileName);
-                    }
-                    else
-                    {
-                        var taskLog =
-                            await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId,
-                                queryParameters.PageIndex));
-                        if (taskLog == null)
-                        {
-                            apiResponse.SetResult([]);
-                        }
-                        else
-                        {
-                            apiResponse.SetResult(taskLog.LogEntries);
-                            apiResponse.SetPageIndex(queryParameters.PageIndex);
-                            apiResponse.SetPageSize(taskLog.PageSize);
-                        }
-                    }
+                    apiResponse.SetResult([]);
                 }
                 else
                 {
-                    apiResponse.SetResult([]);
+                    var listQueryResult = listQueryResults.FirstOrDefault();
+                    apiResponse.SetResult(listQueryResult.Items);
+                    apiResponse.SetPageIndex(listQueryResult.PageIndex);
+                    apiResponse.SetPageSize(listQueryResult.PageSize);
+                    apiResponse.SetTotalCount(listQueryResult.TotalCount);
                 }
             }
         }

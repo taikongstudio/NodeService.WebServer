@@ -276,6 +276,7 @@ public class Program
         builder.Services.AddHostedService<NodeFileSystemWatchEventConsumerService>();
         builder.Services.AddHostedService<NetworkDeviceScanService>();
         builder.Services.AddHostedService<NodeFileSystemSyncService>();
+        builder.Services.AddHostedService<TaskLogQueryService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -449,6 +450,7 @@ public class Program
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>>(64,
                 TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(64, TimeSpan.FromSeconds(1)));
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

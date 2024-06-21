@@ -13,11 +13,12 @@ public class ExceptionCounter
 
     public void AddOrUpdate(
         Exception exception,
+        string? nodeId = null,
         [CallerFilePath] string? filePath = null,
         [CallerLineNumber] int lineNumber = 0,
         [CallerMemberName] string? caller = null)
     {
-        var msg = $"{filePath}:{lineNumber} {caller} {exception}";
+        var msg = $"{nodeId}:{filePath}:{lineNumber} {caller} {exception}";
         _dict.AddOrUpdate(msg, 1, UpdateValueImpl);
     }
 

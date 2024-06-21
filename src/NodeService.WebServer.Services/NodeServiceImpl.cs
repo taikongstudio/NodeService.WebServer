@@ -274,19 +274,20 @@ public class NodeServiceImpl : NodeServiceBase
         IAsyncStreamReader<TaskExecutionReport> requestStream,
         ServerCallContext context)
     {
+        NodeSessionId nodeSessionId = default;
         try
         {
             var httpContext = context.GetHttpContext();
             var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
             await foreach (var report in requestStream.ReadAllAsync(context.CancellationToken))
             {
-                var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
+                nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
                 await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(report, context.CancellationToken);
             }
         }
         catch (Exception ex)
         {
-            _exceptionCounter.AddOrUpdate(ex);
+            _exceptionCounter.AddOrUpdate(ex, nodeSessionId.NodeId.Value);
             _logger.LogError(ex.ToString());
         }
 
@@ -296,11 +297,12 @@ public class NodeServiceImpl : NodeServiceBase
     public override async Task<Empty> SendFileSystemWatchEventReport(
         IAsyncStreamReader<FileSystemWatchEventReport> requestStream, ServerCallContext context)
     {
+        NodeSessionId nodeSessionId = default;
         try
         {
             var httpContext = context.GetHttpContext();
             var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
-            var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
+            nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
             await foreach (var report in requestStream.ReadAllAsync(context.CancellationToken))
             {
                 await _fileSystemWatchEventBatchQueue.SendAsync(new FileSystemWatchEventReportMessage()
@@ -312,7 +314,7 @@ public class NodeServiceImpl : NodeServiceBase
         }
         catch (Exception ex)
         {
-            _exceptionCounter.AddOrUpdate(ex);
+            _exceptionCounter.AddOrUpdate(ex, nodeSessionId.NodeId.Value);
             _logger.LogError(ex.ToString());
         }
 

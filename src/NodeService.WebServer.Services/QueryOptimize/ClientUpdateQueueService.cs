@@ -64,7 +64,7 @@ public class ClientUpdateQueueService : BackgroundService
                 var pageSize = 20;
                 var pageCount = Math.DivRem(itemsCount, pageSize, out var result);
                 if (result > 0) pageCount += 1;
-                if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(2));
+                if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(5));
                 for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
                 {
                     var nodeList = await nodeInfoRepo.PaginationQueryAsync(
@@ -78,10 +78,10 @@ public class ClientUpdateQueueService : BackgroundService
                     foreach (var item in nodeArray)
                     {
                         var key = CreateKey(item.Profile.IpAddress);
-                        _memoryCache.Set(key, true, TimeSpan.FromMinutes(2));
+                        _memoryCache.Set(key, true, TimeSpan.FromMinutes(5));
                     }
 
-                    await Task.Delay(TimeSpan.FromMinutes(2), cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(295), cancellationToken);
                 }
             }
             catch (Exception ex)

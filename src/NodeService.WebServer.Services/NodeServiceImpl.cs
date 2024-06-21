@@ -131,9 +131,17 @@ public class NodeServiceImpl : NodeServiceBase
                 var messageHandlerDictionary = _serviceProvider.GetService<MessageHandlerDictionary>();
                 await foreach (var message in inputQueue.ReadAllAsync(cancellationToken))
                 {
-                    _webServerCounter.NodeServiceInputMessagesCount++;
-                    if (!messageHandlerDictionary.TryGetValue(message.Descriptor, out var messageHandler)) continue;
-                    await messageHandler.HandleAsync(nodeSessionId, httpContext, message);
+                    try
+                    {
+                        _webServerCounter.NodeServiceInputMessagesCount++;
+                        if (!messageHandlerDictionary.TryGetValue(message.Descriptor, out var messageHandler)) continue;
+                        await messageHandler.HandleAsync(nodeSessionId, httpContext, message);
+                    }
+                    catch (Exception ex)
+                    {
+                        _exceptionCounter.AddOrUpdate(ex, nodeSessionId.NodeId.Value);
+                    }
+
                 }
             }
             catch (Exception ex)

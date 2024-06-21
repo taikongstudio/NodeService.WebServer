@@ -225,12 +225,12 @@ public class TaskLogHandler
             var taskLogInfoPageId = $"{taskId}_0";
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
             var dbContext = taskLogRepo.DbContext as ApplicationDbContext;
-            if (await dbContext.TaskLogDbSet.AnyAsync(x => x.Id.StartsWith(taskId)))
+            if (await dbContext.TaskLogDbSet.CountAsync(x => x.Id.StartsWith(taskId)) > 0)
             {
                 var actualSize = await dbContext.TaskLogDbSet.Where(x => x.Id.StartsWith(taskId) && x.PageIndex >= 1)
-                    .SumAsync(x => x.ActualSize);
+                    .SumAsync(x => x.ActualSize, cancellationToken: cancellationToken);
                 var pageSize = await dbContext.TaskLogDbSet.Where(x => x.Id.StartsWith(taskId) && x.PageIndex >= 1)
-                    .MaxAsync(x => x.PageIndex);
+                    .MaxAsync(x => x.PageIndex, cancellationToken: cancellationToken);
                 FormattableString sql =
                     $"update TaskLogDbSet\r\nset ActualSize={actualSize},\r\nPageSize={pageSize},\r\nPageIndex=0\r\nwhere Id={taskLogInfoPageId}";
                 var changesCount = await taskLogRepo.DbContext.Database.ExecuteSqlAsync(

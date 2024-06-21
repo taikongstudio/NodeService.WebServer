@@ -8,6 +8,7 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -66,14 +67,31 @@ public class TaskLogPersistenceService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        await foreach (var arrayPoolCollection in _taskLogUnitBatchQueue.ReceiveAllAsync(cancellationToken))
+        await foreach (var array in _taskLogUnitBatchQueue.ReceiveAllAsync(cancellationToken))
         {
-            await Parallel.ForEachAsync(
-                arrayPoolCollection.GroupBy(TaskLogUnitGroupFunc),
-                cancellationToken,
-                RunTaskLogHandlerAsync);
-            _keys = _taskLogHandlers.Keys;
-            Stat();
+            try
+            {
+                if (array == null)
+                {
+                    continue;
+                }
+                foreach (var item in array)
+                {
+                    _logger.LogInformation($"Recieve task log unit:{item.Id}");
+                }
+                await Parallel.ForEachAsync(
+                    array.GroupBy(TaskLogUnitGroupFunc),
+                    cancellationToken,
+                    RunTaskLogHandlerAsync);
+                _keys = _taskLogHandlers.Keys;
+                Stat();
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+
         }
     }
 

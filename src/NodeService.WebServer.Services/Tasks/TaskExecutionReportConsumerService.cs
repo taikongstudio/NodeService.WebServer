@@ -162,6 +162,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                             LogEntries = report.LogEntries.Select(Convert).ToImmutableArray()
                         };
                         await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);
+                        _logger.LogInformation($"Send task log unit:{taskId}");
                     }
                 }
 

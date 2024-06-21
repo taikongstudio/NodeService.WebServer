@@ -109,8 +109,13 @@ public class TaskLogPersistenceService : BackgroundService
 
     private TaskLogHandler CreateTaskLogHandlerFactory(int id)
     {
-        var taskLogHandler = _serviceProvider.GetService<TaskLogHandler>();
-        taskLogHandler.Id = id;
+        var taskLogHandler = new TaskLogHandler(
+            _serviceProvider.GetService<ILogger<TaskLogHandler>>(),
+            _taskLogRepoFactory,
+            _exceptionCounter)
+        {
+            Id = id
+        };
         return taskLogHandler;
     }
 

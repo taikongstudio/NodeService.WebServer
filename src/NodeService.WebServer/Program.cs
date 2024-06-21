@@ -360,7 +360,6 @@ public class Program
 
         builder.Services.AddTransient<TaskExecutionTimeLimitJob>();
         builder.Services.AddTransient<FireTaskJob>();
-        builder.Services.AddTransient<TaskLogHandler>();
     }
 
     private static void ConfigureAuthentication(WebApplicationBuilder builder)

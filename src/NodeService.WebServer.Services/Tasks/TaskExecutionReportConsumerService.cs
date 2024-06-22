@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Logging;
-using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
@@ -19,7 +18,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
     readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepoFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
     readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
-    readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
     readonly BatchQueue<TaskLogUnit> _taskLogUnitBatchQueue;
     readonly IAsyncQueue<TaskScheduleMessage> _taskScheduleAsyncQueue;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
@@ -37,7 +36,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         IAsyncQueue<TaskScheduleMessage> taskScheduleAsyncQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
         TaskSchedulerDictionary taskSchedulerDictionary,
-        TaskScheduler jobScheduler,
+        TaskScheduler taskScheduler,
         IMemoryCache memoryCache,
         WebServerCounter webServerCounter,
         ExceptionCounter exceptionCounter
@@ -45,13 +44,13 @@ public class TaskExecutionReportConsumerService : BackgroundService
     {
         _taskExecutionInstanceRepoFactory = taskExecutionInstanceRepositoryFactory;
         _taskDefinitionRepoFactory = taskDefinitionRepositoryFactory;
-        _taskActivationRecordRepositoryFactory = taskActivationRecordRepositoryFactory;
+        _taskActivationRecordRepoFactory = taskActivationRecordRepositoryFactory;
         _taskExecutionReportBatchQueue = jobExecutionReportBatchQueue;
         _taskScheduleAsyncQueue = taskScheduleAsyncQueue;
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
         _logger = logger;
         _taskSchedulerDictionary = taskSchedulerDictionary;
-        _taskScheduler = jobScheduler;
+        _taskScheduler = taskScheduler;
         _taskLogUnitBatchQueue = taskLogUnitBatchQueue;
         _memoryCache = memoryCache;
         _webServerCounter = webServerCounter;
@@ -140,7 +139,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 if (taskReportGroup.Key == null) continue;
                 stopwatchQuery.Restart();
                 var taskId = taskReportGroup.Key;
-                var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId);
+                var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
                 stopwatchQuery.Stop();
                 _logger.LogInformation($"{taskId}:QueryElapsed:{stopwatchQuery.Elapsed}");
                 _webServerCounter.TaskExecutionReportQueryTimeSpan += stopwatchQuery.Elapsed;
@@ -156,6 +155,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     var report = reportMessage.GetMessage();
                     if (report.LogEntries.Count > 0)
                     {
+                        _webServerCounter.TaskLogUnitRecieveCount++;
                         var taskLogUnit = new TaskLogUnit
                         {
                             Id = taskId,
@@ -167,7 +167,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 }
 
                 stopwatchProcessLogEntries.Stop();
-                _webServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan += stopwatchProcessLogEntries.Elapsed;
+                _webServerCounter.TaskLogUnitEntriesTimeSpan += stopwatchProcessLogEntries.Elapsed;
 
 
                 var taskExecutionStatus = taskExecutionInstance.Status;
@@ -261,23 +261,11 @@ public class TaskExecutionReportConsumerService : BackgroundService
     {
         switch (taskExecutionInstance.Status)
         {
-            case TaskExecutionStatus.Unknown:
-                break;
-            case TaskExecutionStatus.Triggered:
-                break;
-            case TaskExecutionStatus.Pendding:
-                break;
-            case TaskExecutionStatus.Started:
-                break;
-            case TaskExecutionStatus.Running:
-                break;
             case TaskExecutionStatus.Failed:
             case TaskExecutionStatus.Finished:
             case TaskExecutionStatus.Cancelled:
             case TaskExecutionStatus.PenddingTimeout:
                 return true;
-            case TaskExecutionStatus.MaxCount:
-                break;
             default:
                 break;
         }
@@ -414,7 +402,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                     _memoryCache.TryGetValue<TaskCancellationParameters>(key, out var parameters) && parameters != null)
                 {
                     _memoryCache.Remove(key);
-                    taskExecutionInstance.Message = $"{nameof(parameters.Source)}: {parameters.Source},{nameof(parameters.IpAddressOrHostName)}: {parameters.IpAddressOrHostName}";
+                    taskExecutionInstance.Message = $"{nameof(parameters.Source)}: {parameters.Source},{nameof(parameters.Host)}: {parameters.Host}";
                 }
             }
         }
@@ -430,7 +418,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         TaskExecutionInstanceModel parentTaskInstance,
         CancellationToken cancellationToken = default)
     {
-        using var taskActivationRecordRepo = _taskActivationRecordRepositoryFactory.CreateRepository();
+        using var taskActivationRecordRepo = _taskActivationRecordRepoFactory.CreateRepository();
         var taskActivationRecord =
             await taskActivationRecordRepo.GetByIdAsync(parentTaskInstance.FireInstanceId, cancellationToken);
 
@@ -457,7 +445,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         TaskExecutionInstanceModel parentTaskInstance,
         CancellationToken cancellationToken = default)
     {
-        using var taskActivationRecordRepo = _taskActivationRecordRepositoryFactory.CreateRepository();
+        using var taskActivationRecordRepo = _taskActivationRecordRepoFactory.CreateRepository();
         var taskActivationRecord =
             await taskActivationRecordRepo.GetByIdAsync(parentTaskInstance.FireInstanceId, cancellationToken);
 
@@ -504,7 +492,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-    private async ValueTask ScanExpiredTaskExecutionInstanceAsync(CancellationToken cancellationToken = default)
+    async ValueTask ScanExpiredTaskExecutionInstanceAsync(CancellationToken cancellationToken = default)
     {
         try
         {

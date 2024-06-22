@@ -10,12 +10,14 @@ namespace NodeService.WebServer.Services.MessageHandlers;
 
 public class FileSystemOperationReportHandler : IMessageHandler
 {
+    public HttpContext HttpContext { get; set; }
+
     public ValueTask DisposeAsync()
     {
         return ValueTask.CompletedTask;
     }
 
-    public ValueTask HandleAsync(NodeSessionId nodeSessionId, HttpContext httpContext, IMessage message)
+    public ValueTask HandleAsync(NodeSessionId nodeSessionId, IMessage message, CancellationToken cancellationToken)
     {
         return ValueTask.CompletedTask;
     }

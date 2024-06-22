@@ -7,7 +7,7 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 
-namespace NodeService.WebServer.Services.FileSystem;
+namespace NodeService.WebServer.Services.NodeFileSystem;
 
 public class NodeFileSystemWatchEventConsumerService : BackgroundService
 {

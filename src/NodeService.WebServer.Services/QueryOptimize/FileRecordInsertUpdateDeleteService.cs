@@ -4,9 +4,8 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.QueryOptimize;
 
-namespace NodeService.WebServer.Services.DataQuality;
+namespace NodeService.WebServer.Services.QueryOptimize;
 
 public class FileRecordInsertUpdateDeleteService : BackgroundService
 {

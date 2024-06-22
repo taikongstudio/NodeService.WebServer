@@ -57,7 +57,7 @@ public class TaskLogPersistenceService : BackgroundService
         _taskLogHandlers = new ConcurrentDictionary<int, TaskLogHandler>();
         _serviceProvider = serviceProvider;
         _timer = new Timer(OnTimer);
-        _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(1));
+        _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
     }
 
     private void OnTimer(object? state)
@@ -77,6 +77,10 @@ public class TaskLogPersistenceService : BackgroundService
                 }
                 foreach (var item in array)
                 {
+                    if (item == null || item.Id == null)
+                    {
+                        continue;
+                    }
                     _logger.LogInformation($"Recieve task log unit:{item.Id}");
                 }
                 await Parallel.ForEachAsync(
@@ -95,29 +99,24 @@ public class TaskLogPersistenceService : BackgroundService
         }
     }
 
-    private int GetActiveTaskLogGroupCount(TaskLogHandler taskLogHandler)
+    void Stat()
     {
-        return taskLogHandler.ActiveTaskLogGroupCount;
-    }
-
-    private void Stat()
-    {
-        _webServerCounter.TaskExecutionReportLogEntriesPageCount =
+        _webServerCounter.TaskLogPageCount =
             (ulong)_taskLogHandlers.Values.Sum(x => x.TotalPageCount);
-        _webServerCounter.TaskExecutionReportLogGroupConsumeCount =
+        _webServerCounter.TaskLogUnitConsumeCount =
             (ulong)_taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
-        _webServerCounter.TaskExecutionReportLogEntriesSavedCount =
+        _webServerCounter.TaskLogEntriesSavedCount =
             (ulong)_taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
-        _webServerCounter.TaskExecutionReportLogEntriesSaveMaxTimeSpan =
+        _webServerCounter.TaskLogUnitSaveMaxTimeSpan =
             _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
-        _webServerCounter.TaskExecutionReportLogEntriesQueryTimeSpan =
+        _webServerCounter.TaskLogUnitQueryTimeSpan =
             _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
-        _webServerCounter.TaskExecutionReportLogEntriesSaveTimeSpan =
+        _webServerCounter.TaskLogUnitSaveTimeSpan =
             _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
-        _webServerCounter.TaskExecutionReportLogGroupAvailableCount = (uint)_taskLogUnitBatchQueue.AvailableCount;
+        _webServerCounter.TaskLogUnitAvailableCount = (uint)_taskLogUnitBatchQueue.AvailableCount;
     }
 
-    private async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogUnit> taskLogUnitGroup,
+    async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogUnit> taskLogUnitGroup,
         CancellationToken cancellationToken)
     {
         var key = taskLogUnitGroup.Key;
@@ -125,7 +124,7 @@ public class TaskLogPersistenceService : BackgroundService
         await handler.ProcessAsync(taskLogUnitGroup, cancellationToken);
     }
 
-    private TaskLogHandler CreateTaskLogHandlerFactory(int id)
+    TaskLogHandler CreateTaskLogHandlerFactory(int id)
     {
         var taskLogHandler = new TaskLogHandler(
             _serviceProvider.GetService<ILogger<TaskLogHandler>>(),
@@ -137,7 +136,7 @@ public class TaskLogPersistenceService : BackgroundService
         return taskLogHandler;
     }
 
-    private int TaskLogUnitGroupFunc(TaskLogUnit unit)
+    int TaskLogUnitGroupFunc(TaskLogUnit unit)
     {
         if (unit.Id == null) return _keys.ElementAtOrDefault(Random.Shared.Next(0, _taskLogHandlers.Count));
         Math.DivRem(unit.Id[0], 10, out var result);

@@ -104,7 +104,7 @@ public class TaskCancellationQueueService : BackgroundService
                                     {
                                         Status = TaskExecutionStatus.Cancelled,
                                         Id = taskExecutionInstance.Id,
-                                        Message = $"Cancelled by {taskCancellationParameters.Source} on {taskCancellationParameters.IpAddressOrHostName}"
+                                        Message = $"Cancelled by {taskCancellationParameters.Source} on {taskCancellationParameters.Host}"
                                     }
                                 },
                                 cancellationToken);

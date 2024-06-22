@@ -20,7 +20,6 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
-using NodeService.WebServer.Services.FileSystem;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NetworkDevices;
 using NodeService.WebServer.Services.NodeFileSystem;
@@ -28,6 +27,7 @@ using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
 using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
+using NodeService.WebServer.Services.VirtualFileSystem;
 using NodeService.WebServer.UI.Services;
 using OpenTelemetry.Metrics;
 using Quartz.Spi;
@@ -445,7 +445,7 @@ public class Program
                 TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
-        builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(1024, TimeSpan.FromSeconds(1)));
+        builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(1024, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>>(64,
                 TimeSpan.FromSeconds(5)));

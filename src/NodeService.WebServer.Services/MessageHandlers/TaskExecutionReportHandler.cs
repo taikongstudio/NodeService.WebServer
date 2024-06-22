@@ -1,13 +1,15 @@
 ﻿using Microsoft.AspNetCore.Http;
 using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 
 namespace NodeService.WebServer.Services.MessageHandlers;
 
 public class TaskExecutionReportHandler : IMessageHandler
 {
-    private readonly BatchQueue<TaskExecutionReportMessage> _batchQueue;
-    private readonly ILogger<HeartBeatResponseHandler> _logger;
+    readonly WebServerCounter _webServerCounter;
+    readonly BatchQueue<TaskExecutionReportMessage> _batchQueue;
+    readonly ILogger<HeartBeatResponseHandler> _logger;
 
     public TaskExecutionReportHandler(
         BatchQueue<TaskExecutionReportMessage> batchQueue,
@@ -18,18 +20,18 @@ public class TaskExecutionReportHandler : IMessageHandler
         _logger = logger;
     }
 
+    public HttpContext HttpContext { get; set; }
+
     public ValueTask DisposeAsync()
     {
         return ValueTask.CompletedTask;
     }
-
-    public ValueTask HandleAsync(NodeSessionId nodeSessionId, HttpContext httpContext, IMessage message)
+    public async ValueTask HandleAsync(NodeSessionId nodeSessionId, IMessage message, CancellationToken cancellationToken)
     {
-        _batchQueue.Post(new TaskExecutionReportMessage
+        await _batchQueue.SendAsync(new TaskExecutionReportMessage
         {
             NodeSessionId = nodeSessionId,
             Message = message as TaskExecutionReport
         });
-        return ValueTask.CompletedTask;
     }
 }

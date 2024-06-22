@@ -16,7 +16,7 @@ public class TaskLogHandler
     private class TaskLogStat
     {
         public long PageCreatedCount;
-        public long PageSaveCount;
+        public long PageSavedCount;
         public long PageNotSavedCount;
         public long LogEntriesSavedCount;
     }
@@ -111,14 +111,13 @@ public class TaskLogHandler
         if (!_addedTaskLogPageDictionary.IsEmpty)
         {
             var addedTaskLogs = _addedTaskLogPageDictionary.Values;
+            var maxDegreeOfParallelism =Math.DivRem(addedTaskLogs.Count, PAGESIZE, out _);
             await Parallel.ForEachAsync(addedTaskLogs, new ParallelOptions()
             {
                 CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = Math.Max(Math.DivRem(addedTaskLogs.Count, PAGESIZE, out _),
-                    Environment.ProcessorCount / 4)
+                MaxDegreeOfParallelism = Math.Max(maxDegreeOfParallelism, Environment.ProcessorCount / 4)
             }, AddTaskLogAsync);
-            ResetTaskLogPageDirtyCount(addedTaskLogs);
-            MoveToUpdateDictionary(addedTaskLogs);
+            CleanupDictionary(addedTaskLogs);
         }
 
         if (!_updatedTaskLogPageDictionary.IsEmpty)
@@ -131,7 +130,6 @@ public class TaskLogHandler
                     CancellationToken = cancellationToken,
                     MaxDegreeOfParallelism = Environment.ProcessorCount / 4
                 }, UpdateTaskLogAsync);
-                ResetTaskLogPageDirtyCount(updatedTaskLogs);
             }
 
             RemoveFullTaskLogPages(_updatedTaskLogPageDictionary);
@@ -139,12 +137,13 @@ public class TaskLogHandler
         }
     }
 
-    private async ValueTask UpdateTaskLogAsync(TaskLogModel taskLog, CancellationToken cancellationToken = default)
+    async ValueTask UpdateTaskLogAsync(TaskLogModel taskLog, CancellationToken cancellationToken = default)
     {
         try
         {
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
             await taskLogRepo.UpdateAsync(taskLog, cancellationToken);
+            taskLog.DirtyCount = 0;
             _logger.LogInformation($"Update task log:{taskLog.Id}");
         }
         catch (Exception ex)
@@ -154,12 +153,13 @@ public class TaskLogHandler
         }
     }
 
-    private async ValueTask AddTaskLogAsync(TaskLogModel taskLog, CancellationToken cancellationToken = default)
+    async ValueTask AddTaskLogAsync(TaskLogModel taskLog, CancellationToken cancellationToken = default)
     {
         try
         {
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
             await taskLogRepo.AddAsync(taskLog, cancellationToken);
+            taskLog.DirtyCount = 0;
             _logger.LogInformation($"Add task log:{taskLog.Id}");
         }
         catch (Exception ex)
@@ -169,32 +169,30 @@ public class TaskLogHandler
         }
     }
 
-    private void MoveToUpdateDictionary(IEnumerable<TaskLogModel> taskLogPages)
+    void CleanupDictionary(IEnumerable<TaskLogModel> taskLogPages)
     {
         if (!taskLogPages.Any()) return;
         foreach (var taskLogPage in taskLogPages)
         {
-            if (IsFullTaskLogPage(taskLogPage))
+            if (taskLogPage.DirtyCount > 0)
             {
-                _taskLogStat.PageSaveCount++;
                 continue;
             }
-
-            _updatedTaskLogPageDictionary.TryAdd(
-                taskLogPage.Id,
-                taskLogPage);
+            if (IsFullTaskLogPage(taskLogPage))
+            {
+                _taskLogStat.PageSavedCount++;
+            }
+            else
+            {
+                _updatedTaskLogPageDictionary.TryAdd(
+                    taskLogPage.Id,
+                    taskLogPage);
+            }
+            _addedTaskLogPageDictionary.TryRemove(taskLogPage.Id, out _);
         }
-
-        _addedTaskLogPageDictionary.Clear();
     }
 
-    private static void ResetTaskLogPageDirtyCount(IEnumerable<TaskLogModel> taskLogs)
-    {
-        if (!taskLogs.Any()) return;
-        foreach (var taskLog in taskLogs) taskLog.DirtyCount = 0;
-    }
-
-    private async Task ProcessTaskLogUnitGroupAsync(
+    async Task ProcessTaskLogUnitGroupAsync(
         IGrouping<string, TaskLogUnit> taskLogGroups,
         CancellationToken cancellationToken = default)
     {
@@ -253,7 +251,7 @@ public class TaskLogHandler
         return taskInfoLog;
     }
 
-    private async ValueTask ProcessTaskLogPagesAsync(
+     async ValueTask ProcessTaskLogPagesAsync(
         string taskId,
         TaskLogModel taskInfoLog,
         IEnumerable<LogEntry> logEntries,
@@ -312,14 +310,14 @@ public class TaskLogHandler
         return oldValue;
     }
 
-    private void RemoveFullTaskLogPages(ConcurrentDictionary<string, TaskLogModel> dict)
+    void RemoveFullTaskLogPages(ConcurrentDictionary<string, TaskLogModel> dict)
     {
         if (dict.IsEmpty) return;
         var fullTaskLogPages = dict.Values.Where(IsFullTaskLogPage);
         if (fullTaskLogPages.Any())
             foreach (var taskLogPage in fullTaskLogPages)
             {
-                _taskLogStat.PageSaveCount++;
+                _taskLogStat.PageSavedCount++;
                 dict.TryRemove(taskLogPage.Id, out _);
             }
     }

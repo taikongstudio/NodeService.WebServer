@@ -9,9 +9,14 @@
     </SpaceItem>
 
 </Space>
-<Table Size="TableSize.Small"
-       DataSource="@Statistics">
+
+<Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="() => _table?.ReloadData()" />
+
+<Table @ref="@_table" Size="TableSize.Small"
+       DataSource="@_dataSource">
     <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Source" Title="源头">
+        </PropertyColumn>
         <PropertyColumn Property="c => c.Exception" Title="异常">
         </PropertyColumn>
         <PropertyColumn Property="c => c.Count" Width="200" Title="计数"></PropertyColumn>
@@ -20,7 +25,12 @@
 
 
 @code {
-    IEnumerable<(string Exception, int Count)> Statistics = [];
+    ITable _table;
+    string _searchText;
+
+    IEnumerable<(string Source,string Exception, int Count)> Statistics = [];
+
+    IEnumerable<(string Source, string Exception, int Count)> _dataSource = [];
 
     protected override void OnInitialized()
     {
@@ -31,6 +41,21 @@
     void Refresh()
     {
         Statistics = ExceptionCounter.GetStatistics().OrderByDescending(x => x.Count);
+    }
+
+    void OnTableChange(QueryModel<(string Source, string Exception, int Count)> query)
+    {
+        if (Statistics == null || string.IsNullOrEmpty(_searchText))
+        {
+            _dataSource = Statistics;
+            return;
+        }
+
+        _dataSource = query.ExecuteQuery(Statistics.AsQueryable()).Where(
+            x => (x.Source != null && x.Source.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                 ||
+                 (x.Exception != null && x.Exception.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+        );
     }
 
 }

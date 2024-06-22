@@ -1,4 +1,4 @@
-﻿namespace NodeService.WebServer.Services.VirtualSystem;
+﻿namespace NodeService.WebServer.Services.VirtualFileSystem;
 
 public class ListDirectoryOptions
 {

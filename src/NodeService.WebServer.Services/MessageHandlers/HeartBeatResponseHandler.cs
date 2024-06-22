@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
+using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Services.NodeSessions;
+using System.Net.Http;
 
 namespace NodeService.WebServer.Services.MessageHandlers;
 
@@ -10,6 +12,7 @@ public class HeartBeatResponseHandler : IMessageHandler
     readonly BatchQueue<NodeStatusChangeRecordModel> _nodeStatusChangeRecordBatchQueue;
     readonly ILogger<HeartBeatResponseHandler> _logger;
     readonly INodeSessionService _nodeSessionService;
+    string _remoteIpAddress;
 
     public HeartBeatResponseHandler(
         ILogger<HeartBeatResponseHandler> logger,
@@ -25,6 +28,7 @@ public class HeartBeatResponseHandler : IMessageHandler
     }
 
     public NodeSessionId NodeSessionId { get; set; }
+    public HttpContext HttpContext { get; set; }
 
     public async ValueTask DisposeAsync()
     {
@@ -47,20 +51,14 @@ public class HeartBeatResponseHandler : IMessageHandler
         }
     }
 
-    public ValueTask HandleAsync(
-        NodeSessionId nodeSessionId,
-        HttpContext httpContext,
-        IMessage message)
+    public async ValueTask HandleAsync(NodeSessionId nodeSessionId,  IMessage message, CancellationToken cancellationToken)
     {
-        var heartBeapResponse = message as HeartBeatResponse;
-        heartBeapResponse.Properties.TryAdd("RemoteIpAddress", httpContext.Connection.RemoteIpAddress.ToString());
-        return HandleAsync(nodeSessionId, heartBeapResponse);
-    }
-
-    public async ValueTask HandleAsync(
-        NodeSessionId nodeSessionId,
-        HeartBeatResponse heartBeatResponse)
-    {
+        if (_remoteIpAddress == null)
+        {
+            _remoteIpAddress = HttpContext.Connection.RemoteIpAddress.ToString();
+        }
+        var heartBeatResponse = message as HeartBeatResponse;
+        heartBeatResponse.Properties.TryAdd("RemoteIpAddress", _remoteIpAddress);
         if (NodeSessionId.IsNullOrEmpty)
         {
             NodeSessionId = nodeSessionId;
@@ -80,4 +78,5 @@ public class HeartBeatResponseHandler : IMessageHandler
             NodeSessionId = nodeSessionId
         });
     }
+
 }

@@ -47,15 +47,16 @@
         yield return (nameof(WebServerCounter.NodeServiceInputMessagesCount), WebServerCounter.NodeServiceInputMessagesCount.ToString());
         yield return (nameof(WebServerCounter.NodeServiceOutputMessagesCount), WebServerCounter.NodeServiceOutputMessagesCount.ToString());
         yield return (nameof(WebServerCounter.NodeServiceExpiredMessagesCount), WebServerCounter.NodeServiceExpiredMessagesCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesCount), WebServerCounter.TaskExecutionReportProcessLogEntriesCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan), WebServerCounter.TaskExecutionReportProcessLogEntriesTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportLogEntriesSavedCount), WebServerCounter.TaskExecutionReportLogEntriesSavedCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportLogEntriesPageCount), WebServerCounter.TaskExecutionReportLogEntriesPageCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportLogEntriesSaveTimeSpan), WebServerCounter.TaskExecutionReportLogEntriesSaveTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportLogEntriesQueryTimeSpan), WebServerCounter.TaskExecutionReportLogEntriesQueryTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportLogEntriesSaveMaxTimeSpan), WebServerCounter.TaskExecutionReportLogEntriesSaveMaxTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportLogGroupAvailableCount), WebServerCounter.TaskExecutionReportLogGroupAvailableCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportLogGroupConsumeCount), WebServerCounter.TaskExecutionReportLogGroupConsumeCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogUnitEntriesCount), WebServerCounter.TaskLogUnitEntriesCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogUnitEntriesTimeSpan), WebServerCounter.TaskLogUnitEntriesTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskLogUnitRecieveCount), WebServerCounter.TaskLogEntriesSavedCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogEntriesSavedCount), WebServerCounter.TaskLogEntriesSavedCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogPageCount), WebServerCounter.TaskLogPageCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogUnitSaveTimeSpan), WebServerCounter.TaskLogUnitSaveTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskLogUnitQueryTimeSpan), WebServerCounter.TaskLogUnitQueryTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskLogUnitSaveMaxTimeSpan), WebServerCounter.TaskLogUnitSaveMaxTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskLogUnitAvailableCount), WebServerCounter.TaskLogUnitAvailableCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogUnitConsumeCount), WebServerCounter.TaskLogUnitConsumeCount.ToString());
     }
 
 }

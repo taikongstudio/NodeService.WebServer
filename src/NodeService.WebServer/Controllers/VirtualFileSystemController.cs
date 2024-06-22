@@ -1,4 +1,5 @@
 ﻿using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.VirtualFileSystem;
 
 namespace NodeService.WebServer.Controllers;
 

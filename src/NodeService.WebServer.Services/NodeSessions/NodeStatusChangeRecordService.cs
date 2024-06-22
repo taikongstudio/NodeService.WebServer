@@ -48,7 +48,7 @@ public class NodeStatusChangeRecordService : BackgroundService
                 foreach (var recordGroup in arrayPoolCollection.GroupBy(static x => x.NodeId))
                 {
                     var nodeId = recordGroup.Key;
-                    var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId);
+                    var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
                     foreach (var record in recordGroup)
                         if (nodeInfo != null)
                             record.Name = nodeInfo.Name;
@@ -56,11 +56,12 @@ public class NodeStatusChangeRecordService : BackgroundService
                             record.Name = "<Unknown>";
                 }
 
-                await recordRepo.AddRangeAsync(arrayPoolCollection);
+                await recordRepo.AddRangeAsync(arrayPoolCollection, cancellationToken);
             }
             catch (Exception ex)
             {
                 _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
             }
             finally
             {

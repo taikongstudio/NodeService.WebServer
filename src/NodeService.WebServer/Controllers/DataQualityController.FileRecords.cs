@@ -78,7 +78,7 @@ public partial class DataQualityController
         try
         {
             var fileRecordOperation =
-                new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.InsertOrUpdate);
+                new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.AddOrUpdate);
             await _insertUpdateDeleteOpBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
             await fileRecordOperation.WaitAsync(cancellationToken);
         }

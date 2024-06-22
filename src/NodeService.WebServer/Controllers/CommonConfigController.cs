@@ -16,7 +16,7 @@ public partial class CommonConfigController : Controller
 {
     private readonly ExceptionCounter _exceptionCounter;
 
-    private readonly BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>
+    private readonly BatchQueue<BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>>
         _batchQueue;
 
     private readonly IAsyncQueue<ConfigurationChangedEvent> _eventQueue;
@@ -35,7 +35,7 @@ public partial class CommonConfigController : Controller
         IServiceProvider serviceProvider,
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationMessageQueue,
-        BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>> batchQueue,
+        BatchQueue<BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>> batchQueue,
         IAsyncQueue<ConfigurationChangedEvent> eventQueue
     )
     {
@@ -61,16 +61,17 @@ public partial class CommonConfigController : Controller
         {
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
             ListQueryResult<T> result = default;
-            var paramters = new CommonConfigBatchQueryParameters(typeof(T), queryParameters);
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), queryParameters);
             var priority = queryParameters.QueryStrategy == QueryStrategy.QueryPreferred
                 ? BatchQueueOperationPriority.High
                 : BatchQueueOperationPriority.Normal;
-            var op = new BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>(
+            var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(
                 paramters,
                 BatchQueueOperationKind.Query,
                 priority);
             await _batchQueue.SendAsync(op);
-            var queryResult = await op.WaitAsync(cancellationToken);
+            var serviceResult = await op.WaitAsync(cancellationToken);
+            var queryResult = serviceResult.Value.AsT0;
             if (queryResult.HasValue)
                 result = new ListQueryResult<T>(
                     queryResult.TotalCount,
@@ -100,12 +101,12 @@ public partial class CommonConfigController : Controller
         try
         {
             _logger.LogInformation($"{typeof(T)}:{id}");
-            ListQueryResult<T> result = default;
-            var paramters = new CommonConfigBatchQueryParameters(typeof(T), id);
-            var op = new BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>(paramters,
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), id);
+            var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(paramters,
                 BatchQueueOperationKind.Query);
             await _batchQueue.SendAsync(op);
-            var queryResult = await op.WaitAsync(cancellationToken);
+            var serviceResult = await op.WaitAsync(cancellationToken);
+            var queryResult = serviceResult.Value.AsT0;
             if (queryResult.HasValue) apiResponse.SetResult(queryResult.Items.FirstOrDefault() as T);
             if (apiResponse.Result != null && func != null) await func.Invoke(apiResponse.Result);
         }
@@ -122,18 +123,22 @@ public partial class CommonConfigController : Controller
 
     private async Task<ApiResponse> DeleteConfigurationAsync<T>(
         T model,
-        Func<T, Task>? changesFunc = null)
+        Func<T, Task>? changesFunc = null,
+        CancellationToken cancellationToken=default)
         where T : JsonBasedDataModel
     {
         var apiResponse = new ApiResponse();
         try
         {
-            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
-            using var repo = repoFactory.CreateRepository();
-            await repo.DeleteAsync(model);
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), model);
+            var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(paramters,
+                BatchQueueOperationKind.Delete);
+            await _batchQueue.SendAsync(op);
+            var serviceResult = await op.WaitAsync(cancellationToken);
+            var queryResult = serviceResult.Value.AsT1;
             _memoryCache.Remove(model.MemoryCacheKey);
-            if (repo.LastChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
-            if (repo.LastChangesCount > 0)
+            if (queryResult.ChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
+            if (queryResult.ChangesCount > 0)
                 await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
                     ChangedType = ConfigurationChangedType.Delete,
@@ -155,39 +160,28 @@ public partial class CommonConfigController : Controller
 
     private async Task<ApiResponse> AddOrUpdateConfigurationAsync<T>(
         T model,
-        Func<T, Task>? changesFunc = null)
+        Func<T, Task>? changesFunc = null,
+        CancellationToken cancellationToken = default)
         where T : JsonBasedDataModel
     {
         var apiResponse = new ApiResponse();
         try
         {
-            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
-            using var repo = repoFactory.CreateRepository();
-            var modelFromDb = await repo.GetByIdAsync(model.Id);
-            var type = ConfigurationChangedType.None;
-            if (modelFromDb == null)
-            {
-                model.EntityVersion = Guid.NewGuid().ToByteArray();
-                await repo.AddAsync(model);
-                modelFromDb = model;
-                type = ConfigurationChangedType.Add;
-            }
-            else
-            {
-                modelFromDb.With(model);
-                await repo.SaveChangesAsync();
-                type = ConfigurationChangedType.Update;
-            }
-
-            if (repo.LastChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
-            if (repo.LastChangesCount > 0)
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), model);
+            var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(paramters,
+                BatchQueueOperationKind.AddOrUpdate);
+            await _batchQueue.SendAsync(op);
+            var serviceResult = await op.WaitAsync(cancellationToken);
+            var saveChangesResult = serviceResult.Value.AsT1;
+            if (saveChangesResult.ChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
+            if (saveChangesResult.ChangesCount > 0)
                 await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
                     NodeIdList = model is INodeInfoIdentity nodeInfoIdentity ? nodeInfoIdentity.NodeIdList : [],
-                    ChangedType = type,
+                    ChangedType = saveChangesResult.Type,
                     TypeName = typeof(T).FullName,
                     Id = model.Id,
-                    Json = modelFromDb.ToJson<T>()
+                    Json = saveChangesResult.Entity.ToJson<T>()
                 });
         }
         catch (Exception ex)

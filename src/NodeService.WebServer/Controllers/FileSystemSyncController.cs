@@ -59,7 +59,7 @@ public class FileSystemSyncController : Controller
 
                 var op = new BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>(
                     fileSystemSyncRequest,
-                    BatchQueueOperationKind.InsertOrUpdate,
+                    BatchQueueOperationKind.AddOrUpdate,
                     BatchQueueOperationPriority.Normal,
                     cancellationToken);
                 await _fileSyncBatchQueue.SendAsync(op, cancellationToken);

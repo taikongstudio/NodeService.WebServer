@@ -92,14 +92,14 @@
         <ColumnDefinitions>
 
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
-            <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="主机名称" Sortable="true" Property="c => c.Host"></PropertyColumn>
+            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="主机名称" Ellipsis Sortable="true" Property="c => c.Host"></PropertyColumn>
             <PropertyColumn Title="端口" Sortable="true" Property="c => c.Port"></PropertyColumn>
             <PropertyColumn Title="用户标识" Sortable="true" Property="c => c.UserId"></PropertyColumn>
             <PropertyColumn Title="密码" Sortable="true" Property="c => c.Password">
                 <Text>@string.Join(string.Empty, context.Password.Select(x => '*'))</Text>
             </PropertyColumn>
-            <PropertyColumn Title="数据库" Sortable="true" Property="c => c.Database"></PropertyColumn>
+            <PropertyColumn Title="数据库" Ellipsis Sortable="true" Property="c => c.Database"></PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>

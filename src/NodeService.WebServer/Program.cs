@@ -438,8 +438,8 @@ public class Program
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(
-            new BatchQueue<BatchQueueOperation<CommonConfigBatchQueryParameters, ListQueryResult<object>>>(64,
-                TimeSpan.FromMilliseconds(100)));
+            new BatchQueue<BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>>(64,
+                TimeSpan.FromMilliseconds(300)));
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(1024 * 2,
                 TimeSpan.FromSeconds(3)));

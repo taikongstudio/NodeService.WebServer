@@ -41,7 +41,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
                     {
                         case BatchQueueOperationKind.None:
                             break;
-                        case BatchQueueOperationKind.InsertOrUpdate:
+                        case BatchQueueOperationKind.AddOrUpdate:
                             await InsertOrUpdateAsync(repo, operation, cancellationToken);
 
                             break;

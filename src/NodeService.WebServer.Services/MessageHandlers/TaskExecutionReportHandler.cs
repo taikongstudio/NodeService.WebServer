@@ -7,7 +7,6 @@ namespace NodeService.WebServer.Services.MessageHandlers;
 
 public class TaskExecutionReportHandler : IMessageHandler
 {
-    readonly WebServerCounter _webServerCounter;
     readonly BatchQueue<TaskExecutionReportMessage> _batchQueue;
     readonly ILogger<HeartBeatResponseHandler> _logger;
 
@@ -32,6 +31,6 @@ public class TaskExecutionReportHandler : IMessageHandler
         {
             NodeSessionId = nodeSessionId,
             Message = message as TaskExecutionReport
-        });
+        }, cancellationToken);
     }
 }

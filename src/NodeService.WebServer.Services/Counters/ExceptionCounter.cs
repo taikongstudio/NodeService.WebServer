@@ -9,6 +9,22 @@ public record class ExecptionKey
     public string Exception { get; init; }
 }
 
+public  class ExecptionEntry
+{
+    public ExecptionEntry(string? source, string exception, int count)
+    {
+        Source = source;
+        Exception = exception;
+        Count = count;
+    }
+
+    public string? Source { get; set; }
+
+    public string Exception { get; set; }
+
+    public int Count { get; set; }
+}
+
 
 public class ExceptionCounter
 {
@@ -40,8 +56,8 @@ public class ExceptionCounter
         return value + 1;
     }
 
-    public IEnumerable<(string NodeId, string Exception, int Count)> GetStatistics()
+    public IEnumerable<ExecptionEntry> GetStatistics()
     {
-        foreach (var kv in _dict) yield return (kv.Key.Source, kv.Key.Exception, kv.Value);
+        foreach (var kv in _dict) yield return new(kv.Key.Source, kv.Key.Exception, kv.Value);
     }
 }

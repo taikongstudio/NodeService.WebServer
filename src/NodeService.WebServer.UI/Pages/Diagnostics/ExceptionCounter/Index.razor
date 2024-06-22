@@ -2,7 +2,15 @@
 @page "/Diagnostics/ExceptionCounter"
 @using NodeService.WebServer.Services.Counters
 @inject ExceptionCounter ExceptionCounter 
-
+@inject IConfirmService ConfirmService
+<Modal Title="异常信息"
+       Maximizable
+       Width="800"
+       Style="top:0px"
+       MaxBodyHeight="@("80vh")"
+       @bind-Visible="@_visible">
+    @_exception
+</Modal>
 <Space Style="margin-bottom:16px">
     <SpaceItem>
         <Button Type="@ButtonType.Primary" OnClick="@Refresh">刷新</Button>
@@ -13,13 +21,26 @@
 <Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="() => _table?.ReloadData()" />
 
 <Table @ref="@_table" Size="TableSize.Small"
+       Resizable
+       OnChange="(QueryModel<ExecptionEntry> query)=>OnTableChange(query)"
        DataSource="@_dataSource">
     <ColumnDefinitions Context="ctx">
-        <PropertyColumn Property="c => c.Source" Title="源头">
+        <PropertyColumn Property="c => c.Exception" Width="auto" Title="异常">
+            @if (ctx.Exception != null && ctx.Exception.Length > 50)
+            {
+                <Text>@ctx.Exception.Substring(0, 50)</Text>
+
+                <Button Type="@ButtonType.Link" OnClick="()=>ShowException(ctx.Exception)">展开</Button>
+            }
+            else
+            {
+                @ctx.Exception
+            }
+
         </PropertyColumn>
-        <PropertyColumn Property="c => c.Exception" Title="异常">
+        <PropertyColumn Property="c => c.Source" Width="200" Title="源头">
         </PropertyColumn>
-        <PropertyColumn Property="c => c.Count" Width="200" Title="计数"></PropertyColumn>
+        <PropertyColumn Property="c => c.Count" Width="100" Title="计数"></PropertyColumn>
     </ColumnDefinitions>
 </Table>
 
@@ -27,10 +48,12 @@
 @code {
     ITable _table;
     string _searchText;
+    bool _visible;
+    string _exception;
 
-    IEnumerable<(string Source,string Exception, int Count)> Statistics = [];
+    IEnumerable<ExecptionEntry> Statistics = [];
 
-    IEnumerable<(string Source, string Exception, int Count)> _dataSource = [];
+    IEnumerable<ExecptionEntry> _dataSource = [];
 
     protected override void OnInitialized()
     {
@@ -43,7 +66,7 @@
         Statistics = ExceptionCounter.GetStatistics().OrderByDescending(x => x.Count);
     }
 
-    void OnTableChange(QueryModel<(string Source, string Exception, int Count)> query)
+    void OnTableChange(QueryModel<ExecptionEntry> query)
     {
         if (Statistics == null || string.IsNullOrEmpty(_searchText))
         {
@@ -56,6 +79,12 @@
                  ||
                  (x.Exception != null && x.Exception.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
         );
+    }
+
+    void ShowException(string exception)
+    {
+        _exception = exception;
+        _visible = true;
     }
 
 }

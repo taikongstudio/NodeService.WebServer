@@ -257,6 +257,7 @@ public class TaskLogHandler
         int logEntriesCount,
         CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation($"Process {taskId}");
         var logIndex = 0;
         var key = $"{taskId}_{taskInfoLog.PageSize}";
         if (!_updatedTaskLogPageDictionary.TryGetValue(key, out var currentLogPage) || currentLogPage == null)
@@ -283,6 +284,7 @@ public class TaskLogHandler
                     PAGESIZE);
                 _taskLogStat.PageCreatedCount += 1;
                 _addedTaskLogPageDictionary.TryAdd(currentLogPage.Id, currentLogPage);
+                _logger.LogInformation($"{taskId} Create new page {currentLogPage.PageIndex}");
             }
 
             if (currentLogPage.ActualSize < currentLogPage.PageSize)
@@ -298,8 +300,9 @@ public class TaskLogHandler
                 taskInfoLog.ActualSize += takeCount;
                 taskInfoLog.DirtyCount++;
                 taskInfoLog.LastWriteTime = DateTime.UtcNow;
-                _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => currentLogPage);
+                _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
                 _updatedTaskLogPageDictionary.AddOrUpdate(currentLogPage.Id, currentLogPage, (key, oldValue) => currentLogPage);
+                _logger.LogInformation($"{taskId} append {takeCount}");
             }
         }
     }

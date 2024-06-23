@@ -146,8 +146,9 @@ public class TaskExecutionReportConsumerService : BackgroundService
 
 
                 if (taskExecutionInstance == null || IsTerminatedStatus(taskExecutionInstance)) continue;
-                
 
+                var logEntriesRecieveCount = taskExecutionInstance.LogEntriesRecieveCount;
+                var logEntriesSaveCount = taskExecutionInstance.LogEntriesSaveCount;
                 stopwatchProcessLogEntries.Restart();
                 foreach (var reportMessage in taskReportGroup)
                 {
@@ -161,6 +162,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                             Id = taskId,
                             LogEntries = report.LogEntries.Select(Convert).ToImmutableArray()
                         };
+                        taskExecutionInstance.LogEntriesRecieveCount += taskLogUnit.LogEntries.Length;
                         await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);
                         _logger.LogInformation($"Send task log unit:{taskId}");
                     }
@@ -174,6 +176,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 var messsage = taskExecutionInstance.Message;
                 var executionBeginTime = taskExecutionInstance.ExecutionBeginTimeUtc;
                 var executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
+
                 foreach (var messageStatusGroup in taskReportGroup.GroupBy(static x => x.GetMessage().Status).OrderBy(static x => x.Key))
                 {
                     stopwatchProcessMessage.Restart();
@@ -194,6 +197,11 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 }
 
                 var diffCount = 0;
+                if (logEntriesRecieveCount != taskExecutionInstance.LogEntriesRecieveCount)
+                {
+                    diffCount++;
+                }
+
                 if (taskExecutionStatus != taskExecutionInstance.Status)
                 {
                     taskExecutionStatus = taskExecutionInstance.Status;
@@ -236,7 +244,10 @@ public class TaskExecutionReportConsumerService : BackgroundService
                                         executionBeginTime)
                                     .SetProperty(
                                         task => task.ExecutionEndTimeUtc,
-                                        executionEndTime),
+                                        executionEndTime)
+                                     .SetProperty(
+                                        task => task.LogEntriesRecieveCount,
+                                        logEntriesRecieveCount),
                             cancellationToken);
 
                     stopwatchSave.Stop();

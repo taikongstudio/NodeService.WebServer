@@ -83,6 +83,7 @@ public class TaskLogPersistenceService : BackgroundService
                     }
                     _logger.LogInformation($"Recieve task log unit:{item.Id}");
                 }
+                _logger.LogInformation("Begin");
                 await Parallel.ForEachAsync(
                     array.GroupBy(TaskLogUnitGroupFunc),
                     new ParallelOptions()
@@ -91,6 +92,7 @@ public class TaskLogPersistenceService : BackgroundService
                         MaxDegreeOfParallelism = 4,
                     },
                     RunTaskLogHandlerAsync);
+                _logger.LogInformation("End");
                 _keys = _taskLogHandlers.Keys;
                 Stat();
             }

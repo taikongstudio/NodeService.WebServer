@@ -44,7 +44,7 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<NodeInfoModel> NodeInfoDbSet { get; set; }
 
-    public DbSet<NodeProfileModel> NodeProfileDbSet { get; set; }
+    public DbSet<NodeProfileModel> NodeProfilesDbSet { get; set; }
 
     public DbSet<TaskExecutionInstanceModel> TaskExecutionInstanceDbSet { get; set; }
     public DbSet<TaskDefinitionModel> TaskDefinitionDbSet { get; set; }

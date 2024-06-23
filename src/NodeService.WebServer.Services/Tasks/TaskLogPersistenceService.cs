@@ -60,9 +60,9 @@ public class TaskLogPersistenceService : BackgroundService
         _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
     }
 
-    private void OnTimer(object? state)
+    private async void OnTimer(object? state)
     {
-        _taskLogUnitBatchQueue.Post(new TaskLogUnit() { Id = null, LogEntries = [] });
+        await _taskLogUnitBatchQueue.SendAsync(new TaskLogUnit() { Id = null, LogEntries = [] });
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -88,7 +88,7 @@ public class TaskLogPersistenceService : BackgroundService
                     new ParallelOptions()
                     {
                         CancellationToken = cancellationToken,
-                        MaxDegreeOfParallelism = 2,
+                        MaxDegreeOfParallelism = 4,
                     },
                     RunTaskLogHandlerAsync);
                 _keys = _taskLogHandlers.Keys;

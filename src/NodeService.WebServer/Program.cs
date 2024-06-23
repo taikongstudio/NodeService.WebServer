@@ -441,15 +441,15 @@ public class Program
             new BatchQueue<BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>>(64,
                 TimeSpan.FromMilliseconds(300)));
         builder.Services.AddSingleton(
-            new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(1024 * 2,
-                TimeSpan.FromSeconds(3)));
+            new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(64,
+                TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
-        builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(64, TimeSpan.FromSeconds(1)));
+        builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(256, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(
-            new BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>>(64,
+            new BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>>(256,
                 TimeSpan.FromSeconds(5)));
-        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(64, TimeSpan.FromSeconds(1)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(64, TimeSpan.FromMilliseconds(100)));
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

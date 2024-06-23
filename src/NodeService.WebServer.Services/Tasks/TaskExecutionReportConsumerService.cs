@@ -199,6 +199,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 var diffCount = 0;
                 if (logEntriesRecieveCount != taskExecutionInstance.LogEntriesRecieveCount)
                 {
+                    logEntriesRecieveCount = taskExecutionInstance.LogEntriesRecieveCount;
                     diffCount++;
                 }
 

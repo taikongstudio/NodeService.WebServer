@@ -72,8 +72,6 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<TaskActivationRecordModel> TaskActivationRecordDbSet { get; set; }
 
-    public DbSet<TaskActivationRecordModel> TaskVersionDbSet { get; set; }
-
     public DbSet<FileRecordModel> FileRecordDbSet { get; set; }
 
     public DbSet<PropertyBag> PropertyBagDbSet => Set<PropertyBag>(nameof(PropertyBag));

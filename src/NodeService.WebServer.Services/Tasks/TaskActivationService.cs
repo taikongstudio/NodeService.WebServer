@@ -338,11 +338,6 @@ public class TaskActivationService : BackgroundService
 
                     if (taskDefinitionModel == null || string.IsNullOrEmpty(taskDefinitionModel.JobTypeDescId))
                         continue;
-                    if (taskDefinitionModel.NodeList.Count == 0)
-                    {
-                        
-                    }
-
 
                     taskDefinitionModel.TaskTypeDesc = await taskTypeDescRepo.GetByIdAsync(
                         taskDefinitionModel.JobTypeDescId,

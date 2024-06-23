@@ -44,12 +44,12 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<NodeInfoModel> NodeInfoDbSet { get; set; }
 
-    public DbSet<NodeProfileModel> NodeProfilesDbSet { get; set; }
+    public DbSet<NodeProfileModel> NodeProfileDbSet { get; set; }
 
-    public DbSet<TaskExecutionInstanceModel> TaskExecutionInstancesDbSet { get; set; }
+    public DbSet<TaskExecutionInstanceModel> TaskExecutionInstanceDbSet { get; set; }
     public DbSet<TaskDefinitionModel> TaskDefinitionDbSet { get; set; }
 
-    public DbSet<NodePropertySnapshotModel> NodePropertiesSnapshotsDbSet { get; set; }
+    public DbSet<NodePropertySnapshotModel> NodePropertiesSnapshotDbSet { get; set; }
 
     public DbSet<TaskTypeDescConfigModel> TaskTypeDescConfigurationDbSet { get; set; }
 
@@ -70,18 +70,19 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<NodeEnvVarsConfigModel> NodeEnvVarsConfigurationDbSet { get; set; }
 
-    public DbSet<TaskActivationRecordModel> TaskActivationRecordsDbSet { get; set; }
+    public DbSet<TaskActivationRecordModel> TaskActivationRecordDbSet { get; set; }
 
+    public DbSet<TaskActivationRecordModel> TaskVersionDbSet { get; set; }
 
-    public DbSet<FileRecordModel> FileRecordsDbSet { get; set; }
+    public DbSet<FileRecordModel> FileRecordDbSet { get; set; }
 
     public DbSet<PropertyBag> PropertyBagDbSet => Set<PropertyBag>(nameof(PropertyBag));
 
-    public DbSet<NotificationConfigModel> NotificationConfigurationsDbSet { get; set; }
+    public DbSet<NotificationConfigModel> NotificationConfigurationDbSet { get; set; }
 
-    public DbSet<NotificationRecordModel> NotificationRecordsDbSet { get; set; }
+    public DbSet<NotificationRecordModel> NotificationRecordDbSet { get; set; }
 
-    public DbSet<ClientUpdateCounterModel> ClientUpdateCountersDbSet { get; set; }
+    public DbSet<ClientUpdateCounterModel> ClientUpdateCounterDbSet { get; set; }
 
     public DbSet<WindowsTaskConfigModel> WindowsTaskConfigurationDbSet { get; set; }
 

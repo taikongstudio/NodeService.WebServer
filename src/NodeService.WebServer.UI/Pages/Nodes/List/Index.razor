@@ -120,7 +120,7 @@
         @switch (context.DeviceType)
         {
             case NodeDeviceType.NetworkDevice:
-                <NetworkDeviceConfiguration Settings="@_ipAddressPortSettings"/>
+                <NetworkDeviceConfiguration Settings="@_hostPortSettings"/>
                 break;
             case NodeDeviceType.SerialPortDevice:
                 <SerialPortConfiguration Settings="@_serialPortSettings"/>
@@ -306,7 +306,7 @@
 
     UpdateNodeProfileModel? _editingNodeInfoModel;
 
-    HostPortSettings _ipAddressPortSettings = new();
+    HostPortSettings _hostPortSettings = new();
     SerialPortSettings _serialPortSettings = new();
 
     string GetTimeDesc(DateTime dateTime)
@@ -451,7 +451,7 @@
         _nodeDeviceTypes =
         [
             new EnumModel<NodeDeviceType>("网络设备", NodeDeviceType.NetworkDevice),
-            new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPortDevice)
+    new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPortDevice)
         ];
         _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager.BaseUri, ApiService.QueryNodeListAsync, StateHasChanged);
         _dataSource.QueryParameters.Status = NodeStatus.All;
@@ -571,10 +571,12 @@
             switch (_editModel.DeviceType)
             {
                 case NodeDeviceType.NetworkDevice:
-                    _editModel.Properties.TryAdd("Settings", _ipAddressPortSettings);
+                    _editModel.Properties.TryAdd("Settings", _hostPortSettings);
+                    _hostPortSettings = null;
                     break;
                 case NodeDeviceType.SerialPortDevice:
                     _editModel.Properties.TryAdd("Settings", _serialPortSettings);
+                    _serialPortSettings = null;
                     break;
             }
 
@@ -646,7 +648,7 @@
                 {
                     case NodeDeviceType.NetworkDevice:
 
-                        _ipAddressPortSettings = jsonElement.Deserialize<HostPortSettings>(new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
+                        _hostPortSettings = jsonElement.Deserialize<HostPortSettings>(new JsonSerializerOptions() { PropertyNameCaseInsensitive = true });
 
                         break;
                     case NodeDeviceType.SerialPortDevice:

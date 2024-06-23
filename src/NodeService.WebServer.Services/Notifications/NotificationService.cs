@@ -38,7 +38,7 @@ public class NotificationService : BackgroundService
                 }
 
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                dbContext.NotificationRecordsDbSet.Add(new NotificationRecordModel
+                dbContext.NotificationRecordDbSet.Add(new NotificationRecordModel
                 {
                     Id = Guid.NewGuid().ToString(),
                     CreationDateTime = DateTime.UtcNow,

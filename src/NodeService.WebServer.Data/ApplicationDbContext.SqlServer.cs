@@ -355,5 +355,6 @@ public partial class ApplicationDbContext
                         .SetValueComparer(GetEnumerableComparer<LogEntry>());
                 });
         });
+
     }
 }

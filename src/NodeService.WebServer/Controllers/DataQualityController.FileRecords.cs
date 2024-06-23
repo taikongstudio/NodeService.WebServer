@@ -47,7 +47,7 @@ public partial class DataQualityController
             using var dbContext = _dbContextFactory.CreateDbContext();
             var startIndex = (queryParameters.PageIndex - 1) * queryParameters.PageSize;
             ArgumentOutOfRangeException.ThrowIfLessThan(startIndex, 0, nameof(queryParameters.PageIndex));
-            var queryable = dbContext.FileRecordsDbSet
+            var queryable = dbContext.FileRecordDbSet
                 .GroupBy(x => x.Category)
                 .Select(x => x.Key);
 

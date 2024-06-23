@@ -225,7 +225,7 @@ public class TaskLogHandler
             var taskLogInfoPageId = $"{taskId}_0";
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
             var dbContext = taskLogRepo.DbContext as ApplicationDbContext;
-            if (await dbContext.TaskLogDbSet.CountAsync(x => x.Id.StartsWith(taskId)) > 0)
+            if (await dbContext.TaskLogDbSet.CountAsync(x => x.Id== taskLogInfoPageId) > 0)
             {
                 var actualSize = await dbContext.TaskLogDbSet.Where(x => x.Id.StartsWith(taskId) && x.PageIndex >= 1)
                     .SumAsync(x => x.ActualSize, cancellationToken: cancellationToken);
@@ -244,7 +244,6 @@ public class TaskLogHandler
         if (taskInfoLog == null)
         {
             taskInfoLog = CreateTaskLogInfoPage(taskId);
-
             _addedTaskLogPageDictionary.TryAdd(taskInfoLog.Id, taskInfoLog);
         }
 
@@ -275,7 +274,7 @@ public class TaskLogHandler
                 if (currentLogPage != null && currentLogPage.ActualSize == currentLogPage.PageSize)
                 {
                     taskInfoLog.PageSize += 1;
-                    _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, UpdateValueFactory);
+                    _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
                 }
 
                 currentLogPage = CreateNewTaskLogPage(
@@ -299,15 +298,10 @@ public class TaskLogHandler
                 taskInfoLog.ActualSize += takeCount;
                 taskInfoLog.DirtyCount++;
                 taskInfoLog.LastWriteTime = DateTime.UtcNow;
-                _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, UpdateValueFactory);
-                _updatedTaskLogPageDictionary.AddOrUpdate(currentLogPage.Id, currentLogPage, UpdateValueFactory);
+                _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => currentLogPage);
+                _updatedTaskLogPageDictionary.AddOrUpdate(currentLogPage.Id, currentLogPage, (key, oldValue) => currentLogPage);
             }
         }
-    }
-
-    private static T UpdateValueFactory<T>(string key, T oldValue)
-    {
-        return oldValue;
     }
 
     void RemoveFullTaskLogPages(ConcurrentDictionary<string, TaskLogModel> dict)

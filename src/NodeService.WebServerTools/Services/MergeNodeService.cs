@@ -56,7 +56,7 @@ public class MergeNodeService : BackgroundService
                 while (true)
                 {
                     _logger.LogInformation($"Fetch page {pageIndex} ");
-                    var dataList = await dbContext.FileRecordsDbSet.Skip(pageIndex * pageSize).Take(pageSize)
+                    var dataList = await dbContext.FileRecordDbSet.Skip(pageIndex * pageSize).Take(pageSize)
                         .ToListAsync();
                     if (dataList.Count == 0) break;
                     records.AddRange(dataList);
@@ -73,7 +73,7 @@ public class MergeNodeService : BackgroundService
                         foreach (var item in group.OrderByDescending(x => x.EntityVersion).Skip(1))
                             try
                             {
-                                var count = await dbContext.FileRecordsDbSet
+                                var count = await dbContext.FileRecordDbSet
                                     .Where(x => x.Id == item.Id && x.Name == item.Name)
                                     .ExecuteDeleteAsync();
                                 _logger.LogInformation($"Delete {item.Id} {item.Name} ");

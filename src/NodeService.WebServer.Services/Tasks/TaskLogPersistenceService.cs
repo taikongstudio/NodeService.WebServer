@@ -85,7 +85,11 @@ public class TaskLogPersistenceService : BackgroundService
                 }
                 await Parallel.ForEachAsync(
                     array.GroupBy(TaskLogUnitGroupFunc),
-                    cancellationToken,
+                    new ParallelOptions()
+                    {
+                        CancellationToken = cancellationToken,
+                        MaxDegreeOfParallelism = 2,
+                    },
                     RunTaskLogHandlerAsync);
                 _keys = _taskLogHandlers.Keys;
                 Stat();

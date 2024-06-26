@@ -86,7 +86,7 @@ public class TaskLogPersistenceService : BackgroundService
             }
         }
 
-        async IAsyncEnumerable<TaskExecutionInstanceModel> QueryExpiredTaskExecutionInstanceAsync([EnumeratorCancellation]CancellationToken cancellationToken = default)
+        async IAsyncEnumerable<TaskExecutionInstanceModel> QueryExpiredTaskExecutionInstanceAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             using var repoFactory = _taskExecutionInstanceFactory.CreateRepository();
             int pageIndex = 1;
@@ -119,7 +119,9 @@ public class TaskLogPersistenceService : BackgroundService
             int deleteCount = await applicationDbContext.TaskLogDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
             if (deleteCount > 0)
             {
-
+                await applicationDbContext.TaskExecutionInstanceDbSet.Where(x => x.Id == taskExecutionInstance.Id)
+                    .ExecuteUpdateAsync(x => x.SetProperty(x => x.LogEntriesSaveCount, 0),
+                    cancellationToken);
             }
         }
     }

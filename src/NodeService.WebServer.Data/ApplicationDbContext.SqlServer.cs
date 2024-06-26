@@ -356,5 +356,15 @@ public partial class ApplicationDbContext
                 });
         });
 
+        modelBuilder.Entity<ConfigurationVersionRecordModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                });
+        });
+
     }
 }

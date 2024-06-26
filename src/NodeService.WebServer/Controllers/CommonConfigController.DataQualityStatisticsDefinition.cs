@@ -27,4 +27,25 @@ public partial class CommonConfigController
     {
         return DeleteConfigurationAsync(model);
     }
+
+    [HttpGet("/api/CommonConfig/DataQualityStatisticsDefinition/VersionList")]
+    public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryDataQualityDefinitionVersionListAsync(
+        [FromQuery] PaginationQueryParameters queryParameters)
+    {
+        return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
+    }
+
+    [HttpPost("/api/CommonConfig/DataQualityStatisticsDefinition/SwitchVersion")]
+    public Task<ApiResponse> SwitchDataQualityDefinitionVersionAsync(
+        [FromBody] ConfigurationVersionSwitchParameters parameters)
+    {
+        return SwitchConfigurationVersionAsync<DataQualityStatisticsDefinitionModel>(parameters);
+    }
+
+    [HttpPost("/api/CommonConfig/DataQualityStatisticsDefinition/DeleteVersion")]
+    public Task<ApiResponse> DeleteDataQualityStatisticsDefinitionVersionAsync(
+        [FromBody] ConfigurationVersionRecordModel entity)
+    {
+        return DeleteConfigurationVersionAsync<DataQualityStatisticsDefinitionModel>(new ConfigurationVersionDeleteParameters(entity));
+    }
 }

@@ -94,6 +94,8 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<TaskLogModel> TaskLogDbSet { get; set; }
 
+    public DbSet<ConfigurationVersionRecordModel> ConfigurationVersionRecordDbSet { get; set; }
+
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
                                     DynamicallyAccessedMemberTypes.NonPublicConstructors |

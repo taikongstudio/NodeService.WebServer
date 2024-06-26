@@ -18,6 +18,27 @@ public partial class CommonConfigController
         return QueryConfigurationListAsync<NotificationConfigModel>(queryParameters);
     }
 
+    [HttpGet("/api/CommonConfig/Notification/VersionList")]
+    public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryNotificationConfigurationVersionListAsync(
+        [FromQuery] PaginationQueryParameters queryParameters)
+    {
+        return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
+    }
+
+    [HttpPost("/api/CommonConfig/Notification/SwitchVersion")]
+    public Task<ApiResponse> SwitchNotificationVersionAsync(
+        [FromBody] ConfigurationVersionSwitchParameters  parameters)
+    {
+        return SwitchConfigurationVersionAsync<NotificationConfigModel>(parameters);
+    }
+
+    [HttpPost("/api/CommonConfig/Notification/DeleteVersion")]
+    public Task<ApiResponse> DeleteNotificationConfigurationVersionAsync(
+    [FromBody] ConfigurationVersionRecordModel entity)
+    {
+        return DeleteConfigurationVersionAsync<NotificationConfigModel>(new ConfigurationVersionDeleteParameters(entity));
+    }
+
     [HttpGet("/api/CommonConfig/Notification/{id}")]
     public Task<ApiResponse<NotificationConfigModel>> QueryNotificationConfigAsync(string id)
     {

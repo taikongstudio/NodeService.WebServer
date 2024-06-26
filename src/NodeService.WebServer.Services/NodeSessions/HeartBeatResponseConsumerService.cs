@@ -70,9 +70,9 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 await ProcessHeartBeatMessagesAsync(array);
                 _logger.LogInformation(
                     $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
-                _webServerCounter.HeartBeatAvailableCount = (uint)_hearBeatMessageBatchQueue.AvailableCount;
-                _webServerCounter.HeartBeatTotalProcessTimeSpan += stopwatch.Elapsed;
-                _webServerCounter.HeartBeatConsumeCount += (uint)count;
+                _webServerCounter.HeartBeatAvailableCount.Value = _hearBeatMessageBatchQueue.AvailableCount;
+                _webServerCounter.HeartBeatTotalProcessTimeSpan.Value += stopwatch.Elapsed;
+                _webServerCounter.HeartBeatConsumeCount.Value += (uint)count;
             }
             catch (Exception ex)
             {

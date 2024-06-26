@@ -1,0 +1,202 @@
+﻿@typeparam TItem where TItem : class, new()
+@inject ApiService ApiService
+@inject NotificationService _notice
+<Modal Width="800"
+       Visible="@Visible"
+       Title="@Title"
+       Closable="true"
+       DefaultMaximized="false"
+       VisibleChanged="OnVisibleChanged"
+       AfterClose="Closed.InvokeAsync"
+       OnOk="OnOk"
+       OnCancel="OnCancel"
+       DestroyOnClose>
+    <GridRow>
+        <GridCol Flex=@("auto")>
+            <Table Size="TableSize.Small"
+                   OnChange="(QueryModel<ConfigurationVersionRecordModel> query) => OnTableChanged(query)"
+                   OnPageIndexChange="@_dataSource.OnPaginationEvent"
+                   OnPageSizeChange="@_dataSource.OnPaginationEvent"
+                   PageSize="@_dataSource.PageSize"
+                   PageIndex="@_dataSource.PageIndex"
+                   Total="@_dataSource.TotalCount"
+                   Loading="@_dataSource.IsLoading"
+                   DataSource="@_dataSource.ItemsSource"
+                   RowKey="x => x.Id">
+                <ColumnDefinitions Context="ctx">
+                    <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
+                    <PropertyColumn Property="c => c.CreationDateTime" Ellipsis Sortable Title="创建日期"></PropertyColumn>
+                    <PropertyColumn Property="c => c.Version" DefaultSortOrder="SortDirection.Descending" Ellipsis Sortable Title="版本">
+                        <Text>@($"V{ctx.Version}")</Text>
+                        @if (ctx.IsCurrent)
+                        {
+                            <Tag>当前版本</Tag>
+                        }
+                    </PropertyColumn>
+                    <ActionColumn>
+                        <Space Size=@("middle")>
+                            <SpaceItem>
+                                <Button Disabled="@ctx.IsCurrent" Shape="@ButtonShape.Circle" Size="default" Type="@ButtonType.Primary" Icon="@IconType.Outline.Swap" OnClick="()=>SwitchConfigurationVersionAsync(ctx)"></Button>
+                            </SpaceItem>
+                            <SpaceItem>
+                                <Button Disabled="@ctx.IsCurrent" Shape="@ButtonShape.Circle" Size="default" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>DeleteConfigurationVersionAsync(ctx)"></Button>
+                            </SpaceItem>
+                        </Space>
+                    </ActionColumn>
+                </ColumnDefinitions>
+            </Table>
+        </GridCol>
+    </GridRow>
+
+
+</Modal>
+
+@code {
+
+    [Parameter]
+    public string ConfigurationId { get; set; }
+
+    [Parameter]
+    public string Title { get; set; }
+
+    [Parameter] public EventCallback Closed { get; set; }
+
+    [Parameter] public EventCallback Opened { get; set; }
+
+    [Parameter] public EventCallback OnOk { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    [Parameter] public bool Visible { get; set; }
+
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    PaginationDataSource<ConfigurationVersionRecordModel, PaginationQueryParameters> _dataSource;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new PaginationDataSource<ConfigurationVersionRecordModel, PaginationQueryParameters>(ApiService.QueryConfigurationVersionListAsync<TItem>, StateHasChanged);
+        _dataSource.QueryParameters.Keywords = ConfigurationId;
+        _dataSource.QueryParameters.PageIndex = 1;
+        _dataSource.QueryParameters.PageSize = 10;
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(ConfigurationVersionRecordModel.Version), "descend"));
+        _dataSource.ExceptionHandler = OnExepction;
+        base.OnInitialized();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (ConfigurationId != null)
+            {
+                _dataSource.QueryParameters.Keywords = ConfigurationId;
+                await _dataSource.QueryAsync();
+            }
+        }
+        await base.OnAfterRenderAsync(firstRender);
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _dataSource.QueryParameters.Keywords = null;
+        _dataSource.QueryParameters.PageIndex = 1;
+        if (ConfigurationId == null)
+        {
+            return;
+        }
+        _dataSource.QueryParameters.Keywords = ConfigurationId;
+        await _dataSource.QueryAsync();
+    }
+
+    async Task OnTableChanged(QueryModel<ConfigurationVersionRecordModel> query)
+    {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+        _dataSource.QueryParameters.Keywords = ConfigurationId;
+        await _dataSource.QueryAsync();
+    }
+
+    private async Task OnVisibleChanged(bool visible)
+    {
+        if (VisibleChanged.HasDelegate)
+        {
+            _dataSource.QueryParameters.Keywords = ConfigurationId;
+            await VisibleChanged.InvokeAsync(visible);
+        }
+        else
+        {
+            Visible = visible;
+        }
+
+        if (visible)
+        {
+            await Opened.InvokeAsync();
+        }
+    }
+
+    async Task SwitchConfigurationVersionAsync(ConfigurationVersionRecordModel entity)
+    {
+        try
+        {
+            var rsp = await ApiService.SwitchConfigurationVersionAsync<TItem>(new ConfigurationVersionSwitchParameters()
+                {
+                    ConfigurationId = entity.ConfigurationId,
+                    TargetVersion = entity.Version
+                });
+            if (rsp.ErrorCode==0)
+            {
+                await _dataSource.QueryAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "加载失败",
+                    Description = ex.ToString()
+                });
+        }
+
+    }
+
+    async Task DeleteConfigurationVersionAsync(ConfigurationVersionRecordModel entity)
+    {
+        try
+        {
+            var rsp = await ApiService.DeleteConfigurationVersionAsync<TItem>(entity);
+            if (rsp.ErrorCode == 0)
+            {
+                await _dataSource.QueryAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "加载失败",
+                    Description = ex.ToString()
+                });
+        }
+
+    }
+
+}

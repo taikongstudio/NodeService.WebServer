@@ -61,7 +61,7 @@ public partial class CommonConfigController : Controller
         {
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
             ListQueryResult<T> result = default;
-            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), queryParameters);
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), new ConfigurationPaginationQueryParameters(queryParameters));
             var priority = queryParameters.QueryStrategy == QueryStrategy.QueryPreferred
                 ? BatchQueueOperationPriority.High
                 : BatchQueueOperationPriority.Normal;
@@ -101,7 +101,7 @@ public partial class CommonConfigController : Controller
         try
         {
             _logger.LogInformation($"{typeof(T)}:{id}");
-            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), id);
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), new ConfigurationIdentityQueryParameters(id));
             var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(paramters,
                 BatchQueueOperationKind.Query);
             await _batchQueue.SendAsync(op);
@@ -130,7 +130,7 @@ public partial class CommonConfigController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), model);
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), new ConfigurationAddUpdateDeleteParameters(model));
             var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(paramters,
                 BatchQueueOperationKind.Delete);
             await _batchQueue.SendAsync(op);
@@ -167,7 +167,7 @@ public partial class CommonConfigController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), model);
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), new ConfigurationAddUpdateDeleteParameters(model));
             var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(paramters,
                 BatchQueueOperationKind.AddOrUpdate);
             await _batchQueue.SendAsync(op);
@@ -183,6 +183,98 @@ public partial class CommonConfigController : Controller
                     Id = model.Id,
                     Json = saveChangesResult.Entity.ToJson<T>()
                 });
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.Message;
+        }
+
+        return apiResponse;
+    }
+
+    async Task<ApiResponse> SwitchConfigurationVersionAsync<T>(
+        ConfigurationVersionSwitchParameters parameters,
+        CancellationToken cancellationToken = default)
+        where T : JsonBasedDataModel
+    {
+        var apiResponse = new ApiResponse();
+        try
+        {
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), parameters);
+            var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(paramters,
+                BatchQueueOperationKind.AddOrUpdate);
+            await _batchQueue.SendAsync(op);
+            var serviceResult = await op.WaitAsync(cancellationToken);
+            var queryResult = serviceResult.Value.AsT1;
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.Message;
+        }
+        return apiResponse;
+    }
+
+    async Task<ApiResponse> DeleteConfigurationVersionAsync<T>(
+        ConfigurationVersionDeleteParameters parameters,
+        CancellationToken cancellationToken = default)
+        where T : JsonBasedDataModel
+    {
+        var apiResponse = new ApiResponse();
+        try
+        {
+            var entity = parameters.Value;
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), parameters);
+            var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(paramters,
+                BatchQueueOperationKind.Delete);
+            await _batchQueue.SendAsync(op);
+            var serviceResult = await op.WaitAsync(cancellationToken);
+            var queryResult = serviceResult.Value.AsT2;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.Message;
+        }
+
+        return apiResponse;
+    }
+
+    private async Task<PaginationResponse<T>> QueryConfigurationVersionListAsync<T>(
+    PaginationQueryParameters queryParameters,
+    CancellationToken cancellationToken = default)
+    where T : LightJsonBasedDataModel
+    {
+        var apiResponse = new PaginationResponse<T>();
+
+        try
+        {
+            _logger.LogInformation($"{typeof(T)}:{queryParameters}");
+            ListQueryResult<T> result = default;
+            var paramters = new CommonConfigQueryQueueServiceParameters(typeof(T), new ConfigurationVersionPaginationQueryParameters(queryParameters));
+            var priority = queryParameters.QueryStrategy == QueryStrategy.QueryPreferred
+                ? BatchQueueOperationPriority.High
+                : BatchQueueOperationPriority.Normal;
+            var op = new BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>(
+                paramters,
+                BatchQueueOperationKind.Query,
+                priority);
+            await _batchQueue.SendAsync(op);
+            var serviceResult = await op.WaitAsync(cancellationToken);
+            var queryResult = serviceResult.Value.AsT0;
+            if (queryResult.HasValue)
+                result = new ListQueryResult<T>(
+                    queryResult.TotalCount,
+                    queryResult.PageSize,
+                    queryResult.PageIndex,
+                    queryResult.Items.Select(static x => (T)x));
+            if (result.HasValue) apiResponse.SetResult(result);
         }
         catch (Exception ex)
         {

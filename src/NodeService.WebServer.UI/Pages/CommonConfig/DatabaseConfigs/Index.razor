@@ -1,12 +1,20 @@
-﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.MysqlConfigs
+﻿@namespace NodeService.WebServer.UI.Pages.CommonConfig.DataBaseConfigConfigs
 @page "/CommonConfig/Database/"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
+@using NodeService.WebServer.UI.Pages.Components
 @implements IDisposable
 
 <GridContent>
+    <ConfigurationVersionSelectorDialog 
+        Closed="()=>_dataSource.QueryAsync()"
+        Title="版本列表"
+        ConfigurationId="@_configurationId"
+        @bind-Visible="@_versionSelectorDialogVisible"
+        TItem="DatabaseConfigModel">
+    </ConfigurationVersionSelectorDialog>
     <Modal Width="800"
            Title="@_modalTitle"
            MaskClosable="false"
@@ -110,6 +118,9 @@
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<DatabaseConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.UnorderedList" OnClick="() => ShowVersionSelectorDialog(context.Id)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
                     </Space>
@@ -128,9 +139,21 @@
     Form<DatabaseConfigModel> _editForm;
     DatabaseConfigModel _editModel = new();
 
+
     RoutedPaginationDataSource<DatabaseConfigModel, PaginationQueryParameters> _dataSource;
 
     private List<StringEntry> _databaseProviders;
+
+    string _configurationId;
+    bool _versionSelectorDialogVisible;
+
+    async Task ShowVersionSelectorDialog(string id)
+    {
+        _configurationId = id;
+        _versionSelectorDialogVisible = true;
+        await Task.CompletedTask;
+    }
+
 
 
     protected override void OnInitialized()

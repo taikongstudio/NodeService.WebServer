@@ -27,4 +27,25 @@ public partial class CommonConfigController
     {
         return QueryConfigurationAsync<TaskTypeDescConfigModel>(id);
     }
+
+    [HttpGet("/api/CommonConfig/TaskTypeDesc/VersionList")]
+    public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryTaskTypeDescVersionListAsync(
+    [FromQuery] PaginationQueryParameters queryParameters)
+    {
+        return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
+    }
+
+    [HttpPost("/api/CommonConfig/TaskTypeDesc/SwitchVersion")]
+    public Task<ApiResponse> SwitchTaskTypeDescVersionAsync(
+        [FromBody] ConfigurationVersionSwitchParameters parameters)
+    {
+        return SwitchConfigurationVersionAsync<TaskTypeDescConfigModel>(parameters);
+    }
+
+    [HttpPost("/api/CommonConfig/TaskTypeDesc/DeleteVersion")]
+    public Task<ApiResponse> DeleteTaskTypeDescVersionAsync(
+    [FromBody] ConfigurationVersionRecordModel entity)
+    {
+        return DeleteConfigurationVersionAsync<TaskTypeDescConfigModel>(new ConfigurationVersionDeleteParameters(entity));
+    }
 }

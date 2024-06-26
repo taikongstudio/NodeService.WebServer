@@ -1,6 +1,9 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Google.Protobuf.WellKnownTypes;
+using Grpc.Core;
+using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
@@ -83,10 +86,9 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 stopwatch.Stop();
                 _logger.LogInformation(
                     $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
-                _webServerCounter.TaskExecutionReportAvailableCount =
-                    (uint)_taskExecutionReportBatchQueue.AvailableCount;
-                _webServerCounter.TaskExecutionReportTotalTimeSpan += stopwatch.Elapsed;
-                _webServerCounter.TaskExecutionReportConsumeCount += (uint)array.Length;
+                _webServerCounter.TaskExecutionReportAvailableCount.Value = (uint)_taskExecutionReportBatchQueue.AvailableCount;
+                _webServerCounter.TaskExecutionReportTotalTimeSpan.Value += stopwatch.Elapsed;
+                _webServerCounter.TaskExecutionReportConsumeCount.Value += (uint)array.Length;
                 stopwatch.Reset();
             }
             catch (Exception ex)
@@ -125,138 +127,15 @@ public class TaskExecutionReportConsumerService : BackgroundService
         TaskExecutionReportMessage[] array,
         CancellationToken cancellationToken = default)
     {
-        var stopwatchSaveTimeSpan = TimeSpan.Zero;
+
 
         try
         {
-            using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
-            var stopwatchSave = new Stopwatch();
-            var stopwatchQuery = new Stopwatch();
-            var stopwatchProcessLogEntries = new Stopwatch();
-            var stopwatchProcessMessage = new Stopwatch();
-            foreach (var taskReportGroup in array.GroupBy(GetTaskId))
+            await Parallel.ForEachAsync(array.GroupBy(GetTaskId), new ParallelOptions()
             {
-                if (taskReportGroup.Key == null) continue;
-                stopwatchQuery.Restart();
-                var taskId = taskReportGroup.Key;
-                var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
-                stopwatchQuery.Stop();
-                _logger.LogInformation($"{taskId}:QueryElapsed:{stopwatchQuery.Elapsed}");
-                _webServerCounter.TaskExecutionReportQueryTimeSpan += stopwatchQuery.Elapsed;
-
-
-                if (taskExecutionInstance == null || IsTerminatedStatus(taskExecutionInstance)) continue;
-
-                var logEntriesRecieveCount = taskExecutionInstance.LogEntriesRecieveCount;
-                var logEntriesSaveCount = taskExecutionInstance.LogEntriesSaveCount;
-                stopwatchProcessLogEntries.Restart();
-                foreach (var reportMessage in taskReportGroup)
-                {
-                    if (reportMessage == null) continue;
-                    var report = reportMessage.GetMessage();
-                    if (report.LogEntries.Count > 0)
-                    {
-                        _webServerCounter.TaskLogUnitRecieveCount++;
-                        var taskLogUnit = new TaskLogUnit
-                        {
-                            Id = taskId,
-                            LogEntries = report.LogEntries.Select(Convert).ToImmutableArray()
-                        };
-                        taskExecutionInstance.LogEntriesRecieveCount += taskLogUnit.LogEntries.Length;
-                        await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);
-                        _logger.LogInformation($"Send task log unit:{taskId}");
-                    }
-                }
-
-                stopwatchProcessLogEntries.Stop();
-                _webServerCounter.TaskLogUnitEntriesTimeSpan += stopwatchProcessLogEntries.Elapsed;
-
-
-                var taskExecutionStatus = taskExecutionInstance.Status;
-                var messsage = taskExecutionInstance.Message;
-                var executionBeginTime = taskExecutionInstance.ExecutionBeginTimeUtc;
-                var executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
-
-                foreach (var messageStatusGroup in taskReportGroup.GroupBy(static x => x.GetMessage().Status).OrderBy(static x => x.Key))
-                {
-                    stopwatchProcessMessage.Restart();
-                    var status = messageStatusGroup.Key;
-                    foreach (var reportMessage in messageStatusGroup)
-                    {
-                        if (reportMessage == null) continue;
-                        await ProcessTaskExecutionReportAsync(
-                            taskExecutionInstance,
-                            reportMessage,
-                            cancellationToken);
-                    }
-
-                    stopwatchProcessMessage.Stop();
-                    _logger.LogInformation(
-                        $"process {status} {messageStatusGroup.Count()} messages,spent:{stopwatchProcessMessage.Elapsed}");
-                    _webServerCounter.TaskExecutionReportProcessTimeSpan += stopwatchProcessMessage.Elapsed;
-                }
-
-                var diffCount = 0;
-                if (logEntriesRecieveCount != taskExecutionInstance.LogEntriesRecieveCount)
-                {
-                    logEntriesRecieveCount = taskExecutionInstance.LogEntriesRecieveCount;
-                    diffCount++;
-                }
-
-                if (taskExecutionStatus != taskExecutionInstance.Status)
-                {
-                    taskExecutionStatus = taskExecutionInstance.Status;
-                    diffCount++;
-                }
-
-                if (messsage != taskExecutionInstance.Message)
-                {
-                    messsage = taskExecutionInstance.Message;
-                    diffCount++;
-                }
-
-                if (executionBeginTime != taskExecutionInstance.ExecutionBeginTimeUtc)
-                {
-                    executionBeginTime = taskExecutionInstance.ExecutionBeginTimeUtc;
-                    diffCount++;
-                }
-
-                if (executionEndTime != taskExecutionInstance.ExecutionEndTimeUtc)
-                {
-                    executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
-                    diffCount++;
-                }
-
-                if (diffCount > 0)
-                {
-                    stopwatchSave.Restart();
-                    var changesCount = await taskExecutionInstanceRepo.DbContext.Set<TaskExecutionInstanceModel>()
-                        .Where(x => x.Id == taskId)
-                        .ExecuteUpdateAsync(
-                            setPropertyCalls =>
-                                setPropertyCalls.SetProperty(
-                                        task => task.Status,
-                                        taskExecutionStatus)
-                                    .SetProperty(
-                                        task => task.Message,
-                                        messsage)
-                                    .SetProperty(
-                                        task => task.ExecutionBeginTimeUtc,
-                                        executionBeginTime)
-                                    .SetProperty(
-                                        task => task.ExecutionEndTimeUtc,
-                                        executionEndTime)
-                                     .SetProperty(
-                                        task => task.LogEntriesRecieveCount,
-                                        logEntriesRecieveCount),
-                            cancellationToken);
-
-                    stopwatchSave.Stop();
-                    stopwatchSaveTimeSpan += stopwatchSave.Elapsed;
-                    _webServerCounter.TaskExecutionReportSaveTimeSpan += stopwatchSave.Elapsed;
-                    _webServerCounter.TaskExecutionReportSaveChangesCount += (uint)changesCount;
-                }
-            }
+                CancellationToken = cancellationToken,
+                MaxDegreeOfParallelism = Math.Max(array.Length / 10, 8),
+            }, ProcessTaskExecutionReportGroupAsync);
         }
         catch (Exception ex)
         {
@@ -265,7 +144,131 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
         finally
         {
-            _logger.LogInformation($"Process {array.Length} messages, SaveElapsed:{stopwatchSaveTimeSpan}");
+
+        }
+    }
+
+    async ValueTask ProcessTaskExecutionReportGroupAsync(
+        IGrouping<string?, TaskExecutionReportMessage> taskExecutionReportGroup,
+         CancellationToken cancellationToken)
+    {
+        try
+        {
+            var taskId = taskExecutionReportGroup.Key;
+            if (taskId == null) return;
+            var stopwatchSave = new Stopwatch();
+            var stopwatchQuery = new Stopwatch();
+            var stopwatchProcessLogEntries = new Stopwatch();
+            var stopwatchProcessMessage = new Stopwatch();
+            var stopwatchSaveTimeSpan = TimeSpan.Zero;
+            using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
+
+            stopwatchQuery.Restart();
+            var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
+            stopwatchQuery.Stop();
+            _logger.LogInformation($"{taskId}:QueryElapsed:{stopwatchQuery.Elapsed}");
+            _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += stopwatchQuery.Elapsed;
+
+
+            if (taskExecutionInstance == null || IsTerminatedStatus(taskExecutionInstance)) return;
+
+            var logEntriesRecieveCount = taskExecutionInstance.LogEntriesRecieveCount;
+            var logEntriesSaveCount = taskExecutionInstance.LogEntriesSaveCount;
+            stopwatchProcessLogEntries.Restart();
+            foreach (var reportMessage in taskExecutionReportGroup)
+            {
+                if (reportMessage == null) continue;
+                var report = reportMessage.GetMessage();
+                if (report.LogEntries.Count > 0)
+                {
+                    _webServerCounter.TaskLogUnitRecieveCount.Value++;
+                    var taskLogUnit = new TaskLogUnit
+                    {
+                        Id = taskId,
+                        LogEntries = report.LogEntries.Select(Convert).ToImmutableArray()
+                    };
+                    taskExecutionInstance.LogEntriesRecieveCount += taskLogUnit.LogEntries.Length;
+                    await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);
+                    _logger.LogInformation($"Send task log unit:{taskId},{taskLogUnit.LogEntries.Length} enties");
+                }
+            }
+
+            stopwatchProcessLogEntries.Stop();
+            _webServerCounter.TaskLogUnitEntriesTimeSpan.Value += stopwatchProcessLogEntries.Elapsed;
+
+
+            var taskExecutionStatus = taskExecutionInstance.Status;
+            var messsage = taskExecutionInstance.Message;
+            var executionBeginTime = taskExecutionInstance.ExecutionBeginTimeUtc;
+            var executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
+
+            foreach (var messageStatusGroup in taskExecutionReportGroup.GroupBy(static x => x.GetMessage().Status).OrderBy(static x => x.Key))
+            {
+                stopwatchProcessMessage.Restart();
+                var status = messageStatusGroup.Key;
+                foreach (var reportMessage in messageStatusGroup)
+                {
+                    if (reportMessage == null) continue;
+                    await ProcessTaskExecutionReportAsync(
+                        taskExecutionInstance,
+                        reportMessage,
+                        cancellationToken);
+                }
+
+                stopwatchProcessMessage.Stop();
+                _logger.LogInformation($"process {status} {messageStatusGroup.Count()} messages,spent:{stopwatchProcessMessage.Elapsed}");
+                _webServerCounter.TaskExecutionReportProcessTimeSpan.Value += stopwatchProcessMessage.Elapsed;
+            }
+
+            int diffCount = 0;
+
+            if (logEntriesRecieveCount != taskExecutionInstance.LogEntriesRecieveCount)
+            {
+                diffCount++;
+            }
+
+            if (taskExecutionStatus != taskExecutionInstance.Status)
+            {
+                _logger.LogInformation($"{taskId} StatusChanged:{taskExecutionStatus}=>{taskExecutionInstance.Status}");
+                diffCount++;
+            }
+
+            if (messsage != taskExecutionInstance.Message)
+            {
+                _logger.LogInformation($"{taskId} StatusChanged:{messsage}=>{taskExecutionInstance.Message}");
+                messsage = taskExecutionInstance.Message;
+                diffCount++;
+            }
+
+            if (executionBeginTime != taskExecutionInstance.ExecutionBeginTimeUtc)
+            {
+                _logger.LogInformation($"{taskId} StatusChanged:{executionBeginTime}=>{taskExecutionInstance.ExecutionBeginTimeUtc}");
+                diffCount++;
+            }
+
+            if (executionEndTime != taskExecutionInstance.ExecutionEndTimeUtc)
+            {
+                _logger.LogInformation($"{taskId} StatusChanged:{executionEndTime}=>{taskExecutionInstance.ExecutionEndTimeUtc}");
+                diffCount++;
+            }
+
+            if (diffCount > 0)
+            {
+                stopwatchSave.Restart();
+
+                var changesCount = await taskExecutionInstanceRepo.SaveChangesAsync(cancellationToken);
+
+                stopwatchSave.Stop();
+                stopwatchSaveTimeSpan += stopwatchSave.Elapsed;
+                _webServerCounter.TaskExecutionReportSaveTimeSpan.Value += stopwatchSave.Elapsed;
+                _webServerCounter.TaskExecutionReportSaveChangesCount .Value+= (uint)changesCount;
+                _logger.LogInformation($"save {taskId} ,spent:{stopwatchSave.Elapsed}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
         }
     }
 
@@ -415,6 +418,10 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 {
                     _memoryCache.Remove(key);
                     taskExecutionInstance.Message = $"{nameof(parameters.Source)}: {parameters.Source},{nameof(parameters.Host)}: {parameters.Host}";
+                }
+                else
+                {
+                    taskExecutionInstance.Message = report.Message;
                 }
             }
         }

@@ -27,4 +27,25 @@ public partial class CommonConfigController
     {
         return DeleteConfigurationAsync(kafkaConfig);
     }
+
+    [HttpGet("/api/CommonConfig/kafka/VersionList")]
+    public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryKafkaConfigurationVersionListAsync(
+    [FromQuery] PaginationQueryParameters queryParameters)
+    {
+        return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
+    }
+
+    [HttpPost("/api/CommonConfig/kafka/SwitchVersion")]
+    public Task<ApiResponse> SwitchKafkaConfigurationVersionAsync(
+        [FromBody] ConfigurationVersionSwitchParameters parameters)
+    {
+        return SwitchConfigurationVersionAsync<KafkaConfigModel>(parameters);
+    }
+
+    [HttpPost("/api/CommonConfig/kafka/DeleteVersion")]
+    public Task<ApiResponse> DeleteKafkaConfigurationVersionAsync(
+    [FromBody] ConfigurationVersionRecordModel entity)
+    {
+        return DeleteConfigurationVersionAsync<KafkaConfigModel>(new ConfigurationVersionDeleteParameters(entity));
+    }
 }

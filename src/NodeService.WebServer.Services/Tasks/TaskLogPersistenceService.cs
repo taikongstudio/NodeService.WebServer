@@ -62,6 +62,7 @@ public class TaskLogPersistenceService : BackgroundService
 
     async Task ProcessExpiredTaskLogsAsync(CancellationToken cancellationToken = default)
     {
+        await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -71,6 +72,7 @@ public class TaskLogPersistenceService : BackgroundService
                 await foreach (var taskExecutionInstance in QueryExpiredTaskExecutionInstanceAsync(cancellationToken))
                 {
                     await DeleteTaskLogAsync(taskExecutionInstance, applicationDbContext, cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 }
             }
             catch (Exception ex)

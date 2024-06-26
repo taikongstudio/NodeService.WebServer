@@ -272,5 +272,14 @@ public partial class ApplicationDbContext
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<TaskActivationRecord>(v, (JsonSerializerOptions)null));
         });
+
+        modelBuilder.Entity<ConfigurationVersionRecordModel>(builder =>
+        {
+            builder.HasKey(x => new { x.Id, x.Version });
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<ConfigurationVersionRecord>(v, (JsonSerializerOptions)null));
+        });
     }
 }

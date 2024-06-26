@@ -8,6 +8,12 @@
 @implements IDisposable
 
 <GridContent>
+    <ConfigurationVersionSelectorDialog Title="版本列表"
+                                        Closed="()=>_dataSource.QueryAsync()"
+                                        ConfigurationId="@_configurationId"
+                                        @bind-Visible="@_versionSelectorDialogVisible"
+                                        TItem="TaskTypeDescConfigModel">
+    </ConfigurationVersionSelectorDialog>
     <Modal Width="800"
            Title="@_modalTitle"
            MaskClosable="false"
@@ -97,6 +103,9 @@
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<TaskTypeDescConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.UnorderedList" OnClick="() => ShowVersionSelectorDialog(context.Id)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
 
@@ -136,6 +145,16 @@
     bool _loading;
 
     RoutedPaginationDataSource<TaskTypeDescConfigModel, PaginationQueryParameters> _dataSource;
+
+    string _configurationId;
+    bool _versionSelectorDialogVisible;
+
+    async Task ShowVersionSelectorDialog(string id)
+    {
+        _configurationId = id;
+        _versionSelectorDialogVisible = true;
+        await Task.CompletedTask;
+    }
 
     protected override void OnInitialized()
     {

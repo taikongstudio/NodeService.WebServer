@@ -8,13 +8,23 @@
 @implements IDisposable
 
 <GridContent>
+    <ConfigurationVersionSelectorDialog Title="版本列表"
+                                        Closed="()=>_dataSource.QueryAsync()"
+                                        ConfigurationId="@_configurationId"
+                                        @bind-Visible="@_versionSelectorDialogVisible"
+                                        TItem="TaskDefinitionModel">
+    </ConfigurationVersionSelectorDialog>
     <TaskDefinitionEditor
         Closed="OnTaskDefinitionEditorClosed"
         @ref="_taskDefinitionEditor"/>
     <InvokeTaskDialog
         TaskDefinition="@_taskDefinition"
         @bind-Visible="@_InvokeTaskDialogVisible"/>
-
+    <ConfigurationVersionSelectorDialog Title="版本列表"
+                                        ConfigurationId="@_configurationId"
+                                        @bind-Visible="@_versionSelectorDialogVisible"
+                                        TItem="DatabaseConfigModel">
+    </ConfigurationVersionSelectorDialog>
     <Table
         Size="TableSize.Small"
         Loading="@_dataSource.IsLoading"
@@ -70,6 +80,9 @@
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => _taskDefinitionEditor.ShowAsync(context.JsonClone<TaskDefinitionModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.UnorderedList" OnClick="() => ShowVersionSelectorDialog(context.Id)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
 
@@ -92,6 +105,16 @@
 
     RoutedPaginationDataSource<TaskDefinitionModel, PaginationQueryParameters> _dataSource;
     PaginationDataSource<NodeInfoModel, PaginationQueryParameters> _nodeDataSource;
+
+    string _configurationId;
+    bool _versionSelectorDialogVisible;
+
+    async Task ShowVersionSelectorDialog(string id)
+    {
+        _configurationId = id;
+        _versionSelectorDialogVisible = true;
+        await Task.CompletedTask;
+    }
 
     protected override void OnInitialized()
     {

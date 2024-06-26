@@ -34,4 +34,25 @@ public partial class CommonConfigController
     {
         return DeleteConfigurationAsync(model);
     }
+
+    [HttpGet("/api/CommonConfig/ftpupload/VersionList")]
+    public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryFtpUploadConfigurationVersionListAsync(
+    [FromQuery] PaginationQueryParameters queryParameters)
+    {
+        return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
+    }
+
+    [HttpPost("/api/CommonConfig/ftpupload/SwitchVersion")]
+    public Task<ApiResponse> SwitchFtpUploadConfigurationVersionAsync(
+        [FromBody] ConfigurationVersionSwitchParameters parameters)
+    {
+        return SwitchConfigurationVersionAsync<FtpUploadConfigModel>(parameters);
+    }
+
+    [HttpPost("/api/CommonConfig/ftpupload/DeleteVersion")]
+    public Task<ApiResponse> DeleteFtpUploadConfigurationVersionAsync(
+        [FromBody] ConfigurationVersionRecordModel entity)
+    {
+        return DeleteConfigurationVersionAsync<FtpUploadConfigModel>(new ConfigurationVersionDeleteParameters(entity));
+    }
 }

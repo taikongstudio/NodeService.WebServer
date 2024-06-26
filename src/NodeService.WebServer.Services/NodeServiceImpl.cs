@@ -137,7 +137,7 @@ public class NodeServiceImpl : NodeServiceBase
                 {
                     try
                     {
-                        _webServerCounter.NodeServiceInputMessagesCount++;
+                        _webServerCounter.NodeServiceInputMessagesCount.Value++;
                         if (!messageHandlerDictionary.TryGetValue(message.Descriptor, out var messageHandler)) continue;
                         await messageHandler.HandleAsync(nodeSessionId, message, cancellationToken);
                     }
@@ -165,7 +165,7 @@ public class NodeServiceImpl : NodeServiceBase
                 {
                     if (message is not INodeMessage nodeMessage || nodeMessage.IsExpired)
                     {
-                        _webServerCounter.NodeServiceExpiredMessagesCount++;
+                        _webServerCounter.NodeServiceExpiredMessagesCount.Value++;
                         continue;
                     }
 
@@ -175,7 +175,7 @@ public class NodeServiceImpl : NodeServiceBase
                         subscribeEvent.Properties.TryAdd("DateTime",
                             nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
                         await responseStream.WriteAsync(subscribeEvent);
-                        _webServerCounter.NodeServiceOutputMessagesCount++;
+                        _webServerCounter.NodeServiceOutputMessagesCount.Value++;
                     }
                 }
             }

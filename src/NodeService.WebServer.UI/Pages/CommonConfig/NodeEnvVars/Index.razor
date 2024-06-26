@@ -8,6 +8,11 @@
 @implements IDisposable
 
 <GridContent>
+        <ConfigurationVersionSelectorDialog Title="版本列表"
+                                        Closed="()=>_dataSource.QueryAsync()"
+                                        ConfigurationId="@_configurationId"
+                                        @bind-Visible="@_versionSelectorDialogVisible"
+                                        TItem="NodeEnvVarsConfigModel"/>
     <Modal Title="@_modalTitle"
            Width="800"
            MaskClosable="false"
@@ -91,6 +96,9 @@
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<NodeEnvVarsConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.UnorderedList" OnClick="() => ShowVersionSelectorDialog(context.Id)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
 
@@ -123,6 +131,16 @@
     IEnumerable<NodeInfoModel> _selectedNodes;
     IEnumerable<StringEntry> _selectedEntries = [];
     NodeEnvVarsConfigModel _editModel = new();
+
+    string _configurationId;
+    bool _versionSelectorDialogVisible;
+
+    async Task ShowVersionSelectorDialog(string id)
+    {
+        _configurationId = id;
+        _versionSelectorDialogVisible = true;
+        await Task.CompletedTask;
+    }
 
     protected override void OnInitialized()
     {

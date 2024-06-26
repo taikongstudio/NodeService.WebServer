@@ -7,6 +7,13 @@
 @implements IDisposable
 
 <GridContent>
+
+    <ConfigurationVersionSelectorDialog Title="版本列表"
+                                        Closed="()=>_dataSource.QueryAsync()"
+                                        ConfigurationId="@_configurationId"
+                                        @bind-Visible="@_versionSelectorDialogVisible"
+                                        TItem="KafkaConfigModel">
+    </ConfigurationVersionSelectorDialog>
     <Modal
         Width="800"
         MaskClosable="false"
@@ -82,6 +89,9 @@
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<RestApiConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.UnorderedList" OnClick="() => ShowVersionSelectorDialog(context.Id)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
 
@@ -112,6 +122,16 @@
 
 
     RoutedPaginationDataSource<RestApiConfigModel, PaginationQueryParameters> _dataSource;
+
+    string _configurationId;
+    bool _versionSelectorDialogVisible;
+
+    async Task ShowVersionSelectorDialog(string id)
+    {
+        _configurationId = id;
+        _versionSelectorDialogVisible = true;
+        await Task.CompletedTask;
+    }
 
     protected override void OnInitialized()
     {

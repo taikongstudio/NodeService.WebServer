@@ -7,7 +7,12 @@
 @implements IDisposable
 
 <GridContent>
-
+    <ConfigurationVersionSelectorDialog Title="版本列表"
+                                        Closed="()=>_dataSource.QueryAsync()"
+                                        ConfigurationId="@_configurationId"
+                                        @bind-Visible="@_versionSelectorDialogVisible"
+                                        TItem="FtpUploadConfigModel">
+    </ConfigurationVersionSelectorDialog>
     <Modal Width="800"
            Title="@_modalTitle"
            MaskClosable="false"
@@ -205,6 +210,9 @@
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<FtpUploadConfigModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.UnorderedList" OnClick="() => ShowVersionSelectorDialog(context.Id)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
                     </Space>
@@ -232,19 +240,29 @@
 
     RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters> _dataSource;
 
+    string _configurationId;
+    bool _versionSelectorDialogVisible;
+
+    async Task ShowVersionSelectorDialog(string id)
+    {
+        _configurationId = id;
+        _versionSelectorDialogVisible = true;
+        await Task.CompletedTask;
+    }
+
     protected override void OnInitialized()
     {
         _filterList =
         [
             new StringEntry { Name = "包含", Value = nameof(FilePathFilter.Contains).ToLower() },
-    new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
-    new StringEntry { Name = "开头匹配", Value = nameof(FilePathFilter.StartWith).ToLower() },
-    new StringEntry { Name = "开头不匹配", Value = nameof(FilePathFilter.NotStartWith).ToLower() },
-    new StringEntry { Name = "结尾匹配", Value = nameof(FilePathFilter.EndsWith).ToLower() },
-    new StringEntry { Name = "结尾不匹配", Value = nameof(FilePathFilter.NotEndsWith).ToLower() },
-    new StringEntry { Name = "模式匹配", Value = nameof(FilePathFilter.SearchPattern).ToLower() },
-    new StringEntry { Name = "正则表达式匹配", Value = nameof(FilePathFilter.RegExp).ToLower() },
-    new StringEntry { Name = "正则表达式不匹配", Value = nameof(FilePathFilter.RegExpNotMatch).ToLower() }
+            new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
+            new StringEntry { Name = "开头匹配", Value = nameof(FilePathFilter.StartWith).ToLower() },
+            new StringEntry { Name = "开头不匹配", Value = nameof(FilePathFilter.NotStartWith).ToLower() },
+            new StringEntry { Name = "结尾匹配", Value = nameof(FilePathFilter.EndsWith).ToLower() },
+            new StringEntry { Name = "结尾不匹配", Value = nameof(FilePathFilter.NotEndsWith).ToLower() },
+            new StringEntry { Name = "模式匹配", Value = nameof(FilePathFilter.SearchPattern).ToLower() },
+            new StringEntry { Name = "正则表达式匹配", Value = nameof(FilePathFilter.RegExp).ToLower() },
+            new StringEntry { Name = "正则表达式不匹配", Value = nameof(FilePathFilter.RegExpNotMatch).ToLower() }
         ];
         _dataSource = new RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,

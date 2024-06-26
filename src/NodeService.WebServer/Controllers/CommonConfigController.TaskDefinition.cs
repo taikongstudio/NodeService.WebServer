@@ -73,4 +73,26 @@ public partial class CommonConfigController
         await messageQueue.EnqueueAsync(new TaskScheduleMessage(TaskTriggerSource.Schedule, taskDefinition.Id,
             true));
     }
+
+    [HttpGet("/api/CommonConfig/TaskDefinition/VersionList")]
+    public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryTaskDefinitionVersionListAsync(
+        [FromQuery] PaginationQueryParameters queryParameters)
+    {
+        return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
+    }
+
+    [HttpPost("/api/CommonConfig/TaskDefinition/SwitchVersion")]
+    public Task<ApiResponse> SwitchTaskDefinitionVersionAsync(
+        [FromBody] ConfigurationVersionSwitchParameters parameters)
+    {
+        return SwitchConfigurationVersionAsync<TaskDefinitionModel>(parameters);
+    }
+
+    [HttpPost("/api/CommonConfig/TaskDefinition/DeleteVersion")]
+    public Task<ApiResponse> DeleteTaskDefinitionVersionAsync(
+        [FromBody] ConfigurationVersionRecordModel entity)
+    {
+        return DeleteConfigurationVersionAsync<TaskDefinitionModel>(new ConfigurationVersionDeleteParameters(entity));
+    }
+
 }

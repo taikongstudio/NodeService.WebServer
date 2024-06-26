@@ -141,4 +141,11 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         }
 
     }
+
+    public TaskExecutionInstanceSpecification(
+        DateTime dateTime
+)
+    {
+        Query.Where(x => x.FireTimeUtc < dateTime && x.LogEntriesSaveCount > 0);
+    }
 }

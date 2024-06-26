@@ -44,16 +44,13 @@ public class ClientUpdateQueueService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _ = Task.Factory.StartNew((state) => ShuffleNodesAsync((CancellationToken)state), cancellationToken,
-            cancellationToken);
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            await QueueAsync(cancellationToken);
-            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-        }
+        await Task.WhenAll(
+            ShuffleNodesAsync(cancellationToken),
+            QueueAsync(cancellationToken));
     }
 
-    private async Task ShuffleNodesAsync(CancellationToken cancellationToken = default)
+
+    async Task ShuffleNodesAsync(CancellationToken cancellationToken = default)
     {
         while (!cancellationToken.IsCancellationRequested)
             try
@@ -64,24 +61,20 @@ public class ClientUpdateQueueService : BackgroundService
                 var pageSize = 20;
                 var pageCount = Math.DivRem(itemsCount, pageSize, out var result);
                 if (result > 0) pageCount += 1;
-                if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(5));
+                if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(10));
                 for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
                 {
                     var nodeList = await nodeInfoRepo.PaginationQueryAsync(
                         new NodeInfoSpecification(),
                         new PaginationInfo(pageIndex, pageSize),
                         cancellationToken);
-                    var nodeArray = nodeList.Items.ToArray();
-                    Random.Shared.Shuffle(nodeArray);
-                    Random.Shared.Shuffle(nodeArray);
-                    Random.Shared.Shuffle(nodeArray);
-                    foreach (var item in nodeArray)
+                    foreach (var item in nodeList.Items)
                     {
                         var key = CreateKey(item.Profile.IpAddress);
-                        _memoryCache.Set(key, true, TimeSpan.FromMinutes(5));
+                        _memoryCache.Set(key, true, TimeSpan.FromMinutes(10));
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(295), cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(60*10-5), cancellationToken);
                 }
             }
             catch (Exception ex)

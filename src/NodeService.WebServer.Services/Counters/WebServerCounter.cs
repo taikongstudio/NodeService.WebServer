@@ -1,41 +1,76 @@
 ﻿namespace NodeService.WebServer.Services.Counters;
 
+public class CounterLongValue
+{
+    private long _value;
+
+    public long Value
+    {
+        get => Interlocked.Read(ref _value);
+        set => Interlocked.Exchange(ref _value, value);
+    }
+
+    public override string ToString()
+    {
+        return this.Value.ToString();
+    }
+}
+
+public class CounterTimeSpanValue
+{
+    private long _value;
+
+    public TimeSpan Value
+    {
+        get => TimeSpan.FromTicks(Interlocked.Read(ref _value));
+        set => Interlocked.Exchange(ref _value, value.Ticks);
+    }
+
+    public override string ToString()
+    {
+        return this.Value.ToString();
+    }
+
+}
+
 public class WebServerCounter
 {
-    public ulong TaskExecutionReportAvailableCount { get; set; }
-    public ulong TaskExecutionReportSaveChangesCount { get; set; }
-    public ulong HeartBeatAvailableCount { get; set; }
-    public ulong TaskLogUnitEntriesCount { get; set; }
-    public ulong HeartBeatConsumeCount { get; set; }
-    public ulong TaskExecutionReportConsumeCount { get; set; }
 
-    public ulong TaskLogUnitRecieveCount { get; set; }
+    public CounterLongValue TaskExecutionReportRecieveCount { get; set; } = new();
+    public CounterLongValue TaskExecutionReportAvailableCount { get; set; } =new ();
+    public CounterLongValue TaskExecutionReportSaveChangesCount { get; set; } = new();
+    public CounterLongValue HeartBeatAvailableCount { get; set; } = new();
+    public CounterLongValue TaskLogUnitEntriesCount { get; set; } = new();
+    public CounterLongValue HeartBeatConsumeCount { get; set; } = new();
+    public CounterLongValue TaskExecutionReportConsumeCount { get; set; } = new();
 
-    public TimeSpan TaskExecutionReportTotalTimeSpan { get; set; }
+    public CounterLongValue TaskLogUnitRecieveCount { get; set; } = new();
 
-    public TimeSpan TaskExecutionReportQueryTimeSpan { get; set; }
+    public CounterTimeSpanValue TaskExecutionReportTotalTimeSpan { get; set; } = new();
 
-    public TimeSpan TaskExecutionReportSaveTimeSpan { get; set; }
+    public CounterTimeSpanValue TaskExecutionReportQueryTimeSpan { get; set; } = new();
 
-    public TimeSpan TaskLogUnitEntriesTimeSpan { get; set; }
+    public CounterTimeSpanValue TaskExecutionReportSaveTimeSpan { get; set; } = new();
 
-    public TimeSpan TaskLogUnitSaveTimeSpan { get; set; }
+    public CounterTimeSpanValue TaskLogUnitEntriesTimeSpan { get; set; } = new();
 
-    public TimeSpan TaskLogUnitQueryTimeSpan { get; set; }
+    public CounterTimeSpanValue TaskLogUnitSaveTimeSpan { get; set; } = new();
 
-    public TimeSpan TaskLogUnitSaveMaxTimeSpan { get; set; }
+    public CounterTimeSpanValue TaskLogUnitQueryTimeSpan { get; set; } = new();
 
-    public ulong TaskLogEntriesSavedCount { get; set; }
+    public CounterTimeSpanValue TaskLogUnitSaveMaxTimeSpan { get; set; } = new();
 
-    public ulong TaskLogPageCount { get; set; }
+    public CounterLongValue TaskLogEntriesSavedCount { get; set; } = new();
 
-    public ulong TaskLogUnitAvailableCount { get; set; }
+    public CounterLongValue TaskLogPageCount { get; set; } = new();
 
-    public ulong TaskLogUnitConsumeCount { get; set; }
+    public CounterLongValue TaskLogUnitAvailableCount { get; set; } = new();
 
-    public TimeSpan TaskExecutionReportProcessTimeSpan { get; set; }
-    public TimeSpan HeartBeatTotalProcessTimeSpan { get; set; }
-    public ulong NodeServiceInputMessagesCount { get; set; }
-    public ulong NodeServiceOutputMessagesCount { get; set; }
-    public ulong NodeServiceExpiredMessagesCount { get; set; }
+    public CounterLongValue TaskLogUnitConsumeCount { get; set; } = new();
+
+    public CounterTimeSpanValue TaskExecutionReportProcessTimeSpan { get; set; } = new();
+    public CounterTimeSpanValue HeartBeatTotalProcessTimeSpan { get; set; } = new();
+    public CounterLongValue NodeServiceInputMessagesCount { get; set; } = new();
+    public CounterLongValue NodeServiceOutputMessagesCount { get; set; } = new();
+    public CounterLongValue NodeServiceExpiredMessagesCount { get; set; } = new();
 }

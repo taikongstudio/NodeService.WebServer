@@ -26,4 +26,25 @@ public partial class CommonConfigController
     {
         return DeleteConfigurationAsync(model);
     }
+
+    [HttpGet("/api/CommonConfig/Database/VersionList")]
+    public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryDatabaseConfigurationVersionListAsync(
+    [FromQuery] PaginationQueryParameters queryParameters)
+    {
+        return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
+    }
+
+    [HttpPost("/api/CommonConfig/Database/SwitchVersion")]
+    public Task<ApiResponse> SwitchDatabaseConfigurationVersionAsync(
+        [FromBody] ConfigurationVersionSwitchParameters parameters)
+    {
+        return SwitchConfigurationVersionAsync<DatabaseConfigModel>(parameters);
+    }
+
+    [HttpPost("/api/CommonConfig/Database/DeleteVersion")]
+    public Task<ApiResponse> DeleteDatabaseConfigurationVersionAsync(
+    [FromBody] ConfigurationVersionRecordModel entity)
+    {
+        return DeleteConfigurationVersionAsync<DatabaseConfigModel>(new ConfigurationVersionDeleteParameters(entity));
+    }
 }

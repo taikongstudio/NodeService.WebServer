@@ -20,11 +20,6 @@
     <InvokeTaskDialog
         TaskDefinition="@_taskDefinition"
         @bind-Visible="@_InvokeTaskDialogVisible"/>
-    <ConfigurationVersionSelectorDialog Title="版本列表"
-                                        ConfigurationId="@_configurationId"
-                                        @bind-Visible="@_versionSelectorDialogVisible"
-                                        TItem="DatabaseConfigModel">
-    </ConfigurationVersionSelectorDialog>
     <Table
         Size="TableSize.Small"
         Loading="@_dataSource.IsLoading"

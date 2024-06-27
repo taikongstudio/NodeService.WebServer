@@ -1,0 +1,12 @@
+﻿@page "/demos/groups-custom-shortcut"
+@layout DemoLayout
+@inject LayoutData LayoutData
+
+<CascadingValue Value="_blazorDiagram">
+    <DiagramCanvas>
+        <Widgets>
+            <NavigatorWidget Width="300" Height="200"
+                             Style="position: absolute; bottom: 15px; right: 15px; border: 1px solid black;"></NavigatorWidget>
+        </Widgets>
+    </DiagramCanvas>
+</CascadingValue>

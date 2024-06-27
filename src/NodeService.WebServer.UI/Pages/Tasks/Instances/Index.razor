@@ -1,6 +1,6 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Tasks.Instances
-@page "/tasks/instances/"
-@page "/tasks/instances/{TaskExecutionInstanceId}/log"
+@page "/Tasks/Instances/"
+@page "/Tasks/Instances/{TaskExecutionInstanceId}/log"
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
@@ -83,12 +83,12 @@
                         <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged"/>
                     </SpaceItem>
                     <SpaceItem>
-                        <Select TItem="JobExeuctionStatusModel"
+                        <Select TItem="TaskExeuctionStatusModel"
                                 TItemValue="TaskExecutionStatus"
                                 DataSource="@_jobExeuctionStatusList"
                                 @bind-Value="@_selectedStatus"
-                                LabelName="@nameof(JobExeuctionStatusModel.Name)"
-                                ValueName="@nameof(JobExeuctionStatusModel.Value)"
+                                LabelName="@nameof(TaskExeuctionStatusModel.Name)"
+                                ValueName="@nameof(TaskExeuctionStatusModel.Value)"
                                 Placeholder="选择状态"
                                 DefaultActiveFirstOption="true"
                                 Style="width:200px"
@@ -192,24 +192,12 @@
                 </CellRender>
             </ActionColumn>
         </ColumnDefinitions>
-        <ExpandTemplate>
-            <Tabs DefaultActiveKey="1" Animated>
-                <TabPane Tab="子作业" Key="1">
-
-                </TabPane>
-                <TabPane Tab="作业日志" Key="2">
-
-                </TabPane>
-
-
-            </Tabs>
-        </ExpandTemplate>
     </Table>
 </GridContent>
 
 @code {
 
-    class JobExeuctionStatusModel
+    class TaskExeuctionStatusModel
     {
         public TaskExecutionStatus Value { get; set; }
 
@@ -230,7 +218,7 @@
     RoutedPaginationDataSource<TaskExecutionInstanceModel, QueryTaskExecutionInstanceListParameters> _dataSource;
 
 
-    readonly List<JobExeuctionStatusModel> _jobExeuctionStatusList = [];
+    readonly List<TaskExeuctionStatusModel> _jobExeuctionStatusList = [];
 
     IEnumerable<NodeInfoModel> _selectedNodeList = [];
     IEnumerable<TaskDefinitionModel> _selectedTaskDefinitionList = [];
@@ -260,15 +248,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待中" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Started, Name = "已启动" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Running, Name = "运行中" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Failed, Name = "失败" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Finished, Name = "完成" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.Cancelled, Name = "已取消" });
-        _jobExeuctionStatusList.Add(new JobExeuctionStatusModel { Value = TaskExecutionStatus.PenddingTimeout, Name = "等待超时" });
+        _jobExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
+        _jobExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
+        _jobExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待中" });
+        _jobExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Started, Name = "已启动" });
+        _jobExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Running, Name = "运行中" });
+        _jobExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Failed, Name = "失败" });
+        _jobExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Finished, Name = "完成" });
+        _jobExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Cancelled, Name = "已取消" });
+        _jobExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.PenddingTimeout, Name = "等待超时" });
         BeginDateTime = DateTime.Today.Date.AddDays(-7);
         EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
@@ -366,7 +354,7 @@
         }
     }
 
-    void OnSelectedStatusChanged(JobExeuctionStatusModel status)
+    void OnSelectedStatusChanged(TaskExeuctionStatusModel status)
     {
     }
 

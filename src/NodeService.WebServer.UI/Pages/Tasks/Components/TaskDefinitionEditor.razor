@@ -118,9 +118,9 @@
     bool _editFormVisible;
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
-    Form<TaskDefinitionModel> _editForm;
     string? _selectedNodeInfoId;
     string _selectedTaskDefinitionId;
+    Form<TaskDefinitionModel> _editForm;
     TaskTypeDescSelector _taskTypeDescSelector;
     CommonDialog _taskTypeDescSelectorDialog;
 
@@ -320,6 +320,7 @@
             _modalTitle = "编辑配置";
             _taskDefinition = model;
             await OnSelectedTaskTypeDescChanged([model.Value.TaskTypeDesc]);
+            _selectedTaskDefinitionList = await model.Value.ChildTaskDefinitions.QueryTaskDefinitionListAsync(ApiService);
             _selectedNodes = await model.Value.NodeList.QueryNodeListAsync(ApiService);
         }
 
@@ -565,6 +566,14 @@
 
     async Task CloseImpl()
     {
+        _selectedNodes = [];
+        _selectedTaskTypeDescConfigList = [];
+        _selectedTaskDefinitionList = [];
+        _editFormVisible = false;
+        _editFormSubmitting = false;
+        _editFormConfirmLoading = false;
+        _selectedNodeInfoId = null;
+        _selectedTaskDefinitionId = null;
         if (Closed.HasDelegate)
         {
             await Closed.InvokeAsync();

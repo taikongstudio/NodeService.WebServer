@@ -93,6 +93,11 @@
         "path": "/Tasks/Instances",
         "name": "任务流实例",
         "key": "Tasks.Instances"
+      },
+      {
+        "path": "/Tasks/InstanceGroups",
+        "name": "任务流实例分组",
+        "key": "Tasks.InstanceGroups"
       }
     ]
   },

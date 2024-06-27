@@ -80,7 +80,7 @@ public class TaskPenddingContext : IAsyncDisposable
         return false;
     }
 
-    public ValueTask EnsureInitAsync()
+    public void EnsureInit()
     {
         if (_cancelTokenSource == null)
         {
@@ -89,8 +89,6 @@ public class TaskPenddingContext : IAsyncDisposable
                 TimeSpan.FromSeconds(Math.Max(60 * 10, TaskDefinition.PenddingLimitTimeSeconds)));
             CancellationToken = _cancelTokenSource.Token;
         }
-
-        return ValueTask.CompletedTask;
     }
 
     public async Task<bool> WaitForRunningTasksAsync(IRepository<TaskExecutionInstanceModel> repository)

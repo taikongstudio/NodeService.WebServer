@@ -2,12 +2,12 @@
 using Grpc.Core;
 using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Logging;
-using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
+using System.Buffers;
 using System.Collections.Immutable;
 using System.Net;
 
@@ -15,6 +15,20 @@ namespace NodeService.WebServer.Services.Tasks;
 
 public class TaskExecutionReportConsumerService : BackgroundService
 {
+    class TaskExecutionReportProcessContext
+    {
+        public string? TaskId { get; init; }
+
+        public IEnumerable<TaskExecutionReportMessage> Messages { get; init; }
+
+        public TaskExecutionInstanceModel? TaskExecutionInstance { get; set; }
+
+        public bool StatusChanged { get; set; }
+
+        public bool MessageChanged { get; set; }
+    }
+
+
     readonly ExceptionCounter _exceptionCounter;
     readonly ILogger<TaskExecutionReportConsumerService> _logger;
     readonly IMemoryCache _memoryCache;
@@ -103,7 +117,6 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-
     private static string? GetTaskId(TaskExecutionReportMessage? message)
     {
         if (message == null) return null;
@@ -111,6 +124,15 @@ public class TaskExecutionReportConsumerService : BackgroundService
         if (report == null) return null;
         if (report.Properties.TryGetValue("Id", out var id)) return id;
         return report.Id;
+    }
+
+    static string? GetFireInstanceId(TaskExecutionReportProcessContext processContext)
+    {
+        if (processContext.TaskExecutionInstance == null)
+        {
+            return null;
+        }
+        return processContext.TaskExecutionInstance.FireInstanceId;
     }
 
     private static LogEntry Convert(TaskExecutionLogEntry taskExecutionLogEntry)
@@ -123,19 +145,28 @@ public class TaskExecutionReportConsumerService : BackgroundService
         };
     }
 
+    static TaskExecutionReportProcessContext CreateProcessContext(IGrouping<string?, TaskExecutionReportMessage> group)
+    {
+        return new TaskExecutionReportProcessContext() { TaskId = group.Key, Messages = group };
+    }
+
     private async Task ProcessTaskExecutionReportsAsync(
         TaskExecutionReportMessage[] array,
         CancellationToken cancellationToken = default)
     {
-
-
         try
         {
-            await Parallel.ForEachAsync(array.GroupBy(GetTaskId), new ParallelOptions()
+
+            var contexts = array.GroupBy(GetTaskId).Select(CreateProcessContext).ToArray();
+
+            await Parallel.ForEachAsync(contexts, new ParallelOptions()
             {
                 CancellationToken = cancellationToken,
                 MaxDegreeOfParallelism = Math.Max(array.Length / 10, 8),
             }, ProcessTaskExecutionReportGroupAsync);
+
+            await ProcessContextsAync(contexts, cancellationToken);
+
         }
         catch (Exception ex)
         {
@@ -148,13 +179,136 @@ public class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
+    private async ValueTask ProcessContextsAync(IEnumerable<TaskExecutionReportProcessContext> contexts, CancellationToken cancellationToken = default)
+    {
+
+        try
+        {
+            using var taskActivationRecordRepo = _taskActivationRecordRepoFactory.CreateRepository();
+            var taskActivationRecordList = new List<TaskActivationRecordModel>();
+            var changedContexts = contexts.Where(x => x.StatusChanged || x.MessageChanged);
+            foreach (var taskInstanceGroup in changedContexts.GroupBy(GetFireInstanceId))
+            {
+
+                if (taskInstanceGroup.Key == null)
+                {
+                    continue;
+                }
+
+                var taskActivationRecord = await taskActivationRecordRepo.GetByIdAsync(taskInstanceGroup.Key, cancellationToken);
+                if (taskActivationRecord == null)
+                {
+                    continue;
+                }
+                var taskExecutionInstanceInfoList = taskInstanceGroup.Select(static x => new TaskExecutionInstanceInfo()
+                {
+                    NodeInfoId = x.TaskExecutionInstance!.NodeInfoId,
+                    TaskExecutionInstanceId = x.TaskExecutionInstance.Id,
+                    Status = x.TaskExecutionInstance.Status,
+                    Message = x.TaskExecutionInstance.Message
+                });
+                taskActivationRecord.Value.ResetCounters();
+                for (int i = 0; i < taskActivationRecord.TaskExecutionInstanceInfoList.Count; i++)
+                {
+                    var info = taskActivationRecord.TaskExecutionInstanceInfoList[i];
+                    var taskExecutionInstance = info.TaskExecutionInstanceId;
+                    var newValue = taskExecutionInstanceInfoList.FirstOrDefault(x => x.TaskExecutionInstanceId == taskExecutionInstance);
+                    if (newValue != default)
+                    {
+                        info.Status = newValue.Status;
+                        info.Message = newValue.Message;
+                        taskActivationRecord.TaskExecutionInstanceInfoList[i] = info;
+                    }
+                    switch (info.Status)
+                    {
+                        case TaskExecutionStatus.Unknown:
+                            break;
+                        case TaskExecutionStatus.Triggered:
+                            taskActivationRecord.Value.TriggeredCount++;
+                            break;
+                        case TaskExecutionStatus.Pendding:
+                            break;
+                        case TaskExecutionStatus.Started:
+
+                            break;
+                        case TaskExecutionStatus.Running:
+                            taskActivationRecord.Value.RunningCount++;
+                            break;
+                        case TaskExecutionStatus.Failed:
+                            taskActivationRecord.Value.FailedCount++;
+                            break;
+                        case TaskExecutionStatus.Finished:
+                            taskActivationRecord.Value.FinishedCount++;
+                            break;
+                        case TaskExecutionStatus.Cancelled:
+                            taskActivationRecord.Value.CancelledCount++;
+                            break;
+                        case TaskExecutionStatus.PenddingTimeout:
+                            taskActivationRecord.Value.PenddingTimeoutCount++;
+                            break;
+                        case TaskExecutionStatus.MaxCount:
+                            break;
+                        default:
+                            break;
+                    }
+                }
+
+
+                if (taskActivationRecord.FinishedCount == taskActivationRecord.TotalCount)
+                {
+                    taskActivationRecord.Status = TaskExecutionStatus.Finished;
+                }
+                else if (taskActivationRecord.TriggeredCount == taskActivationRecord.TotalCount)
+                {
+                    taskActivationRecord.Status = TaskExecutionStatus.Triggered;
+                }
+                else if (taskActivationRecord.RunningCount < taskActivationRecord.TotalCount)
+                {
+                    taskActivationRecord.Status = TaskExecutionStatus.Running;
+                }
+                else if (taskActivationRecord.CancelledCount == taskActivationRecord.TotalCount)
+                {
+                    taskActivationRecord.Status = TaskExecutionStatus.Cancelled;
+                }
+                else if (taskActivationRecord.FailedCount == taskActivationRecord.TotalCount)
+                {
+                    taskActivationRecord.Status = TaskExecutionStatus.Failed;
+                }
+                else if (taskActivationRecord.PenddingTimeoutCount == taskActivationRecord.TotalCount)
+                {
+                    taskActivationRecord.Status = TaskExecutionStatus.PenddingTimeout;
+                }
+
+                taskActivationRecord.TaskExecutionInstanceInfoList = [.. taskActivationRecord.TaskExecutionInstanceInfoList];
+
+                taskActivationRecordList.Add(taskActivationRecord);
+            }
+            foreach (var array in taskActivationRecordList.Chunk(10))
+            {
+                await taskActivationRecordRepo.UpdateRangeAsync(array, cancellationToken);
+                int changes = taskActivationRecordRepo.LastChangesCount;
+            }
+           
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+        finally
+        {
+
+        }
+
+    }
+
     async ValueTask ProcessTaskExecutionReportGroupAsync(
-        IGrouping<string?, TaskExecutionReportMessage> taskExecutionReportGroup,
+        TaskExecutionReportProcessContext  processContext,
          CancellationToken cancellationToken)
     {
         try
         {
-            var taskId = taskExecutionReportGroup.Key;
+            var taskId = processContext.TaskId;
             if (taskId == null) return;
             var stopwatchSave = new Stopwatch();
             var stopwatchQuery = new Stopwatch();
@@ -162,6 +316,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
             var stopwatchProcessMessage = new Stopwatch();
             var stopwatchSaveTimeSpan = TimeSpan.Zero;
             using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
+            using var taskActivationRecordRepo = _taskActivationRecordRepoFactory.CreateRepository();
 
             stopwatchQuery.Restart();
             var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
@@ -169,13 +324,14 @@ public class TaskExecutionReportConsumerService : BackgroundService
             _logger.LogInformation($"{taskId}:QueryElapsed:{stopwatchQuery.Elapsed}");
             _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += stopwatchQuery.Elapsed;
 
-
-            if (taskExecutionInstance == null || IsTerminatedStatus(taskExecutionInstance)) return;
+            if (taskExecutionInstance == null) return;
+            processContext.TaskExecutionInstance = taskExecutionInstance;
+            if (IsTerminatedStatus(taskExecutionInstance)) return;
 
             var logEntriesRecieveCount = taskExecutionInstance.LogEntriesRecieveCount;
             var logEntriesSaveCount = taskExecutionInstance.LogEntriesSaveCount;
             stopwatchProcessLogEntries.Restart();
-            foreach (var reportMessage in taskExecutionReportGroup)
+            foreach (var reportMessage in processContext.Messages)
             {
                 if (reportMessage == null) continue;
                 var report = reportMessage.GetMessage();
@@ -202,7 +358,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
             var executionBeginTime = taskExecutionInstance.ExecutionBeginTimeUtc;
             var executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
 
-            foreach (var messageStatusGroup in taskExecutionReportGroup.GroupBy(static x => x.GetMessage().Status).OrderBy(static x => x.Key))
+            foreach (var messageStatusGroup in processContext.Messages.GroupBy(static x => x.GetMessage().Status).OrderBy(static x => x.Key))
             {
                 stopwatchProcessMessage.Restart();
                 var status = messageStatusGroup.Key;
@@ -229,12 +385,14 @@ public class TaskExecutionReportConsumerService : BackgroundService
 
             if (taskExecutionStatus != taskExecutionInstance.Status)
             {
+                processContext.StatusChanged = true;
                 _logger.LogInformation($"{taskId} StatusChanged:{taskExecutionStatus}=>{taskExecutionInstance.Status}");
                 diffCount++;
             }
 
             if (messsage != taskExecutionInstance.Message)
             {
+                processContext.MessageChanged = true;
                 _logger.LogInformation($"{taskId} StatusChanged:{messsage}=>{taskExecutionInstance.Message}");
                 messsage = taskExecutionInstance.Message;
                 diffCount++;
@@ -452,11 +610,12 @@ public class TaskExecutionReportConsumerService : BackgroundService
         if (taskDefinition == null) return;
         foreach (var childTaskDefinition in taskDefinition.ChildTaskDefinitions)
         {
-            var childTaskScheduleDefinition =
-                await taskDefinitionRepo.GetByIdAsync(childTaskDefinition.Value, cancellationToken);
+            var childTaskScheduleDefinition = await taskDefinitionRepo.GetByIdAsync(childTaskDefinition.Value, cancellationToken);
             if (childTaskScheduleDefinition == null) continue;
-            await _taskScheduleAsyncQueue.EnqueueAsync(new TaskScheduleMessage(TaskTriggerSource.Parent,
-                childTaskScheduleDefinition.Id, parentTaskInstanceId: parentTaskInstance.Id), cancellationToken);
+            await _taskScheduleAsyncQueue.EnqueueAsync(new TaskScheduleMessage(
+                TaskTriggerSource.Parent,
+                childTaskScheduleDefinition.Id,
+                parentTaskInstanceId: parentTaskInstance.Id), cancellationToken);
         }
     }
 

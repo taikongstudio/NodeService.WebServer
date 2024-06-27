@@ -348,7 +348,7 @@
             return;
         }
 
-        await ClipboardService.WriteTextAsync($"{ApiService.HttpClient.BaseAddress}tasks/instances/{value}/log");
+        await ClipboardService.WriteTextAsync($"{ApiService.HttpClient.BaseAddress}tasks/Instances/{value}/log");
         await _notice.Open(new NotificationConfig
         {
             Message = "提示",

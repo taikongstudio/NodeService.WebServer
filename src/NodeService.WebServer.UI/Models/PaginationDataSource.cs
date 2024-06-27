@@ -91,7 +91,7 @@ public class PaginationDataSource<TElement, TQueryParameters>
 
     protected void RaiseStateChanged()
     {
-        _stateChangedAction();
+        //_stateChangedAction();
     }
 
     private async Task InvokeItemInitializerAsync(IEnumerable<TElement?>? itemsSource)

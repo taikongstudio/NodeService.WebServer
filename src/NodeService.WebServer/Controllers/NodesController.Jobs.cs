@@ -35,7 +35,7 @@ public partial class NodesController
     }
 
 
-    [HttpGet("/api/Nodes/{nodeId}/jobs/instances/List")]
+    [HttpGet("/api/Nodes/{nodeId}/jobs/Instances/List")]
     public async Task<PaginationResponse<TaskExecutionInstanceModel>> GetNodeTaskInstancesAsync(
         string nodeId,
         [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters,

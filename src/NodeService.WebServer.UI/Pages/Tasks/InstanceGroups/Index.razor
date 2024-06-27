@@ -1,0 +1,523 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Tasks.InstanceGroups
+@page "/Tasks/InstanceGroups/"
+@using System.Collections.Concurrent
+@inject ApiService ApiService
+@inject NotificationService _notice
+@inject NavigationManager NavigationManager
+@implements IDisposable
+<GridContent>
+    <CommonDialog Closed="OnDialogClosed" @ref="_taskDefinitionSelectorDialog">
+        <TaskDefinitionSelector @bind-SelectedItems="_selectedTaskDefinitionList" Mode="SelectionMode.Multiple"/>
+    </CommonDialog>
+
+    <Table Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           Resizable
+           Total="@_dataSource.TotalCount"
+           EnableVirtualization="false"
+           PageSize="@_dataSource.PageSize"
+           PageIndex="@_dataSource.PageIndex"
+           OnChange="OnTableChange"
+           OnExpand="OnTableRowExpandedAsync"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           TItem="TaskActivationRecordModel"
+           DataSource="@_dataSource.ItemsSource">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="6">
+                    <Title Level="3">任务流分组</Title>
+                </GridCol>
+                <GridCol Span="6" Offset="12">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
+                </GridCol>
+            </GridRow>
+            <GridRow Wrap Style="min-height:30px">
+                <Text>任务定义配置：</Text>
+
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowTaskDefinitionSelectorDialogAsync"></Button>
+
+                @if (_selectedTaskDefinitionList != null)
+                {
+                    foreach (var item in _selectedTaskDefinitionList)
+                    {
+                        <Tag @key="item.Id" Style="height:20px;">@item.Name</Tag>
+                    }
+                }
+                else
+                {
+                    <Text>全部</Text>
+                }
+
+            </GridRow>
+            <GridRow>
+                <Space Wrap Style="margin-bottom:16px">
+                    <SpaceItem>
+                        <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged"/>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Select TItem="TaskExeuctionStatusModel"
+                                TItemValue="TaskExecutionStatus"
+                                DataSource="@_taskExeuctionStatusList"
+                                @bind-Value="@_selectedStatus"
+                                LabelName="@nameof(TaskExeuctionStatusModel.Name)"
+                                ValueName="@nameof(TaskExeuctionStatusModel.Value)"
+                                Placeholder="选择状态"
+                                DefaultActiveFirstOption="true"
+                                Style="width:200px"
+                                OnSelectedItemChanged="OnSelectedStatusChanged">
+                        </Select>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Type="@ButtonType.Primary" OnClick="QueryTaskExecutionInstanceGroupListAsync">查询</Button>
+                    </SpaceItem>
+
+                </Space>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+            <Selection  Key="@context.Id" Width="40" Fixed="left" Type="checkbox" />
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
+                @switch (context.Status)
+                {
+                    case TaskExecutionStatus.Unknown:
+                        <Text>未知</Text>
+                        break;
+                    case TaskExecutionStatus.Triggered:
+                        <Text>已触发</Text>
+                        break;
+                    case TaskExecutionStatus.Pendding:
+                        <Text>排队</Text>
+                        break;
+                    case TaskExecutionStatus.Started:
+                        <Text>已启动</Text>
+                        break;
+                    case TaskExecutionStatus.Running:
+                        <Text>运行中</Text>
+                        break;
+                    case TaskExecutionStatus.Finished:
+                        <Text>完成</Text>
+                        break;
+                    case TaskExecutionStatus.Cancelled:
+                        <Text>已取消</Text>
+                        break;
+                    case TaskExecutionStatus.Failed:
+                        <Text>失败</Text>
+                        break;
+                    case TaskExecutionStatus.PenddingTimeout:
+                        <Text>等待超时</Text>
+                        break;
+                }
+            </PropertyColumn>
+            <PropertyColumn Title="创建时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="进度"  Sortable Property="c => c.Value.FinishedCount" >
+                <AntDesign.Progress Format="FormatPercent" Size="@ProgressSize.Small" Percent="@(context.Value.FinishedCount/(context.Value.TotalCount+0d)*100)" />
+            </PropertyColumn>
+            <ActionColumn Fixed="right" Width="200" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
+                        @switch (context.Status)
+                        {
+                            case TaskExecutionStatus.PenddingTimeout:
+                                <SpaceItem>
+                                </SpaceItem>
+                                break;
+                            case TaskExecutionStatus.Failed:
+                                <SpaceItem>
+                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle"></Button>
+                                </SpaceItem>
+                                break;
+                            case TaskExecutionStatus.Running:
+                                <SpaceItem>
+                               </SpaceItem>
+                                break;
+                        }
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+        </ColumnDefinitions>
+        <ExpandTemplate>
+                <Table Size="TableSize.Small"
+                   Loading="@_dataSourceDict[context.Data.Id].DataSource.IsLoading"
+                   ScrollX="1500px"
+                   Resizable
+                   Total="@_dataSourceDict[context.Data.Id].DataSource.TotalCount"
+                   EnableVirtualization="false"
+                   PageSize="@_dataSourceDict[context.Data.Id].DataSource.PageSize"
+                   PageIndex="@_dataSourceDict[context.Data.Id].DataSource.PageIndex"
+                   OnChange="(QueryModel<TaskExecutionInstanceModel> query)=>OnTableChange(context.Data,query)"
+                   OnPageSizeChange="@_dataSourceDict[context.Data.Id].DataSource.OnPaginationEvent"
+                   OnPageIndexChange="@_dataSourceDict[context.Data.Id].DataSource.OnPaginationEvent"
+                   TItem="TaskExecutionInstanceModel"
+                   Context="TaskExecutionInstanceContext"
+                   DataSource="@_dataSourceDict[context.Data.Id].DataSource.ItemsSource">
+                    <TitleTemplate>
+                        <GridRow>
+                        <GridCol Span="6">
+                            <Space>
+                                <SpaceItem>
+                                    <Select TItem="TaskExeuctionStatusModel"
+                                            TItemValue="TaskExecutionStatus"
+                                            DataSource="@_taskExeuctionStatusList"
+                                            @bind-Value="@_dataSourceDict[context.Data.Id].DataSource.QueryParameters.Status"
+                                            LabelName="@nameof(TaskExeuctionStatusModel.Name)"
+                                            ValueName="@nameof(TaskExeuctionStatusModel.Value)"
+                                            Placeholder="选择状态"
+                                            DefaultActiveFirstOption="true"
+                                            Style="width:200px"
+                                            OnSelectedItemChanged="OnSelectedStatusChanged">
+                                    </Select>
+                                </SpaceItem>
+                                <SpaceItem>
+                                    <Button Type="@ButtonType.Primary" OnClick="()=>QueryTaskExecutionInstanceListAsync(context.Data)">查询</Button>
+                                </SpaceItem>
+
+                            </Space>
+                        </GridCol>
+
+                        <GridCol Span="6" Offset="12">
+                            <Search Placeholder="搜索" @bind-Value="@_dataSourceDict[context.Data.Id].DataSource.QueryParameters.Keywords" OnSearch="@_dataSourceDict[context.Data.Id].DataSource.QueryAsync" />
+                        </GridCol>
+
+                        </GridRow>
+                    </TitleTemplate>
+                    <ColumnDefinitions>
+                         <Selection Key="@TaskExecutionInstanceContext.Id" Width="40" Fixed="left" Type="checkbox" />
+                        <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+                        <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+                        <PropertyColumn Title="触发源头" Sortable="true" Property="c => c.TriggerSource">
+                             @switch (TaskExecutionInstanceContext.TriggerSource)
+                            {
+                                case TaskTriggerSource.Schedule:
+                                    <Text>调度触发</Text>
+                                    break;
+                                case TaskTriggerSource.Manual:
+                                    <Text>手动触发</Text>
+                                    break;
+                            }
+                        </PropertyColumn>
+                        <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
+                            @switch (TaskExecutionInstanceContext.Status)
+                            {
+                                case TaskExecutionStatus.Unknown:
+                                    <Text>未知</Text>
+                                    break;
+                                case TaskExecutionStatus.Triggered:
+                                    <Text>已触发</Text>
+                                    break;
+                                case TaskExecutionStatus.Pendding:
+                                    <Text>排队</Text>
+                                    break;
+                                case TaskExecutionStatus.Started:
+                                    <Text>已启动</Text>
+                                    break;
+                                case TaskExecutionStatus.Running:
+                                    <Text>运行中</Text>
+                                    break;
+                                case TaskExecutionStatus.Finished:
+                                    <Text>完成</Text>
+                                    break;
+                                case TaskExecutionStatus.Cancelled:
+                                    <Text>已取消</Text>
+                                    break;
+                                case TaskExecutionStatus.Failed:
+                                    <Text>失败</Text>
+                                    break;
+                                case TaskExecutionStatus.PenddingTimeout:
+                                    <Text>等待超时</Text>
+                                    break;
+                            }
+                        </PropertyColumn>
+                        <PropertyColumn Title="触发时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
+                        <PropertyColumn Title="开始时间" Ellipsis SorterMultiple="2" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
+                        <PropertyColumn Title="结束时间" Ellipsis SorterMultiple="3" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
+                        <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.Message"></PropertyColumn>
+
+                    </ColumnDefinitions>
+                </Table>
+        </ExpandTemplate>
+    </Table>
+</GridContent>
+
+@code {
+    class ContextInfo
+    {
+        public RoutedPaginationDataSource<TaskExecutionInstanceModel, QueryTaskExecutionInstanceListParameters> DataSource { get; set; }
+
+        public bool IsExpanded { get; set; }
+    }
+
+    class TaskExeuctionStatusModel
+    {
+        public TaskExecutionStatus Value { get; set; }
+
+        public string Name { get; set; }
+    }
+
+    CommonDialog _nodeSelectorDialog;
+    CommonDialog _taskDefinitionSelectorDialog;
+    CommonDialog _taskLogViewerDialog;
+
+    DateTime BeginDateTime;
+    DateTime EndDateTime;
+
+    readonly DateTime?[] DateTimes = [default, default];
+
+    string _taskLogDialogTitle = "Loading";
+
+    RoutedPaginationDataSource<TaskActivationRecordModel, QueryTaskInstanceGroupListParameters> _dataSource;
+
+    ConcurrentDictionary<string, ContextInfo> _dataSourceDict;
+    readonly List<TaskExeuctionStatusModel> _taskExeuctionStatusList = [];
+
+    IEnumerable<NodeInfoModel> _selectedNodeList = [];
+    IEnumerable<TaskDefinitionModel> _selectedTaskDefinitionList = [];
+
+    TaskExecutionStatus _selectedStatus;
+
+    [Parameter] public string? TaskExecutionInstanceId { get; set; }
+
+    private string? _taskExecutionInstanceId { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        _dataSourceDict = new ();
+        _dataSource = new RoutedPaginationDataSource<TaskActivationRecordModel, QueryTaskInstanceGroupListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstanceGroupsAsync, StateHasChanged);
+        _dataSource.ExceptionHandler = OnExepction;
+        _dataSource.ItemInitializer = InitAsync;
+        base.OnInitialized();
+    }
+
+    ValueTask InitAsync(TaskActivationRecordModel? entity, CancellationToken cancellationToken = default)
+    {
+        if (entity == null)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        return ValueTask.CompletedTask;
+    }
+
+    Task OnCompleted()
+    {
+        foreach (var item in _dataSourceDict.Keys.Except(_dataSource.ItemsSource.Where(x => x != null).Select(x => x.Id)))
+        {
+            if (item == null)
+            {
+                continue;
+            }
+            _dataSourceDict.TryRemove(item, out _);
+        }
+        return Task.CompletedTask;
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待中" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Started, Name = "已启动" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Running, Name = "运行中" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Failed, Name = "失败" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Finished, Name = "完成" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Cancelled, Name = "已取消" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.PenddingTimeout, Name = "等待超时" });
+        BeginDateTime = DateTime.Today.Date.AddDays(-7);
+        EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        DateTimes[0] = BeginDateTime;
+        DateTimes[1] = EndDateTime;
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.Status), "ascend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.FireTimeUtc), "descend"));
+        await QueryTaskExecutionInstanceGroupListAsync();
+        await base.OnInitializedAsync();
+    }
+
+    void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
+    {
+        BeginDateTime = e.Dates[0] ?? DateTime.Today.Date.AddDays(-7);
+        EndDateTime = e.Dates[1] ?? DateTime.Today.Date.AddDays(1).Date.AddSeconds(-1);
+    }
+
+    async Task OnTableRowExpandedAsync(RowData<TaskActivationRecordModel> rowData)
+    {
+        if (!rowData.Expanded)
+        {
+            return;
+        }
+        var taskActivationRecord = rowData.Data;
+        if (taskActivationRecord == null)
+        {
+            return;
+        }
+        await QueryTaskExecutionInstanceListAsync(taskActivationRecord);
+    }
+
+    private ContextInfo CreateDataSource(TaskActivationRecordModel taskActivationRecord)
+    {
+        var dataSource = new RoutedPaginationDataSource<TaskExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
+        dataSource.QueryParameters.PageIndex = 1;
+        dataSource.QueryParameters.PageSize = 10;
+        dataSource.QueryParameters.TaskDefinitionIdList.Add(taskActivationRecord.TaskDefinitionId);
+        dataSource.QueryParameters.FireInstanceIdList.Add(taskActivationRecord.Id);
+        dataSource.Completed = OnCompleted;
+        return new ContextInfo()
+            {
+                DataSource = dataSource
+            };
+    }
+
+    async Task QueryTaskExecutionInstanceListAsync(TaskActivationRecordModel taskActivationRecord)
+    {
+        try
+        {
+            var contextInfo = this._dataSourceDict.GetOrAdd(taskActivationRecord.Id, (id) => CreateDataSource(taskActivationRecord));
+            await contextInfo.DataSource.RequestAsync();
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    async Task QueryTaskExecutionInstanceGroupListAsync()
+    {
+        try
+        {
+            _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
+            _dataSource.QueryParameters.EndDateTime = EndDateTime;
+
+            _dataSource.QueryParameters.TaskDefinitionIdList.Clear();
+            if (_selectedTaskDefinitionList != null)
+            {
+                _dataSource.QueryParameters.TaskDefinitionIdList.AddRange(_selectedTaskDefinitionList.Select(x => x.Id));
+            }
+
+            if (_selectedStatus != TaskExecutionStatus.Unknown)
+            {
+                _dataSource.QueryParameters.Status = _selectedStatus;
+            }
+
+            await _dataSource.RequestAsync();
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+            {
+                Message = "错误提示",
+                Description = ex.ToString()
+            });
+        }
+    }
+
+    async Task CancelTaskAsync(TaskExecutionInstanceModel model)
+    {
+        try
+        {
+            await ApiService.CancelTaskAsync(model.Id, new TaskCancellationParameters("WebUser", System.Net.Dns.GetHostName(), model.Id));
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    void OnSelectedStatusChanged(TaskExeuctionStatusModel status)
+    {
+    }
+
+    async Task OnTableChange(TaskActivationRecordModel taskActivationRecordModel, QueryModel<TaskExecutionInstanceModel> query)
+    {
+        var contextInfo = _dataSourceDict[taskActivationRecordModel.Id];
+        contextInfo.DataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            contextInfo.DataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        await contextInfo.DataSource.RequestAsync();
+    }
+
+    async Task OnTableChange(QueryModel<TaskActivationRecordModel> query)
+    {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        await _dataSource.RequestAsync();
+    }
+
+    async Task ShowTaskDefinitionSelectorDialogAsync()
+    {
+        await _taskDefinitionSelectorDialog.ShowAsync();
+    }
+
+    Task OnTaskLogViewDialogOpenedAsync()
+    {
+        return Task.CompletedTask;
+    }
+
+    Task OnDialogClosed()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    void OnTaskLogViewDialogClosedAsync()
+    {
+        NavigateToDefault();
+    }
+
+    private void NavigateToDefault()
+    {
+        if (!string.IsNullOrEmpty(TaskExecutionInstanceId))
+        {
+            TaskExecutionInstanceId = null;
+            var uri = NavigationManager.BaseUri;
+            NavigationManager.NavigateTo($"{uri}Tasks/Instances");
+        }
+    }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
+
+    string FormatPercent(double percent)
+    {
+        return (percent/100).ToString("p1");
+    }
+
+}

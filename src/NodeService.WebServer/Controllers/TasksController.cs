@@ -25,12 +25,14 @@ public class TasksController : Controller
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
     readonly BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _queryBatchQueue;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskInstanceRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
 
     public TasksController(
         IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskInstanceRepositoryFactory,
+       ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRepositoryFactory,
         INodeSessionService nodeSessionService,
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
@@ -41,6 +43,7 @@ public class TasksController : Controller
         _serviceProvider = serviceProvider;
         _logger = logger;
         _taskInstanceRepositoryFactory = taskInstanceRepositoryFactory;
+        _taskActivationRepositoryFactory = taskActivationRepositoryFactory;
         _nodeSessionService = nodeSessionService;
         _memoryCache = memoryCache;
         _taskLogRepoFactory = taskLogRepoFactory;
@@ -64,8 +67,41 @@ public class TasksController : Controller
                     queryParameters.NodeIdList,
                     queryParameters.TaskDefinitionIdList,
                     queryParameters.TaskExecutionInstanceIdList,
+                    queryParameters.FireInstanceIdList,
                     queryParameters.BeginDateTime,
                     queryParameters.EndDateTime,
+                    queryParameters.SortDescriptions),
+                queryParameters.PageSize,
+                queryParameters.PageIndex
+            );
+            apiResponse.SetResult(queryResult);
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.Message;
+        }
+
+        return apiResponse;
+    }
+
+    [HttpGet("/api/Tasks/InstanceGroups/List")]
+    public async Task<PaginationResponse<TaskActivationRecordModel>> QueryTaskExecutionInstanceGroupListAsync(
+    [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters
+)
+    {
+        var apiResponse = new PaginationResponse<TaskActivationRecordModel>();
+        try
+        {
+            using var repo = _taskActivationRepositoryFactory.CreateRepository();
+            var queryResult = await repo.PaginationQueryAsync(new TaskActivationRecordSpecification(
+                    queryParameters.Keywords,
+                    queryParameters.Status,
+                    queryParameters.BeginDateTime,
+                    queryParameters.EndDateTime,
+                    DataFilterCollection<string>.Includes (queryParameters.TaskDefinitionIdList),
                     queryParameters.SortDescriptions),
                 queryParameters.PageSize,
                 queryParameters.PageIndex

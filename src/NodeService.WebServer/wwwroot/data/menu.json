@@ -90,9 +90,19 @@
         "key": "Tasks.Definitions"
       },
       {
+        "path": "/Tasks/Definitions/Editor",
+        "name": "任务流定义编辑器",
+        "key": "Tasks.Definitions.Editor"
+      },
+      {
         "path": "/Tasks/Instances",
         "name": "任务流实例",
         "key": "Tasks.Instances"
+      },
+      {
+        "path": "/Tasks/InstanceGroups",
+        "name": "任务流实例分组",
+        "key": "Tasks.InstanceGroups"
       }
     ]
   },

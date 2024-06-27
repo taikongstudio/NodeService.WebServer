@@ -29,6 +29,7 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         IEnumerable<string> nodeIdList,
         IEnumerable<string> taskDefinitionIdList,
         IEnumerable<string> taskExecutionIdInstanceList,
+        IEnumerable<string> fireInstanceIdList,
         DateTime? startTime,
         DateTime? endTime,
         IEnumerable<SortDescription>? sortDescriptions = null)
@@ -40,6 +41,10 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
             Query.Where(x => taskDefinitionIdList.Contains(x.TaskDefinitionId));
         if (taskExecutionIdInstanceList != null && taskExecutionIdInstanceList.Any())
             Query.Where(x => taskExecutionIdInstanceList.Contains(x.Id));
+        if (fireInstanceIdList != null && fireInstanceIdList.Any())
+        {
+            Query.Where(x => fireInstanceIdList.Contains(x.FireInstanceId));
+        }
         if (startTime != null && startTime.HasValue && endTime != null && endTime.HasValue)
             Query.Where(x => x.FireTimeUtc >= startTime && x.FireTimeUtc <= endTime);
         else if (startTime == null && endTime != null && endTime.HasValue)

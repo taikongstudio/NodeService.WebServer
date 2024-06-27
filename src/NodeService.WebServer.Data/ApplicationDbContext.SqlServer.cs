@@ -69,7 +69,15 @@ public partial class ApplicationDbContext
         {
             builder.HasKey(nameof(TaskActivationRecordModel.Id));
             builder.OwnsOne(
-                model => model.Value, ownedNavigationBuilder => { ownedNavigationBuilder.ToJson(); });
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder
+                                    .Property(x => x.TaskExecutionInstanceInfoList)
+                                    .HasConversion(x => Serialize(x), x => Deserialize<List<TaskExecutionInstanceInfo>>(x))
+                                    .Metadata
+                                    .SetValueComparer(GetEnumerableComparer<TaskExecutionInstanceInfo>());
+                });
         });
     }
 

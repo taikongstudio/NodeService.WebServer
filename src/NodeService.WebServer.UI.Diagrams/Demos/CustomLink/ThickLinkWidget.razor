@@ -1,0 +1,21 @@
+﻿@code {
+    [Parameter]
+    public LinkModel Link { get; set; }
+}
+
+@{
+    Console.WriteLine(Link.Source);
+    Console.WriteLine(Link.Target);
+    var sourcePosition = Link.Source.GetPosition(Link);
+    var targetPosition = Link.Target.GetPosition(Link);
+
+    if (sourcePosition is null || targetPosition is null)
+        return;
+}
+
+<line x1="@sourcePosition.X.ToInvariantString()"
+      y1="@sourcePosition.Y.ToInvariantString()"
+      x2="@targetPosition.X.ToInvariantString()"
+      y2="@targetPosition.Y.ToInvariantString()"
+      stroke="@(Link.Selected ? "red" : "blue")"
+      stroke-width="6" />

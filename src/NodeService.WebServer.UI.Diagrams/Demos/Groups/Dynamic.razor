@@ -1,0 +1,18 @@
+﻿@page "/demos/groups-dynamic"
+@layout DemoLayout
+@inject LayoutData LayoutData
+
+<div style="position: absolute; z-index: 10;">
+    <button class="btn btn-primary m-1" @onclick="AddEmptyGroup">Add empty group</button>
+    <button class="btn btn-primary m-1" @onclick="AddChildToGroup">Add child to group</button>
+    <button class="btn btn-primary m-1" @onclick="RemoveChildFromGroup">Remove child from group</button>
+</div>
+
+<CascadingValue Value="_blazorDiagram">
+    <DiagramCanvas>
+        <Widgets>
+            <NavigatorWidget Width="300" Height="200"
+                             Style="position: absolute; bottom: 15px; right: 15px; border: 1px solid black;"></NavigatorWidget>
+        </Widgets>
+    </DiagramCanvas>
+</CascadingValue>

@@ -28,6 +28,7 @@ using NodeService.WebServer.Services.Notifications;
 using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.Services.VirtualFileSystem;
+using NodeService.WebServer.UI.Diagrams;
 using NodeService.WebServer.UI.Services;
 using OpenTelemetry.Metrics;
 using Quartz.Spi;
@@ -418,6 +419,7 @@ public class Program
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
+        builder.Services.AddSingleton<LayoutData>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
         builder.Services.AddSingleton<IAsyncQueue<TaskExecutionEventRequest>, AsyncQueue<TaskExecutionEventRequest>>();
         builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>, AsyncQueue<TaskScheduleMessage>>();

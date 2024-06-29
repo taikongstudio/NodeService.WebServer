@@ -1,0 +1,16 @@
+﻿@using AntDesign
+@using Blazor.Diagrams.Components
+@using Blazor.Diagrams.Components.Renderers
+
+<Button Type="@ButtonType.Link">@Group.Title</Button>
+<GroupNodes Group="Group" />
+@foreach (var port in Group.Ports)
+{
+    <PortRenderer Port="port" Class="group-port"></PortRenderer>
+}
+
+
+
+@code {
+    [Parameter] public TaskStageNode Group { get; set; }
+}

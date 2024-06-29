@@ -6,6 +6,8 @@
 	</PropertyGroup>
 	
   <ItemGroup>
+	<PackageReference Include="AntDesign.Charts" Version="0.5.1" />
+	<PackageReference Include="AntDesign.ProLayout" Version="0.19.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components" Version="8.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="8.0.5" />
     <PackageReference Include="Z.Blazor.Diagrams" Version="3.0.2" />

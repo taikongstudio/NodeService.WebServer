@@ -262,21 +262,25 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 {
                     taskActivationRecord.Status = TaskExecutionStatus.Triggered;
                 }
-                else if (taskActivationRecord.RunningCount < taskActivationRecord.TotalCount)
-                {
-                    taskActivationRecord.Status = TaskExecutionStatus.Running;
-                }
-                else if (taskActivationRecord.CancelledCount == taskActivationRecord.TotalCount)
+                else if (taskActivationRecord.CancelledCount > 0)
                 {
                     taskActivationRecord.Status = TaskExecutionStatus.Cancelled;
                 }
-                else if (taskActivationRecord.FailedCount == taskActivationRecord.TotalCount)
+                else if (taskActivationRecord.FailedCount > 0)
                 {
                     taskActivationRecord.Status = TaskExecutionStatus.Failed;
                 }
-                else if (taskActivationRecord.PenddingTimeoutCount == taskActivationRecord.TotalCount)
+                else if (taskActivationRecord.PenddingTimeoutCount > 0)
                 {
                     taskActivationRecord.Status = TaskExecutionStatus.PenddingTimeout;
+                }
+                else if (taskActivationRecord.RunningCount == taskActivationRecord.TotalCount)
+                {
+                    taskActivationRecord.Status = TaskExecutionStatus.Running;
+                }
+                else if (taskActivationRecord.RunningCount + taskActivationRecord.FinishedCount == taskActivationRecord.TotalCount)
+                {
+                    taskActivationRecord.Status = TaskExecutionStatus.Running;
                 }
 
                 taskActivationRecord.TaskExecutionInstanceInfoList = [.. taskActivationRecord.TaskExecutionInstanceInfoList];
@@ -288,7 +292,7 @@ public class TaskExecutionReportConsumerService : BackgroundService
                 await taskActivationRecordRepo.UpdateRangeAsync(array, cancellationToken);
                 int changes = taskActivationRecordRepo.LastChangesCount;
             }
-           
+
         }
         catch (Exception ex)
         {

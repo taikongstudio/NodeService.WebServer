@@ -1,74 +1,382 @@
 ﻿@page "/Tasks/Definitions/Editor"
-
+@using NodeService.WebServer.UI.Pages.Tasks.Definitions.Diagrams
 @using Blazor.Diagrams
 @using Blazor.Diagrams.Components
+@using Blazor.Diagrams.Components.Widgets
 @using Blazor.Diagrams.Core.Models
+@using Blazor.Diagrams.Core.Geometry;
+@using Blazor.Diagrams.Core.Models.Base
+@using NodeService.WebServer.UI.Pages.Tasks.Definitions.Diagrams.Models
+@using Point = Blazor.Diagrams.Core.Geometry.Point;
+@using PointerEventArgs = Blazor.Diagrams.Core.Events.PointerEventArgs;
 @using NodeService.WebServer.UI.Diagrams
+@using NodeService.WebServer.UI.Diagrams.Components
 @using NodeService.WebServer.UI.Diagrams.Demos
 @layout NodeService.WebServer.UI.Diagrams.Layouts.DemoLayout
 @inject LayoutData LayoutData
 
-<div class="row h-100">
-    <div class="col-4">
-        @* Toolbox *@
-        <div class="row h-100 p-4 no-gutters" style="background: #eee;">
-            <div class="col-6">
-                <div class="text-center" draggable="true" @ondragstart="() => OnDragStart(0)">
-                    <div style="pointer-events:none;">
-                        <img class="d-block m-auto" src="_content/NodeService.WebServer.UI.Diagrams/img/DefaultNodeWidget.png"/>
-                        <span>Default Node</span>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6">
-                <div class="text-center" draggable="true" @ondragstart="() => OnDragStart(1)">
-                    <div style="pointer-events:none;">
-                        <img class="d-block m-auto" src="_content/NodeService.WebServer.UI.Diagrams/img/BotAnswerNodeWidget.png"/>
-                        <span>Bot Answer Node</span>
-                    </div>
-                </div>
-            </div>
+<PageTitle>任务流程图</PageTitle>
+
+    <div class="d-flex @NavMenuCssClass" id="wrapper">
+        <div class="bg-light border-right" id="sidebar-wrapper">
+        <div class="sidebar-heading">工具箱</div>
+            <ul class="list-group list-group-flush">
+                <DemoMenu Href="demos/simple" Text="Simple" />
+                <DemoMenu Href="demos/locked" Text="Locked" />
+                <DemoMenu Href="demos/events" Text="Events" />
+                <DemoMenu Href="demos/dynamic-insertions" Text="Dynamic insertions" />
+                <DemoMenu Href="demos/performance" Text="Performance" />
+                <DemoMenu Href="demos/zoomtofit" Text="Zoom to fit" />
+                <DemoMenu Href="demos/snaptogrid" Text="Snap to Grid" />
+                <DemoMenu Href="demos/drag-and-drop" Text="Drag & Drop" />
+                <DemoMenu Text="Nodes">
+                    <li>
+                        <a href="nodes/svg" class="list-group-item list-group-item-action bg-light">SVG</a>
+                    </li>
+                    <li>
+                        <a href="nodes/portless-links" class="list-group-item list-group-item-action bg-light">Portless Links</a>
+                    </li>
+                </DemoMenu>
+                <DemoMenu Text="Links">
+                    <li>
+                        <a href="links/snapping" class="list-group-item list-group-item-action bg-light">Snapping</a>
+                    </li>
+                    <li>
+                        <a href="links/labels" class="list-group-item list-group-item-action bg-light">Labels</a>
+                    </li>
+                    <li>
+                        <a href="links/vertices" class="list-group-item list-group-item-action bg-light">Vertices</a>
+                    </li>
+                    <li>
+                        <a href="links/markers" class="list-group-item list-group-item-action bg-light">Markers</a>
+                    </li>
+                    <li>
+                        <a href="links/routers" class="list-group-item list-group-item-action bg-light">Routers</a>
+                    </li>
+                    <li>
+                        <a href="links/path-generators" class="list-group-item list-group-item-action bg-light">Path generators</a>
+                    </li>
+                </DemoMenu>
+                <DemoMenu Text="Groups">
+                    <li>
+                        <a href="demos/groups" class="list-group-item list-group-item-action bg-light">Simple</a>
+                    </li>
+                    <li>
+                        <a href="demos/groups-factory" class="list-group-item list-group-item-action bg-light">Factory</a>
+                    </li>
+                    <li>
+                        <a href="demos/groups-dynamic" class="list-group-item list-group-item-action bg-light">Dynamic</a>
+                    </li>
+                    <li>
+                        <a href="demos/groups-custom-shortcut" class="list-group-item list-group-item-action bg-light">Custom shortcut</a>
+                    </li>
+                </DemoMenu>
+                <DemoMenu Text="Customization">
+                    <li>
+                        <a href="demos/custom-node" class="list-group-item list-group-item-action bg-light">Custom node</a>
+                    </li>
+                    <li>
+                        <a href="demos/custom-link" class="list-group-item list-group-item-action bg-light">Custom link</a>
+                    </li>
+                    <li>
+                        <a href="demos/custom-port" class="list-group-item list-group-item-action bg-light">Custom port</a>
+                    </li>
+                    <li>
+                        <a href="demos/custom-group" class="list-group-item list-group-item-action bg-light">Custom group</a>
+                    </li>
+                    <li>
+                        <a href="demos/custom-svg-group" class="list-group-item list-group-item-action bg-light">Custom SVG group</a>
+                    </li>
+                </DemoMenu>
+                <DemoMenu Text="Algorithms">
+                    <li>
+                        <a href="demos/reconnect-links" class="list-group-item list-group-item-action bg-light">Reconnect links</a>
+                    </li>
+                </DemoMenu>
+            </ul>
         </div>
-    </div>
-    <div class="col-8" ondragover="event.preventDefault();" @ondragover:preventDefault @ondrop="OnDrop">
-        <CascadingValue Value="_blazorDiagram">
-            <DiagramCanvas></DiagramCanvas>
-        </CascadingValue>
-    </div>
+        <div id="page-content-wrapper">
+            <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+                <Space>
+                <ChildContent>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home" OnClick="OnGoHomeAsync"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="OnSaveAsync"></Button>
+                    </SpaceItem>
+                    <SpaceItem>
+                        @if (collapseNavMenu)
+                        {
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.ArrowRight" OnClick="ToggleNavMenu"></Button>
+                        }
+                        else
+                        {
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.ArrowLeft" OnClick="ToggleNavMenu"></Button>
+                        }
+                    </SpaceItem>
+                </ChildContent>
+
+                </Space>
+
+            </nav>
+            <div class="diagram-container">
+            <div class="row h-100">
+                <div class="col-2" style="padding-right:0px" >
+                    @* Toolbox *@
+                    <div class="column no-gutters" style="background: #eee;">
+                        <div class="col-12" style="height:100px">
+                            <div class="text-center" draggable="true" @ondragstart="() => OnDragComponentStart(0)">
+                                <div style="pointer-events:none;">
+                                    <img class="d-block m-auto" src="_content/NodeService.WebServer.UI.Diagrams/img/DefaultNodeWidget.png" />
+                                    <span>Default Node</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12" style="height:100px">
+                            <div class="text-center" draggable="true" @ondragstart="() => OnDragComponentStart(1)">
+                                <div style="pointer-events:none;">
+                                    <img class="d-block m-auto" src="_content/NodeService.WebServer.UI.Diagrams/img/BotAnswerNodeWidget.png" />
+                                    <span>Bot Answer Node</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-10" style="padding-left:0px" ondragover="event.preventDefault();" @ondragover:preventDefault @ondrop="OnDropAsync">
+                    <div style="position: absolute; z-index: 9999;">
+                        <div class="custom-control custom-checkbox ml-2">
+                            <input id="zoomCheckbox" type="checkbox" class="custom-control-input" @onchange="ToggleZoom" checked />
+                            <label class="custom-control-label" for="zoomCheckbox">Toggle Zoom</label>
+                        </div>
+                        <div class="custom-control custom-checkbox ml-2">
+                            <input id="panningCheckbox" type="checkbox" class="custom-control-input" @onchange="TogglePanning" checked />
+                            <label class="custom-control-label" for="panningCheckbox">Toggle Panning</label>
+                        </div>
+                        <div class="custom-control custom-checkbox ml-2">
+                            <input id="virtualizationCheckbox" type="checkbox" class="custom-control-input" @onchange="ToggleVirtualization" checked />
+                            <label class="custom-control-label" for="virtualizationCheckbox">Toggle Virtualization</label>
+                        </div>
+                    </div>
+                    <CascadingValue Value="_blazorDiagram">
+                        <DiagramCanvas>
+                                    <Widgets>
+                                        <NavigatorWidget Width="200"
+                                                            Height="150"
+                                                            Style="position: absolute; bottom: 15px; right: 15px; border: 1px solid black;">
+                                        </NavigatorWidget>
+                                        <SelectionBoxWidget/>
+                                        <GridWidget Size="75" Mode="GridMode.Line" ZoomThreshold="0.5"></GridWidget>
+                                    </Widgets>
+                        </DiagramCanvas>
+                    </CascadingValue>
+                </div>
+            </div>
+            </div>
+
+        </div>
+
 </div>
 
-
 @code {
+    protected readonly List<string> events = new List<string>();
     private readonly BlazorDiagram _blazorDiagram = new BlazorDiagram();
-    private int? _draggedType;
+    private int _draggedType;
+
+    private bool collapseNavMenu = false;
+
+    private string NavMenuCssClass => collapseNavMenu ? "toggled" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    private async Task OnGoHomeAsync()
+    {
+
+        await Task.CompletedTask;
+    }
+
+    private async Task OnSaveAsync()
+    {
+
+        await Task.CompletedTask;
+    }
+
+    protected void ToggleZoom() => _blazorDiagram.Options.Zoom.Enabled = !_blazorDiagram.Options.Zoom.Enabled;
+
+    protected void TogglePanning() => _blazorDiagram.Options.AllowPanning = !_blazorDiagram.Options.AllowPanning;
+
+    protected void ToggleVirtualization() => _blazorDiagram.Options.Virtualization.Enabled = !_blazorDiagram.Options.Virtualization.Enabled;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
-
+        LayoutData.OnDataChanged = StateHasChanged;
         LayoutData.Title = "Drag & Drop";
         LayoutData.Info = "A very simple drag & drop implementation using the HTML5 events.";
         LayoutData.DataChanged();
 
-        _blazorDiagram.RegisterComponent<BotAnswerNode, BotAnswerWidget>();
+        _blazorDiagram.Options.LinksLayerOrder = 2;
+        _blazorDiagram.Options.NodesLayerOrder = 1;
+        _blazorDiagram.Options.GridSize = 75;
+        _blazorDiagram.Options.Links.EnableSnapping = true;
+        _blazorDiagram.Options.AllowMultiSelection = true;
+
+        _blazorDiagram.Changed += () =>
+        {
+            events.Add("Changed");
+            return;
+            StateHasChanged();
+        };
+
+        _blazorDiagram.Nodes.Added += OnNodeAdded;
+        _blazorDiagram.Nodes.Removed += OnNodeRemoved;
+        _blazorDiagram.SelectionChanged += OnSelectionChanged;
+        _blazorDiagram.Links.Added += OnLinkAdded;
+        _blazorDiagram.Links.Removed += OnLinkRemoved;
+        _blazorDiagram.PointerDown += OnPointerDown;
+        _blazorDiagram.PointerUp += OnPointerUp;
+        _blazorDiagram.PointerClick += OnPointerClick;
+        _blazorDiagram.PointerDoubleClick += OnPointerDoubleClick;
+        _blazorDiagram.RegisterComponent<TaskStageNode, TaskStageNodeWidget>();
+        _blazorDiagram.RegisterComponent<TaskGroupModel, TaskGroupNodeWidget>();
+        _blazorDiagram.RegisterComponent<TaskNode, TaskNodeWidget>();
+
+        var stageNode = new TaskStageNode([]);
+        stageNode.AddPort(PortAlignment.Top);
+        stageNode.AddPort(PortAlignment.Bottom);
+
+        var groupNode1 = new TaskGroupNode([]);
+        var groupNode2 = new TaskGroupNode([]);
+
+
+        stageNode.AddPort(PortAlignment.Top);
+        stageNode.AddPort(PortAlignment.Bottom);
+
+        stageNode.AddChild(groupNode1);
+        stageNode.AddChild(groupNode2);
+        _blazorDiagram.Groups.Add(stageNode);
+
     }
 
-    private void OnDragStart(int key)
+    void OnNodeAdded(NodeModel nodeModel)
+    {
+        events.Add($"NodesAdded, NodeId={nodeModel.Id}");
+    }
+
+    void OnNodeRemoved(NodeModel nodeModel)
+    {
+        events.Add($"NodesRemoved, NodeId={nodeModel.Id}");
+    }
+
+    void OnSelectionChanged(SelectableModel nodeModel)
+    {
+
+        events.Add($"SelectionChanged, Id={nodeModel.Id}, Type={nodeModel.GetType().Name}, Selected={nodeModel.Selected}");
+        return;
+        StateHasChanged();
+    }
+
+    void OnLinkAdded(BaseLinkModel baseLinkModel)
+    {
+
+    }
+
+    void OnLinkRemoved(BaseLinkModel baseLinkModel)
+    {
+
+    }
+
+    void OnPointerDown(Model? model, PointerEventArgs e)
+    {
+        events.Add($"MouseDown, Type={model?.GetType().Name}, ModelId={model?.Id}");
+        return;
+        StateHasChanged();
+    }
+
+    void OnPointerUp(Model? model, PointerEventArgs e)
+    {
+        events.Add($"MouseUp, Type={model?.GetType().Name}, ModelId={model?.Id}");
+        return;
+        StateHasChanged();
+    }
+
+    void OnPointerClick(Model? model, PointerEventArgs e)
+    {
+        events.Add($"MouseClick, Type={model?.GetType().Name}, ModelId={model?.Id}");
+        return;
+        StateHasChanged();
+    }
+
+    void OnPointerDoubleClick(Model? model, PointerEventArgs e)
+    {
+        events.Add($"MouseDoubleClick, Type={model?.GetType().Name}, ModelId={model?.Id}");
+        return;
+        StateHasChanged();
+    }
+
+    private void OnDragComponentStart(int key)
     {
         // Can also use transferData, but this is probably "faster"
         _draggedType = key;
     }
 
-    private void OnDrop(DragEventArgs e)
+    private void OnDropAsync(DragEventArgs e)
     {
-        if (_draggedType == null) // Unkown item
+        if (_draggedType == -1) // Unkown item
             return;
+        try
+        {
+            var position = _blazorDiagram.GetRelativeMousePoint(e.ClientX, e.ClientY);
+            if (position == null)
+            {
+                return;
+            }
+            NodeModel node = null;
+            switch (_draggedType)
+            {
+                case 0:
+                    node = new NodeModel(position);
+                    break;
+                case 1:
+                    node = new TaskStageNode([]);
+                    break;
+            }
+            if (node == null)
+            {
+                return;
+            }
+            node.AddPort(PortAlignment.Top);
+            node.AddPort(PortAlignment.Bottom);
+            _blazorDiagram.Nodes.Add(node);
 
-        var position = _blazorDiagram.GetRelativeMousePoint(e.ClientX, e.ClientY);
-        var node = _draggedType == 0 ? new NodeModel(position) : new BotAnswerNode(position);
-        node.AddPort(PortAlignment.Top);
-        node.AddPort(PortAlignment.Bottom);
-        _blazorDiagram.Nodes.Add(node);
-        _draggedType = null;
+            foreach (var group in _blazorDiagram.Groups)
+            {
+                if (group is not TaskGroupNode taskGroupNode)
+                {
+                    continue;
+                }
+                var bounds = taskGroupNode.GetBounds();
+                if (bounds == null)
+                {
+                    continue;
+                }
+                if (bounds.ContainsPoint(position))
+                {
+                    taskGroupNode.AddChild(node);
+                    break;
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+
+        }
+
+        _draggedType = -1;
     }
+
 }

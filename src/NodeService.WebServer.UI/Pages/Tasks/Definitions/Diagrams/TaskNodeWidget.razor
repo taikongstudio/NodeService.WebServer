@@ -1,0 +1,28 @@
+﻿
+<div style="border-radius: 10%; width: 280px; height: 100px; background: blue;">
+    @switch (Node.DataContext.Status)
+    {
+        case TaskExecutionStatus.Pendding:
+            <Icon Type="clock-circle" Theme="outline" />
+            break;
+        case TaskExecutionStatus.Triggered:
+            break;
+        case TaskExecutionStatus.Started:
+        case TaskExecutionStatus.Running:
+            <Icon Type="loading" Theme="outline" />
+        break;
+        case TaskExecutionStatus.Cancelled:
+            break;
+        case TaskExecutionStatus.Failed:
+            break;
+        case  TaskExecutionStatus.Finished:
+            break;
+        case TaskExecutionStatus.PenddingTimeout:
+            break;
+    }
+    <Text>@Node.DataContext.Name</Text>
+</div>
+
+@code {
+    [Parameter] public TaskNode Node { get; set; }
+}

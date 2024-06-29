@@ -1,12 +1,11 @@
-﻿@page "/Tasks/Definitions/Editor"
-@using NodeService.WebServer.UI.Pages.Tasks.Definitions.Diagrams
+﻿@page "/Tasks/Diagram"
+
 @using Blazor.Diagrams
 @using Blazor.Diagrams.Components
 @using Blazor.Diagrams.Components.Widgets
 @using Blazor.Diagrams.Core.Models
 @using Blazor.Diagrams.Core.Geometry;
 @using Blazor.Diagrams.Core.Models.Base
-@using NodeService.WebServer.UI.Pages.Tasks.Definitions.Diagrams.Models
 @using Point = Blazor.Diagrams.Core.Geometry.Point;
 @using PointerEventArgs = Blazor.Diagrams.Core.Events.PointerEventArgs;
 @using NodeService.WebServer.UI.Diagrams
@@ -122,7 +121,7 @@
             </nav>
             <div class="diagram-container">
             <div class="row h-100">
-                <div class="col-2" style="padding-right:0px" >
+                <div class="col-0" style="padding-right:0px" >
                     @* Toolbox *@
                     <div class="column no-gutters" style="background: #eee;">
                         <div class="col-12" style="height:100px">
@@ -143,8 +142,9 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-10" style="padding-left:0px" ondragover="event.preventDefault();" @ondragover:preventDefault @ondrop="OnDropAsync">
-                    <div style="position: absolute; z-index: 9999;">
+                <div class="col-10" style="padding-left:0px"  ondragover="event.preventDefault();" @ondragover:preventDefault @ondrop="OnDropAsync">
+                    <div style="position: absolute; z-index: 9999;width:100px;height:100px">
+                        
                         <div class="custom-control custom-checkbox ml-2">
                             <input id="zoomCheckbox" type="checkbox" class="custom-control-input" @onchange="ToggleZoom" checked />
                             <label class="custom-control-label" for="zoomCheckbox">Toggle Zoom</label>
@@ -158,14 +158,17 @@
                             <label class="custom-control-label" for="virtualizationCheckbox">Toggle Virtualization</label>
                         </div>
                     </div>
+
+
                     <CascadingValue Value="_blazorDiagram">
-                        <DiagramCanvas>
+                        <DiagramCanvas >
                                     <Widgets>
+                                         <SelectionBoxWidget />
                                         <NavigatorWidget Width="200"
                                                             Height="150"
                                                             Style="position: absolute; bottom: 15px; right: 15px; border: 1px solid black;">
                                         </NavigatorWidget>
-                                        <SelectionBoxWidget/>
+                
                                         <GridWidget Size="75" Mode="GridMode.Line" ZoomThreshold="0.5"></GridWidget>
                                     </Widgets>
                         </DiagramCanvas>
@@ -179,36 +182,48 @@
 </div>
 
 @code {
-    protected readonly List<string> events = new List<string>();
-    private readonly BlazorDiagram _blazorDiagram = new BlazorDiagram();
-    private int _draggedType;
+    readonly BlazorDiagram _blazorDiagram = new BlazorDiagram();
+    int _draggedType;
+    bool collapseNavMenu = false;
 
-    private bool collapseNavMenu = false;
+    string? contextMenuLocation;
+    string NavMenuCssClass => collapseNavMenu ? "toggled" : null;
 
-    private string NavMenuCssClass => collapseNavMenu ? "toggled" : null;
+    public IEnumerable<SelectableModel> SelectedObjects => _blazorDiagram.GetSelectedModels();
 
-    private void ToggleNavMenu()
+    void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
     }
 
-    private async Task OnGoHomeAsync()
+
+    async Task OnDeleteSelectedObjectsAsync()
+    {
+
+    }
+
+    async Task OnCopySelectedObjectsAsync()
+    {
+
+    }
+
+    async Task OnGoHomeAsync()
     {
 
         await Task.CompletedTask;
     }
 
-    private async Task OnSaveAsync()
+    async Task OnSaveAsync()
     {
 
         await Task.CompletedTask;
     }
 
-    protected void ToggleZoom() => _blazorDiagram.Options.Zoom.Enabled = !_blazorDiagram.Options.Zoom.Enabled;
+    void ToggleZoom() => _blazorDiagram.Options.Zoom.Enabled = !_blazorDiagram.Options.Zoom.Enabled;
 
-    protected void TogglePanning() => _blazorDiagram.Options.AllowPanning = !_blazorDiagram.Options.AllowPanning;
+    void TogglePanning() => _blazorDiagram.Options.AllowPanning = !_blazorDiagram.Options.AllowPanning;
 
-    protected void ToggleVirtualization() => _blazorDiagram.Options.Virtualization.Enabled = !_blazorDiagram.Options.Virtualization.Enabled;
+    void ToggleVirtualization() => _blazorDiagram.Options.Virtualization.Enabled = !_blazorDiagram.Options.Virtualization.Enabled;
 
     protected override void OnInitialized()
     {
@@ -224,12 +239,7 @@
         _blazorDiagram.Options.Links.EnableSnapping = true;
         _blazorDiagram.Options.AllowMultiSelection = true;
 
-        _blazorDiagram.Changed += () =>
-        {
-            events.Add("Changed");
-            return;
-            StateHasChanged();
-        };
+        _blazorDiagram.Changed += StateHasChanged;
 
         _blazorDiagram.Nodes.Added += OnNodeAdded;
         _blazorDiagram.Nodes.Removed += OnNodeRemoved;
@@ -240,42 +250,21 @@
         _blazorDiagram.PointerUp += OnPointerUp;
         _blazorDiagram.PointerClick += OnPointerClick;
         _blazorDiagram.PointerDoubleClick += OnPointerDoubleClick;
-        _blazorDiagram.RegisterComponent<TaskStageNode, TaskStageNodeWidget>();
-        _blazorDiagram.RegisterComponent<TaskGroupModel, TaskGroupNodeWidget>();
-        _blazorDiagram.RegisterComponent<TaskNode, TaskNodeWidget>();
-
-        var stageNode = new TaskStageNode([]);
-        stageNode.AddPort(PortAlignment.Top);
-        stageNode.AddPort(PortAlignment.Bottom);
-
-        var groupNode1 = new TaskGroupNode([]);
-        var groupNode2 = new TaskGroupNode([]);
-
-
-        stageNode.AddPort(PortAlignment.Top);
-        stageNode.AddPort(PortAlignment.Bottom);
-
-        stageNode.AddChild(groupNode1);
-        stageNode.AddChild(groupNode2);
-        _blazorDiagram.Groups.Add(stageNode);
 
     }
 
     void OnNodeAdded(NodeModel nodeModel)
     {
-        events.Add($"NodesAdded, NodeId={nodeModel.Id}");
+
     }
 
     void OnNodeRemoved(NodeModel nodeModel)
     {
-        events.Add($"NodesRemoved, NodeId={nodeModel.Id}");
+
     }
 
-    void OnSelectionChanged(SelectableModel nodeModel)
+    void OnSelectionChanged(SelectableModel selectableModel)
     {
-
-        events.Add($"SelectionChanged, Id={nodeModel.Id}, Type={nodeModel.GetType().Name}, Selected={nodeModel.Selected}");
-        return;
         StateHasChanged();
     }
 
@@ -291,29 +280,21 @@
 
     void OnPointerDown(Model? model, PointerEventArgs e)
     {
-        events.Add($"MouseDown, Type={model?.GetType().Name}, ModelId={model?.Id}");
-        return;
         StateHasChanged();
     }
 
     void OnPointerUp(Model? model, PointerEventArgs e)
     {
-        events.Add($"MouseUp, Type={model?.GetType().Name}, ModelId={model?.Id}");
-        return;
         StateHasChanged();
     }
 
     void OnPointerClick(Model? model, PointerEventArgs e)
     {
-        events.Add($"MouseClick, Type={model?.GetType().Name}, ModelId={model?.Id}");
-        return;
         StateHasChanged();
     }
 
     void OnPointerDoubleClick(Model? model, PointerEventArgs e)
     {
-        events.Add($"MouseDoubleClick, Type={model?.GetType().Name}, ModelId={model?.Id}");
-        return;
         StateHasChanged();
     }
 
@@ -323,7 +304,7 @@
         _draggedType = key;
     }
 
-    private void OnDropAsync(DragEventArgs e)
+    async Task OnDropAsync(DragEventArgs e)
     {
         if (_draggedType == -1) // Unkown item
             return;
@@ -333,41 +314,6 @@
             if (position == null)
             {
                 return;
-            }
-            NodeModel node = null;
-            switch (_draggedType)
-            {
-                case 0:
-                    node = new NodeModel(position);
-                    break;
-                case 1:
-                    node = new TaskStageNode([]);
-                    break;
-            }
-            if (node == null)
-            {
-                return;
-            }
-            node.AddPort(PortAlignment.Top);
-            node.AddPort(PortAlignment.Bottom);
-            _blazorDiagram.Nodes.Add(node);
-
-            foreach (var group in _blazorDiagram.Groups)
-            {
-                if (group is not TaskGroupNode taskGroupNode)
-                {
-                    continue;
-                }
-                var bounds = taskGroupNode.GetBounds();
-                if (bounds == null)
-                {
-                    continue;
-                }
-                if (bounds.ContainsPoint(position))
-                {
-                    taskGroupNode.AddChild(node);
-                    break;
-                }
             }
 
         }

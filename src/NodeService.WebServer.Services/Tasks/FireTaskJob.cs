@@ -21,7 +21,7 @@ public class FireTaskJob : JobBase
         }
         finally
         {
-            if (TriggerSource == TaskTriggerSource.Manual && AsyncDispoable != null)
+            if (TriggerSource == TriggerSource.Manual && AsyncDispoable != null)
                 await AsyncDispoable.DisposeAsync();
         }
     }
@@ -33,7 +33,7 @@ public class FireTaskJob : JobBase
         var parentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string;
         var fireTaskParameters = new FireTaskParameters
         {
-            TaskDefinitionId = Properties[nameof(ModelBase.Id)] as string,
+            TaskDefinitionId = Properties[nameof(TaskDefinitionModel.Id)] as string,
             FireInstanceId = $"{Guid.NewGuid()}_{parentTaskId}_{context.FireInstanceId}",
             FireTimeUtc = context.FireTimeUtc,
             NextFireTimeUtc = context.NextFireTimeUtc,

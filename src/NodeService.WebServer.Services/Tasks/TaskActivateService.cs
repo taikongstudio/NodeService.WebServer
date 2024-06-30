@@ -1,35 +1,81 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Threading.Channels;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.DataModels;
-using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
+using OneOf;
+using System.Threading.Channels;
 
 namespace NodeService.WebServer.Services.Tasks;
 
-public class TaskActivationService : BackgroundService
+public record struct FireTaskParameters
 {
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<FireTaskParameters> _fireTaskBatchQueue;
-    private readonly ILogger<TaskActivationService> _logger;
-    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
-    private readonly BatchQueue<TaskCancellationParameters> _taskCancellationQueue;
-    private readonly ITaskPenddingContextManager _taskPenddingContextManager;
-    private readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
-    private readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
-    private readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<TaskTypeDescConfigModel> _taskTypeDescConfigRepositoryFactory;
+    public string TaskDefinitionId { get; init; }
+    public string FireInstanceId { get; init; }
+    public TriggerSource TriggerSource { get; init; }
+    public DateTimeOffset? NextFireTimeUtc { get; init; }
+    public DateTimeOffset? PreviousFireTimeUtc { get; init; }
+    public DateTimeOffset? ScheduledFireTimeUtc { get; init; }
+    public DateTimeOffset FireTimeUtc { get; init; }
 
-    public TaskActivationService(
-        ILogger<TaskActivationService> logger,
+    public string? ParentTaskId { get; init; }
+
+    public List<StringEntry> NodeList { get; init; }
+
+    public List<StringEntry> EnvironmentVariables { get; init; }
+}
+
+public readonly struct FireTaskFlowParameters
+{
+    public string TaskFlowTemplateId { get; init; }
+    public string TaskFlowInstanceId { get; init; }
+    public TriggerSource TriggerSource { get; init; }
+    public DateTimeOffset? NextFireTimeUtc { get; init; }
+    public DateTimeOffset? PreviousFireTimeUtc { get; init; }
+    public DateTimeOffset? ScheduledFireTimeUtc { get; init; }
+    public DateTimeOffset FireTimeUtc { get; init; }
+    public string? ParentTaskFlowInstanceId { get; init; }
+}
+
+public readonly struct TaskActivateServiceParameters
+{
+    public TaskActivateServiceParameters(FireTaskParameters fireTaskParameters)
+    {
+        this.Parameters = fireTaskParameters;
+    }
+
+    public TaskActivateServiceParameters(FireTaskFlowParameters fireTaskFlowParameters)
+    {
+        this.Parameters = fireTaskFlowParameters;
+    }
+
+    public OneOf<FireTaskParameters, FireTaskFlowParameters> Parameters { get; init; }
+
+}
+
+public class TaskActivateService : BackgroundService
+{
+    readonly ILogger<TaskActivateService> _logger;
+    readonly INodeSessionService _nodeSessionService;
+    readonly ITaskPenddingContextManager _taskPenddingContextManager;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
+    readonly BatchQueue<TaskCancellationParameters> _taskCancellationQueue;
+    readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
+    readonly BatchQueue<TaskActivateServiceParameters> _serviceParametersBatchQueue;
+    readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskTypeDescConfigModel> _taskTypeDescConfigRepositoryFactory;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
+    readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
+
+    public TaskActivateService(
+        ILogger<TaskActivateService> logger,
         INodeSessionService nodeSessionService,
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
@@ -37,8 +83,10 @@ public class TaskActivationService : BackgroundService
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRepositoryFactory,
         ApplicationRepositoryFactory<TaskTypeDescConfigModel> taskTypeDescConfigRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
+        ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
+        ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
         BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
-        BatchQueue<FireTaskParameters> fireTaskBatchQueue,
+        BatchQueue<TaskActivateServiceParameters> serviceParametersBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationQueue,
         ITaskPenddingContextManager taskPenddingContextManager)
     {
@@ -51,10 +99,12 @@ public class TaskActivationService : BackgroundService
         _taskActivationRecordRepositoryFactory = taskActivationRepositoryFactory;
         _taskTypeDescConfigRepositoryFactory = taskTypeDescConfigRepositoryFactory;
         _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
+        _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
+        _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
 
         _taskExecutionReportBatchQueue = taskExecutionReportBatchQueue;
         _exceptionCounter = exceptionCounter;
-        _fireTaskBatchQueue = fireTaskBatchQueue;
+        _serviceParametersBatchQueue = serviceParametersBatchQueue;
         _taskCancellationQueue = taskCancellationQueue;
         _taskPenddingContextManager = taskPenddingContextManager;
         PenddingActionBlock = new ActionBlock<TaskPenddingContext>(ProcessPenddingContextAsync,
@@ -183,12 +233,13 @@ public class TaskActivationService : BackgroundService
         }
     }
 
-    private async ValueTask ActivateTasksAsync(
+    private async ValueTask ActivateRemoteNodeTasksAsync(
         IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo,
         IRepository<NodeInfoModel> nodeInfoRepo,
         IRepository<TaskActivationRecordModel> taskActivationRecordRepo,
         FireTaskParameters parameters,
         TaskDefinitionModel taskDefinitionModel,
+        TaskFlowTaskKey taskFlowTaskKey = default,
         CancellationToken cancellationToken = default)
     {
         try
@@ -218,14 +269,20 @@ public class TaskActivationService : BackgroundService
 
                     if (nodeId.IsNullOrEmpty) continue;
 
-                    var sessions = _nodeSessionService.EnumNodeSessions(nodeId).ToArray();
+                    var nodeSessionIdList = _nodeSessionService.EnumNodeSessions(nodeId).ToArray();
 
-                    foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
+                    if (nodeSessionIdList.Length == 0)
+                    {
+                        var nodeSessionId = new NodeSessionId(nodeId.Value);
+                        nodeSessionIdList = [nodeSessionId];
+                    }
+                    foreach (var nodeSessionId in nodeSessionIdList)
                     {
                         var taskExecutionInstance = BuildTaskExecutionInstance(
                             taskDefinitionModel,
                             nodeSessionId,
                             parameters,
+                            taskFlowTaskKey,
                             cancellationToken);
                         taskExecutionInstanceList.Add(KeyValuePair.Create(nodeSessionId, taskExecutionInstance));
                     }
@@ -274,7 +331,7 @@ public class TaskActivationService : BackgroundService
             }
 
 
-            _logger.LogInformation($"Job initialized {parameters.FireInstanceId}");
+            _logger.LogInformation($"Task initialized {parameters.FireInstanceId}");
         }
         catch (Exception ex)
         {
@@ -287,6 +344,7 @@ public class TaskActivationService : BackgroundService
         TaskDefinitionModel taskDefinition,
         NodeSessionId nodeSessionId,
         FireTaskParameters parameters,
+        TaskFlowTaskKey taskFlowTaskKey=default,
         CancellationToken cancellationToken = default)
     {
         var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);
@@ -311,7 +369,7 @@ public class TaskActivationService : BackgroundService
                 taskExecutionInstance.Message = $"{nodeName}: triggered";
                 break;
             case TaskExecutionStrategy.Queue:
-                taskExecutionInstance.Message = $"{nodeName}: waiting for any job";
+                taskExecutionInstance.Message = $"{nodeName}: waiting for any task";
                 break;
             case TaskExecutionStrategy.Skip:
                 taskExecutionInstance.Message = $"{nodeName}: start job";
@@ -328,27 +386,27 @@ public class TaskActivationService : BackgroundService
         if (parameters.ScheduledFireTimeUtc != null)
             taskExecutionInstance.ScheduledFireTimeUtc = parameters.ScheduledFireTimeUtc.Value.UtcDateTime;
 
+        taskExecutionInstance.TaskFlowTemplateId = taskFlowTaskKey.TaskFlowTemplateId;
+        taskExecutionInstance.TaskFlowInstanceId = taskFlowTaskKey.TaskFlowInstanceId;
+        taskExecutionInstance.TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId;
+        taskExecutionInstance.TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId;
+        taskExecutionInstance.TaskFlowTaskId = taskFlowTaskKey.TaskFlowTaskId;
         return taskExecutionInstance;
     }
 
-    private (string TaskDefinitionId, string TaskFireInstanceId) TaskParametersGroupFunc(
-        FireTaskParameters fireTaskParameters)
-    {
-        return (fireTaskParameters.TaskDefinitionId, fireTaskParameters.FireInstanceId);
-    }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         await Task.WhenAll(
             SchedulePenddingContextAsync(cancellationToken),
-            ProcessTaskFireParametersAsync(cancellationToken));
+            ProcessTaskActivateServiceParametersAsync(cancellationToken));
     }
 
-    private async Task ProcessTaskFireParametersAsync(CancellationToken cancellationToken = default)
+    private async Task ProcessTaskActivateServiceParametersAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            await foreach (var array in _fireTaskBatchQueue.ReceiveAllAsync(cancellationToken))
+            await foreach (var array in _serviceParametersBatchQueue.ReceiveAllAsync(cancellationToken))
             {
                 try
                 {
@@ -357,33 +415,27 @@ public class TaskActivationService : BackgroundService
                     using var taskTypeDescRepo = _taskTypeDescConfigRepositoryFactory.CreateRepository();
                     using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
                     using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
-                    foreach (var fireTaskParametersGroup in array.Where(static x => x != default)
-                                 .GroupBy(TaskParametersGroupFunc))
+
+                    foreach (var serviceParametersGroup in array.GroupBy(static x=>x.Parameters.Index))
                     {
-                        var (taskDefinitionId, fireTaskInstanceId) = fireTaskParametersGroup.Key;
-
-                        var taskDefinitionModel = await taskDefinitionRepo.GetByIdAsync(
-                            taskDefinitionId,
-                            cancellationToken);
-
-                        if (taskDefinitionModel == null || string.IsNullOrEmpty(taskDefinitionModel.TaskTypeDescId))
-                            continue;
-
-                        taskDefinitionModel.TaskTypeDesc = await taskTypeDescRepo.GetByIdAsync(
-                            taskDefinitionModel.TaskTypeDescId,
-                            cancellationToken);
-
-                        foreach (var fireTaskParameters in fireTaskParametersGroup)
+                        switch (serviceParametersGroup.Key)
                         {
-                            if (fireTaskParameters.NodeList != null && fireTaskParameters.NodeList.Count > 0)
-                                taskDefinitionModel.NodeList = fireTaskParameters.NodeList;
-                            await ActivateTasksAsync(
-                                 taskExecutionInstanceRepo,
-                                 nodeInfoRepo,
-                                 taskActivationRecordRepo,
-                                 fireTaskParameters,
-                                 taskDefinitionModel,
-                                 cancellationToken);
+                            case 0:
+                                await ProcessFireTaskParametersAsync(
+                                    taskExecutionInstanceRepo,
+                                    taskActivationRecordRepo,
+                                    taskTypeDescRepo,
+                                    taskDefinitionRepo,
+                                    nodeInfoRepo,
+                                    serviceParametersGroup.Select(x => x.Parameters.AsT0),
+                                    cancellationToken);
+
+                                break;
+                            case 1:
+                                await ProcessTaskFlowFireParametersAsync(serviceParametersGroup.Select(x => x.Parameters.AsT1), cancellationToken);
+                                break;
+                            default:
+                                break;
                         }
 
 
@@ -404,6 +456,122 @@ public class TaskActivationService : BackgroundService
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
+
+    }
+
+    async ValueTask ProcessTaskFlowFireParametersAsync(IEnumerable<FireTaskFlowParameters> fireTaskFlowParameterList, CancellationToken cancellationToken)
+    {
+        using var taskFlowTemplateRepo = _taskFlowTemplateRepoFactory.CreateRepository();
+        using var taskFlowExeuctionInstanceRepo = _taskFlowExecutionInstanceRepoFactory.CreateRepository();
+        foreach (var fireTaskFlowParametersGroup in fireTaskFlowParameterList.GroupBy(static x => x.TaskFlowTemplateId))
+        {
+            var taskFlowTemplateId = fireTaskFlowParametersGroup.Key;
+            var taskFlowTemplate = await taskFlowTemplateRepo.GetByIdAsync(taskFlowTemplateId, cancellationToken);
+            if (taskFlowTemplate == null)
+            {
+                continue;
+            }
+            List<TaskFlowExecutionInstanceModel> taskFlowExecutionInstances = [];
+            foreach (var fireTaskFlowParameters in fireTaskFlowParametersGroup)
+            {
+                var taskFlowExecutionInstance = new TaskFlowExecutionInstanceModel()
+                {
+                    Id = fireTaskFlowParameters.TaskFlowInstanceId,
+                    Name = taskFlowTemplate.Name,
+                    CreationDateTime = DateTime.UtcNow,
+                };
+                taskFlowExecutionInstance.Value.Id = fireTaskFlowParameters.TaskFlowInstanceId;
+                taskFlowExecutionInstance.Value.Name = taskFlowTemplate.Name;
+                taskFlowExecutionInstance.Value.CreationDateTime = DateTime.UtcNow;
+
+                foreach (var taskStage in taskFlowTemplate.Value.TaskStages)
+                {
+                    var taskFlowStageExecutionInstance = new TaskFlowStageExecutionInstance()
+                    {
+                        Id = taskStage.Id,
+                        Name = taskStage.Name,
+                        CreationDateTime = DateTime.UtcNow,
+                    };
+                    taskFlowExecutionInstance.Value.TaskStages.Add(taskFlowStageExecutionInstance);
+                    foreach (var taskGroup in taskStage.TaskGroups)
+                    {
+                        var taskFlowGroupExeuctionInstance = new TaskFlowGroupExecutionInstance()
+                        {
+                            Id = taskGroup.Id,
+                            Name = taskGroup.Name,
+                            CreationDateTime = DateTime.UtcNow,
+                        };
+                        taskFlowStageExecutionInstance.TaskGroups.Add(taskFlowGroupExeuctionInstance);
+                        foreach (var task in taskGroup.Tasks)
+                        {
+                            var taskFlowTaskExecutionInstance = new TaskFlowTaskExecutionInstance()
+                            {
+                                Id = task.Id,
+                                Name = task.Name,
+                                CreationDateTime = DateTime.UtcNow,
+                                Status = TaskExecutionStatus.Unknown,
+                            };
+                            taskFlowGroupExeuctionInstance.Tasks.Add(taskFlowTaskExecutionInstance);
+                        }
+                    }
+
+                }
+                taskFlowExecutionInstances.Add(taskFlowExecutionInstance);
+            }
+            foreach (var array in taskFlowExecutionInstances.Chunk(10))
+            {
+                await taskFlowExeuctionInstanceRepo.AddRangeAsync(array, cancellationToken);
+            }
+        }
+
+    }
+
+    async Task ProcessFireTaskParametersAsync(
+        IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo, 
+        IRepository<TaskActivationRecordModel> taskActivationRecordRepo,
+        IRepository<TaskTypeDescConfigModel> taskTypeDescRepo, 
+        IRepository<TaskDefinitionModel> taskDefinitionRepo,
+        IRepository<NodeInfoModel> nodeInfoRepo, 
+        IEnumerable<FireTaskParameters> fireTaskParameterList, 
+        CancellationToken cancellationToken)
+    {
+
+        foreach (var item in fireTaskParameterList.GroupBy(static x => x.TaskDefinitionId))
+        {
+            var taskDefinitionId = item.Key;
+            var taskDefinition = await taskDefinitionRepo.GetByIdAsync(
+                taskDefinitionId,
+                cancellationToken);
+            if (taskDefinition == null)
+            {
+                continue;
+            }
+            foreach (var fireTaskParameters in item)
+            {
+
+                if (taskDefinition == null || string.IsNullOrEmpty(taskDefinition.TaskTypeDescId))
+                    continue;
+
+                taskDefinition.TaskTypeDesc = await taskTypeDescRepo.GetByIdAsync(
+                                                                                taskDefinition.TaskTypeDescId,
+                                                                                cancellationToken);
+
+                if (fireTaskParameters.NodeList != null && fireTaskParameters.NodeList.Count > 0)
+                {
+                    taskDefinition.NodeList = fireTaskParameters.NodeList;
+                }
+                await ActivateRemoteNodeTasksAsync(
+                     taskExecutionInstanceRepo,
+                     nodeInfoRepo,
+                     taskActivationRecordRepo,
+                     fireTaskParameters,
+                     taskDefinition,
+                     default,
+                     cancellationToken);
+            }
+
+        }
+
 
     }
 }

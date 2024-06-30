@@ -1,4 +1,5 @@
 ﻿using NodeService.Infrastructure.Concurrent;
+using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -10,31 +11,44 @@ public partial class CommonConfigController
         return AddOrUpdateConfigurationAsync(model, AddOrUpdateTaskDefinitionAsync);
     }
 
-    private async Task AddOrUpdateTaskDefinitionAsync(TaskDefinitionModel taskDefinition)
+    async ValueTask AddOrUpdateTaskDefinitionAsync(TaskDefinitionModel taskDefinition)
     {
-        await _serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>().EnqueueAsync(
-            new TaskScheduleMessage(TaskTriggerSource.Schedule, taskDefinition.Id,
-                taskDefinition.TriggerType == TaskTriggerType.Manual));
+        if (taskDefinition.TaskFlowTemplateId == null && taskDefinition.Value.TriggerType == TaskTriggerType.Schedule)
+        {
+            var taskScheduleParameters = new TaskScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
+            var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
+            var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
+                taskScheduleServiceParameters,
+                BatchQueueOperationKind.AddOrUpdate);
+            var queue = _serviceProvider.GetService<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
+            await queue.EnqueueAsync(op);
+        }
     }
 
 
     [HttpPost("/api/CommonConfig/TaskDefinition/{taskDefinitionId}/Invoke")]
-    public async Task<ApiResponse> InvokeJobScheduleAsync(string taskDefinitionId,
+    public async Task<ApiResponse<InvokeTaskResult>> InvokeTaskAsync(string taskDefinitionId,
         [FromBody] InvokeTaskParameters invokeTaskParameters)
     {
-        var apiResponse = new ApiResponse();
+        var apiResponse = new ApiResponse<InvokeTaskResult>();
         try
         {
-            var batchQueue = _serviceProvider.GetService<BatchQueue<FireTaskParameters>>();
-            await batchQueue.SendAsync(new FireTaskParameters
+            var batchQueue = _serviceProvider.GetService<BatchQueue<TaskActivateServiceParameters>>();
+            var fireInstanceId = $"Manual_{Guid.NewGuid()}";
+            await batchQueue.SendAsync(new TaskActivateServiceParameters(new FireTaskParameters
             {
                 FireTimeUtc = DateTime.UtcNow,
-                TriggerSource = TaskTriggerSource.Manual,
-                FireInstanceId = $"Manual_{Guid.NewGuid()}",
+                TriggerSource = TriggerSource.Manual,
+                FireInstanceId = fireInstanceId,
                 TaskDefinitionId = taskDefinitionId,
                 ScheduledFireTimeUtc = DateTime.UtcNow,
                 NodeList = invokeTaskParameters.NodeList,
                 EnvironmentVariables = invokeTaskParameters.EnvironmentVaribales
+            }));
+            apiResponse.SetResult(new InvokeTaskResult()
+            {
+                FireInstanceId = fireInstanceId,
+                TaskDefinitionId = taskDefinitionId
             });
         }
         catch (Exception ex)
@@ -69,9 +83,13 @@ public partial class CommonConfigController
 
     private async Task RemoveTaskDefinitionAsync(TaskDefinitionModel taskDefinition)
     {
-        var messageQueue = _serviceProvider.GetService<IAsyncQueue<TaskScheduleMessage>>();
-        await messageQueue.EnqueueAsync(new TaskScheduleMessage(TaskTriggerSource.Schedule, taskDefinition.Id,
-            true));
+        var messageQueue = _serviceProvider.GetService<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters,TaskScheduleServiceResult>>>();
+        var taskScheduleParameters = new TaskScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
+        var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
+        var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
+            taskScheduleServiceParameters,
+            BatchQueueOperationKind.Delete);
+        await messageQueue.EnqueueAsync(op);
     }
 
     [HttpGet("/api/CommonConfig/TaskDefinition/VersionList")]

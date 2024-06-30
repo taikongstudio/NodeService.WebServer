@@ -98,6 +98,8 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<TaskFlowTemplateModel> TaskFlowTemplateDbSet { get; set; }
 
+    public DbSet<TaskFlowExecutionInstanceModel> TaskFlowExecutionInstanceDbSet { get; set; }
+
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
                                     DynamicallyAccessedMemberTypes.NonPublicConstructors |

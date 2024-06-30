@@ -1,5 +1,6 @@
 ﻿@page "/TaskFlows/Templates/Designer/{TemplateId}"
 @page "/TaskFlows/Templates/Designer"
+@page "/TaskFlows/Instances/View/{TaskFlowInstanceId}"
 
 @using Blazor.Diagrams
 @using Blazor.Diagrams.Components
@@ -7,19 +8,19 @@
 @using Blazor.Diagrams.Core.Models
 @using Blazor.Diagrams.Core.Geometry;
 @using Blazor.Diagrams.Core.Models.Base
-@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+@using NodeService.WebServer.UI.Diagrams.Components
+@using NodeService.WebServer.UI.Diagrams
+@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 @using Point = Blazor.Diagrams.Core.Geometry.Point;
 @using PointerEventArgs = Blazor.Diagrams.Core.Events.PointerEventArgs;
-@using NodeService.WebServer.UI.Diagrams
-@using NodeService.WebServer.UI.Diagrams.Components
-@using NodeService.WebServer.UI.Diagrams.Demos
-@layout NodeService.WebServer.UI.Diagrams.Layouts.TaskDiagramLayout
+@layout NodeService.WebServer.UI.Layouts.TaskFlowTemplateLayout
 @inject ApiService ApiService
+@inject NavigationManager NavigationManager
 
 <PageTitle>任务流程图</PageTitle>
 
     <div class="d-flex @NavMenuCssClass" id="wrapper">
-    <div class="bg-light border-right" id="sidebar-wrapper">
+        <div class="bg-light border-right" id="sidebar-wrapper">
         <div class="sidebar-heading">Demos</div>
         <ul class="list-group list-group-flush">
             <DemoMenu Href="demos/simple" Text="Simple" />
@@ -124,7 +125,7 @@
             <div class="diagram-container">
             <div class="row h-100">
                 <div class="col-12"  @ondragstart:preventDefault @ondragover:preventDefault @ondrop="OnDropAsync">
-                    <div style="position: absolute; z-index: 9999;width:">
+                    <div style="position: absolute;width:">
                         
                         <div class="custom-control custom-checkbox ml-2">
                             <input id="zoomCheckbox" type="checkbox" class="custom-control-input" @onchange="ToggleZoom" checked />
@@ -173,7 +174,10 @@
     public IEnumerable<SelectableModel> SelectedObjects => _blazorDiagram.GetSelectedModels();
 
     [Parameter]
-    public string TemplateId{ get; set; }
+    public string? TemplateId{ get; set; }
+
+    [Parameter]
+    public string? TaskFlowInstanceId { get; set; }
 
     void ToggleNavMenu()
     {
@@ -199,7 +203,10 @@
 
     async Task OnSaveAsync()
     {
-
+        if (_taskFlowTemplateNode.Template != null)
+        {
+            await _taskFlowTemplateNode.Template.SaveAsync(ApiService);
+        }
         await Task.CompletedTask;
     }
 
@@ -231,24 +238,92 @@
         _blazorDiagram.PointerClick += OnPointerClick;
         _blazorDiagram.PointerDoubleClick += OnPointerDoubleClick;
         _blazorDiagram.RegisterComponent<TaskFlowTemplateNode, TaskFlowTemplateWidget>();
-
     }
 
-    protected override Task OnInitializedAsync()
+    TaskFlowTemplateNode _taskFlowTemplateNode;
+
+    protected override async Task OnInitializedAsync()
     {
-        var taskDiagramNode = new TaskFlowTemplateNode();
-        if (this.TemplateId == null)
+        try
         {
-            taskDiagramNode.Position = new Point(100, 100);
-            taskDiagramNode.Template = new TaskFlowTemplate();
-            taskDiagramNode.Template.InitDesignerDefaults();
-            _blazorDiagram.Nodes.Add(taskDiagramNode);
+            TaskFlowTemplate? taskFlowTemplate = null;
+            if (!string.IsNullOrEmpty(TemplateId))
+            {
+                var rsp = await ApiService.QueryTaskFlowTemplateAsync(TemplateId);
+                if (rsp.ErrorCode == 0)
+                {
+                    taskFlowTemplate = rsp.Result.Value;
+                }
+                else
+                {
+
+                }
+            }
+            else if (!string.IsNullOrEmpty(TaskFlowInstanceId))
+            {
+                var rsp = await ApiService.QueryTaskFlowExecutionInstanceAsync(TaskFlowInstanceId);
+                if (rsp.ErrorCode == 0)
+                {
+                    var taskFlowExecutionInstance = rsp.Result;
+                    taskFlowTemplate = new TaskFlowTemplate()
+                        {
+                            Id = taskFlowExecutionInstance.Id,
+                            Name = taskFlowExecutionInstance.Name,
+                            CreationDateTime = DateTime.UtcNow,
+                        };
+
+                    foreach (var taskStage in taskFlowExecutionInstance.Value.TaskStages)
+                    {
+                        var taskFlowStageTemplate = new TaskFlowStageTemplate()
+                            {
+                                Id = taskStage.Id,
+                                Name = taskStage.Name,
+                                CreationDateTime = taskStage.CreationDateTime,
+                            };
+                        taskFlowTemplate.TaskStages.Add(taskFlowStageTemplate);
+                        foreach (var taskGroup in taskStage.TaskGroups)
+                        {
+                            var taskFlowGroupTemplate = new TaskFlowGroupTemplate()
+                                {
+                                    Id = taskGroup.Id,
+                                    Name = taskGroup.Name,
+                                    CreationDateTime = taskGroup.CreationDateTime,
+                                };
+                            taskFlowStageTemplate.TaskGroups.Add(taskFlowGroupTemplate);
+                            foreach (var task in taskGroup.Tasks)
+                            {
+                                var taskFlowTaskTemplate = new TaskFlowTaskTemplate()
+                                    {
+                                        Id = task.Id,
+                                        Name = task.Name,
+                                        CreationDateTime = task.CreationDateTime,
+                                    };
+                                taskFlowGroupTemplate.Tasks.Add(taskFlowTaskTemplate);
+                            }
+                        }
+
+                    }
+                }
+            }
+            else
+            {
+                taskFlowTemplate = new TaskFlowTemplate();
+                await taskFlowTemplate.InitDesignerDefaultsAsync();
+            }
+            if (taskFlowTemplate != null)
+            {
+                _taskFlowTemplateNode = new TaskFlowTemplateNode();
+                _taskFlowTemplateNode.Position = new Point(100, 100);
+                _taskFlowTemplateNode.Template = taskFlowTemplate;
+                _blazorDiagram.Nodes.Add(_taskFlowTemplateNode);
+            }
         }
-        else
+        catch (Exception ex)
         {
-          
+
         }
-        return base.OnInitializedAsync();
+
+        await base.OnInitializedAsync();
     }
 
     void OnNodeAdded(NodeModel nodeModel)

@@ -21,7 +21,7 @@ public class JobFactory : IJobFactory
     {
         var job = _serviceProvider.GetService(bundle.JobDetail.JobType) as JobBase;
         job.Properties = bundle.JobDetail.JobDataMap[nameof(JobBase.Properties)] as IDictionary<string, object?>;
-        job.TriggerSource = (TaskTriggerSource)bundle.JobDetail.JobDataMap[nameof(JobBase.TriggerSource)];
+        job.TriggerSource = (TriggerSource)bundle.JobDetail.JobDataMap[nameof(JobBase.TriggerSource)];
         job.AsyncDispoable = bundle.JobDetail.JobDataMap[nameof(JobBase.AsyncDispoable)] as IAsyncDisposable;
         return job;
     }

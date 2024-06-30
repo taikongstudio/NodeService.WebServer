@@ -1,0 +1,109 @@
+﻿@namespace NodeService.WebServer.UI.Pages.TaskFlows.Instances
+@page "/TaskFlows/Instances/"
+@inject NotificationService _notice
+@inject ApiService ApiService
+@inject ConfirmService _confirmService
+@inject NavigationManager NavigationManager
+@using NodeService.WebServer.UI.Pages.Components
+@implements IDisposable
+
+<GridContent>
+
+    <Table Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           EnableVirtualization="false"
+           TItem="TaskFlowExecutionInstanceModel"
+           OnChange="OnTableChange"
+           DataSource="@_dataSource.ItemsSource"
+           Resizable
+           PageIndex="@_dataSource.PageIndex"
+           PageSize="@_dataSource.PageSize"
+           Total="@_dataSource.TotalCount"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="6">
+                    <Title Level="3">任务流实例</Title>
+                </GridCol>
+                <GridCol Span="6" Offset="12">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync" />
+                </GridCol>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <ActionColumn Fixed="right" Width="250" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="() => GotoViewer(context)"></Button>
+                        </SpaceItem>
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+        </ColumnDefinitions>
+
+    </Table>
+</GridContent>
+
+@code {
+
+    RoutedPaginationDataSource<TaskFlowExecutionInstanceModel, PaginationQueryParameters> _dataSource;
+
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new RoutedPaginationDataSource<TaskFlowExecutionInstanceModel, PaginationQueryParameters>(
+            NavigationManager.BaseUri,
+            ApiService.QueryTaskFlowExecutionInstanceListAsync,
+            StateHasChanged);
+        _dataSource.ExceptionHandler = OnExepction;
+        base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
+    }
+
+    void GotoViewer(TaskFlowExecutionInstanceModel model)
+    {
+        NavigationManager.NavigateTo($"/TaskFlows/Instances/View/{model.Id}");
+    }
+
+
+    async Task OnTableChange(QueryModel<TaskFlowExecutionInstanceModel> query)
+    {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        await _dataSource.RequestAsync();
+    }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
+
+}

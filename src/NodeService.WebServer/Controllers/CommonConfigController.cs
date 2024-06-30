@@ -160,7 +160,7 @@ public partial class CommonConfigController : Controller
 
     private async Task<ApiResponse> AddOrUpdateConfigurationAsync<T>(
         T model,
-        Func<T, Task>? changesFunc = null,
+        Func<T, ValueTask>? changesFunc = null,
         CancellationToken cancellationToken = default)
         where T : JsonBasedDataModel
     {

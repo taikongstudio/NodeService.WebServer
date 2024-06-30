@@ -32,7 +32,7 @@
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
-                    <Title Level="3">数据库配置</Title>
+                    <Title Level="3">任务流模板</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
@@ -56,6 +56,9 @@
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle" OnClick="() =>InvokeTaskFlowTemplateAsync(context)"></Button>
+                        </SpaceItem>
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Copy" OnClick="() => GotoDesigner(context.CopyClone<TaskFlowTemplateModel>())"></Button>
                         </SpaceItem>
@@ -199,6 +202,24 @@
         }
 
         await _dataSource.RequestAsync();
+    }
+
+    async Task InvokeTaskFlowTemplateAsync(TaskFlowTemplateModel taskFlowTemplate)
+    {
+        try
+        {
+            var invokeTaskFlowParameters = new InvokeTaskFlowParameters()
+                {
+                    TaskFlowTemplateId = taskFlowTemplate.Id,
+                    UserName = "WebUser"
+                };
+            await ApiService.InvokeTaskFlowAsync(invokeTaskFlowParameters);
+        }
+        catch (Exception ex)
+        {
+            
+        }
+
     }
 
     public void Dispose()

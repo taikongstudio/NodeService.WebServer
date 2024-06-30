@@ -15,7 +15,7 @@ public abstract class JobBase : IJob, IAsyncDisposable
     public IServiceProvider ServiceProvider { get; private set; }
 
 
-    public TaskTriggerSource TriggerSource { get; set; }
+    public TriggerSource TriggerSource { get; set; }
 
     public required IDictionary<string, object?> Properties { get; set; }
 

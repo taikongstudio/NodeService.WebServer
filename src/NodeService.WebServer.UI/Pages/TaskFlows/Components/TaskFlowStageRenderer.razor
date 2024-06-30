@@ -1,4 +1,4 @@
-﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 
 
 <div @ondrag:stopPropagation @ondragstart:stopPropagation>
@@ -15,9 +15,9 @@
 
 @code {
     [Parameter]
-    public List<TaskFlowTemplateStage> TaskStages{ get; set; }
+    public List<TaskFlowStageTemplate> TaskStages{ get; set; }
 
     [Parameter]
-    public EventCallback<TaskFlowTemplateStage> OnTaskStageRemoved { get; set; }
+    public EventCallback<TaskFlowStageTemplate> OnTaskStageRemoved { get; set; }
 
 }

@@ -48,7 +48,7 @@ public class TaskScheduler
                 { nameof(JobBase.TriggerSource), jobSchedulerKey.TriggerSource },
                 {
                     nameof(JobBase.AsyncDispoable), jobSchedulerKey.TriggerSource
-                                                    == TaskTriggerSource.Manual
+                                                    == TriggerSource.Manual
                         ? asyncDisposable
                         : null
                 }

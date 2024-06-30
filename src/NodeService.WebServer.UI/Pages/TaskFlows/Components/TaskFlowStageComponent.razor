@@ -1,4 +1,4 @@
-﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 
 
 
@@ -23,14 +23,14 @@
     </Card>
 @code {
     [Parameter]
-    public TaskFlowTemplateStage TaskStage { get; set; }
+    public TaskFlowStageTemplate TaskStage { get; set; }
 
     [Parameter]
 
-    public EventCallback<TaskFlowTemplateStage> OnRemoved { get; set; }
+    public EventCallback<TaskFlowStageTemplate> OnRemoved { get; set; }
 
-    TaskFlowTemplateGroup? _dragging;
-    void OnDrop(DragEventArgs e, TaskFlowTemplateGroup item)
+    TaskFlowGroupTemplate? _dragging;
+    void OnDrop(DragEventArgs e, TaskFlowGroupTemplate item)
     {
         if (item != null && _dragging != null)
         {
@@ -42,7 +42,7 @@
         }
     }
 
-    void OnDragStart(DragEventArgs e, TaskFlowTemplateGroup item)
+    void OnDragStart(DragEventArgs e, TaskFlowGroupTemplate item)
     {
         e.DataTransfer.DropEffect = "copyMove";
         e.DataTransfer.EffectAllowed = "copyMove";

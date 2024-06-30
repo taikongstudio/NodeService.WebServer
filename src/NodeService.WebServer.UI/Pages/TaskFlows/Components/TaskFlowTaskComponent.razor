@@ -1,4 +1,4 @@
-﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 
 <TaskDefinitionEditor  @ref="_taskDefinitionEditor" />
 <CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
@@ -44,10 +44,10 @@
     ;
 
     [Parameter]
-    public TaskFlowTemplateTask Task{ get; set; }
+    public TaskFlowTaskTemplate Task{ get; set; }
 
     [Parameter]
-    public EventCallback<TaskFlowTemplateTask> OnRemoved { get; set; }
+    public EventCallback<TaskFlowTaskTemplate> OnRemoved { get; set; }
 
     private async Task OnTaskClicked()
     {

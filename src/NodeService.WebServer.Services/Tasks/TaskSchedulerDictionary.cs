@@ -2,7 +2,7 @@
 
 public readonly record struct TaskSchedulerKey
 {
-    public TaskSchedulerKey(string key, TaskTriggerSource triggerSource, string context)
+    public TaskSchedulerKey(string key, TriggerSource triggerSource, string context)
     {
         Key = key;
         TriggerSource = triggerSource;
@@ -11,7 +11,7 @@ public readonly record struct TaskSchedulerKey
 
     public string Key { get; init; }
 
-    public TaskTriggerSource TriggerSource { get; init; }
+    public TriggerSource TriggerSource { get; init; }
 
     public string Context { get; init; }
 }

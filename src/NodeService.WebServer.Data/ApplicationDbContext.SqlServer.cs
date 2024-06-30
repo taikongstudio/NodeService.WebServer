@@ -382,9 +382,23 @@ public partial class ApplicationDbContext
                 {
                     ownedNavigationBuilder.ToJson();
                     ownedNavigationBuilder.Property(x => x.TaskStages)
-                        .HasConversion(x => Serialize(x), x => Deserialize<List<TaskFlowTemplateStage>>(x))
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<TaskFlowStageTemplate>>(x))
                         .Metadata
-                        .SetValueComparer(GetEnumerableComparer<TaskFlowTemplateStage>());
+                        .SetValueComparer(GetEnumerableComparer<TaskFlowStageTemplate>());
+                });
+        });
+
+        modelBuilder.Entity<TaskFlowExecutionInstanceModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder.Property(x => x.TaskStages)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<TaskFlowStageExecutionInstance>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<TaskFlowStageExecutionInstance>());
                 });
         });
     }

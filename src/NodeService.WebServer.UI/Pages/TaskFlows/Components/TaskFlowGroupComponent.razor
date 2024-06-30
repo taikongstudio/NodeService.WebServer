@@ -1,5 +1,5 @@
 ﻿@using Blazor.Diagrams
-@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 <style type="text/css">
     .ant-card .ant-card-body {
         padding:2px 2px 2px 2px;
@@ -42,8 +42,8 @@
 
 
 @code {
-    TaskFlowTemplateTask? _dragging;
-    void OnDrop(DragEventArgs e, TaskFlowTemplateTask item)
+    TaskFlowTaskTemplate? _dragging;
+    void OnDrop(DragEventArgs e, TaskFlowTaskTemplate item)
     {
         if (item !=null&& _dragging!=null)
         {
@@ -55,7 +55,7 @@
         }
     }
 
-    void OnDragStart(DragEventArgs e, TaskFlowTemplateTask item)
+    void OnDragStart(DragEventArgs e, TaskFlowTaskTemplate item)
     {
         e.DataTransfer.DropEffect = "copyMove";
         e.DataTransfer.EffectAllowed = "copyMove";
@@ -65,10 +65,10 @@
 
 
     [Parameter]
-    public TaskFlowTemplateGroup TaskGroup { get; set; }
+    public TaskFlowGroupTemplate TaskGroup { get; set; }
 
     [Parameter]
-    public EventCallback<TaskFlowTemplateGroup> OnRemoved { get; set; }
+    public EventCallback<TaskFlowGroupTemplate> OnRemoved { get; set; }
 
     [CascadingParameter]
     public BlazorDiagram BlazorDiagram { get; set; }

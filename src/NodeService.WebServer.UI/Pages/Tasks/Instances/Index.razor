@@ -109,10 +109,10 @@
             <PropertyColumn Title="触发源头" Sortable="true" Property="c => c.TriggerSource">
                 @switch (context.TriggerSource)
                 {
-                    case TaskTriggerSource.Schedule:
+                    case TriggerSource.Schedule:
                         <Text>调度触发</Text>
                         break;
-                    case TaskTriggerSource.Manual:
+                    case TriggerSource.Manual:
                         <Text>手动触发</Text>
                         break;
                 }

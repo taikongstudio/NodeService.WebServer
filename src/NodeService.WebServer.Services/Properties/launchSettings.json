@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "NodeService.WebServer.Services": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:55135;http://localhost:55136"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 @using System.Threading
 @inject ApiService ApiService
 @implements IDisposable
@@ -27,17 +27,21 @@
     [Parameter]
     public TaskFlowTemplate Template { get; set; }
 
+    [Parameter]
+    public TaskFlowExecutionInstanceModel? Instance { get; set; }
+
     System.Threading.Timer _timer;
 
     protected override void OnParametersSet()
     {
-        if (this.Template==null)
+        if (this.Template == null)
         {
             return;
         }
+
         if (!this.Template.IsDesignMode)
         {
-            _timer = new System.Threading.Timer(OnUpdate, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
+            _timer = new System.Threading.Timer(OnUpdate, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(20));
         }
         base.OnParametersSet();
     }

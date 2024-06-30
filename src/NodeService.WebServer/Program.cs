@@ -28,7 +28,6 @@ using NodeService.WebServer.Services.Notifications;
 using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.Services.VirtualFileSystem;
-using NodeService.WebServer.UI.Diagrams;
 using NodeService.WebServer.UI.Services;
 using OpenTelemetry.Metrics;
 using Quartz.Spi;
@@ -266,7 +265,7 @@ public class Program
         builder.Services.AddHostedService<NodeHealthyCheckService>();
         builder.Services.AddHostedService<FileRecordQueryService>();
         builder.Services.AddHostedService<FileRecordInsertUpdateDeleteService>();
-        builder.Services.AddHostedService<TaskActivationService>();
+        builder.Services.AddHostedService<TaskActivateService>();
         builder.Services.AddHostedService<NodeStatusChangeRecordService>();
         builder.Services.AddHostedService<DataQualityStatisticsService>();
         builder.Services.AddHostedService<DataQualityAlarmService>();
@@ -419,10 +418,9 @@ public class Program
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
-        builder.Services.AddSingleton<LayoutData>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
         builder.Services.AddSingleton<IAsyncQueue<TaskExecutionEventRequest>, AsyncQueue<TaskExecutionEventRequest>>();
-        builder.Services.AddSingleton<IAsyncQueue<TaskScheduleMessage>, AsyncQueue<TaskScheduleMessage>>();
+        builder.Services.AddSingleton<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>, AsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
         builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
         builder.Services.AddSingleton<IAsyncQueue<ConfigurationChangedEvent>, AsyncQueue<ConfigurationChangedEvent>>();
         builder.Services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
@@ -431,7 +429,7 @@ public class Program
         builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
         builder.Services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(1024, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(1024 * 2, TimeSpan.FromSeconds(10)));
-        builder.Services.AddSingleton(new BatchQueue<FireTaskParameters>(64, TimeSpan.FromSeconds(1)));
+        builder.Services.AddSingleton(new BatchQueue<TaskActivateServiceParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(1024, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(1024, TimeSpan.FromMinutes(30)));
         builder.Services.AddSingleton(

@@ -102,20 +102,20 @@
     ]
   },
   {
-    "path": "/Taskflows",
+    "path": "/TaskFlows",
     "name": "任务流",
-    "key": "Taskflows",
+    "key": "TaskFlows",
     "icon": "schedule",
     "children": [
       {
-        "path": "/Taskflows/Templates",
+        "path": "/TaskFlows/Templates",
         "name": "任务流模板",
-        "key": "Taskflows.Templates"
+        "key": "TaskFlows.Templates"
       },
       {
-        "path": "/Taskflows/Instances",
+        "path": "/TaskFlows/Instances",
         "name": "任务流实例",
-        "key": "Taskflows.Instances"
+        "key": "TaskFlows.Instances"
       }
     ]
   },

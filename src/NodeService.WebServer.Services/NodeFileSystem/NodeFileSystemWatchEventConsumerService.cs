@@ -6,6 +6,7 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
+using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
@@ -14,7 +15,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
     private readonly ILogger<NodeFileSystemWatchEventConsumerService> _logger;
     private readonly ExceptionCounter _exceptionCounter;
     private readonly BatchQueue<FileSystemWatchEventReportMessage> _reportMessageEventQueue;
-    private readonly BatchQueue<FireTaskParameters> _fireTaskParametersBatchQueue;
+    private readonly BatchQueue<TaskActivateServiceParameters> _fireTaskParametersBatchQueue;
     private readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepoFactory;
     private readonly ApplicationRepositoryFactory<FileSystemWatchConfigModel> _fileSystemWatchRepoFactory;
     private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
@@ -24,7 +25,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
         ILogger<NodeFileSystemWatchEventConsumerService> logger,
         ExceptionCounter exceptionCounter,
         BatchQueue<FileSystemWatchEventReportMessage> reportMessageEventQueue,
-        BatchQueue<FireTaskParameters> fireTaskParametersBatchQueue,
+        BatchQueue<TaskActivateServiceParameters> fireTaskParametersBatchQueue,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepoFactory,
         ApplicationRepositoryFactory<FileSystemWatchConfigModel> fileSystemWatchRepoFactory)
@@ -203,10 +204,10 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
                                     fileSystemWatchConfig.HandlerContext,
                                     cancellationToken);
                                 if (taskDefinition == null) continue;
-                                await _fireTaskParametersBatchQueue.SendAsync(new FireTaskParameters
+                                await _fireTaskParametersBatchQueue.SendAsync(new TaskActivateServiceParameters(new FireTaskParameters
                                 {
                                     FireTimeUtc = DateTime.UtcNow,
-                                    TriggerSource = TaskTriggerSource.Manual,
+                                    TriggerSource = TriggerSource.Manual,
                                     FireInstanceId = $"FileSystemWatch_{Guid.NewGuid()}",
                                     TaskDefinitionId = taskDefinition.Id,
                                     ScheduledFireTimeUtc = DateTime.UtcNow,
@@ -224,7 +225,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
                                         new StringEntry("PathList",
                                             JsonSerializer.Serialize<IEnumerable<string>>(counterInfo.PathList))
                                     ]
-                                }, cancellationToken);
+                                }), cancellationToken);
                                 break;
                             case FileSystemWatchEventHandler.AutoSync:
 

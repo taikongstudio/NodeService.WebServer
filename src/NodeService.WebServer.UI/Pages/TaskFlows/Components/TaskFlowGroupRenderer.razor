@@ -1,4 +1,4 @@
-﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 @using OneOf
 <style  type="text/css">
     .ant-timeline{
@@ -22,9 +22,9 @@
 
 
     [Parameter]
-    public TaskFlowTemplateStage TaskStage { get; set; }
+    public TaskFlowStageTemplate TaskStage { get; set; }
     [Parameter]
-    public EventCallback<TaskFlowTemplateGroup> OnGroupRemoved { get; set; }
+    public EventCallback<TaskFlowGroupTemplate> OnGroupRemoved { get; set; }
 
     bool ReverseGroups
     {
@@ -34,11 +34,11 @@
         }
     }
 
-    IEnumerable<TaskFlowTemplateGroup> _groups
+    IEnumerable<TaskFlowGroupTemplate> _groups
     {
         get
         {
-            return !ReverseGroups ? TaskStage.TaskGroups : TaskStage.TaskGroups.Reverse<TaskFlowTemplateGroup>();
+            return !ReverseGroups ? TaskStage.TaskGroups : TaskStage.TaskGroups.Reverse<TaskFlowGroupTemplate>();
         }
     }
 

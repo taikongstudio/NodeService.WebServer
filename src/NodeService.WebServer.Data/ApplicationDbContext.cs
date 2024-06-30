@@ -96,6 +96,8 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<ConfigurationVersionRecordModel> ConfigurationVersionRecordDbSet { get; set; }
 
+    public DbSet<TaskFlowTemplateModel> TaskFlowTemplateDbSet { get; set; }
+
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
                                     DynamicallyAccessedMemberTypes.NonPublicConstructors |

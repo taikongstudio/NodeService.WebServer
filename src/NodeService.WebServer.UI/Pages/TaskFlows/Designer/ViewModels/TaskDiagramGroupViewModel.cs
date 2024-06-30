@@ -4,9 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.UI.Pages.Tasks.Diagrams.Models
+namespace NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 {
-    public class NodeModel
-    {
-    }
+
 }

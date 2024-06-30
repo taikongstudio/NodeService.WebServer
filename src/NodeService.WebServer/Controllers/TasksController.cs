@@ -26,13 +26,15 @@ public class TasksController : Controller
     readonly BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _queryBatchQueue;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskInstanceRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskDiagramTemplateFactory;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
 
     public TasksController(
         IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskInstanceRepositoryFactory,
-       ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRepositoryFactory,
+        ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRepositoryFactory,
+        ApplicationRepositoryFactory<TaskFlowTemplateModel> taskDiagramTemplateFactory,
         INodeSessionService nodeSessionService,
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
@@ -44,6 +46,7 @@ public class TasksController : Controller
         _logger = logger;
         _taskInstanceRepositoryFactory = taskInstanceRepositoryFactory;
         _taskActivationRepositoryFactory = taskActivationRepositoryFactory;
+        _taskDiagramTemplateFactory = taskDiagramTemplateFactory;
         _nodeSessionService = nodeSessionService;
         _memoryCache = memoryCache;
         _taskLogRepoFactory = taskLogRepoFactory;
@@ -87,7 +90,7 @@ public class TasksController : Controller
         return apiResponse;
     }
 
-    [HttpGet("/api/Tasks/InstanceGroups/List")]
+    [HttpGet("/api/Tasks/ActiveRecords/List")]
     public async Task<PaginationResponse<TaskActivationRecordModel>> QueryTaskExecutionInstanceGroupListAsync(
     [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters
 )

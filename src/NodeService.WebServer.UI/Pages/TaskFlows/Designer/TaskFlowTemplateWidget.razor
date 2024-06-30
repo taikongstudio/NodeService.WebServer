@@ -1,0 +1,12 @@
+﻿@    using NodeService.WebServer.UI.Pages.TaskFlows.Components
+@    using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+
+
+<TaskFlowRenderer Template="@Node.Template"/>
+
+
+@code {
+    [Parameter]
+    public TaskFlowTemplateNode Node { get; set; }
+
+}

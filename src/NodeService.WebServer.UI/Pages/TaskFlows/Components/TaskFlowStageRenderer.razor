@@ -1,0 +1,23 @@
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+
+
+<div @ondrag:stopPropagation @ondragstart:stopPropagation>
+    <ul class="list-group list-group-horizontal">
+        @foreach (var taskStage in TaskStages)
+        {
+            <li class="list-group-item" style="padding:2px 2px 2px 2px;">
+                <TaskFlowStageComponent TaskStage="@taskStage" OnRemoved="OnTaskStageRemoved" />
+            </li>
+        }
+    </ul>
+</div>
+
+
+@code {
+    [Parameter]
+    public List<TaskFlowTemplateStage> TaskStages{ get; set; }
+
+    [Parameter]
+    public EventCallback<TaskFlowTemplateStage> OnTaskStageRemoved { get; set; }
+
+}

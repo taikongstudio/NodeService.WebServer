@@ -1,0 +1,20 @@
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+
+<div>
+
+    <Steps  >
+        @foreach (var taskStage in TaskStages)
+        {
+            <Step Status="process" Title="@taskStage.Name" Icon="loading"/>
+        }
+    </Steps>
+</div>
+
+@code {
+    RenderFragment processDot =@<Template>
+        <Icon Type="loading" Theme="outline" Style="font-size: 16px" Spin />;
+    </Template>;
+
+    [Parameter]
+    public List<TaskFlowTemplateStage> TaskStages { get; set; }
+}

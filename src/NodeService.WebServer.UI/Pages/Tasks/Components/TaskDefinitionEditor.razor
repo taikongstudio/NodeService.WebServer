@@ -272,13 +272,13 @@
             _loading = true;
             if (model == null)
             {
-                _taskDefinition.JobTypeDescId = null;
+                _taskDefinition.TaskTypeDescId = null;
                 _taskDefinition.TaskTypeDesc = null;
                 _taskDefinition.OptionValueEditors.Clear();
                 return;
             }
 
-            _taskDefinition.JobTypeDescId = model.Id;
+            _taskDefinition.TaskTypeDescId = model.Id;
             _taskDefinition.TaskTypeDesc = model;
 
             var optionValueEditors = new Dictionary<string, EditorBase>();

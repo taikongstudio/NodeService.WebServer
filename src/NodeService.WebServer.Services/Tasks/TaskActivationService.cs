@@ -366,11 +366,11 @@ public class TaskActivationService : BackgroundService
                             taskDefinitionId,
                             cancellationToken);
 
-                        if (taskDefinitionModel == null || string.IsNullOrEmpty(taskDefinitionModel.JobTypeDescId))
+                        if (taskDefinitionModel == null || string.IsNullOrEmpty(taskDefinitionModel.TaskTypeDescId))
                             continue;
 
                         taskDefinitionModel.TaskTypeDesc = await taskTypeDescRepo.GetByIdAsync(
-                            taskDefinitionModel.JobTypeDescId,
+                            taskDefinitionModel.TaskTypeDescId,
                             cancellationToken);
 
                         foreach (var fireTaskParameters in fireTaskParametersGroup)

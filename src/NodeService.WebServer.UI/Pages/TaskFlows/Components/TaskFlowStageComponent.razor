@@ -1,0 +1,53 @@
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+
+
+
+    <Card Bordered="false"   Style="width:300px;">
+        <TitleTemplate>
+            <Text>@TaskStage.Name</Text>
+        </TitleTemplate>
+            <Extra>
+                @if(TaskStage.IsEditable)
+                {
+                    <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlusCircle" OnClick="@TaskStage.AddTaskGroupAsync"></Button>
+                    <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" />
+                }
+                @if (TaskStage.IsRemoveable)
+                {
+                    <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>OnRemoved.InvokeAsync(TaskStage)" />
+                }
+            </Extra>
+            <Body>
+        <TaskFlowGroupRenderer TaskStage="@TaskStage" OnGroupRemoved="@TaskStage.RemoveTaskGroupAsync" />
+        </Body>
+    </Card>
+@code {
+    [Parameter]
+    public TaskFlowTemplateStage TaskStage { get; set; }
+
+    [Parameter]
+
+    public EventCallback<TaskFlowTemplateStage> OnRemoved { get; set; }
+
+    TaskFlowTemplateGroup? _dragging;
+    void OnDrop(DragEventArgs e, TaskFlowTemplateGroup item)
+    {
+        if (item != null && _dragging != null)
+        {
+            int index = TaskStage.TaskGroups.IndexOf(item);
+            TaskStage.TaskGroups.Remove(_dragging);
+            TaskStage.TaskGroups.Insert(index, _dragging);
+            _dragging = null;
+            StateHasChanged();
+        }
+    }
+
+    void OnDragStart(DragEventArgs e, TaskFlowTemplateGroup item)
+    {
+        e.DataTransfer.DropEffect = "copyMove";
+        e.DataTransfer.EffectAllowed = "copyMove";
+        _dragging = item;
+    }
+
+
+}

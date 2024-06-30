@@ -62,9 +62,9 @@
 
     async ValueTask InitAsync(TaskDefinitionModel model, CancellationToken cancellationToken = default)
     {
-        if (model.Value.JobTypeDescId != null)
+        if (model.Value.TaskTypeDescId != null)
         {
-            model.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(model.Value.JobTypeDescId);
+            model.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(model.Value.TaskTypeDescId);
         }
     }
 

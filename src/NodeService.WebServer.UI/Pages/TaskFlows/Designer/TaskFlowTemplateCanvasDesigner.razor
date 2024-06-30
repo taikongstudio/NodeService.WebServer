@@ -1,4 +1,5 @@
-﻿@page "/Tasks/Diagram"
+﻿@page "/TaskFlows/Templates/Designer/{TemplateId}"
+@page "/TaskFlows/Templates/Designer"
 
 @using Blazor.Diagrams
 @using Blazor.Diagrams.Components
@@ -6,93 +7,94 @@
 @using Blazor.Diagrams.Core.Models
 @using Blazor.Diagrams.Core.Geometry;
 @using Blazor.Diagrams.Core.Models.Base
+@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
 @using Point = Blazor.Diagrams.Core.Geometry.Point;
 @using PointerEventArgs = Blazor.Diagrams.Core.Events.PointerEventArgs;
 @using NodeService.WebServer.UI.Diagrams
 @using NodeService.WebServer.UI.Diagrams.Components
 @using NodeService.WebServer.UI.Diagrams.Demos
-@layout NodeService.WebServer.UI.Diagrams.Layouts.DemoLayout
-@inject LayoutData LayoutData
+@layout NodeService.WebServer.UI.Diagrams.Layouts.TaskDiagramLayout
+@inject ApiService ApiService
 
 <PageTitle>任务流程图</PageTitle>
 
     <div class="d-flex @NavMenuCssClass" id="wrapper">
-        <div class="bg-light border-right" id="sidebar-wrapper">
-        <div class="sidebar-heading">工具箱</div>
-            <ul class="list-group list-group-flush">
-                <DemoMenu Href="demos/simple" Text="Simple" />
-                <DemoMenu Href="demos/locked" Text="Locked" />
-                <DemoMenu Href="demos/events" Text="Events" />
-                <DemoMenu Href="demos/dynamic-insertions" Text="Dynamic insertions" />
-                <DemoMenu Href="demos/performance" Text="Performance" />
-                <DemoMenu Href="demos/zoomtofit" Text="Zoom to fit" />
-                <DemoMenu Href="demos/snaptogrid" Text="Snap to Grid" />
-                <DemoMenu Href="demos/drag-and-drop" Text="Drag & Drop" />
-                <DemoMenu Text="Nodes">
-                    <li>
-                        <a href="nodes/svg" class="list-group-item list-group-item-action bg-light">SVG</a>
-                    </li>
-                    <li>
-                        <a href="nodes/portless-links" class="list-group-item list-group-item-action bg-light">Portless Links</a>
-                    </li>
-                </DemoMenu>
-                <DemoMenu Text="Links">
-                    <li>
-                        <a href="links/snapping" class="list-group-item list-group-item-action bg-light">Snapping</a>
-                    </li>
-                    <li>
-                        <a href="links/labels" class="list-group-item list-group-item-action bg-light">Labels</a>
-                    </li>
-                    <li>
-                        <a href="links/vertices" class="list-group-item list-group-item-action bg-light">Vertices</a>
-                    </li>
-                    <li>
-                        <a href="links/markers" class="list-group-item list-group-item-action bg-light">Markers</a>
-                    </li>
-                    <li>
-                        <a href="links/routers" class="list-group-item list-group-item-action bg-light">Routers</a>
-                    </li>
-                    <li>
-                        <a href="links/path-generators" class="list-group-item list-group-item-action bg-light">Path generators</a>
-                    </li>
-                </DemoMenu>
-                <DemoMenu Text="Groups">
-                    <li>
-                        <a href="demos/groups" class="list-group-item list-group-item-action bg-light">Simple</a>
-                    </li>
-                    <li>
-                        <a href="demos/groups-factory" class="list-group-item list-group-item-action bg-light">Factory</a>
-                    </li>
-                    <li>
-                        <a href="demos/groups-dynamic" class="list-group-item list-group-item-action bg-light">Dynamic</a>
-                    </li>
-                    <li>
-                        <a href="demos/groups-custom-shortcut" class="list-group-item list-group-item-action bg-light">Custom shortcut</a>
-                    </li>
-                </DemoMenu>
-                <DemoMenu Text="Customization">
-                    <li>
-                        <a href="demos/custom-node" class="list-group-item list-group-item-action bg-light">Custom node</a>
-                    </li>
-                    <li>
-                        <a href="demos/custom-link" class="list-group-item list-group-item-action bg-light">Custom link</a>
-                    </li>
-                    <li>
-                        <a href="demos/custom-port" class="list-group-item list-group-item-action bg-light">Custom port</a>
-                    </li>
-                    <li>
-                        <a href="demos/custom-group" class="list-group-item list-group-item-action bg-light">Custom group</a>
-                    </li>
-                    <li>
-                        <a href="demos/custom-svg-group" class="list-group-item list-group-item-action bg-light">Custom SVG group</a>
-                    </li>
-                </DemoMenu>
-                <DemoMenu Text="Algorithms">
-                    <li>
-                        <a href="demos/reconnect-links" class="list-group-item list-group-item-action bg-light">Reconnect links</a>
-                    </li>
-                </DemoMenu>
-            </ul>
+    <div class="bg-light border-right" id="sidebar-wrapper">
+        <div class="sidebar-heading">Demos</div>
+        <ul class="list-group list-group-flush">
+            <DemoMenu Href="demos/simple" Text="Simple" />
+            <DemoMenu Href="demos/locked" Text="Locked" />
+            <DemoMenu Href="demos/events" Text="Events" />
+            <DemoMenu Href="demos/dynamic-insertions" Text="Dynamic insertions" />
+            <DemoMenu Href="demos/performance" Text="Performance" />
+            <DemoMenu Href="demos/zoomtofit" Text="Zoom to fit" />
+            <DemoMenu Href="demos/snaptogrid" Text="Snap to Grid" />
+            <DemoMenu Href="demos/drag-and-drop" Text="Drag & Drop" />
+            <DemoMenu Text="Nodes">
+                <li>
+                    <a href="nodes/svg" class="list-group-item list-group-item-action bg-light">SVG</a>
+                </li>
+                <li>
+                    <a href="nodes/portless-links" class="list-group-item list-group-item-action bg-light">Portless Links</a>
+                </li>
+            </DemoMenu>
+            <DemoMenu Text="Links">
+                <li>
+                    <a href="links/snapping" class="list-group-item list-group-item-action bg-light">Snapping</a>
+                </li>
+                <li>
+                    <a href="links/labels" class="list-group-item list-group-item-action bg-light">Labels</a>
+                </li>
+                <li>
+                    <a href="links/vertices" class="list-group-item list-group-item-action bg-light">Vertices</a>
+                </li>
+                <li>
+                    <a href="links/markers" class="list-group-item list-group-item-action bg-light">Markers</a>
+                </li>
+                <li>
+                    <a href="links/routers" class="list-group-item list-group-item-action bg-light">Routers</a>
+                </li>
+                <li>
+                    <a href="links/path-generators" class="list-group-item list-group-item-action bg-light">Path generators</a>
+                </li>
+            </DemoMenu>
+            <DemoMenu Text="Groups">
+                <li>
+                    <a href="demos/groups" class="list-group-item list-group-item-action bg-light">Simple</a>
+                </li>
+                <li>
+                    <a href="demos/groups-factory" class="list-group-item list-group-item-action bg-light">Factory</a>
+                </li>
+                <li>
+                    <a href="demos/groups-dynamic" class="list-group-item list-group-item-action bg-light">Dynamic</a>
+                </li>
+                <li>
+                    <a href="demos/groups-custom-shortcut" class="list-group-item list-group-item-action bg-light">Custom shortcut</a>
+                </li>
+            </DemoMenu>
+            <DemoMenu Text="Customization">
+                <li>
+                    <a href="demos/custom-node" class="list-group-item list-group-item-action bg-light">Custom node</a>
+                </li>
+                <li>
+                    <a href="demos/custom-link" class="list-group-item list-group-item-action bg-light">Custom link</a>
+                </li>
+                <li>
+                    <a href="demos/custom-port" class="list-group-item list-group-item-action bg-light">Custom port</a>
+                </li>
+                <li>
+                    <a href="demos/custom-group" class="list-group-item list-group-item-action bg-light">Custom group</a>
+                </li>
+                <li>
+                    <a href="demos/custom-svg-group" class="list-group-item list-group-item-action bg-light">Custom SVG group</a>
+                </li>
+            </DemoMenu>
+            <DemoMenu Text="Algorithms">
+                <li>
+                    <a href="demos/reconnect-links" class="list-group-item list-group-item-action bg-light">Reconnect links</a>
+                </li>
+            </DemoMenu>
+        </ul>
         </div>
         <div id="page-content-wrapper">
             <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
@@ -121,29 +123,8 @@
             </nav>
             <div class="diagram-container">
             <div class="row h-100">
-                <div class="col-0" style="padding-right:0px" >
-                    @* Toolbox *@
-                    <div class="column no-gutters" style="background: #eee;">
-                        <div class="col-12" style="height:100px">
-                            <div class="text-center" draggable="true" @ondragstart="() => OnDragComponentStart(0)">
-                                <div style="pointer-events:none;">
-                                    <img class="d-block m-auto" src="_content/NodeService.WebServer.UI.Diagrams/img/DefaultNodeWidget.png" />
-                                    <span>Default Node</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12" style="height:100px">
-                            <div class="text-center" draggable="true" @ondragstart="() => OnDragComponentStart(1)">
-                                <div style="pointer-events:none;">
-                                    <img class="d-block m-auto" src="_content/NodeService.WebServer.UI.Diagrams/img/BotAnswerNodeWidget.png" />
-                                    <span>Bot Answer Node</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-10" style="padding-left:0px"  ondragover="event.preventDefault();" @ondragover:preventDefault @ondrop="OnDropAsync">
-                    <div style="position: absolute; z-index: 9999;width:100px;height:100px">
+                <div class="col-12"  @ondragstart:preventDefault @ondragover:preventDefault @ondrop="OnDropAsync">
+                    <div style="position: absolute; z-index: 9999;width:">
                         
                         <div class="custom-control custom-checkbox ml-2">
                             <input id="zoomCheckbox" type="checkbox" class="custom-control-input" @onchange="ToggleZoom" checked />
@@ -191,6 +172,9 @@
 
     public IEnumerable<SelectableModel> SelectedObjects => _blazorDiagram.GetSelectedModels();
 
+    [Parameter]
+    public string TemplateId{ get; set; }
+
     void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
@@ -228,15 +212,11 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
-        LayoutData.OnDataChanged = StateHasChanged;
-        LayoutData.Title = "Drag & Drop";
-        LayoutData.Info = "A very simple drag & drop implementation using the HTML5 events.";
-        LayoutData.DataChanged();
 
         _blazorDiagram.Options.LinksLayerOrder = 2;
         _blazorDiagram.Options.NodesLayerOrder = 1;
         _blazorDiagram.Options.GridSize = 75;
-        _blazorDiagram.Options.Links.EnableSnapping = true;
+        //_blazorDiagram.Options.Links.EnableSnapping = true;
         _blazorDiagram.Options.AllowMultiSelection = true;
 
         _blazorDiagram.Changed += StateHasChanged;
@@ -250,7 +230,25 @@
         _blazorDiagram.PointerUp += OnPointerUp;
         _blazorDiagram.PointerClick += OnPointerClick;
         _blazorDiagram.PointerDoubleClick += OnPointerDoubleClick;
+        _blazorDiagram.RegisterComponent<TaskFlowTemplateNode, TaskFlowTemplateWidget>();
 
+    }
+
+    protected override Task OnInitializedAsync()
+    {
+        var taskDiagramNode = new TaskFlowTemplateNode();
+        if (this.TemplateId == null)
+        {
+            taskDiagramNode.Position = new Point(100, 100);
+            taskDiagramNode.Template = new TaskFlowTemplate();
+            taskDiagramNode.Template.InitDesignerDefaults();
+            _blazorDiagram.Nodes.Add(taskDiagramNode);
+        }
+        else
+        {
+          
+        }
+        return base.OnInitializedAsync();
     }
 
     void OnNodeAdded(NodeModel nodeModel)

@@ -1,0 +1,80 @@
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+
+<TaskDefinitionEditor  @ref="_taskDefinitionEditor" />
+<CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
+    <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
+</CommonDialog>
+<DropdownButton Icon="setting"  Block OnClick="@OnTaskClicked">
+    <Overlay>
+        @_overlayMenu
+    </Overlay>
+    <ChildContent>
+        <div style="display: flex;align-items:center;height:100%;padding-left:25px;">
+            <Text Style="">@Task.Name</Text>
+        </div>
+    </ChildContent>
+</DropdownButton>
+
+@code {
+    TaskDefinitionEditor _taskDefinitionEditor;
+    CommonDialog _taskDefinitionDialog;
+    TaskDefinitionSelector _taskDefinitionSelector;
+    IEnumerable<TaskDefinitionModel> _selectedTaskDefinitions;
+
+
+
+    private RenderFragment _overlayMenu =>@<Menu>
+    @if(Task.IsEditable){
+        <MenuItem Icon="@IconType.Outline.Delete" OnClick="()=>OnRemoved.InvokeAsync(Task)">删除任务</MenuItem>
+        @if (Task.TaskDefinitionId==null)
+        {
+            <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">创建任务</MenuItem>
+        }
+        else
+        {
+            <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">编辑任务</MenuItem>
+        }
+        <MenuItem Icon="@IconType.Outline.Select" OnClick="@ShowTaskDefinitionSelector">选择其他任务</MenuItem>
+    }
+    else
+    {
+        <MenuItem Icon="@IconType.Outline.Close" OnClick="@Task.CancelAsync">停止任务</MenuItem>
+    }
+    </Menu>
+    ;
+
+    [Parameter]
+    public TaskFlowTemplateTask Task{ get; set; }
+
+    [Parameter]
+    public EventCallback<TaskFlowTemplateTask> OnRemoved { get; set; }
+
+    private async Task OnTaskClicked()
+    {
+
+    }
+
+    private async Task ShowTaskDefinitionEditor()
+    {
+        await _taskDefinitionEditor.ShowAsync(this.Task.TaskDefinition);
+    }
+
+    private async Task ShowTaskDefinitionSelector()
+    {
+        await _taskDefinitionDialog.ShowAsync();
+    }
+
+    private async Task OnTaskDefinitionSelectorDialogClosed()
+    {
+        if (this._selectedTaskDefinitions == null)
+        {
+            return;
+        }
+        var taskDefinitionModel = this._selectedTaskDefinitions.FirstOrDefault();
+        if (taskDefinitionModel == null)
+        {
+            return;
+        }
+        await Task.SetTaskDefinitionAsync(taskDefinitionModel);
+    }
+}

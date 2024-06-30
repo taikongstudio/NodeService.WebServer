@@ -1,0 +1,80 @@
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+@using OneOf
+<style  type="text/css">
+    .ant-timeline{
+        padding-top:10px;
+    }
+
+        .ant-timeline .ant-timeline-item{
+            padding-bottom:5px;
+        }
+</style>
+
+<Timeline Pending="_pendding" Reverse="@ReverseGroups">
+    @foreach (var taskGroup in _groups)
+    {
+        <TimelineItem >
+            <TaskFlowGroupComponent TaskGroup="taskGroup" OnRemoved="OnGroupRemoved" />
+        </TimelineItem>
+    }
+</Timeline>
+@code {
+
+
+    [Parameter]
+    public TaskFlowTemplateStage TaskStage { get; set; }
+    [Parameter]
+    public EventCallback<TaskFlowTemplateGroup> OnGroupRemoved { get; set; }
+
+    bool ReverseGroups
+    {
+        get
+        {
+            return TaskStage.ExecutionStatus >= TaskExecutionStatus.Triggered;
+        }
+    }
+
+    IEnumerable<TaskFlowTemplateGroup> _groups
+    {
+        get
+        {
+            return !ReverseGroups ? TaskStage.TaskGroups : TaskStage.TaskGroups.Reverse<TaskFlowTemplateGroup>();
+        }
+    }
+
+    OneOf<string, RenderFragment> _pendding
+    {
+        get
+        {
+            if (ReverseGroups)
+            {
+                RenderFragment renderFrangement =@<Template><Text>@TaskStage.ExecutionStatus</Text></Template> ;
+                return renderFrangement;
+            }
+            else
+            {
+                return (string)null;
+            }
+        }
+    }
+
+    RenderFragment dotWaitTemplate =
+    @<Template>
+        <Icon Type="clock-circle" Style="font-size: 16px;" />
+    </Template>;
+
+    RenderFragment dotRunningTemplate =
+    @<Template>
+           <Icon Type="loading" Theme="outline" Style="font-size: 16px" Spin />;
+    </Template>;
+
+    RenderFragment dotErrorTemplate =
+    @<Template>
+        <Icon Type="warning" Theme="outline" />
+    </Template>;
+
+    RenderFragment dotStopTemplate =
+    @<Template>
+        <Icon Type="warning" Theme="outline" />
+    </Template>;
+}

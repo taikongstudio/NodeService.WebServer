@@ -374,5 +374,18 @@ public partial class ApplicationDbContext
                 });
         });
 
+        modelBuilder.Entity<TaskFlowTemplateModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder.Property(x => x.TaskStages)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<TaskFlowTemplateStage>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<TaskFlowTemplateStage>());
+                });
+        });
     }
 }

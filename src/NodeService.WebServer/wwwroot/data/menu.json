@@ -86,23 +86,36 @@
     "children": [
       {
         "path": "/Tasks/Definitions",
-        "name": "任务流定义",
+        "name": "任务定义",
         "key": "Tasks.Definitions"
       },
       {
-        "path": "/Tasks/Definitions/Editor",
-        "name": "任务流定义编辑器",
-        "key": "Tasks.Definitions.Editor"
-      },
-      {
         "path": "/Tasks/Instances",
-        "name": "任务流实例",
+        "name": "任务实例",
         "key": "Tasks.Instances"
       },
       {
-        "path": "/Tasks/InstanceGroups",
-        "name": "任务流实例分组",
-        "key": "Tasks.InstanceGroups"
+        "path": "/Tasks/ActiveRecords",
+        "name": "任务实例组",
+        "key": "Tasks.ActiveRecords"
+      }
+    ]
+  },
+  {
+    "path": "/Taskflows",
+    "name": "任务流",
+    "key": "Taskflows",
+    "icon": "schedule",
+    "children": [
+      {
+        "path": "/Taskflows/Templates",
+        "name": "任务流模板",
+        "key": "Taskflows.Templates"
+      },
+      {
+        "path": "/Taskflows/Instances",
+        "name": "任务流实例",
+        "key": "Taskflows.Instances"
       }
     ]
   },

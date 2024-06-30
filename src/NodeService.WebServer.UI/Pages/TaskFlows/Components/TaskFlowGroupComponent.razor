@@ -1,0 +1,75 @@
+﻿@using Blazor.Diagrams
+@using NodeService.WebServer.UI.Pages.TaskFlows.ViewModels
+<style type="text/css">
+    .ant-card .ant-card-body {
+        padding:2px 2px 2px 2px;
+    }
+
+    .ant-list .ant-list-footer {
+        padding: 5px 5px 5px 5px;
+    }
+</style>
+
+<Card Size="small" >
+    <TitleTemplate>
+        <Text>@TaskGroup.Name</Text>
+    </TitleTemplate>
+    <Extra>
+        @if (TaskGroup.IsEditable)
+        {
+            <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlusCircle" OnClick="@TaskGroup.AddTaskAsync" />
+            <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" />
+        }
+        @if (TaskGroup.IsRemoveable)
+        {
+            <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="()=>OnRemoved.InvokeAsync(TaskGroup)" />
+        }
+
+    </Extra>
+    <Body>
+        <AntList Bordered="false" DataSource="@TaskGroup.Tasks">
+            <ChildContent Context="task">
+                <ListItem Style="padding:0px 0px 0px 0px;display:flex;flex-direction:column;align-content:stretch;align-items:stretch">
+                    <div draggable="true" @ondragstart:stopPropagation @ondrop:stopPropagation @ondrop="e=>OnDrop(e, task)" @ondragstart="e=>OnDragStart(e, task)" ondragover="event.preventDefault()">
+                        <TaskFlowTaskComponent Task="@task" OnRemoved="@TaskGroup.RemoveTaskAsync" />
+                    </div>
+                </ListItem>
+            </ChildContent>
+        </AntList>
+    </Body>
+</Card>
+
+
+
+@code {
+    TaskFlowTemplateTask? _dragging;
+    void OnDrop(DragEventArgs e, TaskFlowTemplateTask item)
+    {
+        if (item !=null&& _dragging!=null)
+        {
+            int index = TaskGroup.Tasks.IndexOf(item);
+            TaskGroup.Tasks.Remove(_dragging);
+            TaskGroup.Tasks.Insert(index, _dragging);
+            _dragging = null;
+            StateHasChanged();
+        }
+    }
+
+    void OnDragStart(DragEventArgs e, TaskFlowTemplateTask item)
+    {
+        e.DataTransfer.DropEffect = "copyMove";
+        e.DataTransfer.EffectAllowed = "copyMove";
+        _dragging = item;
+    }
+
+
+
+    [Parameter]
+    public TaskFlowTemplateGroup TaskGroup { get; set; }
+
+    [Parameter]
+    public EventCallback<TaskFlowTemplateGroup> OnRemoved { get; set; }
+
+    [CascadingParameter]
+    public BlazorDiagram BlazorDiagram { get; set; }
+}

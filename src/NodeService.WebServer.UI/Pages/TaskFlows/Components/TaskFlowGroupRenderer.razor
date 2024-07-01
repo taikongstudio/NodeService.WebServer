@@ -10,14 +10,18 @@
         }
 </style>
 
-<Timeline Pending="_pendding" Reverse="@ReverseGroups">
-    @foreach (var taskGroup in _groups)
-    {
-        <TimelineItem >
-            <TaskFlowGroupComponent TaskGroup="taskGroup" TaskGroupExecutionInstance="@FindTaskFlowGroupExecutionInstance(taskGroup)" OnRemoved="OnGroupRemoved" />
-        </TimelineItem>
-    }
-</Timeline>
+@if (TaskStage != null)
+{
+    <Timeline Pending="_pendding" Reverse="@ReverseGroups">
+        @foreach (var taskGroup in _groups)
+        {
+            <TimelineItem>
+                <TaskFlowGroupComponent TaskGroup="taskGroup" TaskGroupExecutionInstance="@FindTaskFlowGroupExecutionInstance(taskGroup)" OnRemoved="OnGroupRemoved" />
+            </TimelineItem>
+        }
+    </Timeline>
+}
+
 @code {
 
 

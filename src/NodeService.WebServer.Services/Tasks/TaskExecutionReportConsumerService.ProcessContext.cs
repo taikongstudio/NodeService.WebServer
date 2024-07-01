@@ -45,9 +45,14 @@ namespace NodeService.WebServer.Services.Tasks
 
             try
             {
+                var changedContexts = contexts.Where(x => x.StatusChanged || x.MessageChanged).ToArray();
+                if (!changedContexts.Any())
+                {
+                    return;
+                }
                 using var taskActivationRecordRepo = _taskActivationRecordRepoFactory.CreateRepository();
                 var taskActivationRecordList = new List<TaskActivationRecordModel>();
-                var changedContexts = contexts.Where(x => x.StatusChanged || x.MessageChanged);
+
                 foreach (var taskInstanceGroup in changedContexts.GroupBy(GetFireInstanceId))
                 {
 
@@ -217,7 +222,8 @@ namespace NodeService.WebServer.Services.Tasks
                     taskFlowTaskExecutionInstance.Status = activationRecord.Status;
                     taskFlowTaskExecutionInstance.TaskActiveRecordId = activationRecord.Id;
                 }
-
+                taskFlowExecutionInstance.Value = taskFlowExecutionInstance.Value with { };
+                //taskFlowExecutionInstanceRepo.DbContext.Entry(taskFlowExecutionInstance).State = EntityState.Modified;
                 taskFlowExecutionInstanceList.Add(taskFlowExecutionInstance);
             }
 

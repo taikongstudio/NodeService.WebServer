@@ -36,15 +36,15 @@
 {
     @if (TaskTemplate.IsEditable)
     {
-        <Button Block Icon="@GetTaskIcon()" OnClick="@OnTriggerButtonEditStateClicked">@TaskTemplate.Name</Button>
+        <Button Block Icon="@_icon" OnClick="@OnTriggerButtonEditStateClicked">@TaskTemplate.Name</Button>
     }else
     {
-        <Button Block Icon="@GetTaskIcon()" Loading="@GetLoadingState()">@TaskTemplate.Name</Button>
+        <Button Block Icon="@_icon" Loading="@_loading">@TaskTemplate.Name</Button>
     }
 }
 else
 {
-    <DropdownButton Icon="setting" Block OnClick="@OnTaskClicked">
+    <DropdownButton Icon="@_icon" Loading="@_loading" Block OnClick="@OnTaskClicked">
         <Overlay>
             @_overlayMenu
         </Overlay>
@@ -201,6 +201,8 @@ else
         await Task.CompletedTask;
     }
 
+    bool _loading;
+
     bool GetLoadingState()
     {
         if (ExecutionInstance == null)
@@ -219,6 +221,7 @@ else
         return false;
     }
 
+    string _icon;
 
     string? GetTaskIcon()
     {
@@ -251,5 +254,12 @@ else
         }
 
         return null;
+    }
+
+    protected override void OnParametersSet()
+    {
+        _icon = GetTaskIcon();
+        _loading = GetLoadingState();
+        base.OnParametersSet();
     }
 }

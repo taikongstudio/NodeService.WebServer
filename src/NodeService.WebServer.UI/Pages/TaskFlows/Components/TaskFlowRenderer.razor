@@ -38,10 +38,13 @@
         {
             return;
         }
-
+        if (_timer != null)
+        {
+            _timer.Dispose();
+        }
         if (!this.Template.IsDesignMode)
         {
-            _timer = new System.Threading.Timer(OnUpdate, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(20));
+            _timer = new System.Threading.Timer(OnUpdate, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
         }
 
         base.OnParametersSet();
@@ -49,19 +52,31 @@
 
     async void OnUpdate(object? state)
     {
-        if (this.Template.IsDesignMode)
+        try
         {
-            return;
+            if (this.Template.IsDesignMode)
+            {
+                return;
+            }
+            if (ExecutionInstance == null)
+            {
+                return;
+            }
+            var rsp = await ApiService.QueryTaskFlowExecutionInstanceAsync(ExecutionInstance.Id);
+            if (rsp.ErrorCode == 0)
+            {
+                ExecutionInstance = rsp.Result;
+            }
+            await InvokeAsync(() =>
+            {
+                StateHasChanged();
+            });
         }
-        if (ExecutionInstance == null)
+        catch (Exception ex)
         {
-            return;
+            
         }
-        var rsp = await ApiService.QueryTaskFlowExecutionInstanceAsync(ExecutionInstance.Id);
-        if (rsp.ErrorCode == 0)
-        {
-            ExecutionInstance = rsp.Result;
-        }
+
     }
 
     public void Dispose()

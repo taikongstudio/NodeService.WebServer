@@ -148,6 +148,10 @@ public partial class ApplicationDbContext : DbContext
 
     private static bool SequenceEqual<T>(IEnumerable<T> left, IEnumerable<T> right)
     {
+        if (left == right)
+        {
+            return true;
+        }
         return left.SequenceEqual(right);
     }
 

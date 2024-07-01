@@ -125,6 +125,11 @@ namespace NodeService.WebServer.Services.Tasks
                     taskFlowGroupExecutionInstance,
                     taskFlowTaskExecutionInstance,
                     cancellationToken);
+                if (taskFlowTaskExecutionInstance.Status == TaskExecutionStatus.Finished)
+                {
+                    continue;
+                }
+                break;
             }
             if (taskFlowGroupExecutionInstance.Tasks.Count == 0)
             {

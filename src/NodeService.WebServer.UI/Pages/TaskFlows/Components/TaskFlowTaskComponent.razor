@@ -2,7 +2,7 @@
 @inject ApiService ApiService
 @if (TaskTemplate.IsEditable)
 {
-    <TaskDefinitionEditor IsChildTaskSelectorVisible="false" Closed="@OnTaskDefinitionEditorDialogClosed" TaskDefinition="@TaskTemplate.TaskDefinition" @ref="_taskDefinitionEditor" />
+    <TaskDefinitionEditor IsChildTaskSelectorVisible="false" Closed="@OnTaskDefinitionEditorDialogClosed" @bind-TaskDefinition="@TaskTemplate.TaskDefinition" @ref="_taskDefinitionEditor" />
     <CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
         <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
     </CommonDialog>
@@ -39,14 +39,43 @@
         <Button Block Icon="@_icon" OnClick="@OnTriggerButtonEditStateClicked">@TaskTemplate.Name</Button>
     }else
     {
-        <Button Block Icon="@_icon" Loading="@_loading">@TaskTemplate.Name</Button>
+        <Button Block Icon="@_icon" >@TaskTemplate.Name</Button>
     }
 }
 else
 {
-    <DropdownButton Icon="@_icon" Loading="@_loading" Block OnClick="@OnTaskClicked">
+    <DropdownButton Icon="@_icon" Block OnClick="@OnTaskClicked">
         <Overlay>
-            @_overlayMenu
+               <Menu>
+                @if(TaskTemplate.IsEditable)
+                {
+                    if (TaskTemplate.TemplateType == TaskFlowTaskTemplateType.TriggerTask)
+                    {    
+
+                    }
+                    else
+                    {
+                        <MenuItem Icon="@IconType.Outline.Delete" OnClick="()=>OnRemoved.InvokeAsync(TaskTemplate)">删除任务</MenuItem>
+                        if (TaskTemplate.TaskDefinitionId==null)
+                        {
+                            <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">创建任务</MenuItem>
+                        }
+                        else
+                        {
+                            <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">编辑任务</MenuItem>
+                        }
+                        <MenuItem Icon="@IconType.Outline.Select" OnClick="@ShowTaskDefinitionSelector">选择其他任务</MenuItem>
+                    }
+
+                }
+                else if(ExecutionInstance != null)
+                {
+                    if(ExecutionInstance.Status== TaskExecutionStatus.Running)
+                    {
+                        <MenuItem Icon="@IconType.Outline.Close" OnClick="@TaskTemplate.CancelAsync">停止任务</MenuItem>
+                    }
+                }
+                </Menu>
         </Overlay>
         <ChildContent>
             <div style="display: flex;align-items:center;height:100%;padding-left:25px;">
@@ -62,35 +91,6 @@ else
     CommonDialog _triggerTaskSettingDialog;
     TaskDefinitionSelector _taskDefinitionSelector;
     IEnumerable<TaskDefinitionModel> _selectedTaskDefinitions;
-
-    private RenderFragment _overlayMenu =>@<Menu>
-    @if(TaskTemplate.IsEditable)
-    {
-        if (TaskTemplate.TemplateType== TaskFlowTaskTemplateType.TriggerTask)
-        {    
-
-        }
-        else
-        {
-            <MenuItem Icon="@IconType.Outline.Delete" OnClick="()=>OnRemoved.InvokeAsync(TaskTemplate)">删除任务</MenuItem>
-            @if (TaskTemplate.TaskDefinitionId==null)
-            {
-                <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">创建任务</MenuItem>
-            }
-            else
-            {
-                <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">编辑任务</MenuItem>
-            }
-            <MenuItem Icon="@IconType.Outline.Select" OnClick="@ShowTaskDefinitionSelector">选择其他任务</MenuItem>
-        }
-
-    }
-    else
-    {
-        <MenuItem Icon="@IconType.Outline.Close" OnClick="@TaskTemplate.CancelAsync">停止任务</MenuItem>
-    }
-    </Menu>
-    ;
 
     [Parameter]
     public TaskFlowTaskTemplate TaskTemplate{ get; set; }
@@ -225,13 +225,13 @@ else
 
     string? GetTaskIcon()
     {
-        if (this.TaskTemplate.IsEditable)
+        if (TaskTemplate.IsEditable)
         {
             return "edit";
         }
-        else if (this.ExecutionInstance != null)
+        else if (ExecutionInstance != null)
         {
-            switch (this.ExecutionInstance.Status)
+            switch (ExecutionInstance.Status)
             {
                 case TaskExecutionStatus.Unknown:
                     return "thunderbolt";
@@ -243,9 +243,9 @@ else
                 case TaskExecutionStatus.Finished:
                     return "check";
                 case TaskExecutionStatus.Cancelled:
-                    return "poweroff";
+                    return "close";
                 case TaskExecutionStatus.Failed:
-                    return "warning";
+                    return "issues-close";
                 case TaskExecutionStatus.PenddingTimeout:
                     return "clock-circle";
                 default:

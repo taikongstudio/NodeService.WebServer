@@ -45,6 +45,10 @@
     TaskFlowTaskTemplate? _dragging;
     void OnDrop(DragEventArgs e, TaskFlowTaskTemplate item)
     {
+        if (TaskGroupExecutionInstance != null)
+        {
+            return;
+        }
         if (item != null && _dragging != null)
         {
             int index = TaskGroup.Tasks.IndexOf(item);
@@ -57,6 +61,10 @@
 
     void OnDragStart(DragEventArgs e, TaskFlowTaskTemplate item)
     {
+        if (TaskGroupExecutionInstance != null)
+        {
+            return;
+        }
         e.DataTransfer.DropEffect = "copyMove";
         e.DataTransfer.EffectAllowed = "copyMove";
         _dragging = item;

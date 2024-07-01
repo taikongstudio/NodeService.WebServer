@@ -138,6 +138,7 @@
     [Parameter] public EventCallback Closed { get; set; }
     [Parameter] public bool IsChildTaskSelectorVisible { get; set; } = true;
     [Parameter] public TaskDefinitionModel TaskDefinition { get; set; }
+    [Parameter] public EventCallback<TaskDefinitionModel> TaskDefinitionChanged { get; set; }
 
     async Task HandleEditFormOk(MouseEventArgs e)
     {
@@ -317,30 +318,33 @@
     }
 
 
-    async Task ShowEditForm(TaskDefinitionModel? model = null)
+    async Task ShowEditForm()
     {
         _loading = true;
         _editFormVisible = true;
-        if (model == null)
+        if (TaskDefinition == null)
         {
             TaskDefinition = new TaskDefinitionModel
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    IsEnabled = true
+                };
+            if (TaskDefinitionChanged.HasDelegate)
             {
-                Id = Guid.NewGuid().ToString(),
-                IsEnabled = true
-            };
+                await TaskDefinitionChanged.InvokeAsync(TaskDefinition);
+            }
             _modalTitle = "新建配置";
         }
         else
         {
             _modalTitle = "编辑配置";
-            TaskDefinition = model;
-            if (model.Value.TaskTypeDesc == null)
+            if (TaskDefinition.Value.TaskTypeDesc == null)
             {
-                model.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(model.Value.TaskTypeDescId);
+                TaskDefinition.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(TaskDefinition.Value.TaskTypeDescId);
             }
-            await OnSelectedTaskTypeDescChanged([model.Value.TaskTypeDesc]);
-            _selectedTaskDefinitionList = await model.Value.ChildTaskDefinitions.QueryTaskDefinitionListAsync(ApiService);
-            _selectedNodes = await model.Value.NodeList.QueryNodeListAsync(ApiService);
+            await OnSelectedTaskTypeDescChanged([TaskDefinition.Value.TaskTypeDesc]);
+            _selectedTaskDefinitionList = await TaskDefinition.Value.ChildTaskDefinitions.QueryTaskDefinitionListAsync(ApiService);
+            _selectedNodes = await TaskDefinition.Value.NodeList.QueryNodeListAsync(ApiService);
         }
 
         _loading = false;
@@ -579,11 +583,8 @@
 
     public async Task ShowAsync(TaskDefinitionModel? taskDefintion = null)
     {
-        if (taskDefintion == null)
-        {
-            taskDefintion = this.TaskDefinition;
-        }
-        await ShowEditForm(taskDefintion);
+        this.TaskDefinition = taskDefintion;
+        await ShowEditForm();
         StateHasChanged();
     }
 

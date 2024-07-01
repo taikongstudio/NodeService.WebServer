@@ -2,7 +2,7 @@
 
 <div>
 
-    <Steps  >
+    <Steps>
         @foreach (var taskStage in TaskStages)
         {
             <Step Status="@GetTaskStageExecutionStatus(taskStage)" Title="@taskStage.Name" Icon="@GetTaskStageExecutionIcon(taskStage)" />
@@ -41,9 +41,9 @@
             case TaskExecutionStatus.Finished:
                 return "check";
             case TaskExecutionStatus.Cancelled:
-                return "poweroff";
+                return "close";
             case TaskExecutionStatus.Failed:
-                return "warning";
+                return "issues-close";
             case TaskExecutionStatus.PenddingTimeout:
                 return "clock-circle";
             default:
@@ -51,6 +51,8 @@
         }
         return "wait";
     }
+
+    string _status;
 
     public string GetTaskStageExecutionStatus(TaskFlowStageTemplate taskFlowStageTemplate)
     {

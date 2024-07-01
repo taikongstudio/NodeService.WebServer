@@ -109,7 +109,7 @@ namespace NodeService.WebServer.Controllers
                     TaskFlowTemplateId = invokeTaskFlowParameters.TaskFlowTemplateId,
                     FireTimeUtc = DateTime.UtcNow,
                     TriggerSource = TriggerSource.Manual,
-                    ParentTaskFlowInstanceId = null,
+                    TaskFlowParentInstanceId = null,
                     TaskFlowInstanceId = taskFlowInstanceId,
                     ScheduledFireTimeUtc = DateTime.UtcNow,
                 }));

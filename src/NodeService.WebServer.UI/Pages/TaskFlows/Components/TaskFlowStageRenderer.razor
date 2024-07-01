@@ -6,7 +6,10 @@
         @foreach (var taskStage in TaskStages)
         {
             <li class="list-group-item" style="padding:2px 2px 2px 2px;">
-                <TaskFlowStageComponent TaskStage="@taskStage" OnRemoved="OnTaskStageRemoved" />
+                <TaskFlowStageComponent 
+                    TaskStage="@taskStage" 
+                    TaskStageExecutionInstance="@FindTaskFlowStageExecutionInstance(taskStage)" 
+                    OnRemoved="OnTaskStageRemoved" />
             </li>
         }
     </ul>
@@ -18,6 +21,13 @@
     public List<TaskFlowStageTemplate> TaskStages{ get; set; }
 
     [Parameter]
+    public List<TaskFlowStageExecutionInstance> TaskStageExecutionInstances { get; set; }
+
+    [Parameter]
     public EventCallback<TaskFlowStageTemplate> OnTaskStageRemoved { get; set; }
 
+    private TaskFlowStageExecutionInstance? FindTaskFlowStageExecutionInstance(TaskFlowStageTemplate taskFlowStageTemplate)
+    {
+        return TaskStageExecutionInstances?.FirstOrDefault(x => x.TaskFlowStageTemplateId == taskFlowStageTemplate.Id);
+    }
 }

@@ -2,11 +2,10 @@
 @using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 
 
-<TaskFlowRenderer Template="@Node.Template"/>
+<TaskFlowRenderer Template="@Node.Template" ExecutionInstance="@Node.TaskFlowExecutionInstance" />
 
 
 @code {
     [Parameter]
     public TaskFlowTemplateNode Node { get; set; }
-
 }

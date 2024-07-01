@@ -4,12 +4,12 @@
     </ErrorContent>
     <ChildContent>
         <Modal Width="800"
-               Maximizable
+               Maximizable="@Maximizable"
                Style="top:0"
                Visible="@Visible"
                Title="@Title"
                Closable="true"
-               DefaultMaximized="true"
+               DefaultMaximized="@DefaultMaximized"
                VisibleChanged="OnVisibleChanged"
                AfterClose="Closed.InvokeAsync"
                OnOk="OnOk"
@@ -37,6 +37,10 @@
     [Parameter] public bool Visible { get; set; }
 
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    [Parameter] public bool Maximizable { get; set; } = true;
+
+    [Parameter] public bool DefaultMaximized { get; set; } = true;
 
     protected override void OnInitialized()
     {
@@ -74,7 +78,7 @@
 
     async Task HandleFormCancel(MouseEventArgs e)
     {
-        await OnOk.InvokeAsync();
+        await OnCancel.InvokeAsync();
     }
 
 }

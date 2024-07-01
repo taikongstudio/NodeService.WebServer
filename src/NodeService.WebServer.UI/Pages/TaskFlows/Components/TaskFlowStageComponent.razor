@@ -18,12 +18,15 @@
                 }
             </Extra>
             <Body>
-        <TaskFlowGroupRenderer TaskStage="@TaskStage" OnGroupRemoved="@TaskStage.RemoveTaskGroupAsync" />
+        <TaskFlowGroupRenderer TaskStage="@TaskStage" TaskStageExecutionInstance="@TaskStageExecutionInstance" OnGroupRemoved="@TaskStage.RemoveTaskGroupAsync" />
         </Body>
     </Card>
 @code {
     [Parameter]
     public TaskFlowStageTemplate TaskStage { get; set; }
+
+    [Parameter]
+    public TaskFlowStageExecutionInstance? TaskStageExecutionInstance { get; set; }
 
     [Parameter]
 

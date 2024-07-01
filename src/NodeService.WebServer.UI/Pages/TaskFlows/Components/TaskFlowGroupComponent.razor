@@ -28,10 +28,10 @@
     </Extra>
     <Body>
         <AntList Bordered="false" DataSource="@TaskGroup.Tasks">
-            <ChildContent Context="task">
+            <ChildContent Context="taskTemplate">
                 <ListItem Style="padding:0px 0px 0px 0px;display:flex;flex-direction:column;align-content:stretch;align-items:stretch">
-                    <div draggable="true" @ondragstart:stopPropagation @ondrop:stopPropagation @ondrop="e=>OnDrop(e, task)" @ondragstart="e=>OnDragStart(e, task)" ondragover="event.preventDefault()">
-                        <TaskFlowTaskComponent Task="@task" OnRemoved="@TaskGroup.RemoveTaskAsync" />
+                    <div draggable="true" @ondragstart:stopPropagation @ondrop:stopPropagation @ondrop="e=>OnDrop(e, taskTemplate)" @ondragstart="e=>OnDragStart(e, taskTemplate)" ondragover="event.preventDefault()">
+                        <TaskFlowTaskComponent TaskTemplate="@taskTemplate" ExecutionInstance="@FindTaskFlowStageExecutionInstance(taskTemplate)" OnRemoved="@TaskGroup.RemoveTaskAsync" />
                     </div>
                 </ListItem>
             </ChildContent>
@@ -45,7 +45,7 @@
     TaskFlowTaskTemplate? _dragging;
     void OnDrop(DragEventArgs e, TaskFlowTaskTemplate item)
     {
-        if (item !=null&& _dragging!=null)
+        if (item != null && _dragging != null)
         {
             int index = TaskGroup.Tasks.IndexOf(item);
             TaskGroup.Tasks.Remove(_dragging);
@@ -68,8 +68,16 @@
     public TaskFlowGroupTemplate TaskGroup { get; set; }
 
     [Parameter]
+    public TaskFlowGroupExecutionInstance? TaskGroupExecutionInstance { get; set; }
+
+    [Parameter]
     public EventCallback<TaskFlowGroupTemplate> OnRemoved { get; set; }
 
     [CascadingParameter]
     public BlazorDiagram BlazorDiagram { get; set; }
+
+    private TaskFlowTaskExecutionInstance? FindTaskFlowStageExecutionInstance(TaskFlowTaskTemplate  taskFlowTaskTemplate)
+    {
+        return TaskGroupExecutionInstance?.Tasks?.FirstOrDefault(x => x.TaskFlowTaskTemplateId == taskFlowTaskTemplate.Id);
+    }
 }

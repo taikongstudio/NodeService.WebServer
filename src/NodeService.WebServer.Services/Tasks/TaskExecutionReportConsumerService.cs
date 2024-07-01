@@ -32,12 +32,14 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
 
     readonly ExceptionCounter _exceptionCounter;
+    readonly TaskFlowExecutor _taskFlowExecutor;
     readonly ILogger<TaskExecutionReportConsumerService> _logger;
     readonly IMemoryCache _memoryCache;
     readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepoFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
     readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
+    readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
     readonly BatchQueue<TaskLogUnit> _taskLogUnitBatchQueue;
     readonly BatchQueue<TaskActivateServiceParameters> _taskScheduleAsyncQueue;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
@@ -51,6 +53,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
         ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
+        ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
         BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
         BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
@@ -61,13 +64,15 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         TaskScheduler taskScheduler,
         IMemoryCache memoryCache,
         WebServerCounter webServerCounter,
-        ExceptionCounter exceptionCounter
+        ExceptionCounter exceptionCounter,
+        TaskFlowExecutor taskFlowExecutor
     )
     {
         _taskExecutionInstanceRepoFactory = taskExecutionInstanceRepositoryFactory;
         _taskDefinitionRepoFactory = taskDefinitionRepositoryFactory;
         _taskActivationRecordRepoFactory = taskActivationRecordRepoFactory;
         _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
+        _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
         _taskExecutionReportBatchQueue = taskExecutionReportBatchQueue;
         _taskScheduleAsyncQueue = taskScheduleAsyncQueue;
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
@@ -79,6 +84,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _memoryCache = memoryCache;
         _webServerCounter = webServerCounter;
         _exceptionCounter = exceptionCounter;
+        _taskFlowExecutor = taskFlowExecutor;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -211,7 +217,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
             if (taskExecutionInstance == null) return;
             processContext.TaskExecutionInstance = taskExecutionInstance;
-            if (IsTerminatedStatus(taskExecutionInstance)) return;
+            if (taskExecutionInstance.IsTerminatedStatus()) return;
 
             var logEntriesRecieveCount = taskExecutionInstance.LogEntriesRecieveCount;
             var logEntriesSaveCount = taskExecutionInstance.LogEntriesSaveCount;
@@ -313,21 +319,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
-    }
-
-    bool IsTerminatedStatus(TaskExecutionInstanceModel taskExecutionInstance)
-    {
-        switch (taskExecutionInstance.Status)
-        {
-            case TaskExecutionStatus.Failed:
-            case TaskExecutionStatus.Finished:
-            case TaskExecutionStatus.Cancelled:
-            case TaskExecutionStatus.PenddingTimeout:
-                return true;
-            default:
-                break;
-        }
-        return false;
     }
 
     private async ValueTask CancelTimeLimitTaskAsync(TaskSchedulerKey jobSchedulerKey)

@@ -1,53 +1,146 @@
 ﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
+@inject ApiService ApiService
+@if (TaskTemplate.IsEditable)
+{
+    <TaskDefinitionEditor IsChildTaskSelectorVisible="false" Closed="@OnTaskDefinitionEditorDialogClosed" TaskDefinition="@TaskTemplate.TaskDefinition" @ref="_taskDefinitionEditor" />
+    <CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
+        <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
+    </CommonDialog>
+    <CommonDialog Maximizable="false" DefaultMaximized="false" @ref="_triggerTaskSettingDialog" Closed="OnTriggerTaskSettingsDialogClosed">
+        <Form Model="@TaskTemplate"
+              LabelColSpan="6"
+              Layout="@FormLayout.Horizontal"
+              WrapperColSpan="18">
+            <FormItem Label="触发方式">
+                <RadioGroup @bind-Value="@TaskTemplate.TriggerType">
+                    <Radio RadioButton Value="@TaskTriggerType.Schedule">定时触发</Radio>
+                    <Radio RadioButton Value="@TaskTriggerType.Manual">手动执行</Radio>
+                </RadioGroup>
+            </FormItem>
+            @if (TaskTemplate.TriggerType == TaskTriggerType.Schedule)
+            {
+                <FormItem Label="Cron表达式">
+                    <StringEntryTable ItemsSource="@TaskTemplate.CronExpressions"
+                                      NameTitle="备注"
+                                      ValueTitle="Cron表达式"
+                                      IsTagHidden="false"
+                                      AddingNewItem="AddCronExpression"
+                                      ValueChanged="OnCronExpressionValueChanged" />
+                </FormItem>
+            }
+        </Form>
+    </CommonDialog>
+}
 
-<TaskDefinitionEditor  @ref="_taskDefinitionEditor" />
-<CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
-    <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
-</CommonDialog>
-<DropdownButton Icon="setting"  Block OnClick="@OnTaskClicked">
-    <Overlay>
-        @_overlayMenu
-    </Overlay>
-    <ChildContent>
-        <div style="display: flex;align-items:center;height:100%;padding-left:25px;">
-            <Text Style="">@Task.Name</Text>
-        </div>
-    </ChildContent>
-</DropdownButton>
+@if (TaskTemplate.TemplateType == TaskFlowTaskTemplateType.TriggerTask)
+{
+    @if (TaskTemplate.IsEditable)
+    {
+        <Button Block Icon="@GetTaskIcon()" OnClick="@OnTriggerButtonEditStateClicked">@TaskTemplate.Name</Button>
+    }else
+    {
+        <Button Block Icon="@GetTaskIcon()" Loading="@GetLoadingState()">@TaskTemplate.Name</Button>
+    }
+}
+else
+{
+    <DropdownButton Icon="setting" Block OnClick="@OnTaskClicked">
+        <Overlay>
+            @_overlayMenu
+        </Overlay>
+        <ChildContent>
+            <div style="display: flex;align-items:center;height:100%;padding-left:25px;">
+                <Text Style="">@TaskTemplate.Name</Text>
+            </div>
+        </ChildContent>
+    </DropdownButton>
+}
 
 @code {
     TaskDefinitionEditor _taskDefinitionEditor;
     CommonDialog _taskDefinitionDialog;
+    CommonDialog _triggerTaskSettingDialog;
     TaskDefinitionSelector _taskDefinitionSelector;
     IEnumerable<TaskDefinitionModel> _selectedTaskDefinitions;
 
-
-
     private RenderFragment _overlayMenu =>@<Menu>
-    @if(Task.IsEditable){
-        <MenuItem Icon="@IconType.Outline.Delete" OnClick="()=>OnRemoved.InvokeAsync(Task)">删除任务</MenuItem>
-        @if (Task.TaskDefinitionId==null)
-        {
-            <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">创建任务</MenuItem>
+    @if(TaskTemplate.IsEditable)
+    {
+        if (TaskTemplate.TemplateType== TaskFlowTaskTemplateType.TriggerTask)
+        {    
+
         }
         else
         {
-            <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">编辑任务</MenuItem>
+            <MenuItem Icon="@IconType.Outline.Delete" OnClick="()=>OnRemoved.InvokeAsync(TaskTemplate)">删除任务</MenuItem>
+            @if (TaskTemplate.TaskDefinitionId==null)
+            {
+                <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">创建任务</MenuItem>
+            }
+            else
+            {
+                <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">编辑任务</MenuItem>
+            }
+            <MenuItem Icon="@IconType.Outline.Select" OnClick="@ShowTaskDefinitionSelector">选择其他任务</MenuItem>
         }
-        <MenuItem Icon="@IconType.Outline.Select" OnClick="@ShowTaskDefinitionSelector">选择其他任务</MenuItem>
+
     }
     else
     {
-        <MenuItem Icon="@IconType.Outline.Close" OnClick="@Task.CancelAsync">停止任务</MenuItem>
+        <MenuItem Icon="@IconType.Outline.Close" OnClick="@TaskTemplate.CancelAsync">停止任务</MenuItem>
     }
     </Menu>
     ;
 
     [Parameter]
-    public TaskFlowTaskTemplate Task{ get; set; }
+    public TaskFlowTaskTemplate TaskTemplate{ get; set; }
+
+    [Parameter]
+    public TaskFlowTaskExecutionInstance? ExecutionInstance { get; set; }
 
     [Parameter]
     public EventCallback<TaskFlowTaskTemplate> OnRemoved { get; set; }
+
+    void AddCronExpression(AddingNewItemEventArgs<StringEntry> e)
+    {
+        e.DataItem.BeginEdit();
+    }
+
+    void OnCronExpressionValueChanged(ValueChangedEventArgs<StringEntry, string> e)
+    {
+        try
+        {
+            e.DataItem.Value = e.Value;
+            if (CronExpression.IsValidExpression(e.DataItem.Value))
+            {
+                var desc = ExpressionDescriptor.GetDescription(e.DataItem.Value, new Options
+                    {
+                        DayOfWeekStartIndexZero = false,
+                        Use24HourTimeFormat = true,
+                        Locale = "zh-cn"
+                    });
+                e.DataItem.Tag = desc;
+            }
+            else
+            {
+                CronExpression.ValidateExpression(e.DataItem.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            e.DataItem.Tag = $"解析失败:{ex.Message}";
+        }
+    }
+
+    private async Task OnTriggerButtonEditStateClicked()
+    {
+        await _triggerTaskSettingDialog.ShowAsync();
+    }
+
+    private async Task OnTriggerButtonInstanceStateClicked()
+    {
+
+    }
 
     private async Task OnTaskClicked()
     {
@@ -56,7 +149,11 @@
 
     private async Task ShowTaskDefinitionEditor()
     {
-        await _taskDefinitionEditor.ShowAsync(this.Task.TaskDefinition);
+        if (this.TaskTemplate.TaskDefinitionId != null)
+        {
+            this.TaskTemplate.TaskDefinition = await ApiService.GetTaskDefinitionAsync(this.TaskTemplate.TaskDefinitionId);
+        }
+        await _taskDefinitionEditor.ShowAsync(TaskTemplate.TaskDefinition);
     }
 
     private async Task ShowTaskDefinitionSelector()
@@ -75,6 +172,84 @@
         {
             return;
         }
-        await Task.SetTaskDefinitionAsync(taskDefinitionModel);
+        await TaskTemplate.SetTaskDefinitionAsync(taskDefinitionModel);
+    }
+
+    private async Task OnTaskDefinitionEditorDialogClosed()
+    {
+        if (TaskTemplate.TaskDefinition == null)
+        {
+            return;
+        }
+
+        await TaskTemplate.SetTaskDefinitionAsync(TaskTemplate.TaskDefinition);
+    }
+
+    private async Task OnTriggerTaskSettingsDialogClosed()
+    {
+        switch (TaskTemplate.TriggerType)
+        {
+            case TaskTriggerType.Manual:
+                TaskTemplate.Name = "手动执行";
+                break;
+            case TaskTriggerType.Schedule:
+                TaskTemplate.Name = "定时触发";
+                break;
+            default:
+                break;
+        }
+        await Task.CompletedTask;
+    }
+
+    bool GetLoadingState()
+    {
+        if (ExecutionInstance == null)
+        {
+            return false;
+        }
+        switch (this.ExecutionInstance.Status)
+        {
+            case TaskExecutionStatus.Triggered:
+            case TaskExecutionStatus.Started:
+            case TaskExecutionStatus.Running:
+                return true;
+            default:
+                break;
+        }
+        return false;
+    }
+
+
+    string? GetTaskIcon()
+    {
+        if (this.TaskTemplate.IsEditable)
+        {
+            return "edit";
+        }
+        else if (this.ExecutionInstance != null)
+        {
+            switch (this.ExecutionInstance.Status)
+            {
+                case TaskExecutionStatus.Unknown:
+                    return "thunderbolt";
+                case TaskExecutionStatus.Triggered:
+                    return "clock-circle";
+                case TaskExecutionStatus.Started:
+                case TaskExecutionStatus.Running:
+                    return "loading";
+                case TaskExecutionStatus.Finished:
+                    return "check";
+                case TaskExecutionStatus.Cancelled:
+                    return "poweroff";
+                case TaskExecutionStatus.Failed:
+                    return "warning";
+                case TaskExecutionStatus.PenddingTimeout:
+                    return "clock-circle";
+                default:
+                    break;
+            }
+        }
+
+        return null;
     }
 }

@@ -15,9 +15,9 @@
         <Flex Gap="small" Vertical>
             @if (!Template.IsDesignMode)
             {
-                <TaskFlowStepsRenderer TaskStages="@Template.TaskStages" />
+                <TaskFlowStepsRenderer TaskStages="@Template.TaskStages" TaskStageExecutionInstances="@ExecutionInstance?.Value?.TaskStages" />
             }
-            <TaskFlowStageRenderer TaskStages="@Template.TaskStages" OnTaskStageRemoved="@Template.RemoveTaskStageAsync" />
+            <TaskFlowStageRenderer TaskStages="@Template.TaskStages" TaskStageExecutionInstances="@ExecutionInstance?.Value?.TaskStages" OnTaskStageRemoved="@Template.RemoveTaskStageAsync" />
         </Flex>
     </Body>
 
@@ -28,7 +28,7 @@
     public TaskFlowTemplate Template { get; set; }
 
     [Parameter]
-    public TaskFlowExecutionInstanceModel? Instance { get; set; }
+    public TaskFlowExecutionInstanceModel? ExecutionInstance { get; set; }
 
     System.Threading.Timer _timer;
 
@@ -43,6 +43,7 @@
         {
             _timer = new System.Threading.Timer(OnUpdate, null, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(20));
         }
+
         base.OnParametersSet();
     }
 
@@ -52,7 +53,15 @@
         {
             return;
         }
-        await this.Template.RefreshAync(ApiService);
+        if (ExecutionInstance == null)
+        {
+            return;
+        }
+        var rsp = await ApiService.QueryTaskFlowExecutionInstanceAsync(ExecutionInstance.Id);
+        if (rsp.ErrorCode == 0)
+        {
+            ExecutionInstance = rsp.Result;
+        }
     }
 
     public void Dispose()

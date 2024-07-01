@@ -17,5 +17,6 @@ namespace NodeService.WebServer.UI.Pages.TaskFlows.Designer
 
         public TaskFlowTemplate Template { get; set; }
 
+        public TaskFlowExecutionInstanceModel? TaskFlowExecutionInstance { get; set; }
     }
 }

@@ -112,24 +112,24 @@ public class TaskLogHandler
         {
             var addedTaskLogs = _addedTaskLogPageDictionary.Values;
             var maxDegreeOfParallelism =Math.DivRem(addedTaskLogs.Count, PAGESIZE, out _);
-            await Parallel.ForEachAsync(addedTaskLogs, new ParallelOptions()
+            await Parallel.ForEachAsync(addedTaskLogs.Chunk(5), new ParallelOptions()
             {
                 CancellationToken = cancellationToken,
                 MaxDegreeOfParallelism = Math.Max(maxDegreeOfParallelism, Environment.ProcessorCount / 4)
-            }, AddTaskLogAsync);
+            }, AddTaskLogsAsync);
             CleanupDictionary(addedTaskLogs);
         }
 
         if (!_updatedTaskLogPageDictionary.IsEmpty)
         {
-            var updatedTaskLogs = _updatedTaskLogPageDictionary.Values.Where(IsTaskLogPageChanged);
+            var updatedTaskLogs = _updatedTaskLogPageDictionary.Values.Where(IsTaskLogPageChanged).ToArray();
             if (updatedTaskLogs.Any())
             {
-                await Parallel.ForEachAsync(updatedTaskLogs, new ParallelOptions()
+                await Parallel.ForEachAsync(updatedTaskLogs.Chunk(5), new ParallelOptions()
                 {
                     CancellationToken = cancellationToken,
                     MaxDegreeOfParallelism = Environment.ProcessorCount / 4
-                }, UpdateTaskLogAsync);
+                }, UpdateTaskLogsAsync);
             }
 
             RemoveFullTaskLogPages(_updatedTaskLogPageDictionary);
@@ -137,14 +137,18 @@ public class TaskLogHandler
         }
     }
 
-    async ValueTask UpdateTaskLogAsync(TaskLogModel taskLog, CancellationToken cancellationToken = default)
+    async ValueTask UpdateTaskLogsAsync(TaskLogModel[] taskLogs, CancellationToken cancellationToken = default)
     {
         try
         {
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-            await taskLogRepo.UpdateAsync(taskLog, cancellationToken);
-            taskLog.DirtyCount = 0;
-            _logger.LogInformation($"Update task log:{taskLog.Id}");
+            await taskLogRepo.UpdateRangeAsync(taskLogs, cancellationToken);
+            foreach (var taskLog in taskLogs)
+            {
+                taskLog.DirtyCount = 0;
+                _logger.LogInformation($"Update task log:{taskLog.Id}");
+            }
+
         }
         catch (Exception ex)
         {
@@ -153,14 +157,17 @@ public class TaskLogHandler
         }
     }
 
-    async ValueTask AddTaskLogAsync(TaskLogModel taskLog, CancellationToken cancellationToken = default)
+    async ValueTask AddTaskLogsAsync(TaskLogModel[] taskLogs, CancellationToken cancellationToken = default)
     {
         try
         {
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-            await taskLogRepo.AddAsync(taskLog, cancellationToken);
-            taskLog.DirtyCount = 0;
-            _logger.LogInformation($"Add task log:{taskLog.Id}");
+            await taskLogRepo.AddRangeAsync(taskLogs, cancellationToken);
+            foreach (var taskLog in taskLogs)
+            {
+                taskLog.DirtyCount = 0;
+                _logger.LogInformation($"Add task log:{taskLog.Id}");
+            }
         }
         catch (Exception ex)
         {

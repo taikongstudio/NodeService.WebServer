@@ -418,6 +418,7 @@ public class Program
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();
+        builder.Services.AddSingleton<TaskFlowExecutor>();
         builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
         builder.Services.AddSingleton<IAsyncQueue<TaskExecutionEventRequest>, AsyncQueue<TaskExecutionEventRequest>>();
         builder.Services.AddSingleton<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>, AsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();

@@ -14,7 +14,7 @@
     @foreach (var taskGroup in _groups)
     {
         <TimelineItem >
-            <TaskFlowGroupComponent TaskGroup="taskGroup" OnRemoved="OnGroupRemoved" />
+            <TaskFlowGroupComponent TaskGroup="taskGroup" TaskGroupExecutionInstance="@FindTaskFlowGroupExecutionInstance(taskGroup)" OnRemoved="OnGroupRemoved" />
         </TimelineItem>
     }
 </Timeline>
@@ -23,6 +23,10 @@
 
     [Parameter]
     public TaskFlowStageTemplate TaskStage { get; set; }
+
+    [Parameter]
+    public TaskFlowStageExecutionInstance TaskStageExecutionInstance { get; set; }
+
     [Parameter]
     public EventCallback<TaskFlowGroupTemplate> OnGroupRemoved { get; set; }
 
@@ -76,5 +80,11 @@
     RenderFragment dotStopTemplate =
     @<Template>
         <Icon Type="warning" Theme="outline" />
-    </Template>;
+    </Template>
+    ;
+
+    private TaskFlowGroupExecutionInstance? FindTaskFlowGroupExecutionInstance(TaskFlowGroupTemplate taskFlowGroupTemplate)
+    {
+        return TaskStageExecutionInstance?.TaskGroups?.FirstOrDefault(x => x.TaskFlowGroupTemplateId == taskFlowGroupTemplate.Id);
+    }
 }

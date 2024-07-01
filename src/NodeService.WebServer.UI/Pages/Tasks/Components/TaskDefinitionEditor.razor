@@ -11,101 +11,112 @@
        OnOk="@HandleEditFormOk"
        OnCancel="@HandleEditFormCancel"
        AfterClose="CloseImpl">
-    <CommonDialog @ref="_taskTypeDescSelectorDialog" Closed="OnTaskTypeDescSelectorDialogClosed">
-        <TaskTypeDescSelector @ref="_taskTypeDescSelector"
-                              @bind-SelectedItems="@_selectedTaskTypeDescConfigList"
-                              Mode="SelectionMode.Single"/>
-    </CommonDialog>
-    <Form Model="@_taskDefinition"
-          LabelColSpan="6"
-          Layout="@FormLayout.Horizontal"
-          Loading="@_loading"
-          WrapperColSpan="18"
-          OnFinish="OnEditFormFinish"
-          OnFinishFailed="OnEditFormFinishFailed"
-          @ref="@_editForm">
-        <FormItem Label="名称">
-            <Input @bind-Value="@context.Name"/>
-        </FormItem>
-        <FormItem Label="描述">
-            <Input @bind-Value="@context.Description"/>
-        </FormItem>
-        <FormItem Label="启用">
-            <Switch @bind-Checked="@context.IsEnabled"/>
-        </FormItem>
-        <FormItem Label="环境变量">
-            <StringEntryTable ItemsSource="@context.EnvironmentVariables"
-                              NameTitle="变量"
-                              ValueTitle="值"
-                              AddingNewItem="NewEnvVarAdding"/>
-        </FormItem>
-
-        <FormItem Label="任务类型">
-            @if (_taskDefinition != null && _taskDefinition.Value.TaskTypeDesc != null)
-            {
-                <Tag @key="_taskDefinition.Value.TaskTypeDesc.Id">@_taskDefinition.Value.TaskTypeDesc.Name</Tag>
-            }
-            <Tag Class="site-tag-plus" OnClick="() => _taskTypeDescSelectorDialog.ShowAsync()">
-                <Icon Type="@IconType.Outline.Edit"/>
-            </Tag>
-        </FormItem>
-        <OptionValueEditor @ref="@_optionValueEditor" OptionValueEditors="@_taskDefinition.OptionValueEditors"/>
-
-
-        <FormItem Label="执行时长" Help="控制作业的执行时长，单位为秒，默认值0表示不限制执行时长。">
-            <AntDesign.InputNumber TValue="int" Min="1" @bind-Value="@context.ExecutionLimitTimeSeconds"/><Text> 秒</Text>
-        </FormItem>
-        <FormItem Label="等待时长">
-            <AntDesign.InputNumber Min="300" @bind-Value="@context.PenddingLimitTimeSeconds"/><Text> 秒</Text>
-        </FormItem>
-        <FormItem Label="触发方式">
-            <RadioGroup @bind-Value="@context.TriggerType">
-                <Radio RadioButton Value="@TaskTriggerType.Schedule">定时触发</Radio>
-                <Radio RadioButton Value="@TaskTriggerType.Manual">手动执行</Radio>
-            </RadioGroup>
-        </FormItem>
-        @if (context.TriggerType == TaskTriggerType.Schedule)
-        {
-            <FormItem Label="Cron表达式">
-                <StringEntryTable ItemsSource="@context.CronExpressions"
-                                  NameTitle="备注"
-                                  ValueTitle="Cron表达式"
-                                  IsTagHidden="false"
-                                  AddingNewItem="AddCronExpression"
-                                  ValueChanged="OnCronExpressionValueChanged"/>
+    @if (TaskDefinition == null)
+    {
+        <Empty />
+    }
+    else
+    {
+        <CommonDialog @ref="_taskTypeDescSelectorDialog" Closed="OnTaskTypeDescSelectorDialogClosed">
+            <TaskTypeDescSelector @ref="_taskTypeDescSelector"
+                                  @bind-SelectedItems="@_selectedTaskTypeDescConfigList"
+                                  Mode="SelectionMode.Single" />
+        </CommonDialog>
+        <Form Model="@TaskDefinition"
+              LabelColSpan="6"
+              Layout="@FormLayout.Horizontal"
+              Loading="@_loading"
+              WrapperColSpan="18"
+              OnFinish="OnEditFormFinish"
+              OnFinishFailed="OnEditFormFinishFailed"
+              @ref="@_editForm">
+            <FormItem Label="名称">
+                <Input @bind-Value="@context.Name" />
             </FormItem>
-        }
-        <FormItem Label="优先级">
-            <RadioGroup @bind-Value="context.Value.Priority" Size="middle">
-                <Radio RadioButton Value="@(TaskExecutionPriority.Lowest)">最低</Radio>
-                <Radio RadioButton Value="@(TaskExecutionPriority.Low)">低</Radio>
-                <Radio RadioButton Value="@(TaskExecutionPriority.Normal)">正常</Radio>
-                <Radio RadioButton Value="@(TaskExecutionPriority.High)">高</Radio>
-                <Radio RadioButton Value="@(TaskExecutionPriority.Highest)">最高</Radio>
-            </RadioGroup>
-        </FormItem>
-        <FormItem Label="并发执行策略">
-            <RadioGroup @bind-Value="@context.ExecutionStrategy">
-                <Radio RadioButton Value="@TaskExecutionStrategy.Skip">请勿启动新实例</Radio>
-                <Radio RadioButton Value="@TaskExecutionStrategy.Concurrent">并行运行新实例</Radio>
-                <Radio RadioButton Value="@TaskExecutionStrategy.Queue">对新实例排队</Radio>
-                <Radio RadioButton Value="@TaskExecutionStrategy.Stop">停止现有实例</Radio>
-            </RadioGroup>
-        </FormItem>
+            <FormItem Label="描述">
+                <Input @bind-Value="@context.Description" />
+            </FormItem>
+            <FormItem Label="启用">
+                <Switch @bind-Checked="@context.IsEnabled" />
+            </FormItem>
+            <FormItem Label="环境变量">
+                <StringEntryTable ItemsSource="@context.EnvironmentVariables"
+                                  NameTitle="变量"
+                                  ValueTitle="值"
+                                  AddingNewItem="NewEnvVarAdding" />
+            </FormItem>
 
-        <FormItem Label="指定节点">
+            <FormItem Label="任务类型">
+                @if (TaskDefinition != null && TaskDefinition.Value.TaskTypeDesc != null)
+                {
+                    <Tag @key="TaskDefinition.Value.TaskTypeDesc.Id">@TaskDefinition.Value.TaskTypeDesc.Name</Tag>
+                }
+                <Tag Class="site-tag-plus" OnClick="() => _taskTypeDescSelectorDialog.ShowAsync()">
+                    <Icon Type="@IconType.Outline.Edit" />
+                </Tag>
+            </FormItem>
+            <OptionValueEditor @ref="@_optionValueEditor" OptionValueEditors="@TaskDefinition.OptionValueEditors" />
 
-            <NodeSelector Mode="SelectionMode.Multiple"
-                          SelectedItems="@_selectedNodes"
-                          SelectedItemsChanged="OnSelectedNodesChanged"/>
 
-        </FormItem>
-        <FormItem Label="后续任务">
-            <TaskDefinitionSelector Mode="SelectionMode.Multiple"
-                                    @bind-SelectedItems="@_selectedTaskDefinitionList"/>
-        </FormItem>
+            <FormItem Label="执行时长" Help="控制作业的执行时长，单位为秒，默认值0表示不限制执行时长。">
+                <AntDesign.InputNumber TValue="int" Min="1" @bind-Value="@context.ExecutionLimitTimeSeconds" /><Text> 秒</Text>
+            </FormItem>
+            <FormItem Label="等待时长">
+                <AntDesign.InputNumber Min="300" @bind-Value="@context.PenddingLimitTimeSeconds" /><Text> 秒</Text>
+            </FormItem>
+            <FormItem Label="触发方式">
+                <RadioGroup @bind-Value="@context.TriggerType">
+                    <Radio RadioButton Value="@TaskTriggerType.Schedule">定时触发</Radio>
+                    <Radio RadioButton Value="@TaskTriggerType.Manual">手动执行</Radio>
+                </RadioGroup>
+            </FormItem>
+            @if (context.TriggerType == TaskTriggerType.Schedule)
+            {
+                <FormItem Label="Cron表达式">
+                    <StringEntryTable ItemsSource="@context.CronExpressions"
+                                      NameTitle="备注"
+                                      ValueTitle="Cron表达式"
+                                      IsTagHidden="false"
+                                      AddingNewItem="AddCronExpression"
+                                      ValueChanged="OnCronExpressionValueChanged" />
+                </FormItem>
+            }
+            <FormItem Label="优先级">
+                <RadioGroup @bind-Value="context.Value.Priority" Size="middle">
+                    <Radio RadioButton Value="@(TaskExecutionPriority.Lowest)">最低</Radio>
+                    <Radio RadioButton Value="@(TaskExecutionPriority.Low)">低</Radio>
+                    <Radio RadioButton Value="@(TaskExecutionPriority.Normal)">正常</Radio>
+                    <Radio RadioButton Value="@(TaskExecutionPriority.High)">高</Radio>
+                    <Radio RadioButton Value="@(TaskExecutionPriority.Highest)">最高</Radio>
+                </RadioGroup>
+            </FormItem>
+            <FormItem Label="并发执行策略">
+                <RadioGroup @bind-Value="@context.ExecutionStrategy">
+                    <Radio RadioButton Value="@TaskExecutionStrategy.Skip">请勿启动新实例</Radio>
+                    <Radio RadioButton Value="@TaskExecutionStrategy.Concurrent">并行运行新实例</Radio>
+                    <Radio RadioButton Value="@TaskExecutionStrategy.Queue">对新实例排队</Radio>
+                    <Radio RadioButton Value="@TaskExecutionStrategy.Stop">停止现有实例</Radio>
+                </RadioGroup>
+            </FormItem>
 
-    </Form>
+            <FormItem Label="指定节点">
+
+                <NodeSelector Mode="SelectionMode.Multiple"
+                              SelectedItems="@_selectedNodes"
+                              SelectedItemsChanged="OnSelectedNodesChanged" />
+
+            </FormItem>
+            @if (IsChildTaskSelectorVisible)
+            {
+                <FormItem Label="后续任务">
+                    <TaskDefinitionSelector Mode="SelectionMode.Multiple"
+                                            @bind-SelectedItems="@_selectedTaskDefinitionList" />
+                </FormItem>
+            }
+
+        </Form>
+    }
+
 </Modal>
 
 @code {
@@ -124,16 +135,20 @@
     TaskTypeDescSelector _taskTypeDescSelector;
     CommonDialog _taskTypeDescSelectorDialog;
 
-    private TaskDefinitionModel _taskDefinition { get; set; } = new();
-
     [Parameter] public EventCallback Closed { get; set; }
+    [Parameter] public bool IsChildTaskSelectorVisible { get; set; } = true;
+    [Parameter] public TaskDefinitionModel TaskDefinition { get; set; }
 
     async Task HandleEditFormOk(MouseEventArgs e)
     {
         _editFormVisible = true;
-        if (_taskDefinition.TriggerType == TaskTriggerType.Schedule
+        if (TaskDefinition == null)
+        {
+            return;
+        }
+        if (TaskDefinition.TriggerType == TaskTriggerType.Schedule
             &&
-            _taskDefinition.CronExpressions.Count == 0)
+            TaskDefinition.CronExpressions.Count == 0)
         {
             await _notice.Open(new NotificationConfig
             {
@@ -143,9 +158,9 @@
             return;
         }
 
-        _taskDefinition.Options.Clear();
+        TaskDefinition.Options.Clear();
         await _optionValueEditor.CommitAsync();
-        foreach (var kv in _taskDefinition.OptionValueEditors)
+        foreach (var kv in TaskDefinition.OptionValueEditors)
         {
             var key = kv.Key;
             var editorBase = kv.Value;
@@ -153,67 +168,67 @@
             {
                 case OptionValueType.TextValue:
                     var textValueEditor = editorBase as TextValueEditor;
-                    _taskDefinition.Options.TryAdd(key, textValueEditor.Value);
+                    TaskDefinition.Options.TryAdd(key, textValueEditor.Value);
                     break;
                 case OptionValueType.NumberValue:
                     var numberValueEditor = editorBase as NumberValueEditor;
-                    _taskDefinition.Options.TryAdd(key, numberValueEditor.Value);
+                    TaskDefinition.Options.TryAdd(key, numberValueEditor.Value);
                     break;
                 case OptionValueType.BooleanValue:
                     var booleanValueEditor = editorBase as BooleanValueEditor;
-                    _taskDefinition.Options.TryAdd(key, booleanValueEditor.Value);
+                    TaskDefinition.Options.TryAdd(key, booleanValueEditor.Value);
                     break;
                 case OptionValueType.TextArrayValue:
                     var textArrayValueEditor = editorBase as TextArrayValueEditor;
-                    _taskDefinition.Options.TryAdd(key, textArrayValueEditor.DataSource.Select(x => x.Value).ToArray());
+                    TaskDefinition.Options.TryAdd(key, textArrayValueEditor.DataSource.Select(x => x.Value).ToArray());
                     break;
                 case OptionValueType.PythonCodeValue:
                     var scriptCodeEditor = editorBase as PythonCodeEditor;
-                    _taskDefinition.Options.TryAdd(key, scriptCodeEditor.Value);
+                    TaskDefinition.Options.TryAdd(key, scriptCodeEditor.Value);
                     break;
                 case OptionValueType.BatchScriptValue:
                     var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
-                    _taskDefinition.Options.TryAdd(key, batchScriptCodeEditor.Value);
+                    TaskDefinition.Options.TryAdd(key, batchScriptCodeEditor.Value);
                     break;
                 case OptionValueType.FtpConfigurationListValue:
                     var ftpConfigurationListEditor = editorBase as FtpConfigurationListEditor;
-                    _taskDefinition.Options.TryAdd(key, ftpConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                    TaskDefinition.Options.TryAdd(key, ftpConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
                     break;
                 case OptionValueType.MysqlConfigurationListValue:
                     var mysqlConfigurationListEditor = editorBase as MysqlConfigurationListEditor;
-                    _taskDefinition.Options.TryAdd(key, mysqlConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                    TaskDefinition.Options.TryAdd(key, mysqlConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
                     break;
                 case OptionValueType.KafkaConfigurationListValue:
                     var kafkaConfigurationListEditor = editorBase as KafkaConfigurationListEditor;
-                    _taskDefinition.Options.TryAdd(key, kafkaConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                    TaskDefinition.Options.TryAdd(key, kafkaConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
                     break;
                 case OptionValueType.FtpConfigurationValue:
                     var ftpConfigurationEditor = editorBase as FtpConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, ftpConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                    TaskDefinition.Options.TryAdd(key, ftpConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.MysqlConfigurationValue:
                     var mysqlEditor = editorBase as MysqlConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, mysqlEditor.SelectedItems.FirstOrDefault()?.Id);
+                    TaskDefinition.Options.TryAdd(key, mysqlEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.KafkaConfigurationValue:
                     var kafkaEditor = editorBase as KafkaConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, kafkaEditor.SelectedItems.FirstOrDefault()?.Id);
+                    TaskDefinition.Options.TryAdd(key, kafkaEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.PackageConfigurationValue:
                     var packageConfigurationEditor = editorBase as PackageConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, packageConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                    TaskDefinition.Options.TryAdd(key, packageConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.PackageConfigurationListValue:
                     var packageConfigurationListEditor = editorBase as PackageConfigurationListEditor;
-                    _taskDefinition.Options.TryAdd(key, packageConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                    TaskDefinition.Options.TryAdd(key, packageConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
                     break;
                 case OptionValueType.NodeEnvVarsConfigurationValue:
                     var nodeEnvVarsConfigurationEditor = editorBase as NodeEnvVarsConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                    TaskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.NodeEnvVarsConfigurationListValue:
                     var nodeEnvVarsConfigurationListEditor = editorBase as NodeEnvVarsConfigurationListEditor;
-                    _taskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                    TaskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
                     break;
                 case OptionValueType.LogUploadConfigurationValue:
 
@@ -223,27 +238,27 @@
                     break;
                 case OptionValueType.FtpUploadConfigurationValue:
                     var ftpUploadConfigurationEditor = editorBase as FtpUploadConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, ftpUploadConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                    TaskDefinition.Options.TryAdd(key, ftpUploadConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.FtpUploadConfigurationListValue:
                     var ftpUploadConfigurationListEditor = editorBase as FtpUploadConfigurationListEditor;
-                    _taskDefinition.Options.TryAdd(key, ftpUploadConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                    TaskDefinition.Options.TryAdd(key, ftpUploadConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
                     break;
                 case OptionValueType.RestApiConfigurationValue:
                     var restApiConfigurationEditor = editorBase as RestApiConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, restApiConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                    TaskDefinition.Options.TryAdd(key, restApiConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.RestApiConfigurationListValue:
                     var restApiConfigurationListEditor = editorBase as RestApiConfigurationListEditor;
-                    _taskDefinition.Options.TryAdd(key, restApiConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                    TaskDefinition.Options.TryAdd(key, restApiConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
                     break;
                 case OptionValueType.FtpDownloadConfigurationValue:
                     var ftpDownloadConfigurationEditor = editorBase as FtpDownloadConfigurationEditor;
-                    _taskDefinition.Options.TryAdd(key, ftpDownloadConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                    TaskDefinition.Options.TryAdd(key, ftpDownloadConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
                     break;
                 case OptionValueType.FtpDownloadConfigurationListValue:
                     var ftpDownloadConfigurationListEditor = editorBase as FtpDownloadConfigurationListEditor;
-                    _taskDefinition.Options.TryAdd(key, ftpDownloadConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                    TaskDefinition.Options.TryAdd(key, ftpDownloadConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
                     break;
             }
         }
@@ -272,18 +287,18 @@
             _loading = true;
             if (model == null)
             {
-                _taskDefinition.TaskTypeDescId = null;
-                _taskDefinition.TaskTypeDesc = null;
-                _taskDefinition.OptionValueEditors.Clear();
+                TaskDefinition.TaskTypeDescId = null;
+                TaskDefinition.TaskTypeDesc = null;
+                TaskDefinition.OptionValueEditors.Clear();
                 return;
             }
 
-            _taskDefinition.TaskTypeDescId = model.Id;
-            _taskDefinition.TaskTypeDesc = model;
+            TaskDefinition.TaskTypeDescId = model.Id;
+            TaskDefinition.TaskTypeDesc = model;
 
             var optionValueEditors = new Dictionary<string, EditorBase>();
-            await BuildOptionValueEditorsAsync(_taskDefinition, optionValueEditors);
-            _taskDefinition.OptionValueEditors = optionValueEditors;
+            await BuildOptionValueEditorsAsync(TaskDefinition, optionValueEditors);
+            TaskDefinition.OptionValueEditors = optionValueEditors;
         }
         catch (Exception ex)
         {
@@ -308,7 +323,7 @@
         _editFormVisible = true;
         if (model == null)
         {
-            _taskDefinition = new TaskDefinitionModel
+            TaskDefinition = new TaskDefinitionModel
             {
                 Id = Guid.NewGuid().ToString(),
                 IsEnabled = true
@@ -318,7 +333,11 @@
         else
         {
             _modalTitle = "编辑配置";
-            _taskDefinition = model;
+            TaskDefinition = model;
+            if (model.Value.TaskTypeDesc == null)
+            {
+                model.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(model.Value.TaskTypeDescId);
+            }
             await OnSelectedTaskTypeDescChanged([model.Value.TaskTypeDesc]);
             _selectedTaskDefinitionList = await model.Value.ChildTaskDefinitions.QueryTaskDefinitionListAsync(ApiService);
             _selectedNodes = await model.Value.NodeList.QueryNodeListAsync(ApiService);
@@ -331,14 +350,14 @@
     {
         try
         {
-            _taskDefinition.Value.ChildTaskDefinitions.Clear();
-            _taskDefinition.Value.ChildTaskDefinitions.AddRange(_selectedTaskDefinitionList.Select(x => new StringEntry
+            TaskDefinition.Value.ChildTaskDefinitions.Clear();
+            TaskDefinition.Value.ChildTaskDefinitions.AddRange(_selectedTaskDefinitionList.Select(x => new StringEntry
             {
                 Name = x.Name,
                 Value = x.Id
             }));
-            _taskDefinition.NodeList.Clear();
-            _taskDefinition.NodeList.AddRange(
+            TaskDefinition.NodeList.Clear();
+            TaskDefinition.NodeList.AddRange(
                 _selectedNodes
                     .DistinctBy(x => x.Id)
                     .Select(x => new StringEntry
@@ -346,7 +365,7 @@
                         Name = x.Name,
                         Value = x.Id
                     }));
-            var apiResponse = await ApiService.AddOrUpdateAsync(_taskDefinition);
+            var apiResponse = await ApiService.AddOrUpdateAsync(TaskDefinition);
             if (apiResponse.ErrorCode == 0)
             {
                 _selectedNodes = [];
@@ -558,8 +577,12 @@
         e.DataItem.BeginEdit();
     }
 
-    public async Task ShowAsync(TaskDefinitionModel taskDefintion = null)
+    public async Task ShowAsync(TaskDefinitionModel? taskDefintion = null)
     {
+        if (taskDefintion == null)
+        {
+            taskDefintion = this.TaskDefinition;
+        }
         await ShowEditForm(taskDefintion);
         StateHasChanged();
     }

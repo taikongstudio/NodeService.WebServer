@@ -246,6 +246,8 @@
     {
         try
         {
+            _taskFlowTemplateNode = new TaskFlowTemplateNode();
+            _taskFlowTemplateNode.Position = new Point(100, 100);
             TaskFlowTemplate? taskFlowTemplate = null;
             if (!string.IsNullOrEmpty(TemplateId))
             {
@@ -265,44 +267,13 @@
                 if (rsp.ErrorCode == 0)
                 {
                     var taskFlowExecutionInstance = rsp.Result;
-                    taskFlowTemplate = new TaskFlowTemplate()
-                        {
-                            Id = taskFlowExecutionInstance.Id,
-                            Name = taskFlowExecutionInstance.Name,
-                            CreationDateTime = DateTime.UtcNow,
-                        };
-
-                    foreach (var taskStage in taskFlowExecutionInstance.Value.TaskStages)
+                    if (taskFlowExecutionInstance==null)
                     {
-                        var taskFlowStageTemplate = new TaskFlowStageTemplate()
-                            {
-                                Id = taskStage.Id,
-                                Name = taskStage.Name,
-                                CreationDateTime = taskStage.CreationDateTime,
-                            };
-                        taskFlowTemplate.TaskStages.Add(taskFlowStageTemplate);
-                        foreach (var taskGroup in taskStage.TaskGroups)
-                        {
-                            var taskFlowGroupTemplate = new TaskFlowGroupTemplate()
-                                {
-                                    Id = taskGroup.Id,
-                                    Name = taskGroup.Name,
-                                    CreationDateTime = taskGroup.CreationDateTime,
-                                };
-                            taskFlowStageTemplate.TaskGroups.Add(taskFlowGroupTemplate);
-                            foreach (var task in taskGroup.Tasks)
-                            {
-                                var taskFlowTaskTemplate = new TaskFlowTaskTemplate()
-                                    {
-                                        Id = task.Id,
-                                        Name = task.Name,
-                                        CreationDateTime = task.CreationDateTime,
-                                    };
-                                taskFlowGroupTemplate.Tasks.Add(taskFlowTaskTemplate);
-                            }
-                        }
-
+                        return;
                     }
+                    _taskFlowTemplateNode.TaskFlowExecutionInstance = taskFlowExecutionInstance;
+                    taskFlowTemplate = (await ApiService.GetTaskFlowTemplateAsync(taskFlowExecutionInstance.Value.TaskFlowTemplateId))?.Value;
+                    taskFlowTemplate.Freeze();
                 }
             }
             else
@@ -312,8 +283,6 @@
             }
             if (taskFlowTemplate != null)
             {
-                _taskFlowTemplateNode = new TaskFlowTemplateNode();
-                _taskFlowTemplateNode.Position = new Point(100, 100);
                 _taskFlowTemplateNode.Template = taskFlowTemplate;
                 _blazorDiagram.Nodes.Add(_taskFlowTemplateNode);
             }

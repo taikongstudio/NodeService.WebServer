@@ -1,4 +1,5 @@
-﻿using NodeService.WebServer.Data;
+﻿using NodeService.Infrastructure.DataModels;
+using NodeService.WebServer.Data;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,13 +21,13 @@ namespace NodeService.WebServer.Services.Tasks
             return (processContext.TaskExecutionInstance.GetTaskFlowTaskKey(), processContext.TaskExecutionInstance.FireInstanceId);
         }
 
-        static string? GetTaskFlowFireInstanceId(TaskActivationRecordModel  taskActivationRecord)
+        static string? GetTaskFlowInstanceId(TaskActivationRecordModel  taskActivationRecord)
         {
             if (taskActivationRecord.TaskDefinitionId == null)
             {
                 return null;
             }
-            return taskActivationRecord.TaskFlowFireInstanceId;
+            return taskActivationRecord.TaskFlowInstanceId;
         }
 
         async Task ProcessContextAsync(CancellationToken cancellationToken = default)
@@ -114,7 +115,7 @@ namespace NodeService.WebServer.Services.Tasks
                     }
 
                     taskActivationRecord.TaskFlowTemplateId = taskInstanceGroup.Key.TaskFlowTaskKey.TaskFlowTemplateId;
-                    taskActivationRecord.TaskFlowFireInstanceId = taskInstanceGroup.Key.TaskFlowTaskKey.TaskFlowInstanceId;
+                    taskActivationRecord.TaskFlowInstanceId = taskInstanceGroup.Key.TaskFlowTaskKey.TaskFlowInstanceId;
                     taskActivationRecord.TaskFlowStageId = taskInstanceGroup.Key.TaskFlowTaskKey.TaskFlowStageId;
                     taskActivationRecord.TaskFlowGroupId = taskInstanceGroup.Key.TaskFlowTaskKey.TaskFlowGroupId;
                     taskActivationRecord.TaskFlowTaskId = taskInstanceGroup.Key.TaskFlowTaskKey.TaskFlowTaskId;
@@ -183,38 +184,50 @@ namespace NodeService.WebServer.Services.Tasks
                 return;
             }
             using var taskFlowExecutionInstanceRepo = _taskFlowExecutionInstanceRepoFactory.CreateRepository();
-            foreach (var taskActiveRecordGroup in taskActivationRecordList.GroupBy(GetTaskFlowFireInstanceId))
+            List<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceList = [];
+            foreach (var taskActiveRecordGroup in taskActivationRecordList.GroupBy(GetTaskFlowInstanceId))
             {
                 if (taskActiveRecordGroup.Key == null)
                 {
                     continue;
                 }
-                var taskFlowFireInstanceId = taskActiveRecordGroup.Key;
-                var taskFlowExecutionInstance = await taskFlowExecutionInstanceRepo.GetByIdAsync(taskFlowFireInstanceId, cancellationToken);
+                var taskFlowInstanceId = taskActiveRecordGroup.Key;
+                var taskFlowExecutionInstance = await taskFlowExecutionInstanceRepo.GetByIdAsync(taskFlowInstanceId, cancellationToken);
                 if (taskFlowExecutionInstance == null)
                 {
                     continue;
                 }
-                foreach (var activationRecordModel in taskActiveRecordGroup)
+                foreach (var activationRecord in taskActiveRecordGroup)
                 {
-                    var taskStage = taskFlowExecutionInstance.TaskStages.FirstOrDefault(x => x.Id == activationRecordModel.TaskFlowStageId);
+                    var taskStage = taskFlowExecutionInstance.TaskStages.FirstOrDefault(x => x.Id == activationRecord.TaskFlowStageId);
                     if (taskStage == null)
                     {
                         continue;
                     }
-                    var taskGroup = taskStage.TaskGroups.FirstOrDefault(x => x.Id == activationRecordModel.TaskFlowGroupId);
+                    var taskGroup = taskStage.TaskGroups.FirstOrDefault(x => x.Id == activationRecord.TaskFlowGroupId);
                     if (taskGroup == null)
                     {
                         continue;
                     }
-                    var task = taskGroup.Tasks.FirstOrDefault(x => x.Id == activationRecordModel.TaskFlowTaskId);
-                    if (task == null)
+                    var taskFlowTaskExecutionInstance = taskGroup.Tasks.FirstOrDefault(x => x.Id == activationRecord.TaskFlowTaskId);
+                    if (taskFlowTaskExecutionInstance == null)
                     {
                         continue;
                     }
-                    task.Status = activationRecordModel.Status;
+                    taskFlowTaskExecutionInstance.Status = activationRecord.Status;
+                    taskFlowTaskExecutionInstance.TaskActiveRecordId = activationRecord.Id;
                 }
-                await taskFlowExecutionInstanceRepo.UpdateAsync(taskFlowExecutionInstance, cancellationToken);
+
+                taskFlowExecutionInstanceList.Add(taskFlowExecutionInstance);
+            }
+
+            foreach (var array in taskFlowExecutionInstanceList.Chunk(10))
+            {
+                foreach (var taskFlowExeuctionInstance in array)
+                {
+                    await _taskFlowExecutor.ExecuteAsync(taskFlowExeuctionInstance, cancellationToken);
+                }
+                await taskFlowExecutionInstanceRepo.UpdateRangeAsync(array, cancellationToken);
             }
         }
     }

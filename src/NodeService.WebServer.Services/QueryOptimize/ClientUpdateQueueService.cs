@@ -14,6 +14,18 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.QueryOptimize;
 
+public class ClientUpdateBatchQueryParameters
+{
+    public ClientUpdateBatchQueryParameters(string name, string ipAddress)
+    {
+        Name = name;
+        IpAddress = ipAddress;
+    }
+
+    public string Name { get; private set; }
+    public string IpAddress { get; private set; }
+}
+
 public class ClientUpdateQueueService : BackgroundService
 {
     private readonly ILogger<ClientUpdateQueueService> _logger;
@@ -116,6 +128,11 @@ public class ClientUpdateQueueService : BackgroundService
                         {
                             var ipAddress = op.Argument.IpAddress;
                             var updateKey = CreateKey(ipAddress);
+                            if (clientUpdateConfig == null)
+                                clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                            clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
+                            op.SetResult(clientUpdateConfig);
+                            continue;
                             if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
                             {
                                 if (clientUpdateConfig == null)

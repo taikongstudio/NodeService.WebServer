@@ -112,10 +112,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             {
                 continue;
             }
-            var stopwatch = new Stopwatch();
-
             try
             {
+                var stopwatch = new Stopwatch();
                 stopwatch.Start();
                 await ProcessTaskExecutionReportsAsync(array, cancellationToken);
                 stopwatch.Stop();
@@ -133,7 +132,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             }
             finally
             {
-                stopwatch.Reset();
+
             }
         }
     }

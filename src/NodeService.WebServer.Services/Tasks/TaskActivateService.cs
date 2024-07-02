@@ -495,11 +495,12 @@ public class TaskActivateService : BackgroundService
                     Id = fireTaskFlowParameters.TaskFlowInstanceId,
                     Name = taskFlowTemplate.Name,
                     CreationDateTime = DateTime.UtcNow,
-                   
+                    ModifiedDateTime = DateTime.UtcNow
                 };
                 taskFlowExecutionInstance.Value.Id = fireTaskFlowParameters.TaskFlowInstanceId;
                 taskFlowExecutionInstance.Value.Name = taskFlowTemplate.Name;
                 taskFlowExecutionInstance.Value.CreationDateTime = DateTime.UtcNow;
+                taskFlowExecutionInstance.Value.ModifiedDateTime = DateTime.UtcNow;
                 taskFlowExecutionInstance.Value.TaskFlowTemplateId = taskFlowTemplateId;
                 foreach (var taskFlowStageTemplate in taskFlowTemplate.Value.TaskStages)
                 {
@@ -508,6 +509,7 @@ public class TaskActivateService : BackgroundService
                         Id = Guid.NewGuid().ToString(),
                         Name = taskFlowStageTemplate.Name,
                         CreationDateTime = DateTime.UtcNow,
+                        ModifiedDateTime = DateTime.UtcNow,
                         TaskFlowStageTemplateId = taskFlowStageTemplate.Id
                     };
                     taskFlowExecutionInstance.Value.TaskStages.Add(taskFlowStageExecutionInstance);
@@ -518,6 +520,7 @@ public class TaskActivateService : BackgroundService
                             Id = Guid.NewGuid().ToString(),
                             Name = taskFlowGroupTemplate.Name,
                             CreationDateTime = DateTime.UtcNow,
+                            ModifiedDateTime = DateTime.UtcNow,
                             TaskFlowGroupTemplateId = taskFlowGroupTemplate.Id
                         };
                         taskFlowStageExecutionInstance.TaskGroups.Add(taskFlowGroupExeuctionInstance);
@@ -528,6 +531,7 @@ public class TaskActivateService : BackgroundService
                                 Id = Guid.NewGuid().ToString(),
                                 Name = taskFlowTaskTemplate.Name,
                                 CreationDateTime = DateTime.UtcNow,
+                                ModifiedDateTime = DateTime.UtcNow,
                                 Status = TaskExecutionStatus.Unknown,
                                 TaskFlowTaskTemplateId = taskFlowTaskTemplate.Id,
                                 TaskDefinitionId = taskFlowTaskTemplate.TaskDefinitionId,

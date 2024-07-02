@@ -281,5 +281,23 @@ public partial class ApplicationDbContext
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<ConfigurationVersionRecord>(v, (JsonSerializerOptions)null));
         });
+
+        modelBuilder.Entity<TaskFlowExecutionInstanceModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<TaskFlowExecutionInstance>(v, (JsonSerializerOptions)null));
+        });
+
+        modelBuilder.Entity<TaskFlowTemplateModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<TaskFlowTemplate>(v, (JsonSerializerOptions)null));
+        });
     }
 }

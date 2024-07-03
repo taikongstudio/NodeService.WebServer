@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Net.NetworkInformation;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.NodeSessions;
@@ -17,6 +18,7 @@ public class HeartBeatRequestProducerService : BackgroundService
     private readonly IOptionsMonitor<WebServerOptions> _optionsMonitor;
     private readonly IDisposable? _token;
     private WebServerOptions _options;
+    private ActionBlock<NodeSessionId> _pingQueue;
 
     public HeartBeatRequestProducerService(
         ExceptionCounter exceptionCounter,
@@ -31,6 +33,32 @@ public class HeartBeatRequestProducerService : BackgroundService
         _token = _optionsMonitor.OnChange(OnOptionsChange);
         _options = _optionsMonitor.CurrentValue;
         _exceptionCounter = exceptionCounter;
+        _pingQueue = new ActionBlock<NodeSessionId>(PingOfflineNodeAsync, new ExecutionDataflowBlockOptions()
+        {
+            MaxDegreeOfParallelism = 4
+        });
+    }
+
+    private async Task PingOfflineNodeAsync(NodeSessionId nodeSessionId)
+    {
+        try
+        {
+            using Ping ping = new Ping();
+            var reply = await ping.SendPingAsync(_nodeSessionService.GetNodeIpAddress(nodeSessionId), TimeSpan.FromSeconds(5));
+            var lastPingReplyInfo = new PingReplyInfo()
+            {
+                Status = reply.Status,
+                RoundtripTime = reply.RoundtripTime,
+                DateTime = DateTime.UtcNow
+            };
+            _nodeSessionService.UpdateNodePingReply(nodeSessionId, lastPingReplyInfo);
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogInformation(ex.ToString());
+        }
+
     }
 
     private void OnOptionsChange(WebServerOptions options, string? value)
@@ -81,10 +109,28 @@ public class HeartBeatRequestProducerService : BackgroundService
         Random.Shared.Shuffle(nodeSessionArray);
         Random.Shared.Shuffle(nodeSessionArray);
         _logger.LogInformation($"Start Count:{nodeSessionsCount}");
+
         foreach (var nodeSessionId in nodeSessionArray)
         {
             if (nodeSessionId.NodeId.IsNullOrEmpty) continue;
-            if (_nodeSessionService.GetNodeStatus(nodeSessionId) != NodeStatus.Online) continue;
+
+            bool pingOffNode = false;
+            if (_nodeSessionService.GetNodeStatus(nodeSessionId) != NodeStatus.Online)
+            {
+                pingOffNode = true;
+            }
+            else
+            {
+                var pingReplyInfo = _nodeSessionService.GetNodeLastPingReplyInfo(nodeSessionId);
+                if (pingReplyInfo == null || DateTime.Now - pingReplyInfo.DateTime > TimeSpan.FromMinutes(2))
+                {
+                    pingOffNode = true;
+                }
+            }
+            if (pingOffNode)
+            {
+                _pingQueue.Post(nodeSessionId);
+            }
 
             var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);
             _logger.LogInformation($"Send heart beat to {nodeSessionId}:{nodeName}");

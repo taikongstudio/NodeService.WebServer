@@ -273,26 +273,21 @@ public class TaskActivateService : BackgroundService
                 try
                 {
                     if (string.IsNullOrEmpty(nodeEntry.Value)) continue;
-                    var nodeId = NodeId.Null;
-                    foreach (var nodeInfo in nodeInfoList)
-                        if (nodeInfo.Id == nodeEntry.Value)
-                        {
-                            nodeId = new NodeId(nodeEntry.Value);
-                            break;
-                        }
+                    var nodeFindResult = FindNodeInfo(nodeInfoList, nodeEntry.Value);
 
-                    if (nodeId.IsNullOrEmpty) continue;
+                    if (nodeFindResult.NodeId.IsNullOrEmpty) continue;
 
-                    var nodeSessionIdList = _nodeSessionService.EnumNodeSessions(nodeId).ToArray();
+                    var nodeSessionIdList = _nodeSessionService.EnumNodeSessions(nodeFindResult.NodeId).ToArray();
 
                     if (nodeSessionIdList.Length == 0)
                     {
-                        var nodeSessionId = new NodeSessionId(nodeId.Value);
+                        var nodeSessionId = new NodeSessionId(nodeFindResult.NodeId.Value);
                         nodeSessionIdList = [nodeSessionId];
                     }
                     foreach (var nodeSessionId in nodeSessionIdList)
                     {
                         var taskExecutionInstance = BuildTaskExecutionInstance(
+                            nodeFindResult.NodeInfo,
                             taskDefinitionModel,
                             nodeSessionId,
                             parameters,
@@ -354,7 +349,21 @@ public class TaskActivateService : BackgroundService
         }
     }
 
+    static (NodeId NodeId, NodeInfoModel NodeInfo) FindNodeInfo(List<NodeInfoModel> nodeInfoList, string id)
+    {
+        foreach (var nodeInfo in nodeInfoList)
+        {
+            if (nodeInfo.Id == id)
+            {
+                return (new NodeId(nodeInfo.Id), nodeInfo);
+            }
+        }
+
+        return default;
+    }
+
     public TaskExecutionInstanceModel BuildTaskExecutionInstance(
+        NodeInfoModel nodeInfo,
         TaskDefinitionModel taskDefinition,
         NodeSessionId nodeSessionId,
         FireTaskParameters parameters,
@@ -365,7 +374,7 @@ public class TaskActivateService : BackgroundService
         var taskExecutionInstance = new TaskExecutionInstanceModel
         {
             Id = Guid.NewGuid().ToString(),
-            Name = $"{nodeName} {taskDefinition.Name}",
+            Name = $"{nodeName ?? nodeInfo.Name} {taskDefinition.Name}",
             NodeInfoId = nodeSessionId.NodeId.Value,
             Status = TaskExecutionStatus.Triggered,
             FireTimeUtc = parameters.FireTimeUtc.DateTime,

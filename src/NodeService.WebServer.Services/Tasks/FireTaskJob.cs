@@ -1,12 +1,17 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.Tasks;
 
 public class FireTaskJob : JobBase
 {
-    public FireTaskJob(IServiceProvider serviceProvider) : base(serviceProvider)
+    readonly ExceptionCounter _exceptionCounter;
+
+    public FireTaskJob(IServiceProvider serviceProvider,
+        ExceptionCounter exceptionCounter) : base(serviceProvider)
     {
         Logger = serviceProvider.GetService<ILogger<FireTaskJob>>();
+        _exceptionCounter = exceptionCounter;
     }
 
     public override async Task Execute(IJobExecutionContext context)
@@ -17,6 +22,7 @@ public class FireTaskJob : JobBase
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             Logger.LogError(ex.ToString());
         }
         finally
@@ -41,8 +47,8 @@ public class FireTaskJob : JobBase
             ScheduledFireTimeUtc = context.ScheduledFireTimeUtc,
             ParentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string
         };
-        var batchQueue = ServiceProvider.GetService<BatchQueue<FireTaskParameters>>();
-        await batchQueue.SendAsync(fireTaskParameters);
+        var batchQueue = ServiceProvider.GetService<BatchQueue<TaskActivateServiceParameters>>();
+        await batchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters));
         Logger.LogInformation($"Task fire instance id:{context.FireInstanceId} end init");
     }
 }

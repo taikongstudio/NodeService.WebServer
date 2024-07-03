@@ -3,6 +3,7 @@ using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Services.NodeSessions;
 using System.Net.Http;
+using System.Net.NetworkInformation;
 
 namespace NodeService.WebServer.Services.MessageHandlers;
 
@@ -51,7 +52,7 @@ public class HeartBeatResponseHandler : IMessageHandler
         }
     }
 
-    public async ValueTask HandleAsync(NodeSessionId nodeSessionId,  IMessage message, CancellationToken cancellationToken)
+    public async ValueTask HandleAsync(NodeSessionId nodeSessionId, IMessage message, CancellationToken cancellationToken)
     {
         if (_remoteIpAddress == null)
         {
@@ -72,6 +73,7 @@ public class HeartBeatResponseHandler : IMessageHandler
         }
 
         _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);
+        _nodeSessionService.UpdateNodeName(NodeSessionId, _remoteIpAddress);
         await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
         {
             Message = heartBeatResponse,

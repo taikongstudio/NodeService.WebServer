@@ -260,8 +260,20 @@
                     <Tag>@(string.IsNullOrEmpty(context.Profile.Remarks) ? "（空）" : context.Profile.Remarks)</Tag>
                 </PropertyColumn>
                 <PropertyColumn Title="IP地址" Sortable="true" Property="c => c.Profile.IpAddress">
-                    <Tag>@context.Profile.IpAddress</Tag>
-                </PropertyColumn>
+                        @if (context.PingReplyInfo == null )
+                        {
+                            <Tag><Icon Type="poweroff" Theme="outline"  Style="font-size: 12px" />@context.Profile.IpAddress</Tag>
+                        }
+                        else if (context.PingReplyInfo.Status == System.Net.NetworkInformation.IPStatus.Success)
+                        {
+                            <Tag><Icon Type="check" Theme="outline" Style="font-size: 12px" />@context.Profile.IpAddress
+                            </Tag>
+                        }
+                        else
+                        {
+                            <Tag><Icon Type="disconnect" Theme="outline" Style="font-size: 12px" />@context.Profile.IpAddress</Tag>
+                        }
+                    </PropertyColumn>
                 <ActionColumn Fixed="right" Title="操作">
                     <Space Size=@("middle")>
                         <SpaceItem>

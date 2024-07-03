@@ -2,6 +2,7 @@
 using NodeService.Infrastructure.Messages;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
+using System.Net.NetworkInformation;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -191,6 +192,21 @@ public class NodeSessionService : INodeSessionService
         EnsureNodeSession(nodeSessionId).Name = nodeName;
     }
 
+    public void UpdateNodeIpAddress(NodeSessionId nodeSessionId, string ipAddress)
+    {
+        EnsureNodeSession(nodeSessionId).IpAddress = ipAddress;
+    }
+
+    public string GetNodeIpAddress(NodeSessionId nodeSessionId)
+    {
+        return EnsureNodeSession(nodeSessionId).IpAddress;
+    }
+
+    public void UpdateNodePingReply(NodeSessionId nodeSessionId, PingReplyInfo  pingReplyInfo)
+    {
+        EnsureNodeSession(nodeSessionId).LastPingReply = pingReplyInfo;
+    }
+
 
     public int GetNodeSessionsCount()
     {
@@ -239,6 +255,11 @@ public class NodeSessionService : INodeSessionService
         return nodeSession;
     }
 
+    public PingReplyInfo? GetNodeLastPingReplyInfo(NodeSessionId nodeSessionId)
+    {
+        return EnsureNodeSession(nodeSessionId).LastPingReply;
+    }
+
     private class NodeSession
     {
         public NodeSession(NodeSessionId id)
@@ -256,6 +277,10 @@ public class NodeSessionService : INodeSessionService
         public NodeStatus Status { get; set; }
 
         public string Name { get; set; }
+
+        public string IpAddress { get; set; }
+
+        public PingReplyInfo? LastPingReply { get; set; }
 
         public NodeSessionId Id { get; set; }
 

@@ -16,38 +16,6 @@ public class ManagementController : Controller
         _dbContextFactory = dbContextFactory;
     }
 
-    [HttpGet("/api/management/sync")]
-    public async Task<ApiResponse<int>> SyncNodeInfoFromMachineInfoAsync()
-    {
-        var apiResponse = new ApiResponse<int>();
-        using var scope = _serviceProvider.CreateScope();
-        using var profileDbContext = _serviceProvider.GetService<ApplicationProfileDbContext>();
-        var machineInfoList = profileDbContext.MachineInfoDbSet.ToArray();
-        await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-        var nodesList = dbContext.NodeInfoDbSet.Include(x => x.Profile).AsSplitQuery().ToList();
-
-        foreach (var machineInfo in machineInfoList)
-        {
-            var computerName = machineInfo.computer_name;
-            var nodeInfo = nodesList.FirstOrDefault(
-                x =>
-                    string.Equals(x.Name, computerName, StringComparison.OrdinalIgnoreCase)
-            );
-            if (nodeInfo == null) continue;
-            if (nodeInfo.Profile.IpAddress == null) continue;
-            if (nodeInfo.Profile.IpAddress != nodeInfo.Profile.IpAddress ||
-                !nodeInfo.Profile.IpAddress.Contains(nodeInfo.Profile.IpAddress)) continue;
-            nodeInfo.Profile.TestInfo = machineInfo.test_info;
-            nodeInfo.Profile.Remarks = machineInfo.remarks;
-            nodeInfo.Profile.LabName = machineInfo.lab_name;
-            nodeInfo.Profile.Usages = machineInfo.usages;
-            nodeInfo.Profile.LabArea = machineInfo.lab_area;
-        }
-
-        var changesCount = await dbContext.SaveChangesAsync();
-        apiResponse.SetResult(changesCount);
-        return apiResponse;
-    }
 
     [HttpGet("/api/management/gennode")]
     public async Task<ApiResponse<int>> TestAsync()

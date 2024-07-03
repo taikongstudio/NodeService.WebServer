@@ -436,7 +436,7 @@
                 _timeDiffWarningMsg = $"服务器时间与节点时间差距大于{_nodeSettings.TimeDiffWarningSeconds}秒";
                 if (_nodeSettings.IpAddressMappings != null)
                 {
-                    _selectedAreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault().Tag;
+                    _selectedAreaTag = _nodeSettings.IpAddressMappings.FirstOrDefault()?.Tag ?? "*";
                 }
             }
             else

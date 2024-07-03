@@ -464,22 +464,14 @@ public class Program
                     builder.Configuration.GetConnectionString("NodeServiceDbMySQL_debug"), optionsBuilder =>
                     {
                         optionsBuilder.EnableRetryOnFailure();
-                        optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery);
+                        optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                     }), 2048);
             builder.Services.AddDbContext<ApplicationUserDbContext>(options =>
                 options.UseSqlServer(
                     builder.Configuration.GetConnectionString("NodeServiceUserDbMySQL_debug"), optionsBuilder =>
                     {
                         optionsBuilder.EnableRetryOnFailure();
-                        optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery);
-                    }));
-            builder.Services.AddDbContext<ApplicationProfileDbContext>(options =>
-                options.UseMySql(builder.Configuration.GetConnectionString("MyProfileSQL"),
-                    MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
-                    {
-                        mySqlOptionBuilder.EnableRetryOnFailure();
-                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery);
-                        mySqlOptionBuilder.EnableStringComparisonTranslations();
+                        optionsBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                     }));
         }
         else
@@ -489,7 +481,7 @@ public class Program
                     MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
                     {
                         mySqlOptionBuilder.EnableRetryOnFailure();
-                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery);
+                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                         mySqlOptionBuilder.EnableStringComparisonTranslations();
                     }), 2048);
             builder.Services.AddDbContext<ApplicationUserDbContext>(options =>
@@ -497,15 +489,7 @@ public class Program
                     MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
                     {
                         mySqlOptionBuilder.EnableRetryOnFailure();
-                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery);
-                        mySqlOptionBuilder.EnableStringComparisonTranslations();
-                    }));
-            builder.Services.AddDbContext<ApplicationProfileDbContext>(options =>
-                options.UseMySql(builder.Configuration.GetConnectionString("MyProfileSQL"),
-                    MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
-                    {
-                        mySqlOptionBuilder.EnableRetryOnFailure();
-                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery);
+                        mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                         mySqlOptionBuilder.EnableStringComparisonTranslations();
                     }));
         }

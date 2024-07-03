@@ -13,13 +13,13 @@ public partial class CommonConfigController
 
     async ValueTask AddOrUpdateTaskDefinitionAsync(TaskDefinitionModel taskDefinition)
     {
-        if (taskDefinition.TaskFlowTemplateId == null && taskDefinition.Value.TriggerType == TaskTriggerType.Schedule)
+        if (taskDefinition.TaskFlowTemplateId == null)
         {
             var taskScheduleParameters = new TaskScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
             var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
             var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
                 taskScheduleServiceParameters,
-                BatchQueueOperationKind.AddOrUpdate);
+              taskDefinition.Value.TriggerType == TaskTriggerType.Schedule ? BatchQueueOperationKind.AddOrUpdate : BatchQueueOperationKind.Delete);
             var queue = _serviceProvider.GetService<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             await queue.EnqueueAsync(op);
         }

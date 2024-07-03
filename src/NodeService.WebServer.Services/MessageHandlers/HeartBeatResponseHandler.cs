@@ -73,7 +73,7 @@ public class HeartBeatResponseHandler : IMessageHandler
         }
 
         _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);
-        _nodeSessionService.UpdateNodeName(NodeSessionId, _remoteIpAddress);
+        _nodeSessionService.UpdateNodeIpAddress(NodeSessionId, _remoteIpAddress);
         await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
         {
             Message = heartBeatResponse,

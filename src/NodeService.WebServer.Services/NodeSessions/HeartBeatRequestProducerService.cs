@@ -44,7 +44,12 @@ public class HeartBeatRequestProducerService : BackgroundService
         try
         {
             using Ping ping = new Ping();
-            var reply = await ping.SendPingAsync(_nodeSessionService.GetNodeIpAddress(nodeSessionId), TimeSpan.FromSeconds(5));
+            var ipAddressOrHostName = _nodeSessionService.GetNodeIpAddress(nodeSessionId);
+            if (ipAddressOrHostName == null)
+            {
+                return;
+            }
+            var reply = await ping.SendPingAsync(ipAddressOrHostName, TimeSpan.FromSeconds(5));
             var lastPingReplyInfo = new PingReplyInfo()
             {
                 Status = reply.Status,

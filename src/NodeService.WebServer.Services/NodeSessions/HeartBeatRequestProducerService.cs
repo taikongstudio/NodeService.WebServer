@@ -127,13 +127,19 @@ public class HeartBeatRequestProducerService : BackgroundService
             else
             {
                 var pingReplyInfo = _nodeSessionService.GetNodeLastPingReplyInfo(nodeSessionId);
-                if (pingReplyInfo == null || DateTime.Now - pingReplyInfo.DateTime > TimeSpan.FromMinutes(2))
+                if (pingReplyInfo == null || DateTime.UtcNow - pingReplyInfo.DateTime > TimeSpan.FromMinutes(2))
                 {
                     pingOffNode = true;
                 }
             }
             if (pingOffNode)
             {
+                _nodeSessionService.UpdateNodePingReply(nodeSessionId, new PingReplyInfo()
+                {
+                    Status = IPStatus.Unknown,
+                    RoundtripTime = 0,
+                    DateTime = DateTime.UtcNow
+                });
                 _pingQueue.Post(nodeSessionId);
             }
 

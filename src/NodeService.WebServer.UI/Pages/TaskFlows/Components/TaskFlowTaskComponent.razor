@@ -1,4 +1,5 @@
 ﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
+@using NodeService.WebServer.Extensions
 @inject ApiService ApiService
 @if (TaskTemplate.IsEditable)
 {
@@ -70,9 +71,14 @@ else
                 }
                 else if(ExecutionInstance != null)
                 {
-                    if(ExecutionInstance.Status== TaskExecutionStatus.Running)
+                    if (ExecutionInstance.Status == TaskExecutionStatus.Running)
                     {
-                        <MenuItem Icon="@IconType.Outline.Close" OnClick="@TaskTemplate.CancelAsync">停止任务</MenuItem>
+                        <MenuItem Icon="@IconType.Outline.Close" OnClick="()=>ExecutionInstance.CancelTaskAsync()">停止任务</MenuItem>
+                    }
+                    else if (ExecutionInstance.Status == TaskExecutionStatus.Failed)
+                    {
+                        <MenuItem Icon="@IconType.Outline.Close" OnClick="()=>ExecutionInstance.RetryTaskAsync()">重试运行</MenuItem>
+                        <MenuItem Icon="@IconType.Outline.Redo" OnClick="()=>ExecutionInstance.RerunTaskAsync()">重新运行</MenuItem>
                     }
                 }
                 </Menu>

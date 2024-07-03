@@ -68,7 +68,7 @@ public class HeartBeatResponseHandler : IMessageHandler
                 DateTime = DateTime.UtcNow,
                 NodeId = NodeSessionId.NodeId.Value,
                 Message = $"Online"
-            });
+            }, cancellationToken);
         }
 
         _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);

@@ -491,7 +491,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             {
                 FireTimeUtc = DateTime.UtcNow,
                 TriggerSource = TriggerSource.Manual,
-                FireInstanceId = $"ChildTask_{parentTaskInstance.Id}_{Guid.NewGuid()}",
+                FireInstanceId = $"ChildTask_{Guid.NewGuid()}",
                 TaskDefinitionId = parentTaskInstance.TaskDefinitionId,
                 ScheduledFireTimeUtc = DateTime.UtcNow,
                 NodeList = taskDefinition.NodeList,

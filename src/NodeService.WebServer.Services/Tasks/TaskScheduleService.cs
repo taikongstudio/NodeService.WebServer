@@ -111,9 +111,9 @@ public class TaskScheduleService : BackgroundService
                 switch (op.Argument.Parameters.Index)
                 {
                     case 0:
+                        await ProcessTaskScheduleParametersAsync(op, cancellationToken);
                         break;
                     case 1:
-                        await ProcessTaskScheduleParametersAsync(op, cancellationToken);
                         break;
                     default:
                         break;
@@ -228,6 +228,7 @@ public class TaskScheduleService : BackgroundService
         }
         catch (Exception ex)
         {
+            _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
     }

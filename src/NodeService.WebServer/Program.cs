@@ -1,7 +1,3 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading.RateLimiting;
 using AntDesign.ProLayout;
 using CurrieTechnologies.Razor.Clipboard;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,11 +8,10 @@ using Microsoft.IdentityModel.Tokens;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.Identity;
+using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.Infrastructure.NodeSessions;
-using NodeService.Infrastructure.Services;
 using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
@@ -31,6 +26,9 @@ using NodeService.WebServer.Services.VirtualFileSystem;
 using NodeService.WebServer.UI.Services;
 using OpenTelemetry.Metrics;
 using Quartz.Spi;
+using System.IdentityModel.Tokens.Jwt;
+using System.Text;
+using System.Threading.RateLimiting;
 using TaskScheduler = NodeService.WebServer.Services.Tasks.TaskScheduler;
 
 public class Program
@@ -98,7 +96,7 @@ public class Program
         // Add OpenAPI 3.0 document serving middleware
         // Available at: http://localhost:<port>/swagger/v1/swagger.json
         app.UseOpenApi();
-
+        app.UseRequestDecompression();
         // Add web UIs to interact with the document
         // Available at: http://localhost:<port>/swagger
         app.UseSwaggerUi(uiSettings => { });
@@ -159,9 +157,12 @@ public class Program
         builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
         builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
         builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
-        builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 1024 * 1024 * 1024; });
+        builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 1024 * 1024 * 1024 * 4L ; });
 
+        builder.Services.AddRequestDecompression(options =>
+        {
 
+        });
         builder.Services.AddControllersWithViews();
         builder.Services.AddControllers();
 
@@ -437,7 +438,7 @@ public class Program
             new BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>(
                 1024 * 2, TimeSpan.FromSeconds(3)));
         builder.Services.AddSingleton(
-            new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(5)));
+            new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>>(64,
                 TimeSpan.FromMilliseconds(300)));
@@ -447,9 +448,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(256, TimeSpan.FromSeconds(1)));
-        builder.Services.AddSingleton(
-            new BatchQueue<BatchQueueOperation<FileSystemSyncRequest, FileSystemSyncResponse>>(256,
-                TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncResponse>>(256, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(64, TimeSpan.FromMilliseconds(100)));
     }
 

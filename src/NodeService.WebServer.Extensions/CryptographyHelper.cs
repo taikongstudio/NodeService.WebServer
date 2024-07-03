@@ -40,9 +40,9 @@ public static class CryptographyHelper
         }
     }
 
-    public static async Task<string?> CalculateSHA256Async(Stream stream)
+    public static async Task<string?> CalculateSHA256Async(Stream stream, CancellationToken cancellationToken = default)
     {
-        var bytes = await SHA256.HashDataAsync(stream);
+        var bytes = await SHA256.HashDataAsync(stream, cancellationToken);
         var hash = BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
         return hash;
     }

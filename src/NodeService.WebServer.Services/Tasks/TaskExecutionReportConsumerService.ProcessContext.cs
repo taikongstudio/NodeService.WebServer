@@ -62,7 +62,7 @@ namespace NodeService.WebServer.Services.Tasks
                     }
 
                     var taskActivationRecord = await taskActivationRecordRepo.GetByIdAsync(taskInstanceGroup.Key.FireInstanceId, cancellationToken);
-                    if (taskActivationRecord == null)
+                    if (taskActivationRecord == null || taskActivationRecord.Value.TaskExecutionInstanceInfoList == null)
                     {
                         continue;
                     }

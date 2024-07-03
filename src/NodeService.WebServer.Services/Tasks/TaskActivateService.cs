@@ -365,7 +365,7 @@ public class TaskActivateService : BackgroundService
         var taskExecutionInstance = new TaskExecutionInstanceModel
         {
             Id = Guid.NewGuid().ToString(),
-            Name = $"{nodeName} {taskDefinition.Name} {parameters.FireInstanceId}",
+            Name = $"{nodeName} {taskDefinition.Name}",
             NodeInfoId = nodeSessionId.NodeId.Value,
             Status = TaskExecutionStatus.Triggered,
             FireTimeUtc = parameters.FireTimeUtc.DateTime,

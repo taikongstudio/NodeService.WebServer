@@ -34,7 +34,7 @@ public class FireTaskJob : JobBase
         var fireTaskParameters = new FireTaskParameters
         {
             TaskDefinitionId = Properties[nameof(TaskDefinitionModel.Id)] as string,
-            FireInstanceId = $"{Guid.NewGuid()}_{parentTaskId}_{context.FireInstanceId}",
+            FireInstanceId = $"ScheduleTask_{Guid.NewGuid()}",
             FireTimeUtc = context.FireTimeUtc,
             NextFireTimeUtc = context.NextFireTimeUtc,
             PreviousFireTimeUtc = context.PreviousFireTimeUtc,

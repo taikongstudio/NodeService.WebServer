@@ -170,7 +170,7 @@ namespace NodeService.WebServer.Services.Tasks
                 switch (taskFlowTaskExecutionInstance.Status)
                 {
                     case TaskExecutionStatus.Unknown:
-                        var fireInstanceId = $"Manual_{Guid.NewGuid()}";
+                        var fireInstanceId = $"TaskFlow_{Guid.NewGuid()}";
                         await _taskActivateServiceParametersBatchQueue.SendAsync(new TaskActivateServiceParameters(new FireTaskParameters
                         {
                             FireTimeUtc = DateTime.UtcNow,

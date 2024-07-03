@@ -30,7 +30,7 @@ public static class RepositoryExtensions
         ArgumentNullException.ThrowIfNull(nameof(repository));
         ArgumentNullException.ThrowIfNull(nameof(specification));
 
-        List<T> items = [];
+
         if (pageIndex <= 0) pageIndex = 1;
 
         var totalCount = await repository.CountAsync(specification, cancellationToken);
@@ -53,9 +53,9 @@ public static class RepositoryExtensions
             if (startIndex >= 0 && pageSize > 0) specification.Query.Skip(startIndex).Take(pageSize);
         }
 
-        items = await repository.ListAsync(
-            specification,
-            cancellationToken);
+        var items = await repository.ListAsync(
+             specification,
+             cancellationToken);
 
         return new ListQueryResult<T>(
             totalCount,

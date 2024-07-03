@@ -139,7 +139,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
             }
 
             stopwatch.Start();
-            await nodeInfoRepo.UpdateRangeAsync(nodeChangedList, cancellationToken);
+            foreach (var nodeChangedArray in nodeChangedList.Chunk(10))
+            {
+                await nodeInfoRepo.UpdateRangeAsync(nodeChangedArray, cancellationToken);
+            }
             stopwatch.Stop();
         }
         catch (Exception ex)
@@ -191,8 +194,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
             var nodeStatus = _nodeSessionService.GetNodeStatus(hearBeatMessage.NodeSessionId);
             nodeInfo.Status = nodeStatus;
-            var propsDict =
-                await _memoryCache.GetOrCreateAsync<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id,
+            var propsDict = _memoryCache.GetOrCreate<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id,
                     TimeSpan.FromHours(1));
             nodeList.Add(nodeInfo);
             if (hearBeatResponse != null)
@@ -220,17 +222,29 @@ public class HeartBeatResponseConsumerService : BackgroundService
                         propsDict.TryUpdate(item.Key, item.Value, oldValue);
                 }
 
-                if (propsDict != null && !propsDict.IsEmpty
-                                      &&
-                                      propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key,
-                                          out var processString)
-                                      &&
-                                      !string.IsNullOrEmpty(processString)
-                                      &&
-                                      processString.Contains('['))
+                if (propsDict != null && !propsDict.IsEmpty)
                 {
-                    var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processString);
-                    if (processInfoList != null) AnalysisNodeProcessInfoList(nodeInfo, processInfoList);
+                    if (propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key,
+                            out var processListJsonString)
+                        &&
+                        !string.IsNullOrEmpty(processListJsonString)
+                        &&
+                        processListJsonString.Contains('['))
+                    {
+                        var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processListJsonString);
+                        if (processInfoList != null) AnalysisNodeProcessInfoList(nodeInfo, processInfoList);
+                    }
+                    if (propsDict.TryGetValue(NodePropertyModel.System_Win32Services_Key,
+                            out var win32ServiceListJsonString)
+                        &&
+                        !string.IsNullOrEmpty(win32ServiceListJsonString)
+                        &&
+                        win32ServiceListJsonString.Contains('['))
+                    {
+                        var serviceProcessInfoList = JsonSerializer.Deserialize<ServiceProcessInfo[]>(win32ServiceListJsonString);
+                        if (serviceProcessInfoList != null) AnalysisNodeServiceProcessInfoList(nodeInfo, serviceProcessInfoList);
+                    }
+
                 }
 
                 AnalysisNodeInfo(nodeInfo);
@@ -284,5 +298,33 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(static x => x));
         }
+    }
+
+    private void AnalysisNodeServiceProcessInfoList(NodeInfoModel nodeInfo, ServiceProcessInfo[] serviceProcessInfoList)
+    {
+        if (_nodeSettings.ProcessUsagesMapping != null && serviceProcessInfoList != null)
+        {
+            var usagesList = nodeInfo.Profile.Usages?.Split(',') ?? [];
+            var usages = new HashSet<string>(usagesList);
+            foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
+            {
+                if (string.IsNullOrEmpty(mapping.Name)
+                    || string.IsNullOrEmpty(mapping.Value))
+                    continue;
+                foreach (var serviceProcessInfo in serviceProcessInfoList)
+                {
+                    if (serviceProcessInfo.PathName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        usages.Add(mapping.Value);
+                    }
+                    else if (serviceProcessInfo.Name.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        usages.Add(mapping.Value);
+                    }
+                }
+            }
+            nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(static x => x));
+        }
+
     }
 }

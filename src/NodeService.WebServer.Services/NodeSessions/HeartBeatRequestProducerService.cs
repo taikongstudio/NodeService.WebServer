@@ -125,15 +125,24 @@ public class HeartBeatRequestProducerService : BackgroundService
                 pingOffNode = true;
             }
             var pingReplyInfo = _nodeSessionService.GetNodeLastPingReplyInfo(nodeSessionId);
-            if ((pingOffNode || pingReplyInfo == null) && DateTime.UtcNow - pingReplyInfo?.DateTime > TimeSpan.FromMinutes(2))
+            if ((pingReplyInfo == null))
             {
-                _nodeSessionService.UpdateNodePingReply(nodeSessionId, new PingReplyInfo()
+                pingReplyInfo = new PingReplyInfo()
                 {
                     Status = IPStatus.Unknown,
                     RoundtripTime = 0,
                     DateTime = DateTime.UtcNow
-                });
+                };
+                _nodeSessionService.UpdateNodePingReply(nodeSessionId, pingReplyInfo);
+            }
+            if (pingOffNode && DateTime.UtcNow - pingReplyInfo.DateTime > TimeSpan.FromMinutes(1))
+            {
                 _pingQueue.Post(nodeSessionId);
+            }
+
+            if (pingOffNode && DateTime.UtcNow - _nodeSessionService.GetLastHeartBeatInputDateTime(nodeSessionId) > TimeSpan.FromMinutes(5))
+            {
+                continue;
             }
 
             var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);

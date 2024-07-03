@@ -4,23 +4,23 @@ namespace NodeService.WebServer.Extensions;
 
 public static class CacheExtensions
 {
-    public static async Task<T?> GetOrCreateAsync<T>(this IMemoryCache memoryCache,
+    public static T? GetOrCreate<T>(this IMemoryCache memoryCache,
         string key,
         TimeSpan absoluteExpirationRelativeToNow)
         where T : new()
     {
-        var value = await memoryCache.GetOrCreateAsync(key, cacheEntry =>
+        var value = memoryCache.GetOrCreate(key, cacheEntry =>
         {
             var value = new T();
             cacheEntry.AbsoluteExpirationRelativeToNow = absoluteExpirationRelativeToNow;
-            return Task.FromResult(value);
+            return value;
         });
         return value;
     }
 
-    public static async Task<T?> GetOrCreateAsync<T>(this IMemoryCache memoryCache,
+    public static async ValueTask<T?> GetOrCreateAsync<T>(this IMemoryCache memoryCache,
         string key,
-        Func<Task<T?>> func,
+        Func<ValueTask<T?>> func,
         TimeSpan absoluteExpirationRelativeToNow)
     {
         var value = await memoryCache.GetOrCreateAsync(key, async cacheEntry =>

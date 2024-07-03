@@ -19,7 +19,7 @@ public partial class CommonConfigController
             var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
             var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
                 taskScheduleServiceParameters,
-              taskDefinition.Value.TriggerType == TaskTriggerType.Schedule ? BatchQueueOperationKind.AddOrUpdate : BatchQueueOperationKind.Delete);
+              taskDefinition.Value.TriggerType == TaskTriggerType.Manual || !taskDefinition.Value.IsEnabled ? BatchQueueOperationKind.Delete : BatchQueueOperationKind.AddOrUpdate);
             var queue = _serviceProvider.GetService<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             await queue.EnqueueAsync(op);
         }

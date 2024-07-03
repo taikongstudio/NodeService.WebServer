@@ -60,7 +60,10 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                 }
                 var tempFilePath = Path.Combine(TempDirectory, Guid.NewGuid().ToString());
                 var decompressedStream = File.Create(tempFilePath);
-                stream.Seek(0, SeekOrigin.Begin);
+                if (stream.CanSeek)
+                {
+                    stream.Seek(0, SeekOrigin.Begin);
+                }
                 using (var decompressor = compressionProvider.CreateDecompressionStream(stream))
                 {
                     await decompressor.CopyToAsync(decompressedStream, cancellationToken);
@@ -83,8 +86,10 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                     throw new InvalidDataException();
                 }
             }
-
-            stream.Seek(0, SeekOrigin.Begin);
+            if (stream.CanSeek)
+            {
+                stream.Seek(0, SeekOrigin.Begin);
+            }
             return new NodeFileUploadContext()
             {
                 FileInfo = nodeFileSyncRequest.FileInfo,

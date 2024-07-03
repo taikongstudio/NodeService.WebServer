@@ -21,7 +21,7 @@ public partial class CommonConfigController
 
 
     [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
-    public async Task<IActionResult> DownloadPackageAsync(string packageId)
+    public async Task<IActionResult> DownloadPackageAsync(string packageId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrEmpty(packageId);
         using var virtualFileSystem = _serviceProvider.GetService<IVirtualFileSystem>();

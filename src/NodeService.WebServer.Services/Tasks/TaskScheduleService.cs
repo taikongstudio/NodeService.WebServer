@@ -156,7 +156,7 @@ public class TaskScheduleService : BackgroundService
         if (taskScheduleParameters.TaskDefinitionId == null) return;
         using var repository = _taskDefinitionRepositoryFactory.CreateRepository();
         var taskDefinition = await repository.GetByIdAsync(taskScheduleParameters.TaskDefinitionId, cancellationToken);
-        if (taskDefinition == null || taskDefinition.Value.TriggerType != TaskTriggerType.Schedule)
+        if (taskDefinition == null || !taskDefinition.Value.IsEnabled || taskDefinition.Value.TriggerType != TaskTriggerType.Schedule)
         {
             await DeleteAllTaskScheduleAsync(taskScheduleParameters.TaskDefinitionId);
             return;

@@ -288,6 +288,7 @@
         _dataSource = new RoutedPaginationDataSource<TaskActivationRecordModel, QueryTaskInstanceGroupListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstanceGroupsAsync, StateHasChanged);
         _dataSource.ExceptionHandler = OnExepction;
         _dataSource.ItemInitializer = InitAsync;
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskActivationRecordModel.CreationDateTime), "desc"));
         base.OnInitialized();
     }
 

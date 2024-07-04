@@ -134,8 +134,9 @@ public class HeartBeatRequestProducerService : BackgroundService
                     DateTime = DateTime.UtcNow
                 };
                 _nodeSessionService.UpdateNodePingReply(nodeSessionId, pingReplyInfo);
+                _pingQueue.Post(nodeSessionId);
             }
-            if (pingOffNode && DateTime.UtcNow - pingReplyInfo.DateTime > TimeSpan.FromMinutes(1))
+            if (DateTime.UtcNow - pingReplyInfo.DateTime > TimeSpan.FromMinutes(1))
             {
                 _pingQueue.Post(nodeSessionId);
             }

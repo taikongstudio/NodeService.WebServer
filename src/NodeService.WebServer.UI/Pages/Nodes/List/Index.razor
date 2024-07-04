@@ -133,6 +133,7 @@
     <GridCol Span="24">
         <Table Loading="@_dataSource.IsLoading"
                Size="TableSize.Small"
+               Resizable
                EnableVirtualization="false"
                OnChange="OnNodeTableChanged"
                TItem="NodeInfoModel"
@@ -202,7 +203,7 @@
                 </GridRow>
             </TitleTemplate>
             <ColumnDefinitions>
-                <PropertyColumn Title="厂区" Sortable="true" Property="c => c.Profile.FactoryName">
+                <PropertyColumn Title="厂区" Sortable="true" Width="100" Property="c => c.Profile.FactoryName">
                     <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
                 </PropertyColumn>
                 <PropertyColumn Title="状态" Sortable="true" Hidden Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
@@ -235,8 +236,9 @@
 
                 </PropertyColumn>
                 <PropertyColumn
-                    Title="最后在线时间"
+                    Title="更新时间"
                     Sortable="true"
+                    Width="100"
                     DefaultSortOrder="SortDirection.Descending"
                     Property="c => c.Profile.ServerUpdateTimeUtc">
                     <Text>
@@ -249,17 +251,17 @@
                         </Tooltip>
                     }
                 </PropertyColumn>
-                <PropertyColumn Title="测试分类" Sortable="true" Ellipsis Property="c => c.Profile.TestInfo"></PropertyColumn>
-                <PropertyColumn Title="实验室区域" Sortable="true" Ellipsis Property="c => c.Profile.LabArea"></PropertyColumn>
-                <PropertyColumn Title="实验室名称" Sortable="true" Ellipsis Property="c => c.Profile.LabName"></PropertyColumn>
+                    <PropertyColumn Title="测试分类" Sortable="true" Ellipsis Width="100" Property="c => c.Profile.TestInfo"></PropertyColumn>
+                <PropertyColumn Title="实验室区域" Sortable="true" Ellipsis Width="120" Property="c => c.Profile.LabArea"></PropertyColumn>
+                <PropertyColumn Title="实验室名称" Sortable="true" Ellipsis Width="120" Property="c => c.Profile.LabName"></PropertyColumn>
 
-                    <PropertyColumn Title="用途" Sortable="true" Ellipsis Property="c => c.Profile.Usages">
-                    <Tag>@(string.IsNullOrEmpty(context.Profile.Usages) ? "（空）" : context.Profile.Usages)</Tag>
+                    <PropertyColumn Title="用途" Sortable="true" Ellipsis Width="100" Property="c => c.Profile.Usages">
+                    @(string.IsNullOrEmpty(context.Profile.Usages) ? "（空）" : context.Profile.Usages)
                 </PropertyColumn>
-                <PropertyColumn Title="备注" Sortable="true" Property="c => c.Profile.Remarks">
-                    <Tag>@(string.IsNullOrEmpty(context.Profile.Remarks) ? "（空）" : context.Profile.Remarks)</Tag>
+                <PropertyColumn Title="备注" Sortable="true" Ellipsis Width="100" Property="c => c.Profile.Remarks">
+                    @(string.IsNullOrEmpty(context.Profile.Remarks) ? "（空）" : context.Profile.Remarks)
                 </PropertyColumn>
-                <PropertyColumn Title="IP地址" Sortable="true" Property="c => c.Profile.IpAddress">
+                <PropertyColumn Title="IP地址" Sortable="true" Ellipsis Width="120" Property="c => c.Profile.IpAddress">
                             <AntDesign.Tooltip  Placement="@Placement.Left">
                                 <TitleTemplate>
                                 @if (context.PingReplyInfo != null)
@@ -275,22 +277,30 @@
                                 <ChildContent>
                                 @if (context.PingReplyInfo == null)
                                 {
-                                    <Tag><Icon Type="warning" Theme="outline" TwotoneColor="#f5222d" Height="1em" Width="1em" />@context.Profile.IpAddress</Tag>
+                                    <Icon Type="warning" Theme="outline" TwotoneColor="#f5222d" Height="1em" Width="1em" />
+                                        <br/>
+                                    <Tag>@context.Profile.IpAddress</Tag>
+                           
                                 }
                                 else if (context.PingReplyInfo.Status == System.Net.NetworkInformation.IPStatus.Success)
                                 {
-                                     <Tag> <Icon Type="wifi" Theme="outline" TwotoneColor="#f5222d" Height="1em" Width="1em" />@context.Profile.IpAddress</Tag>
+                                     <Icon Type="wifi" Theme="outline" TwotoneColor="#f5222d" Height="1em" Width="1em" />
+                                        <br/>
+                                    <Tag>@context.Profile.IpAddress</Tag>
+                     
                                 }
                                 else
                                 {
-                                    <Tag> <Icon Type="disconnect" Theme="outline" TwotoneColor="#f5222d" Height="1em" Width="1em" />@context.Profile.IpAddress</Tag>
+                                    <Icon Type="disconnect" Theme="outline" TwotoneColor="#f5222d" Height="1em" Width="1em" />           
+                                        <br/>
+                                    <Tag>@context.Profile.IpAddress</Tag>
                                 }
                                 </ChildContent>
 
                         </AntDesign.Tooltip>
 
                     </PropertyColumn>
-                <ActionColumn Fixed="right" Title="操作">
+                <ActionColumn Width="120" Fixed="right" Title="操作">
                     <Space Size=@("middle")>
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Size="default" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OpenModifyNodeInfoDrawer(context)"></Button>

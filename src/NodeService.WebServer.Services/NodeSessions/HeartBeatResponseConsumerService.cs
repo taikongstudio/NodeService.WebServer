@@ -111,6 +111,11 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
+    private string GetNodeId(NodeHeartBeatSessionMessage sessionMessage)
+    {
+        return sessionMessage.NodeSessionId.NodeId.Value;
+    }
+
     private async Task ProcessHeartBeatMessagesAsync(
         NodeHeartBeatSessionMessage[] array,
         CancellationToken cancellationToken = default)
@@ -121,16 +126,31 @@ public class HeartBeatResponseConsumerService : BackgroundService
             using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
             using var nodePropsRepo = _nodePropertyRepositoryFactory.CreateRepository();
             await RefreshNodeSettingsAsync(cancellationToken);
-            var nodeChangedList = new List<NodeInfoModel>();
+            var nodeIdList = array.Select(GetNodeId);
+            var nodesList = await nodeInfoRepo.ListAsync(
+                new NodeInfoSpecification(AreaTags.Any, NodeStatus.All, NodeDeviceType.All, DataFilterCollection<string>.Includes(nodeIdList)),
+                cancellationToken);
             foreach (var hearBeatSessionMessage in array)
             {
+                NodeInfoModel? nodeInfo = null;
+                foreach (var item in nodesList)
+                {
+                    if (item.Id == hearBeatSessionMessage.NodeSessionId.NodeId.Value)
+                    {
+                        nodeInfo = item;
+                        break;
+                    }
+                }
+                if (nodeInfo == null)
+                {
+                    continue;
+                }
                 if (hearBeatSessionMessage == null) continue;
                 stopwatch.Start();
                 await ProcessHeartBeatMessageAsync(
-                    nodeInfoRepo,
                     nodePropsRepo,
                     hearBeatSessionMessage,
-                    nodeChangedList,
+                    nodeInfo,
                     cancellationToken);
                 stopwatch.Stop();
                 _logger.LogInformation(
@@ -139,7 +159,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             }
 
             stopwatch.Start();
-            foreach (var nodeChangedArray in nodeChangedList.Chunk(10))
+            foreach (var nodeChangedArray in nodesList.Chunk(10))
             {
                 await nodeInfoRepo.UpdateRangeAsync(nodeChangedArray, cancellationToken);
             }
@@ -170,14 +190,12 @@ public class HeartBeatResponseConsumerService : BackgroundService
     }
 
     private async Task ProcessHeartBeatMessageAsync(
-        IRepository<NodeInfoModel> nodeInfoRepo,
         IRepository<NodePropertySnapshotModel> nodePropertyRepo,
         NodeHeartBeatSessionMessage hearBeatMessage,
-        List<NodeInfoModel> nodeList,
+        NodeInfoModel  nodeInfo,
         CancellationToken cancellationToken = default
     )
     {
-        NodeInfoModel? nodeInfo = null;
         try
         {
             var hearBeatResponse = hearBeatMessage.GetMessage();
@@ -187,8 +205,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 return;
             }
 
-            nodeInfo = await nodeInfoRepo.GetByIdAsync(hearBeatMessage.NodeSessionId.NodeId.Value, cancellationToken);
-
             if (nodeInfo == null) return;
 
             var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
@@ -196,7 +212,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
             nodeInfo.Status = nodeStatus;
             var propsDict = _memoryCache.GetOrCreate<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id,
                     TimeSpan.FromHours(1));
-            nodeList.Add(nodeInfo);
             if (hearBeatResponse != null)
             {
                 nodeInfo.Profile.UpdateTime = DateTime.ParseExact(
@@ -313,11 +328,11 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     continue;
                 foreach (var serviceProcessInfo in serviceProcessInfoList)
                 {
-                    if (serviceProcessInfo.PathName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+                    if (serviceProcessInfo.PathName != null && serviceProcessInfo.PathName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
                     {
                         usages.Add(mapping.Value);
                     }
-                    else if (serviceProcessInfo.Name.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+                    else if (serviceProcessInfo.Name != null && serviceProcessInfo.Name.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
                     {
                         usages.Add(mapping.Value);
                     }

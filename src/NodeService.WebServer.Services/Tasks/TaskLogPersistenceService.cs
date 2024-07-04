@@ -177,13 +177,14 @@ public class TaskLogPersistenceService : BackgroundService
 
     void Stat()
     {
-        _webServerCounter.TaskLogPageCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalPageCount);
+        _webServerCounter.TaskLogPageCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
         _webServerCounter.TaskLogUnitConsumeCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
         _webServerCounter.TaskLogEntriesSavedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
         _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
         _webServerCounter.TaskLogUnitQueryTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
         _webServerCounter.TaskLogUnitSaveTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
         _webServerCounter.TaskLogUnitAvailableCount.Value = _taskLogUnitBatchQueue.AvailableCount;
+        _webServerCounter.TaskLogPageDetachedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
     }
 
     async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogUnit> taskLogUnitGroup,

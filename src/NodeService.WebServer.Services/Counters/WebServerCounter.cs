@@ -73,4 +73,6 @@ public class WebServerCounter
     public CounterLongValue NodeServiceInputMessagesCount { get; set; } = new();
     public CounterLongValue NodeServiceOutputMessagesCount { get; set; } = new();
     public CounterLongValue NodeServiceExpiredMessagesCount { get; set; } = new();
+
+    public CounterLongValue TaskLogPageDetachedCount { get; set; } = new();
 }

@@ -19,6 +19,7 @@ public class TaskLogHandler
         public long PageSavedCount;
         public long PageNotSavedCount;
         public long LogEntriesSavedCount;
+        public long PageDetachedCount;
     }
 
     private const int PAGESIZE = 1024;
@@ -40,7 +41,9 @@ public class TaskLogHandler
 
     public long TotalLogEntriesSavedCount { get; private set; }
 
-    public long TotalPageCount { get; private set; }
+    public long TotalCreatedPageCount { get; private set; }
+
+    public long TotalDetachedPageCount { get; private set; }
 
     public int ActiveTaskLogGroupCount { get; private set; }
 
@@ -87,7 +90,8 @@ public class TaskLogHandler
 
             TotalSaveTimeSpan += stopwatch.Elapsed;
             TotalLogEntriesSavedCount = _taskLogStat.LogEntriesSavedCount;
-            TotalPageCount = _taskLogStat.PageCreatedCount;
+            TotalCreatedPageCount = _taskLogStat.PageCreatedCount;
+            TotalDetachedPageCount = _taskLogStat.PageDetachedCount;
             if (stopwatch.Elapsed > TotalSaveMaxTimeSpan) TotalSaveMaxTimeSpan = stopwatch.Elapsed;
         }
         catch (Exception ex)
@@ -318,21 +322,22 @@ public class TaskLogHandler
     {
         if (dict.IsEmpty) return;
         var fullTaskLogPages = dict.Values.Where(IsFullTaskLogPage);
-        if (fullTaskLogPages.Any())
-            foreach (var taskLogPage in fullTaskLogPages)
-            {
-                _taskLogStat.PageSavedCount++;
-                dict.TryRemove(taskLogPage.Id, out _);
-            }
+        foreach (var taskLogPage in fullTaskLogPages)
+        {
+            _taskLogStat.PageSavedCount++;
+            dict.TryRemove(taskLogPage.Id, out _);
+        }
     }
 
     private void RemoveInactiveTaskLogPages(ConcurrentDictionary<string, TaskLogModel> dict)
     {
         if (dict.IsEmpty) return;
         var inactiveTaskLogPages = dict.Values.Where(IsInactiveTaskLogPage);
-        if (inactiveTaskLogPages.Any())
-            foreach (var taskLogPage in inactiveTaskLogPages)
-                dict.TryRemove(taskLogPage.Id, out _);
+        foreach (var taskLogPage in inactiveTaskLogPages)
+        {
+            dict.TryRemove(taskLogPage.Id, out _);
+            _taskLogStat.PageDetachedCount++;
+        }
     }
 
     private bool IsFullTaskLogPage(TaskLogModel taskLogPage)

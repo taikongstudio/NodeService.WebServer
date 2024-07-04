@@ -96,6 +96,7 @@
         _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
         _dataSource.QueryParameters.EndDateTime = EndDateTime;
         _dataSource.ExceptionHandler = OnExepction;
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(NodeStatusChangeRecordModel.DateTime), "desc"));
         base.OnInitialized();
     }
 

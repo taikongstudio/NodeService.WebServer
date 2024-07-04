@@ -557,50 +557,32 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         {
             using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
             using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
-            var taskExeuctionInstances = await taskExecutionInstanceRepo.ListAsync(
-                new TaskExecutionInstanceSpecification(
-                    DataFilterCollection<TaskExecutionStatus>.Includes(
-                    [
-                        TaskExecutionStatus.Triggered,
-                        TaskExecutionStatus.Started,
-                        TaskExecutionStatus.Running
-                    ]),
-                    false), cancellationToken);
-
-            if (taskExeuctionInstances.Count == 0) return;
-            List<TaskExecutionInstanceModel> taskExecutionInstanceList = [];
-            foreach (var taskExecutionInstanceGroup in
-                     taskExeuctionInstances.GroupBy(static x => x.TaskDefinitionId))
+            var pageIndex = 0;
+            var pageSize = 100;
+            while (true)
             {
-                var taskDefinitionId = taskExecutionInstanceGroup.Key;
-                if (taskDefinitionId == null) continue;
-                var taskDefinition = await taskDefinitionRepo.GetByIdAsync(taskDefinitionId, cancellationToken);
-                if (taskDefinition == null) continue;
-                taskExecutionInstanceList.Clear();
-                foreach (var taskExecutionInstance in taskExecutionInstanceGroup)
+                var listQueryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(
+                                            new TaskExecutionInstanceSpecification(
+                                                DataFilterCollection<TaskExecutionStatus>.Includes(
+                                                [
+                                                    TaskExecutionStatus.Triggered,
+                                                                TaskExecutionStatus.Started,
+                                                                TaskExecutionStatus.Running
+                                                ]),
+                                                false),
+                                            new PaginationInfo(pageIndex, pageSize),
+                                            cancellationToken);
+                if (listQueryResult.IsEmpty)
                 {
-                    if (taskExecutionInstance.FireTimeUtc == DateTime.MinValue)
-                    {
-                        continue;
-                    }
-
-                    if (DateTime.UtcNow - taskExecutionInstance.FireTimeUtc < TimeSpan.FromDays(7)) continue;
-                    if (taskExecutionInstance.FireTimeUtc + TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds) < DateTime.UtcNow)
-                    {
-                        await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
-                            nameof(TaskExecutionReportConsumerService),
-                            Dns.GetHostName(),
-                            taskExecutionInstance.Id), cancellationToken);
-                    }
-                    else
-                    {
-                        taskExecutionInstanceList.Add(taskExecutionInstance);
-                    }
+                    break;
                 }
+                pageIndex++;
+                var taskExeuctionInstances = listQueryResult.Items;
 
-                if (taskExecutionInstanceList.Count > 0)
-                    await ScheduleTimeLimitTaskAsync(taskExecutionInstanceList, cancellationToken);
+                await ProcessTaskExecutionInstanceAsync(taskDefinitionRepo, taskExeuctionInstances, cancellationToken);
+
             }
+
         }
         catch (Exception ex)
         {
@@ -608,4 +590,47 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             _logger.LogError(ex.ToString());
         }
     }
+
+    private async Task ProcessTaskExecutionInstanceAsync(
+        IRepository<TaskDefinitionModel> taskDefinitionRepo,
+        IEnumerable<TaskExecutionInstanceModel> taskExeuctionInstances,
+        CancellationToken cancellationToken = default)
+    {
+        List<TaskExecutionInstanceModel> taskExecutionInstanceList = [];
+        foreach (var taskExecutionInstanceGroup in
+                 taskExeuctionInstances.GroupBy(static x => x.TaskDefinitionId))
+        {
+            var taskDefinitionId = taskExecutionInstanceGroup.Key;
+            if (taskDefinitionId == null) continue;
+            var taskDefinition = await taskDefinitionRepo.GetByIdAsync(taskDefinitionId, cancellationToken);
+            if (taskDefinition == null) continue;
+            taskExecutionInstanceList.Clear();
+            foreach (var taskExecutionInstance in taskExecutionInstanceGroup)
+            {
+                if (taskExecutionInstance.FireTimeUtc == DateTime.MinValue)
+                {
+                    continue;
+                }
+
+                if (DateTime.UtcNow - taskExecutionInstance.FireTimeUtc < TimeSpan.FromDays(7)) continue;
+                if (taskExecutionInstance.FireTimeUtc + TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds) < DateTime.UtcNow)
+                {
+                    await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
+                        nameof(TaskExecutionReportConsumerService),
+                        Dns.GetHostName(),
+                        taskExecutionInstance.Id), cancellationToken);
+                }
+                else
+                {
+                    taskExecutionInstanceList.Add(taskExecutionInstance);
+                }
+            }
+
+            if (taskExecutionInstanceList.Count > 0)
+            {
+                await ScheduleTimeLimitTaskAsync(taskExecutionInstanceList, cancellationToken);
+            }
+        }
+    }
+
 }

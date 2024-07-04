@@ -27,6 +27,6 @@ public class NodeStatusChangeRecordSpecification : Specification<NodeStatusChang
                 Query.Where(x => !nodeIdFilters.Items.Contains(x.NodeId));
         }
 
-        if (sortDescriptions != null) Query.SortBy(sortDescriptions);
+        if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 }

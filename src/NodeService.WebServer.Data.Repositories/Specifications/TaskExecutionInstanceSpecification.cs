@@ -94,6 +94,7 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         bool includeChildTasks
     )
     {
+        Query.AsSplitQuery();
         if (statusFilters.HasValue)
         {
             if (statusFilters.FilterType == DataFilterTypes.Include)
@@ -113,6 +114,7 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         DataFilterCollection<string> taskDefinitionIdFilters,
         DataFilterCollection<string> taskExecutionInstanceIdFilters)
     {
+        Query.AsSplitQuery();
         if (statusFilters.HasValue)
         {
             if (statusFilters.FilterType == DataFilterTypes.Include)

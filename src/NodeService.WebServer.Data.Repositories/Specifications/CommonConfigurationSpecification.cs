@@ -2,9 +2,9 @@
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class CommonConfigSpecification<T> : Specification<T> where T : JsonBasedDataModel
+public class CommonConfigurationSpecification<T> : Specification<T> where T : JsonBasedDataModel
 {
-    public CommonConfigSpecification(
+    public CommonConfigurationSpecification(
         string? keywords,
         IEnumerable<SortDescription>? sortDescriptions = null)
     {
@@ -12,7 +12,7 @@ public class CommonConfigSpecification<T> : Specification<T> where T : JsonBased
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 
-    public CommonConfigSpecification(
+    public CommonConfigurationSpecification(
         DataFilterCollection<string> idFilters)
     {
         if (idFilters.HasValue)

@@ -1,4 +1,5 @@
 ﻿using NodeService.Infrastructure.Concurrent;
+using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Controllers;
@@ -11,7 +12,7 @@ public partial class CommonConfigController
         return AddOrUpdateConfigurationAsync(model, AddOrUpdateTaskDefinitionAsync);
     }
 
-    async ValueTask AddOrUpdateTaskDefinitionAsync(TaskDefinitionModel taskDefinition)
+    async ValueTask AddOrUpdateTaskDefinitionAsync(TaskDefinitionModel taskDefinition, CancellationToken cancellationToken = default)
     {
         if (taskDefinition.TaskFlowTemplateId == null)
         {

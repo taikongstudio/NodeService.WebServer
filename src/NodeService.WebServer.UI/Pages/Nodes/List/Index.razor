@@ -264,37 +264,28 @@
                 <PropertyColumn Title="IP地址" Sortable="true" Ellipsis Width="120" Property="c => c.Profile.IpAddress">
                             <AntDesign.Tooltip  Placement="@Placement.Left">
                                 <TitleTemplate>
-                                @if (context.PingReplyInfo != null)
-                                {
-                                    <Text>延迟:@context.PingReplyInfo.RoundtripTime</Text>
-                                    <br/>
-                                    <Text>状态:@context.PingReplyInfo.Status</Text>
-                                    <br/>
-                                    <Text>时间:@context.PingReplyInfo.DateTime</Text>
-                                }
-
+                                    @if (context.PingReplyInfo != null)
+                                    {
+                                        <Text>延迟:@context.PingReplyInfo.RoundtripTime</Text>
+                                        <br/>
+                                        <Text>状态:@context.PingReplyInfo.Status</Text>
+                                        <br/>
+                                        <Text>时间:@context.PingReplyInfo.DateTime</Text>
+                                    }
                                 </TitleTemplate>
                                 <ChildContent>
-                                @if (context.PingReplyInfo == null)
-                                {
-                                    <Icon Type="warning" Theme="outline" TwotoneColor="#f5222d" Height="1em" Width="1em" />
-                                        <br/>
-                                    <Tag>@context.Profile.IpAddress</Tag>
-                           
-                                }
-                                else if (context.PingReplyInfo.Status == System.Net.NetworkInformation.IPStatus.Success)
-                                {
-                                     <Icon Type="wifi" Theme="outline" TwotoneColor="#f5222d" Height="1em" Width="1em" />
-                                        <br/>
-                                    <Tag>@context.Profile.IpAddress</Tag>
-                     
-                                }
-                                else
-                                {
-                                    <Icon Type="disconnect" Theme="outline" TwotoneColor="#f5222d" Height="1em" Width="1em" />           
-                                        <br/>
-                                    <Tag>@context.Profile.IpAddress</Tag>
-                                }
+                                    @if (context.PingReplyInfo == null)
+                                    {
+                                        <Tag Icon="warning">@context.Profile.IpAddress</Tag>
+                                    }
+                                    else if (context.PingReplyInfo.Status == System.Net.NetworkInformation.IPStatus.Success)
+                                    {
+                                    <Tag Icon="wifi">@context.Profile.IpAddress</Tag>
+                                    }
+                                    else
+                                    {
+                                    <Tag Icon="disconnect">@context.Profile.IpAddress</Tag>
+                                    }
                                 </ChildContent>
 
                         </AntDesign.Tooltip>

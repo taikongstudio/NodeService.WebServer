@@ -7,6 +7,22 @@ using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.QueryOptimize;
 
+
+public record class FileRecordBatchQueryParameters
+{
+    public FileRecordBatchQueryParameters(
+        QueryFileRecordListParameters queryParameters,
+        PaginationInfo paginationInfo)
+    {
+        QueryParameters = queryParameters;
+        PaginationInfo = paginationInfo;
+    }
+
+    public QueryFileRecordListParameters QueryParameters { get; private set; }
+
+    public PaginationInfo PaginationInfo { get; private set; }
+}
+
 public class FileRecordInsertUpdateDeleteService : BackgroundService
 {
     private readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _cudBatchQueue;

@@ -45,22 +45,24 @@ public class NodeConfigurationChangedNotifyService : BackgroundService
                     ? [NodeId.Any]
                     : configurationChangedEvent.NodeIdList.Select(CreateNodeId);
                 foreach (var nodeId in nodeIdList)
-                foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
                 {
-                    var report = new ConfigurationChangedReport()
+                    foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
                     {
-                        RequestId = Guid.NewGuid().ToString(),
-                        Timeout = TimeSpan.FromHours(1)
-                    };
-                    report.Configurations.Add(
-                        $"{configurationChangedEvent.TypeName}_{configurationChangedEvent.Id}",
-                        JsonSerializer.Serialize(configurationChangedEvent));
-                    await _nodeSessionService.PostMessageAsync(nodeSessionId, new SubscribeEvent()
-                    {
-                        RequestId = Guid.NewGuid().ToString(),
-                        Topic = nameof(NodeConfigurationChangedNotifyService),
-                        ConfigurationChangedReport = report
-                    }, cancellationToken);
+                        var report = new ConfigurationChangedReport()
+                        {
+                            RequestId = Guid.NewGuid().ToString(),
+                            Timeout = TimeSpan.FromHours(1)
+                        };
+                        report.Configurations.Add(
+                            $"{configurationChangedEvent.TypeName}_{configurationChangedEvent.Id}",
+                            JsonSerializer.Serialize(configurationChangedEvent));
+                        await _nodeSessionService.PostMessageAsync(nodeSessionId, new SubscribeEvent()
+                        {
+                            RequestId = Guid.NewGuid().ToString(),
+                            Topic = nameof(NodeConfigurationChangedNotifyService),
+                            ConfigurationChangedReport = report
+                        }, cancellationToken);
+                    }
                 }
             }
             catch (Exception ex)

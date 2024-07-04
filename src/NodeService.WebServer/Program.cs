@@ -279,7 +279,7 @@ public class Program
         builder.Services.AddHostedService<DataQualityStatisticsService>();
         builder.Services.AddHostedService<DataQualityAlarmService>();
         builder.Services.AddHostedService<ClientUpdateQueueService>();
-        builder.Services.AddHostedService<CommonConfigBatchQueryQueueService>();
+        builder.Services.AddHostedService<CommonConfigurationQueryQueueService>();
         builder.Services.AddHostedService<TaskCancellationQueueService>();
         builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
         builder.Services.AddHostedService<NodeFileSystemWatchEventConsumerService>();
@@ -448,7 +448,7 @@ public class Program
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(
-            new BatchQueue<BatchQueueOperation<CommonConfigQueryQueueServiceParameters, CommonConfigQueryQueueServiceResult>>(64,
+            new BatchQueue<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>>(64,
                 TimeSpan.FromMilliseconds(300)));
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(64,

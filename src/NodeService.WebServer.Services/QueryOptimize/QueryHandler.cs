@@ -77,9 +77,9 @@ namespace NodeService.WebServer.Services.QueryOptimize
         {
             if (queryParameters is QueryTaskDefinitionParameters queryTaskDefinitionParameters)
             {
-                return new CommonConfigSpecification<TResult>(DataFilterCollection<string>.Includes(queryTaskDefinitionParameters.IdList));
+                return new CommonConfigurationSpecification<TResult>(DataFilterCollection<string>.Includes(queryTaskDefinitionParameters.IdList));
             }
-            return new CommonConfigSpecification<TResult>(queryParameters.Keywords, queryParameters.SortDescriptions);
+            return new CommonConfigurationSpecification<TResult>(queryParameters.Keywords, queryParameters.SortDescriptions);
         }
     }
 

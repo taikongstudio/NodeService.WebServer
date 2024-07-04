@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Controllers;
+﻿using NodeService.WebServer.Services.QueryOptimize;
+
+namespace NodeService.WebServer.Controllers;
 
 public partial class CommonConfigController
 {
@@ -19,13 +21,7 @@ public partial class CommonConfigController
     [HttpGet("/api/CommonConfig/ftpdownload/{id}")]
     public Task<ApiResponse<FtpDownloadConfigModel>> QueryFtpDownloadConfigAsync(string id)
     {
-        return QueryConfigurationAsync<FtpDownloadConfigModel>(id, FindFtpConfigAsync);
-
-        async Task FindFtpConfigAsync(FtpDownloadConfigModel? ftpDownloadConfig)
-        {
-            if (ftpDownloadConfig != null)
-                ftpDownloadConfig.FtpConfig = (await QueryFtpConfigAsync(ftpDownloadConfig.FtpConfigId)).Result;
-        }
+        return QueryConfigurationAsync<FtpDownloadConfigModel>(id);
     }
 
 

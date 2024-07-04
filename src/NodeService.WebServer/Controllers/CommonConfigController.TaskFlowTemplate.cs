@@ -1,5 +1,6 @@
 ﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Controllers
@@ -12,7 +13,7 @@ namespace NodeService.WebServer.Controllers
             return AddOrUpdateConfigurationAsync(model, AddOrUpdateTaskFlowTemplateAsync);
         }
 
-        private async ValueTask AddOrUpdateTaskFlowTemplateAsync(TaskFlowTemplateModel taskFlowTemplate)
+        private async ValueTask AddOrUpdateTaskFlowTemplateAsync(TaskFlowTemplateModel taskFlowTemplate, CancellationToken cancellationToken = default)
         {
             var firstStage = taskFlowTemplate.Value.TaskStages.FirstOrDefault();
             if (firstStage == null)

@@ -90,19 +90,24 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     private async Task InvalidateAllNodeStatusAsync(CancellationToken cancellationToken = default)
     {
-        using var nodeRepo = _nodeInfoRepositoryFactory.CreateRepository();
         try
         {
-            var nodes = await nodeRepo.ListAsync(
+            using var nodeRepo = _nodeInfoRepositoryFactory.CreateRepository();
+            var nodeList = await nodeRepo.ListAsync(
                 new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.Online,
                     NodeDeviceType.Computer,
                     []),
                 cancellationToken);
-            foreach (var node in nodes)
+            foreach (var node in nodeList)
+            {
                 node.Status = NodeStatus.Offline;
-            await nodeRepo.UpdateRangeAsync(nodes, cancellationToken);
+            }
+            foreach (var array in nodeList.Chunk(50))
+            {
+                await nodeRepo.UpdateRangeAsync(array, cancellationToken);
+            }
         }
         catch (Exception ex)
         {
@@ -128,7 +133,11 @@ public class HeartBeatResponseConsumerService : BackgroundService
             await RefreshNodeSettingsAsync(cancellationToken);
             var nodeIdList = array.Select(GetNodeId);
             var nodesList = await nodeInfoRepo.ListAsync(
-                new NodeInfoSpecification(AreaTags.Any, NodeStatus.All, NodeDeviceType.All, DataFilterCollection<string>.Includes(nodeIdList)),
+                new NodeInfoSpecification(
+                    AreaTags.Any,
+                    NodeStatus.All,
+                    NodeDeviceType.All,
+                    DataFilterCollection<string>.Includes(nodeIdList)),
                 cancellationToken);
             foreach (var hearBeatSessionMessage in array)
             {

@@ -124,7 +124,7 @@ public class Program
         {
             FileProvider = new NodeFileProvider(),
             RedirectToAppendTrailingSlash = true,
-            RequestPath = "/Nodes"
+            RequestPath = "/VirtualFileSystem"
         });
 
         app.UseRouting();

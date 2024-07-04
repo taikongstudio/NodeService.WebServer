@@ -125,16 +125,16 @@ public class NodeFileFtpProcessContext : NodeFileProcessContext
     }
 }
 
-public class NodeFileSystemSyncService : BackgroundService
+public class NodeFileSystemUploadService : BackgroundService
 {
-    private readonly ILogger<NodeFileSystemSyncService> _logger;
+    private readonly ILogger<NodeFileSystemUploadService> _logger;
     private readonly ExceptionCounter _exceptionCounter;
     private readonly BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncResponse>> _fileSyncBatchQueue;
     private readonly ApplicationRepositoryFactory<FtpConfigModel> _ftpConfigRepoFactory;
     private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
 
-    public NodeFileSystemSyncService(
-        ILogger<NodeFileSystemSyncService> logger,
+    public NodeFileSystemUploadService(
+        ILogger<NodeFileSystemUploadService> logger,
         ExceptionCounter exceptionCounter,
         BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncResponse>> fileSyncBatchQueue,
         ApplicationRepositoryFactory<FtpConfigModel> ftpConfigRepoFactory,

@@ -328,7 +328,7 @@
     {
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待中" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "排队" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Started, Name = "已启动" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Running, Name = "运行中" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Failed, Name = "失败" });
@@ -341,7 +341,7 @@
         DateTimes[1] = EndDateTime;
         _dataSource.QueryParameters.SortDescriptions.Clear();
         _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.Status), "ascend"));
-        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.FireTimeUtc), "descend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskActivationRecordModel.CreationDateTime), "descend"));
         await QueryTaskExecutionInstanceGroupListAsync();
         await base.OnInitializedAsync();
     }

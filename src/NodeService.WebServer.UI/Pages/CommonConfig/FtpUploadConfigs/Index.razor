@@ -63,22 +63,6 @@
                 <FormItem Label="本地目录">
                     <Input @bind-Value="@context.LocalDirectory"/>
                 </FormItem>
-                <FormItem Label="目录过滤器">
-                    <StringEntryTable ItemsSource="@context.DirectoryFilters"
-                                      NameList="_filterList"
-                                      EndEdit="OnFilterEndEdit"
-                                      Deleted="OnFilterDeleted"/>
-                </FormItem>
-                <FormItem Label="包含子目录">
-                    <Switch @bind-Checked="@context.IncludeSubDirectories"/>
-                </FormItem>
-                @if (context.IncludeSubDirectories)
-                {
-                    <FormItem Label="最大递归深度">
-                        <AntDesign.InputNumber @bind-Value="@context.MaxRecursionDepth" Style="width:200px"/>
-                    </FormItem>
-                }
-
                 <FormItem Label="大小写匹配">
                     <RadioGroup @bind-Value="@context.MatchCasing">
                         <Radio RadioButton Value="@(MatchCasing.PlatformDefault)">平台默认</Radio>
@@ -87,23 +71,56 @@
                     </RadioGroup>
                 </FormItem>
 
-                <FormItem Label="模式匹配">
-                    <Input Disabled="@(_editModel.Value.Filters != null && _editModel.Value.Filters.Any(IsSearchPatternFilter))" @bind-Value="@context.SearchPattern"/>
+                <FormItem Label="文件通配模式">
+                    <Switch @bind-Checked="@context.UseFileGlobbing" />
                 </FormItem>
 
-                <FormItem Label="匹配模式">
-                    <RadioGroup @bind-Value="@context.MatchType">
-                        <Radio RadioButton Value="@(MatchType.Simple)">简单匹配</Radio>
-                        <Radio RadioButton Value="@(MatchType.Win32)">Win32匹配语义</Radio>
-                    </RadioGroup>
-                </FormItem>
+                @if (context.UseFileGlobbing)
+                {
+                    <FormItem Label="文件通配">
+                        <StringEntryTable ItemsSource="@context.Value.FileGlobbingPatterns"
+                                          NameList="_fileGlobbingList"
+                                          EndEdit="OnFilterEndEdit"
+                                          Deleted="OnFilterDeleted" />
+                    </FormItem>
+                }
+                else
+                {
+                    <FormItem Label="目录过滤器">
+                        <StringEntryTable ItemsSource="@context.DirectoryFilters"
+                        NameList="_filterList"
+                        EndEdit="OnFilterEndEdit"
+                        Deleted="OnFilterDeleted" />
+                    </FormItem>
+                    <FormItem Label="包含子目录">
+                        <Switch @bind-Checked="@context.IncludeSubDirectories" />
+                    </FormItem>
+                    @if (context.IncludeSubDirectories)
+                    {
+                        <FormItem Label="最大递归深度">
+                            <AntDesign.InputNumber @bind-Value="@context.MaxRecursionDepth" Style="width:200px" />
+                        </FormItem>
+                    }
 
-                <FormItem Label="路径过滤器">
-                    <StringEntryTable ItemsSource="@context.Filters"
-                                      NameList="_filterList"
-                                      EndEdit="OnFilterEndEdit"
-                                      Deleted="OnFilterDeleted"/>
-                </FormItem>
+
+                    <FormItem Label="模式匹配">
+                        <Input Disabled="@(_editModel.Value.Filters != null && _editModel.Value.Filters.Any(IsSearchPatternFilter))" @bind-Value="@context.SearchPattern" />
+                    </FormItem>
+
+                    <FormItem Label="匹配模式">
+                        <RadioGroup @bind-Value="@context.MatchType">
+                            <Radio RadioButton Value="@(MatchType.Simple)">简单匹配</Radio>
+                            <Radio RadioButton Value="@(MatchType.Win32)">Win32匹配语义</Radio>
+                        </RadioGroup>
+                    </FormItem>
+
+                    <FormItem Label="路径过滤器">
+                        <StringEntryTable ItemsSource="@context.Filters"
+                                          NameList="_filterList"
+                                          EndEdit="OnFilterEndEdit"
+                                          Deleted="OnFilterDeleted" />
+                    </FormItem>
+                }
                 <FormItem Label="日期过滤器">
                     <DateTimeFilterTable ItemsSource="@context.DateTimeFilters"/>
                 </FormItem>
@@ -237,6 +254,8 @@
 
     List<StringEntry> _filterList = [];
 
+    List<StringEntry> _fileGlobbingList = [];
+
 
     RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters> _dataSource;
 
@@ -255,15 +274,20 @@
         _filterList =
         [
             new StringEntry { Name = "包含", Value = nameof(FilePathFilter.Contains).ToLower() },
-            new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
-            new StringEntry { Name = "开头匹配", Value = nameof(FilePathFilter.StartWith).ToLower() },
-            new StringEntry { Name = "开头不匹配", Value = nameof(FilePathFilter.NotStartWith).ToLower() },
-            new StringEntry { Name = "结尾匹配", Value = nameof(FilePathFilter.EndsWith).ToLower() },
-            new StringEntry { Name = "结尾不匹配", Value = nameof(FilePathFilter.NotEndsWith).ToLower() },
-            new StringEntry { Name = "模式匹配", Value = nameof(FilePathFilter.SearchPattern).ToLower() },
-            new StringEntry { Name = "正则表达式匹配", Value = nameof(FilePathFilter.RegExp).ToLower() },
-            new StringEntry { Name = "正则表达式不匹配", Value = nameof(FilePathFilter.RegExpNotMatch).ToLower() }
+    new StringEntry { Name = "不包含", Value = nameof(FilePathFilter.NotContains).ToLower() },
+    new StringEntry { Name = "开头匹配", Value = nameof(FilePathFilter.StartWith).ToLower() },
+    new StringEntry { Name = "开头不匹配", Value = nameof(FilePathFilter.NotStartWith).ToLower() },
+    new StringEntry { Name = "结尾匹配", Value = nameof(FilePathFilter.EndsWith).ToLower() },
+    new StringEntry { Name = "结尾不匹配", Value = nameof(FilePathFilter.NotEndsWith).ToLower() },
+    new StringEntry { Name = "模式匹配", Value = nameof(FilePathFilter.SearchPattern).ToLower() },
+    new StringEntry { Name = "正则表达式匹配", Value = nameof(FilePathFilter.RegExp).ToLower() },
+    new StringEntry { Name = "正则表达式不匹配", Value = nameof(FilePathFilter.RegExpNotMatch).ToLower() }
         ];
+        _fileGlobbingList =
+        [
+            new StringEntry { Name = "包含", Value = nameof(FilePathFilter.Include).ToLower() },
+    new StringEntry { Name = "排除", Value = nameof(FilePathFilter.Exclude).ToLower() },
+    ];
         _dataSource = new RoutedPaginationDataSource<FtpUploadConfigModel, PaginationQueryParameters>(
             NavigationManager.BaseUri,
             ApiService.QueryFtpUploadConfigurationListAsync,
@@ -355,7 +379,10 @@
             {
                 _editModel.MaxRecursionDepth = int.MaxValue;
             }
-
+            if (_editModel.FileGlobbingPatterns == null)
+            {
+                _editModel.FileGlobbingPatterns = [];
+            }
             await InitSelectedFtpConfigAsync();
         }
     }
@@ -381,6 +408,7 @@
     {
         try
         {
+            _editFormVisible = true;
             if (_editModel.DateTimeFilters == null)
             {
                 _editModel.DateTimeFilters = [];
@@ -391,14 +419,6 @@
                 _editModel.Value.RemoteDirectory = '/' + _editModel.Value.RemoteDirectory;
             }
 
-            // if (!_editModel.Value.Filters.Any(IsSearchPatternFilter))
-            // {
-            //     _editModel.Value.Filters.Insert(0, new StringEntry()
-            //         {
-            //             Name = nameof(FilePathFilter.SearchPattern),
-            //             Value = _editModel.Value.SearchPattern
-            //         });
-            // }
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {
@@ -459,7 +479,11 @@
 
     Task OnSelectFtpConfigDialogClosed()
     {
-        _editModel.Value.FtpConfigId = _selectedFtpConfigs.FirstOrDefault()?.Id;
+        var selectedFtpConfigId = _selectedFtpConfigs.FirstOrDefault()?.Id;
+        if (selectedFtpConfigId != null)
+        {
+            _editModel.Value.FtpConfigId = selectedFtpConfigId;
+        }
         StateHasChanged();
         return Task.CompletedTask;
     }

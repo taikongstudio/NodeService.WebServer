@@ -250,27 +250,6 @@ public class NodeServiceImpl : NodeServiceBase
         return new Empty();
     }
 
-    public override async Task<Empty> SendFileSystemBulkOperationReport(FileSystemBulkOperationReport request,
-        ServerCallContext context)
-    {
-        var httpContext = context.GetHttpContext();
-        var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
-        var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-        await _nodeSessionService.GetInputQueue(nodeSessionId).EnqueueAsync(request, context.CancellationToken);
-        return new Empty();
-    }
-
-    public override async Task<Empty> SendFileSystemBulkOperationResponse(
-        FileSystemBulkOperationResponse response,
-        ServerCallContext context)
-    {
-        var httpContext = context.GetHttpContext();
-        var nodeClientHeaders = context.RequestHeaders.GetNodeClientHeaders();
-        var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
-        await _nodeSessionService.WriteResponseAsync(nodeSessionId, response);
-        return new Empty();
-    }
-
     public override async Task<Empty> SendTaskExecutionEventResponse(
         TaskExecutionEventResponse response,
         ServerCallContext context)

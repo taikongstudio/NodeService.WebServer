@@ -120,6 +120,13 @@ public class Program
 
         app.UseStaticFiles();
 
+        app.UseDirectoryBrowser(new DirectoryBrowserOptions()
+        {
+            FileProvider = new NodeFileProvider(),
+            RedirectToAppendTrailingSlash = true,
+            RequestPath = "/Nodes"
+        });
+
         app.UseRouting();
 
         app.UseCors("AllowAll");
@@ -154,6 +161,7 @@ public class Program
 
     private static void Configure(WebApplicationBuilder builder)
     {
+        builder.Services.AddDirectoryBrowser();
         builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
         builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
         builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
@@ -276,7 +284,7 @@ public class Program
         builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
         builder.Services.AddHostedService<NodeFileSystemWatchEventConsumerService>();
         builder.Services.AddHostedService<NetworkDeviceScanService>();
-        builder.Services.AddHostedService<NodeFileSystemSyncService>();
+        builder.Services.AddHostedService<NodeFileSystemUploadService>();
         builder.Services.AddHostedService<TaskLogQueryService>();
     }
 

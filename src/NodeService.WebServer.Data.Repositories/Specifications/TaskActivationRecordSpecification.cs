@@ -37,7 +37,7 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
                     Query.Where(x => !taskDefinitionIdList.Items.Contains(x.TaskDefinitionId));
                 }
             }
-            if (sortDescriptions != null && !sortDescriptions.Any())
+            if (sortDescriptions != null && sortDescriptions.Any())
             {
                 Query.SortBy(sortDescriptions);
             }

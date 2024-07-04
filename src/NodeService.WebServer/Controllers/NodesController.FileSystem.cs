@@ -4,11 +4,13 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class NodesController
 {
-    [HttpGet("/api/Nodes/{nodeId}/filesystem/{**path}")]
-    public async Task<ApiResponse<IEnumerable<FileSystemEntry>>> ListDirectoryAsync(string nodeId, string path,
+    [HttpGet("/api/Nodes/{nodeId}/FileSystem/{**path}")]
+    public async Task<ApiResponse<IEnumerable<FileSystemDirectoryEntry>>> ListDirectoryAsync(
+        string nodeId,
+        string path,
         [FromQuery] string? searchPattern)
     {
-        var apiResponse = new ApiResponse<IEnumerable<FileSystemEntry>>();
+        var apiResponse = new ApiResponse<IEnumerable<FileSystemDirectoryEntry>>();
         try
         {
             using var dbContext = _nodeInfoRepoFactory.CreateRepository();
@@ -36,14 +38,14 @@ public partial class NodesController
 
                 apiResponse.ErrorCode = rsp.ErrorCode;
                 apiResponse.Message = rsp.Message;
-                apiResponse.SetResult(rsp.FileSystemObjects.Select(x => new FileSystemEntry
+                apiResponse.SetResult(rsp.Directories.Select(x => new FileSystemDirectoryEntry
                 {
                     CreationTime = x.CreationTime.ToDateTime(),
-                    FullName = x.FullName,
                     LastWriteTime = x.LastWriteTime.ToDateTime(),
-                    Length = x.Length,
+                    LastAccessTime = x.LastAccessTime.ToDateTime(),
+                    FullName = x.FullName,
                     Name = x.Name,
-                    Type = x.Type
+                    Attributes = x.Attributes,
                 }));
             }
         }

@@ -97,6 +97,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     private async Task ProcessExipredTasksAsync(CancellationToken cancellationToken=default)
     {
+        await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
         while (!cancellationToken.IsCancellationRequested)
         {
             await ProcessExpiredTaskExecutionInstanceAsync(cancellationToken);

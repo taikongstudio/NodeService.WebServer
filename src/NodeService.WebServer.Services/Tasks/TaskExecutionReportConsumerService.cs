@@ -399,19 +399,19 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 case TaskExecutionStatus.Running:
                     break;
                 case TaskExecutionStatus.Failed:
-                    await CancelTimeLimitTaskAsync(taskExecutionTimeLimitJobKey);
-                    break;
-                case TaskExecutionStatus.Finished:
-                    if (taskExecutionInstance.Status != TaskExecutionStatus.Finished)
+                case TaskExecutionStatus.Cancelled:
+                    if (!taskExecutionInstance.IsTerminatedStatus())
                     {
-                        await ScheduleChildTasksAsync(taskExecutionInstance, cancellationToken);
                         await CancelTimeLimitTaskAsync(taskExecutionTimeLimitJobKey);
                     }
 
                     break;
-                case TaskExecutionStatus.Cancelled:
-                    await CancelTimeLimitTaskAsync(taskExecutionTimeLimitJobKey);
-
+                case TaskExecutionStatus.Finished:
+                    if (!taskExecutionInstance.IsTerminatedStatus())
+                    {
+                        await ScheduleChildTasksAsync(taskExecutionInstance, cancellationToken);
+                        await CancelTimeLimitTaskAsync(taskExecutionTimeLimitJobKey);
+                    }
                     break;
                 case TaskExecutionStatus.PenddingTimeout:
                     break;
@@ -434,14 +434,18 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 case TaskExecutionStatus.Finished:
                 case TaskExecutionStatus.Cancelled:
                     taskExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
-                    if (taskExecutionInstance.ParentId == null)
-                        await CancelChildTasksAsync(taskExecutionInstance, cancellationToken);
                     break;
             }
 
             if (taskExecutionInstance.Status < report.Status && report.Status != TaskExecutionStatus.PenddingTimeout)
+            {
                 taskExecutionInstance.Status = report.Status;
-            if (report.Status == TaskExecutionStatus.PenddingTimeout) taskExecutionInstance.Status = report.Status;
+            }
+
+            if (report.Status == TaskExecutionStatus.PenddingTimeout)
+            {
+                taskExecutionInstance.Status = report.Status;
+            }
             if (!string.IsNullOrEmpty(report.Message))
             {
                 var key = $"{nameof(TaskCancellationQueueService)}:{taskExecutionInstance.Id}";
@@ -492,18 +496,23 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 FireTimeUtc = DateTime.UtcNow,
                 TriggerSource = TriggerSource.Manual,
                 FireInstanceId = $"ChildTask_{Guid.NewGuid()}",
-                TaskDefinitionId = parentTaskInstance.TaskDefinitionId,
+                TaskDefinitionId = childTaskDefinition.Id,
                 ScheduledFireTimeUtc = DateTime.UtcNow,
                 NodeList = taskDefinition.NodeList,
                 ParentTaskId = parentTaskInstance.Id
             }), cancellationToken);
+            parentTaskInstance.ChildTaskScheduleCount++;
         }
     }
 
-    private async Task CancelChildTasksAsync(
+    private async ValueTask CancelChildTasksAsync(
         TaskExecutionInstanceModel parentTaskInstance,
         CancellationToken cancellationToken = default)
     {
+        if (parentTaskInstance.ChildTaskScheduleCount == 0)
+        {
+            return;
+        }
         using var taskActivationRecordRepo = _taskActivationRecordRepoFactory.CreateRepository();
         var taskActivationRecord =
             await taskActivationRecordRepo.GetByIdAsync(parentTaskInstance.FireInstanceId, cancellationToken);
@@ -546,6 +555,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     nameof(CancelChildTasksAsync),
                     Dns.GetHostName(),
                     childTaskExectionInstance.Id), cancellationToken);
+                await CancelChildTasksAsync(childTaskExectionInstance, cancellationToken);
             }
 
         }
@@ -619,6 +629,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                         nameof(TaskExecutionReportConsumerService),
                         Dns.GetHostName(),
                         taskExecutionInstance.Id), cancellationToken);
+                    await CancelChildTasksAsync(taskExecutionInstance, cancellationToken);
                 }
                 else
                 {

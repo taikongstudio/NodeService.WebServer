@@ -105,7 +105,6 @@
             var invokeTaskParameters = new InvokeTaskParameters
             {
                 UserName = "WebUser",
-                TaskDefinitionId = TaskDefinition.Id
             };
             invokeTaskParameters.NodeList.Clear();
             if (_selectedNodes != null)
@@ -117,7 +116,7 @@
                 }));
             }
 
-            var apiResponse = await ApiService.InvokeTaskAsync(invokeTaskParameters);
+            var apiResponse = await ApiService.InvokeTaskAsync(TaskDefinition.Id, invokeTaskParameters);
             if (apiResponse.ErrorCode == 0)
             {
                 _visible = false;

@@ -1,6 +1,7 @@
 ﻿using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Hosting;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data;
@@ -12,6 +13,8 @@ using NodeService.WebServer.Services.NodeSessions;
 using System.Buffers;
 using System.Collections.Immutable;
 using System.Net;
+using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -19,7 +22,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 {
     class TaskExecutionReportProcessContext
     {
-        public string? TaskId { get; init; }
+        public string? TaskExecutionInstanceId { get; init; }
 
         public IEnumerable<TaskExecutionReportMessage> Messages { get; init; }
 
@@ -46,7 +49,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly BatchQueue<TaskExecutionReportProcessContext[]> _reportProcessContextBatchQueue;
     readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
     readonly TaskScheduler _taskScheduler;
-    readonly TaskSchedulerDictionary _taskSchedulerDictionary;
+    readonly ConcurrentDictionary<string,IDisposable> _taskExecutionLimitDictionary;
     readonly WebServerCounter _webServerCounter;
 
     public TaskExecutionReportConsumerService(
@@ -60,7 +63,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
         BatchQueue<TaskActivateServiceParameters> taskScheduleAsyncQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
-        TaskSchedulerDictionary taskSchedulerDictionary,
         TaskScheduler taskScheduler,
         IMemoryCache memoryCache,
         WebServerCounter webServerCounter,
@@ -78,7 +80,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
         _reportProcessContextBatchQueue = new BatchQueue<TaskExecutionReportProcessContext[]>(64, TimeSpan.FromSeconds(3));
         _logger = logger;
-        _taskSchedulerDictionary = taskSchedulerDictionary;
+        _taskExecutionLimitDictionary = new ConcurrentDictionary<string, IDisposable>();
         _taskScheduler = taskScheduler;
         _taskLogUnitBatchQueue = taskLogUnitBatchQueue;
         _memoryCache = memoryCache;
@@ -161,7 +163,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     static TaskExecutionReportProcessContext CreateProcessContext(IGrouping<string?, TaskExecutionReportMessage> group)
     {
-        return new TaskExecutionReportProcessContext() { TaskId = group.Key, Messages = group };
+        return new TaskExecutionReportProcessContext() { TaskExecutionInstanceId = group.Key, Messages = group };
     }
 
     private async Task ProcessTaskExecutionReportsAsync(
@@ -199,7 +201,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         try
         {
-            var taskId = processContext.TaskId;
+            var taskId = processContext.TaskExecutionInstanceId;
             if (taskId == null) return;
             var stopwatchSave = new Stopwatch();
             var stopwatchQuery = new Stopwatch();
@@ -321,10 +323,10 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-    private async ValueTask CancelTimeLimitTaskAsync(TaskSchedulerKey jobSchedulerKey)
+    private void CancelTimeLimitTaskAsync(string key)
     {
-        if (!_taskSchedulerDictionary.TryRemove(jobSchedulerKey, out var asyncDisposable)) return;
-        if (asyncDisposable != null) await asyncDisposable.DisposeAsync();
+        if (!_taskExecutionLimitDictionary.TryRemove(key, out var token)) return;
+        token.Dispose();
     }
 
     private async Task ScheduleTimeLimitTaskAsync(
@@ -334,32 +336,45 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         try
         {
             if (taskExecutionInstances == null || !taskExecutionInstances.Any()) return;
-            using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
-            foreach (var taskExecutionInstanceGroup in
-                     taskExecutionInstances.GroupBy(static x => x.TaskDefinitionId))
+            using var taskDefinitionRepo = _taskActivationRecordRepoFactory.CreateRepository();
+            foreach (var taskExecutionInstanceGroup in taskExecutionInstances.GroupBy(static x => x.FireInstanceId))
             {
-                var taskDefinitionId = taskExecutionInstanceGroup.Key;
-                if (taskDefinitionId == null) continue;
-                var taskDefinition = await taskDefinitionRepo.GetByIdAsync(taskDefinitionId, cancellationToken);
-                if (taskDefinition == null) continue;
+                var fireInstanceId = taskExecutionInstanceGroup.Key;
+                if (fireInstanceId == null) continue;
+                var taskActiveRecord = await taskDefinitionRepo.GetByIdAsync(fireInstanceId, cancellationToken);
+                if (taskActiveRecord == null) continue;
+                var taskDefinition = JsonSerializer.Deserialize<TaskDefinitionModel>(taskActiveRecord.Value.TaskDefinitionJson);
+                if (taskDefinition==null)
+                {
+                    continue;
+                }
                 foreach (var taskExecutionInstance in taskExecutionInstanceGroup)
                 {
-                    if (taskDefinition == null || taskDefinition.ExecutionLimitTimeSeconds <= 0) continue;
+                    if (taskActiveRecord == null || taskDefinition.ExecutionLimitTimeSeconds <= 0) continue;
 
-                    var key = new TaskSchedulerKey(
-                        taskExecutionInstance.Id,
-                        TriggerSource.Manual,
-                        nameof(TaskExecutionTimeLimitJob));
-                    await _taskScheduler.ScheduleAsync<TaskExecutionTimeLimitJob>(key,
-                        TriggerBuilderHelper.BuildDelayTrigger(
-                            TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds)),
-                        new Dictionary<string, object?>
-                        {
-                            {
-                                "TaskExecutionInstance",
-                                taskExecutionInstance.JsonClone<TaskExecutionInstanceModel>()
-                            }
-                        }, cancellationToken);
+                   var token = Scheduler.Default.ScheduleAsync(
+                        TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds),
+                        async (scheduler, cancellationToken) =>
+                     {
+                         try
+                         {
+                             await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
+                                                    taskExecutionInstance.Id,
+                                                    nameof(TaskExecutionTimeLimitJob),
+                                                    Dns.GetHostName()));
+                         }
+                         catch (Exception ex)
+                         {
+                             _exceptionCounter.AddOrUpdate(ex, taskExecutionInstance.Id);
+                         }
+
+                         return Disposable.Empty;
+                     });
+                    _taskExecutionLimitDictionary.AddOrUpdate(taskExecutionInstance.Id, token, (key, oldToken) =>
+                    {
+                        oldToken.Dispose();
+                        return token;
+                    });
                 }
             }
         }
@@ -379,12 +394,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         {
             var report = message.GetMessage();
 
-
-            var taskExecutionTimeLimitJobKey = new TaskSchedulerKey(
-                taskExecutionInstance.Id,
-                TriggerSource.Schedule,
-                nameof(TaskExecutionTimeLimitJob)
-            );
             switch (report.Status)
             {
                 case TaskExecutionStatus.Unknown:
@@ -403,15 +412,15 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 case TaskExecutionStatus.Cancelled:
                     if (!taskExecutionInstance.IsTerminatedStatus())
                     {
-                        await CancelTimeLimitTaskAsync(taskExecutionTimeLimitJobKey);
+                        CancelTimeLimitTaskAsync(taskExecutionInstance.Id);
                     }
 
                     break;
                 case TaskExecutionStatus.Finished:
                     if (!taskExecutionInstance.IsTerminatedStatus())
                     {
+                        CancelTimeLimitTaskAsync(taskExecutionInstance.Id);
                         await ScheduleChildTasksAsync(taskExecutionInstance, cancellationToken);
-                        await CancelTimeLimitTaskAsync(taskExecutionTimeLimitJobKey);
                     }
                     break;
                 case TaskExecutionStatus.PenddingTimeout:
@@ -455,7 +464,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     _memoryCache.TryGetValue<TaskCancellationParameters>(key, out var parameters) && parameters != null)
                 {
                     _memoryCache.Remove(key);
-                    taskExecutionInstance.Message = $"{nameof(parameters.Source)}: {parameters.Source},{nameof(parameters.Host)}: {parameters.Host}";
+                    taskExecutionInstance.Message = $"{nameof(parameters.Source)}: {parameters.Source},{nameof(parameters.Context)}: {parameters.Context}";
                 }
                 else
                 {
@@ -553,9 +562,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             foreach (var childTaskExectionInstance in childTaskExectionInstances)
             {
                 await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
+                    childTaskExectionInstance.Id,
                     nameof(CancelChildTasksAsync),
-                    Dns.GetHostName(),
-                    childTaskExectionInstance.Id), cancellationToken);
+                    Dns.GetHostName()), cancellationToken);
                 await CancelChildTasksAsync(childTaskExectionInstance, cancellationToken);
             }
 
@@ -627,9 +636,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 if (taskExecutionInstance.FireTimeUtc + TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds) < DateTime.UtcNow)
                 {
                     await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
+                        taskExecutionInstance.Id,
                         nameof(TaskExecutionReportConsumerService),
-                        Dns.GetHostName(),
-                        taskExecutionInstance.Id), cancellationToken);
+                        Dns.GetHostName()), cancellationToken);
                     await CancelChildTasksAsync(taskExecutionInstance, cancellationToken);
                 }
                 else

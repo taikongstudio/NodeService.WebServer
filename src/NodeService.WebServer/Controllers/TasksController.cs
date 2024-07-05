@@ -167,9 +167,9 @@ public class TasksController : Controller
         try
         {
             await _taskCancellationAsyncQueue.SendAsync(new TaskCancellationParameters(
+                taskCancellationParameters.TaskExeuctionInstanceId,
                 taskCancellationParameters.Source,
-                HttpContext.Connection.RemoteIpAddress.ToString(),
-                taskCancellationParameters.TaskExeuctionInstanceId));
+                HttpContext.Connection.RemoteIpAddress.ToString()));
         }
         catch (Exception ex)
         {

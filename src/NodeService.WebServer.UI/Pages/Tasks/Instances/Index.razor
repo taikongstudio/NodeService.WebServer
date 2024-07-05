@@ -342,7 +342,7 @@
     {
         try
         {
-            await ApiService.CancelTaskAsync(model.Id, new TaskCancellationParameters("WebUser", System.Net.Dns.GetHostName(), model.Id));
+            await ApiService.CancelTaskAsync(model.Id, new TaskCancellationParameters(model.Id, "WebUser", System.Net.Dns.GetHostName()));
         }
         catch (Exception ex)
         {

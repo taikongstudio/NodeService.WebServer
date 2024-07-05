@@ -20,6 +20,6 @@ public class TaskExecutionTimeLimitJob : JobBase
     {
         var nodeSessionService = ServiceProvider.GetService<INodeSessionService>();
         var taskExecutionInstance = Properties["TaskExecutionInstance"] as TaskExecutionInstanceModel;
-        await _batchQueue.SendAsync(new TaskCancellationParameters(nameof(TaskExecutionTimeLimitJob), Dns.GetHostName(), taskExecutionInstance.Id));
+        await _batchQueue.SendAsync(new TaskCancellationParameters(taskExecutionInstance.Id, nameof(TaskExecutionTimeLimitJob), Dns.GetHostName()));
     }
 }

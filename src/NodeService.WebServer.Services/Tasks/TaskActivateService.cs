@@ -251,24 +251,28 @@ public class TaskActivateService : BackgroundService
         IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo,
         IRepository<NodeInfoModel> nodeInfoRepo,
         IRepository<TaskActivationRecordModel> taskActivationRecordRepo,
-        FireTaskParameters parameters,
-        TaskDefinitionModel taskDefinitionModel,
+        FireTaskParameters fireTaskParameters,
+        TaskDefinitionModel taskDefinition,
         TaskFlowTaskKey taskFlowTaskKey = default,
         CancellationToken cancellationToken = default)
     {
         try
         {
+            if (fireTaskParameters.NodeList != null && fireTaskParameters.NodeList.Count > 0)
+            {
+                taskDefinition.NodeList = fireTaskParameters.NodeList;
+            }
             var nodeInfoList = await nodeInfoRepo.ListAsync(
                 new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.All,
                     NodeDeviceType.Computer,
-                    DataFilterCollection<string>.Includes(taskDefinitionModel.NodeList.Select(x => x.Value))),
+                    DataFilterCollection<string>.Includes(taskDefinition.NodeList.Select(x => x.Value))),
                 cancellationToken);
 
             var taskExecutionInstanceList = new List<KeyValuePair<NodeSessionId, TaskExecutionInstanceModel>>();
 
-            foreach (var nodeEntry in taskDefinitionModel.NodeList)
+            foreach (var nodeEntry in taskDefinition.NodeList)
             {
                 try
                 {
@@ -288,9 +292,9 @@ public class TaskActivateService : BackgroundService
                     {
                         var taskExecutionInstance = BuildTaskExecutionInstance(
                             nodeFindResult.NodeInfo,
-                            taskDefinitionModel,
+                            taskDefinition,
                             nodeSessionId,
-                            parameters,
+                            fireTaskParameters,
                             taskFlowTaskKey,
                             cancellationToken);
                         taskExecutionInstanceList.Add(KeyValuePair.Create(nodeSessionId, taskExecutionInstance));
@@ -302,6 +306,7 @@ public class TaskActivateService : BackgroundService
                     _logger.LogError(ex.ToString());
                 }
             }
+
             await taskExecutionInstanceRepo.AddRangeAsync(taskExecutionInstanceList.Select(static x => x.Value), cancellationToken);
 
             var taskExecutionInstanceInfoList = taskExecutionInstanceList.Select(x => new TaskExecutionInstanceInfo()
@@ -313,10 +318,10 @@ public class TaskActivateService : BackgroundService
 
             await taskActivationRecordRepo.AddAsync(new TaskActivationRecordModel
             {
-                Id = parameters.FireInstanceId,
-                TaskDefinitionId = taskDefinitionModel.Id,
-                Name = taskDefinitionModel.Name,
-                TaskDefinitionJson = JsonSerializer.Serialize(taskDefinitionModel.Value),
+                Id = fireTaskParameters.FireInstanceId,
+                TaskDefinitionId = taskDefinition.Id,
+                Name = taskDefinition.Name,
+                TaskDefinitionJson = JsonSerializer.Serialize(taskDefinition.Value),
                 TaskExecutionInstanceInfoList = taskExecutionInstanceInfoList,
                 TotalCount = taskExecutionInstanceInfoList.Count,
                 Status = TaskExecutionStatus.Unknown
@@ -329,9 +334,9 @@ public class TaskActivateService : BackgroundService
                 {
                     NodeSessionService = _nodeSessionService,
                     NodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId),
-                    TriggerEvent = taskExecutionInstance.ToTriggerEvent(taskDefinitionModel, parameters.EnvironmentVariables),
-                    FireParameters = parameters,
-                    TaskDefinition = taskDefinitionModel
+                    TriggerEvent = taskExecutionInstance.ToTriggerEvent(taskDefinition, fireTaskParameters.EnvironmentVariables),
+                    FireParameters = fireTaskParameters,
+                    TaskDefinition = taskDefinition
                 };
 
                 if (_taskPenddingContextManager.AddContext(context))
@@ -340,7 +345,7 @@ public class TaskActivateService : BackgroundService
             }
 
 
-            _logger.LogInformation($"Task initialized {parameters.FireInstanceId}");
+            _logger.LogInformation($"Task initialized {fireTaskParameters.FireInstanceId}");
         }
         catch (Exception ex)
         {
@@ -592,11 +597,11 @@ public class TaskActivateService : BackgroundService
                 taskDefinition.TaskTypeDesc = await taskTypeDescRepo.GetByIdAsync(
                                                                                 taskDefinition.TaskTypeDescId,
                                                                                 cancellationToken);
-
-                if (fireTaskParameters.NodeList != null && fireTaskParameters.NodeList.Count > 0)
+                if (taskDefinition.TaskTypeDesc == null)
                 {
-                    taskDefinition.NodeList = fireTaskParameters.NodeList;
+                    continue;
                 }
+
                 await ActivateRemoteNodeTasksAsync(
                      taskExecutionInstanceRepo,
                      nodeInfoRepo,

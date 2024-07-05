@@ -71,7 +71,7 @@ public class TaskPenddingContext : IAsyncDisposable
             if (queryResult.IsEmpty) return true;
             foreach (var taskExecutionInstance in queryResult.Items)
             {
-                await taskCancellationQueue.SendAsync(new TaskCancellationParameters(nameof(TaskPenddingContext), Dns.GetHostName(), taskExecutionInstance.Id));
+                await taskCancellationQueue.SendAsync(new TaskCancellationParameters(taskExecutionInstance.Id, nameof(TaskPenddingContext), Dns.GetHostName()));
             }
 
             await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken);

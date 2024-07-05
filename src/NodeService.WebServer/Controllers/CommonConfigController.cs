@@ -186,7 +186,7 @@ public partial class CommonConfigController : Controller
                 }
                 await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
-                    NodeIdList = model is Infrastructure.DataModels.INodeIdentityProvider nodeInfoIdentity ? nodeInfoIdentity.GetNodeIdentityList() : [],
+                    NodeIdList = model is INodeIdentityListProvider nodeIdentityListProvider ? nodeIdentityListProvider.GetNodeIdentityList() : [],
                     ChangedType = saveChangesResult.Type,
                     TypeName = typeof(T).FullName,
                     Id = model.Id,

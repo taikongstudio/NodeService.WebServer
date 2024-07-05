@@ -7,7 +7,7 @@ namespace NodeService.WebServer.Controllers;
 public partial class CommonConfigController
 {
     [HttpPost("/api/CommonConfig/Notification/AddOrUpdate")]
-    public Task<ApiResponse> AddOrUpdateAsync([FromBody] NotificationConfigModel model)
+    public Task<ApiResponse> AddOrUpdateAsync([FromBody] NotificationConfigModel model, CancellationToken cancellationToken = default)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
@@ -28,14 +28,14 @@ public partial class CommonConfigController
 
     [HttpPost("/api/CommonConfig/Notification/SwitchVersion")]
     public Task<ApiResponse> SwitchNotificationVersionAsync(
-        [FromBody] ConfigurationVersionSwitchParameters  parameters)
+        [FromBody] ConfigurationVersionSwitchParameters parameters, CancellationToken cancellationToken = default)
     {
         return SwitchConfigurationVersionAsync<NotificationConfigModel>(parameters);
     }
 
     [HttpPost("/api/CommonConfig/Notification/DeleteVersion")]
     public Task<ApiResponse> DeleteNotificationConfigurationVersionAsync(
-    [FromBody] ConfigurationVersionRecordModel entity)
+    [FromBody] ConfigurationVersionRecordModel entity, CancellationToken cancellationToken = default)
     {
         return DeleteConfigurationVersionAsync<NotificationConfigModel>(new ConfigurationVersionDeleteParameters(entity));
     }
@@ -47,7 +47,7 @@ public partial class CommonConfigController
     }
 
     [HttpPost("/api/CommonConfig/Notification/Remove")]
-    public Task<ApiResponse> RemoveAsync([FromBody] NotificationConfigModel model)
+    public Task<ApiResponse> RemoveAsync([FromBody] NotificationConfigModel model, CancellationToken cancellationToken = default)
     {
         return DeleteConfigurationAsync(model);
     }
@@ -109,7 +109,7 @@ public partial class CommonConfigController
 
     [HttpPost("/api/CommonConfig/NotificationSource/NodeHealthyCheck/Update")]
     public async Task<ApiResponse> UpdateNodeHealthyCheckConfigurationAsync(
-        [FromBody] NodeHealthyCheckConfiguration model)
+        [FromBody] NodeHealthyCheckConfiguration model, CancellationToken cancellationToken = default)
     {
         var rsp = new ApiResponse();
         try
@@ -168,7 +168,7 @@ public partial class CommonConfigController
 
     [HttpPost("/api/CommonConfig/NotificationSource/DataQualityCheck/Update")]
     public async Task<ApiResponse> UpdateDataQualityCheckConfigurationAsync(
-        [FromBody] DataQualityCheckConfiguration model)
+        [FromBody] DataQualityCheckConfiguration model, CancellationToken cancellationToken = default)
     {
         var rsp = new ApiResponse();
         try

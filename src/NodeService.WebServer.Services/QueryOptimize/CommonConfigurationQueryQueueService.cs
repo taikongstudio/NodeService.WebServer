@@ -96,6 +96,7 @@ public record struct CommonConfigurationQueryQueueServiceParameters
         Type = type;
     }
 
+
     public CommonConfigurationQueryQueueServiceParameters(Type type, ConfigurationAddUpdateDeleteParameters   parameters)
     {
         Parameters = parameters;
@@ -747,6 +748,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         using var configRepo = repoFactory.CreateRepository();
         var entity = entityObject as T;
         var entityFromDb = await configRepo.GetByIdAsync(entity.Id);
+        T? oldEntity = null;
         var type = ConfigurationChangedType.None;
         var changesCount = 0;
         if (entityFromDb == null)
@@ -758,6 +760,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         }
         else
         {
+            oldEntity = entityFromDb.JsonClone<T>();
             entityFromDb.With(entity);
             await configRepo.UpdateAsync(entityFromDb);
             changesCount += configRepo.LastChangesCount;
@@ -772,7 +775,8 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         {
             Type = type,
             ChangesCount = changesCount,
-            Entity = entityFromDb
+            OldValue = oldEntity,
+            NewValue = entityFromDb
         };
     }
 
@@ -826,6 +830,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         return new ConfigurationSaveChangesResult()
         {
             Type = type,
+            OldValue = entity,
             ChangesCount = changesCount,
         };
     }
@@ -856,6 +861,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             {
                 return default;
             }
+            var oldConfig = targetConfig with { };
             targetConfig.With(value);
             var changesCount = await configVersionRepo.SaveChangesAsync();
             if (changesCount > 0)
@@ -868,7 +874,8 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             return new ConfigurationSaveChangesResult()
             {
                 ChangesCount = changesCount,
-                Entity = targetConfig,
+                NewValue = targetConfig,
+                OldValue = oldConfig,
                 Type = ConfigurationChangedType.Update,
             };
         }

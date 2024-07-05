@@ -8,9 +8,9 @@ namespace NodeService.WebServer.Controllers
     public partial class CommonConfigController
     {
         [HttpPost("/api/CommonConfig/TaskFlowTemplate/AddOrUpdate")]
-        public Task<ApiResponse> AddOrUpdateAsync([FromBody] TaskFlowTemplateModel model)
+        public Task<ApiResponse> AddOrUpdateAsync([FromBody] TaskFlowTemplateModel model, CancellationToken cancellationToken = default)
         {
-            return AddOrUpdateConfigurationAsync(model, AddOrUpdateTaskFlowTemplateAsync);
+            return AddOrUpdateConfigurationAsync(model, cancellationToken: cancellationToken);
         }
 
         private async ValueTask AddOrUpdateTaskFlowTemplateAsync(TaskFlowTemplateModel taskFlowTemplate, CancellationToken cancellationToken = default)
@@ -32,7 +32,7 @@ namespace NodeService.WebServer.Controllers
             }
             var taskDefinitionRepoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<TaskDefinitionModel>>();
             using var taskDefinitionRepo = taskDefinitionRepoFactory.CreateRepository();
-            var taskDefinition = await taskDefinitionRepo.GetByIdAsync(triggerTask.TaskDefinitionId);
+            var taskDefinition = await taskDefinitionRepo.GetByIdAsync(triggerTask.TaskDefinitionId, cancellationToken);
             if (taskDefinition == null)
             {
                 return;
@@ -44,60 +44,65 @@ namespace NodeService.WebServer.Controllers
                 {
                     foreach (var task in taskGroup.Tasks)
                     {
-
+                        if (task.TemplateType == TaskFlowTaskTemplateType.TriggerTask && task.TriggerType == TaskTriggerType.Schedule)
+                        {
+                           // await AddOrUpdateTaskDefinitionAsync(taskDefinition, cancellationToken);
+                        }
                     }
                 }
             }
 
-            await AddOrUpdateTaskDefinitionAsync(taskDefinition);
+
 
 
         }
 
         [HttpGet("/api/CommonConfig/TaskFlowTemplate/List")]
         public Task<PaginationResponse<TaskFlowTemplateModel>> QueryTaskFlowTemplateListAsync(
-            [FromQuery] PaginationQueryParameters queryParameters)
+            [FromQuery] PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
         {
-            return QueryConfigurationListAsync<TaskFlowTemplateModel>(queryParameters);
+            return QueryConfigurationListAsync<TaskFlowTemplateModel>(queryParameters, cancellationToken: cancellationToken);
         }
 
         [HttpGet("/api/CommonConfig/TaskFlowTemplate/{id}")]
-        public Task<ApiResponse<TaskFlowTemplateModel>> QueryTaskFlowTemplateAsync(string id)
+        public Task<ApiResponse<TaskFlowTemplateModel>> QueryTaskFlowTemplateAsync(string id,CancellationToken cancellationToken=default)
         {
-            return QueryConfigurationAsync<TaskFlowTemplateModel>(id);
+            return QueryConfigurationAsync<TaskFlowTemplateModel>(id, cancellationToken: cancellationToken);
         }
 
 
         [HttpPost("/api/CommonConfig/TaskFlowTemplate/Remove")]
-        public Task<ApiResponse> RemoveAsync([FromBody] TaskFlowTemplateModel model)
+        public Task<ApiResponse> RemoveAsync([FromBody] TaskFlowTemplateModel model, CancellationToken cancellationToken = default)
         {
-            return DeleteConfigurationAsync(model);
+            return DeleteConfigurationAsync(model, cancellationToken: cancellationToken);
         }
 
         [HttpGet("/api/CommonConfig/TaskFlowTemplate/VersionList")]
         public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryTaskFlowTemplateConfigurationVersionListAsync(
-        [FromQuery] PaginationQueryParameters queryParameters)
+        [FromQuery] PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
         {
-            return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
+            return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters, cancellationToken: cancellationToken);
         }
 
         [HttpPost("/api/CommonConfig/TaskFlowTemplate/SwitchVersion")]
         public Task<ApiResponse> SwitchTaskFlowTemplateConfigurationVersionAsync(
-            [FromBody] ConfigurationVersionSwitchParameters parameters)
+            [FromBody] ConfigurationVersionSwitchParameters parameters, CancellationToken cancellationToken = default)
         {
-            return SwitchConfigurationVersionAsync<TaskFlowTemplateModel>(parameters);
+            return SwitchConfigurationVersionAsync<TaskFlowTemplateModel>(parameters, cancellationToken: cancellationToken);
         }
 
         [HttpPost("/api/CommonConfig/TaskFlowTemplate/DeleteVersion")]
         public Task<ApiResponse> DeleteTaskFlowTemplateConfigurationVersionAsync(
-            [FromBody] ConfigurationVersionRecordModel entity)
+            [FromBody] ConfigurationVersionRecordModel entity,CancellationToken cancellationToken=default)
         {
-            return DeleteConfigurationVersionAsync<TaskFlowTemplateModel>(new ConfigurationVersionDeleteParameters(entity));
+            return DeleteConfigurationVersionAsync<TaskFlowTemplateModel>(new ConfigurationVersionDeleteParameters(entity), cancellationToken);
         }
 
         [HttpPost("/api/CommonConfig/TaskFlowTemplate/{taskFlowTemplateId}/Invoke")]
-        public async Task<ApiResponse<InvokeTaskFlowResult>> InvokeTaskFlowAsync(string taskFlowTemplateId,
-[FromBody] InvokeTaskFlowParameters invokeTaskFlowParameters)
+        public async Task<ApiResponse<InvokeTaskFlowResult>> InvokeTaskFlowAsync(
+            string taskFlowTemplateId,
+            [FromBody] InvokeTaskFlowParameters invokeTaskFlowParameters,
+            CancellationToken cancellationToken=default)
         {
             var apiResponse = new ApiResponse<InvokeTaskFlowResult>();
             try
@@ -113,7 +118,7 @@ namespace NodeService.WebServer.Controllers
                     TaskFlowParentInstanceId = null,
                     TaskFlowInstanceId = taskFlowInstanceId,
                     ScheduledFireTimeUtc = DateTime.UtcNow,
-                }));
+                }), cancellationToken);
                 apiResponse.SetResult(new InvokeTaskFlowResult()
                 {
                     TaskFlowInstanceId = taskFlowInstanceId

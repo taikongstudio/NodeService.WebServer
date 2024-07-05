@@ -149,6 +149,10 @@ public class FtpVirtualFileSystem : VirtualFileSystemBase
 
     public override void Dispose()
     {
+        if (_client.IsConnected)
+        {
+            _client.Disconnect();
+        }
         if (!_client.IsDisposed) _client.Dispose();
     }
 

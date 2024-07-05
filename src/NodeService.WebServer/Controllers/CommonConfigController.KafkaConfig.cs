@@ -5,49 +5,46 @@ namespace NodeService.WebServer.Controllers;
 public partial class CommonConfigController
 {
     [HttpPost("/api/CommonConfig/kafka/AddOrUpdate")]
-    public Task<ApiResponse> AddOrUpdateAsync([FromBody] KafkaConfigModel model)
+    public Task<ApiResponse> AddOrUpdateAsync([FromBody] KafkaConfigModel model, CancellationToken cancellationToken = default)
     {
-        return AddOrUpdateConfigurationAsync(model);
+        return AddOrUpdateConfigurationAsync(model, cancellationToken: cancellationToken);
     }
 
     [HttpGet("/api/CommonConfig/kafka/List")]
-    public Task<PaginationResponse<KafkaConfigModel>> QueryKafkaConfigurationListAsync(
-        [FromQuery] PaginationQueryParameters queryParameters)
+    public Task<PaginationResponse<KafkaConfigModel>> QueryKafkaConfigurationListAsync([FromQuery] PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationListAsync<KafkaConfigModel>(queryParameters);
+        return QueryConfigurationListAsync<KafkaConfigModel>(queryParameters, cancellationToken: cancellationToken);
     }
 
     [HttpGet("/api/CommonConfig/kafka/{id}")]
-    public Task<ApiResponse<KafkaConfigModel>> QueryKafkaConfigAsync(string id)
+    public Task<ApiResponse<KafkaConfigModel>> QueryKafkaConfigAsync(string id, CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationAsync<KafkaConfigModel>(id);
+        return QueryConfigurationAsync<KafkaConfigModel>(id, cancellationToken: cancellationToken);
     }
 
 
     [HttpPost("/api/CommonConfig/kafka/Remove")]
-    public Task<ApiResponse> RemoveAsync([FromBody] KafkaConfigModel kafkaConfig)
+    public Task<ApiResponse> RemoveAsync([FromBody] KafkaConfigModel kafkaConfig, CancellationToken cancellationToken = default)
     {
-        return DeleteConfigurationAsync(kafkaConfig);
+        return DeleteConfigurationAsync(kafkaConfig, cancellationToken: cancellationToken);
     }
 
     [HttpGet("/api/CommonConfig/kafka/VersionList")]
-    public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryKafkaConfigurationVersionListAsync(
-    [FromQuery] PaginationQueryParameters queryParameters)
+    public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryKafkaConfigurationVersionListAsync([FromQuery] PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
+        return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters, cancellationToken: cancellationToken);
     }
 
     [HttpPost("/api/CommonConfig/kafka/SwitchVersion")]
-    public Task<ApiResponse> SwitchKafkaConfigurationVersionAsync(
-        [FromBody] ConfigurationVersionSwitchParameters parameters)
+    public Task<ApiResponse> SwitchKafkaConfigurationVersionAsync([FromBody] ConfigurationVersionSwitchParameters parameters, CancellationToken cancellationToken = default)
     {
-        return SwitchConfigurationVersionAsync<KafkaConfigModel>(parameters);
+        return SwitchConfigurationVersionAsync<KafkaConfigModel>(parameters, cancellationToken: cancellationToken);
     }
 
     [HttpPost("/api/CommonConfig/kafka/DeleteVersion")]
     public Task<ApiResponse> DeleteKafkaConfigurationVersionAsync(
-    [FromBody] ConfigurationVersionRecordModel entity)
+    [FromBody] ConfigurationVersionRecordModel entity, CancellationToken cancellationToken = default)
     {
-        return DeleteConfigurationVersionAsync<KafkaConfigModel>(new ConfigurationVersionDeleteParameters(entity));
+        return DeleteConfigurationVersionAsync<KafkaConfigModel>(new ConfigurationVersionDeleteParameters(entity), cancellationToken);
     }
 }

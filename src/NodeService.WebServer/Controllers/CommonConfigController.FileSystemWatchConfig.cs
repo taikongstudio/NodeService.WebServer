@@ -3,28 +3,27 @@
 public partial class CommonConfigController
 {
     [HttpPost("/api/CommonConfig/filesystemwatch/AddOrUpdate")]
-    public Task<ApiResponse> AddOrUpdateAsync([FromBody] FileSystemWatchConfigModel model)
+    public Task<ApiResponse> AddOrUpdateAsync([FromBody] FileSystemWatchConfigModel model, CancellationToken cancellationToken = default)
     {
-        return AddOrUpdateConfigurationAsync(model);
+        return AddOrUpdateConfigurationAsync(model, cancellationToken: cancellationToken);
     }
 
     [HttpGet("/api/CommonConfig/filesystemwatch/List")]
-    public Task<PaginationResponse<FileSystemWatchConfigModel>> QueryFileSystemWatchConfigModelConfigurationListAsync(
-        [FromQuery] PaginationQueryParameters queryParameters)
+    public Task<PaginationResponse<FileSystemWatchConfigModel>> QueryFileSystemWatchConfigModelConfigurationListAsync([FromQuery] PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationListAsync<FileSystemWatchConfigModel>(queryParameters);
+        return QueryConfigurationListAsync<FileSystemWatchConfigModel>(queryParameters, cancellationToken: cancellationToken);
     }
 
     [HttpGet("/api/CommonConfig/filesystemwatch/{id}")]
-    public Task<ApiResponse<FileSystemWatchConfigModel>> QueryFileSystemWatchConfigModelConfigAsync(string id)
+    public Task<ApiResponse<FileSystemWatchConfigModel>> QueryFileSystemWatchConfigModelConfigAsync(string id, CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationAsync<FileSystemWatchConfigModel>(id);
+        return QueryConfigurationAsync<FileSystemWatchConfigModel>(id, cancellationToken: cancellationToken);
     }
 
 
     [HttpPost("/api/CommonConfig/filesystemwatch/Remove")]
-    public Task<ApiResponse> RemoveAsync([FromBody] FileSystemWatchConfigModel model)
+    public Task<ApiResponse> RemoveAsync([FromBody] FileSystemWatchConfigModel model, CancellationToken cancellationToken = default)
     {
-        return DeleteConfigurationAsync(model);
+        return DeleteConfigurationAsync(model, cancellationToken: cancellationToken);
     }
 }

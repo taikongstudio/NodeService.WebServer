@@ -9,6 +9,12 @@
 
 
 <GridContent>
+    <ConfigurationVersionSelectorDialog Closed="()=>_dataSource.QueryAsync()"
+                                        Title="版本列表"
+                                        ConfigurationId="@_configurationId"
+                                        @bind-Visible="@_versionSelectorDialogVisible"
+                                        TItem="PackageConfigModel">
+    </ConfigurationVersionSelectorDialog>
     <Drawer Closable="true" Width="320" @bind-Visible="@_packageConfigDrawerVisible" Title='"查看内容"' OnClose="ClosePackageConfigJsonStringDrawer">
         <Template style="height:90%">
             <TextArea Style="height:500px" ReadOnly Value="@pluginString" />
@@ -127,7 +133,9 @@
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<PackageConfigModel>())"></Button>
                         </SpaceItem>
-  
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.UnorderedList" OnClick="() => ShowVersionSelectorDialog(context.Id)"></Button>
+                        </SpaceItem>
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
@@ -196,6 +204,16 @@
 
     AutoCompleteOption selectItem;
     AutoCompleteOption activeItem;
+
+    string _configurationId;
+    bool _versionSelectorDialogVisible;
+
+    async Task ShowVersionSelectorDialog(string id)
+    {
+        _configurationId = id;
+        _versionSelectorDialogVisible = true;
+        await Task.CompletedTask;
+    }
 
     void OnSelectionChange(AutoCompleteOption item)
     {
@@ -354,18 +372,24 @@
 
             _entryPoints = zipArchive.Entries.Where(IsEntryPoint).Select(static x => x.FullName).ToList();
             memoryStream.Position = 0;
-            var hash = await SHA256.HashDataAsync(memoryStream);
-            _editModel.Hash = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            var hashBytes = await SHA256.HashDataAsync(memoryStream);
+            var hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+            if (_editModel.Hash == hash)
+            {
+                _fileError = "same package";
+                return;
+            }
+            _editModel.Hash = hash;
             memoryStream.Position = 0;
             _fileError = null;
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-            {
-                Message = "操作",
-                Description = ex.ToString()
-            });
+                {
+                    Message = "操作",
+                    Description = ex.ToString()
+                });
         }
         finally
         {

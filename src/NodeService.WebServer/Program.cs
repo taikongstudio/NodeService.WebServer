@@ -286,6 +286,7 @@ public class Program
         builder.Services.AddHostedService<NetworkDeviceScanService>();
         builder.Services.AddHostedService<NodeFileSystemUploadService>();
         builder.Services.AddHostedService<TaskLogQueryService>();
+        builder.Services.AddHostedService<PackageQueryQueueService>();
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -458,6 +459,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(256, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncResponse>>(256, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(64, TimeSpan.FromMilliseconds(100)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>>(1024, TimeSpan.FromSeconds(5)));
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

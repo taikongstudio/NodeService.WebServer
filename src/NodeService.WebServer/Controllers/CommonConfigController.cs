@@ -122,8 +122,8 @@ public partial class CommonConfigController : Controller
 
     private async Task<ApiResponse> DeleteConfigurationAsync<T>(
         T model,
-        Func<T, Task>? changesFunc = null,
-        CancellationToken cancellationToken=default)
+        Func<ConfigurationSaveChangesResult, CancellationToken, ValueTask>? changesFunc = null,
+        CancellationToken cancellationToken = default)
         where T : JsonBasedDataModel
     {
         var apiResponse = new ApiResponse();
@@ -136,8 +136,12 @@ public partial class CommonConfigController : Controller
             var serviceResult = await op.WaitAsync(cancellationToken);
             var queryResult = serviceResult.Value.AsT1;
             _memoryCache.Remove(model.MemoryCacheKey);
-            if (queryResult.ChangesCount > 0 && changesFunc != null) await changesFunc.Invoke(model);
             if (queryResult.ChangesCount > 0)
+            {
+                if (changesFunc != null)
+                {
+                    await changesFunc.Invoke(queryResult, cancellationToken);
+                }
                 await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
                     ChangedType = ConfigurationChangedType.Delete,
@@ -146,6 +150,8 @@ public partial class CommonConfigController : Controller
                     Json = model.ToJson<T>(),
                     NodeIdList = []
                 });
+            }
+
         }
         catch (Exception ex)
         {
@@ -159,7 +165,7 @@ public partial class CommonConfigController : Controller
 
     private async Task<ApiResponse> AddOrUpdateConfigurationAsync<T>(
         T model,
-        Func<T, CancellationToken, ValueTask>? changesFunc = null,
+        Func<ConfigurationSaveChangesResult, CancellationToken, ValueTask>? changesFunc = null,
         CancellationToken cancellationToken = default)
         where T : JsonBasedDataModel
     {
@@ -176,7 +182,7 @@ public partial class CommonConfigController : Controller
             {
                 if (changesFunc != null)
                 {
-                    await changesFunc.Invoke(model, cancellationToken);
+                    await changesFunc.Invoke(saveChangesResult, cancellationToken);
                 }
                 await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
@@ -184,7 +190,7 @@ public partial class CommonConfigController : Controller
                     ChangedType = saveChangesResult.Type,
                     TypeName = typeof(T).FullName,
                     Id = model.Id,
-                    Json = saveChangesResult.Entity.ToJson<T>()
+                    Json = saveChangesResult.NewValue.ToJson<T>()
                 }, cancellationToken);
             }
         }
@@ -201,6 +207,7 @@ public partial class CommonConfigController : Controller
 
     async Task<ApiResponse> SwitchConfigurationVersionAsync<T>(
         ConfigurationVersionSwitchParameters parameters,
+        Func<ConfigurationSaveChangesResult, CancellationToken, ValueTask>? func = null,
         CancellationToken cancellationToken = default)
         where T : JsonBasedDataModel
     {
@@ -213,6 +220,10 @@ public partial class CommonConfigController : Controller
             await _batchQueue.SendAsync(op);
             var serviceResult = await op.WaitAsync(cancellationToken);
             var queryResult = serviceResult.Value.AsT1;
+            if (func != null)
+            {
+                await func.Invoke(queryResult, cancellationToken);
+            }
         }
         catch (Exception ex)
         {

@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Data;
+﻿using NodeService.Infrastructure.NodeFileSystem;
+
+namespace NodeService.WebServer.Data;
 
 public partial class ApplicationDbContext
 {
@@ -303,22 +305,20 @@ public partial class ApplicationDbContext
         modelBuilder.Entity<NodeFileSyncRecordModel>(builder =>
         {
             builder.HasKey(x => x.Id);
-            builder.OwnsOne(
-                model => model.Value, ownedNavigationBuilder =>
-                {
-                    ownedNavigationBuilder.ToJson();
-                });
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<NodeFileSyncRecord>(v, (JsonSerializerOptions)null));
         });
 
 
         modelBuilder.Entity<NodeFileSystemInfoModel>(builder =>
         {
             builder.HasKey(x => x.Id);
-            builder.OwnsOne(
-                model => model.Value, ownedNavigationBuilder =>
-                {
-                    ownedNavigationBuilder.ToJson();
-                });
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<NodeFileInfo>(v, (JsonSerializerOptions)null));
         });
     }
 }

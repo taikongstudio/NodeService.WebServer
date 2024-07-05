@@ -22,6 +22,8 @@ public class NodeFileUploadContext : IProgress<FtpProgress>, IDisposable
 
     public Stream Stream { get; init; }
 
+    public string VFSRecordPath { get; set; }
+
     public void Dispose()
     {
         if (this.Stream is FileStream fileStream)
@@ -189,13 +191,19 @@ public class NodeFileSystemUploadService : BackgroundService
         try
         {
             var key = opGroup.Key;
-            NodeInfoModel? nodeInfo = await FindNodeInfoAsync(key.NodeInfoId, cancellationToken);
+            var nodeInfo = await FindNodeInfoAsync(key.NodeInfoId, cancellationToken);
             if (nodeInfo == null)
             {
                 BatchFail(opGroup, -1, "invalid node info id");
                 return;
             }
-
+            var vfsRoot = VirtualFileSystemHelper.GetRootDirectory();
+            var nodeName = nodeInfo.Name;
+            var nodeRoot = VirtualFileSystemHelper.GetNodeRoot(nodeName);
+            if (!Directory.Exists(nodeRoot))
+            {
+                Directory.CreateDirectory(nodeRoot);
+            }
             switch (key.ConfigurationProtocol)
             {
                 case NodeFileSyncConfigurationProtocol.Unknown:
@@ -203,6 +211,7 @@ public class NodeFileSystemUploadService : BackgroundService
                     break;
                 case NodeFileSyncConfigurationProtocol.Ftp:
                     await ProcessBatchOperationsByFtpProtocolAsync(
+                        nodeRoot,
                         key.ConfigurationId,
                         nodeInfo,
                         opGroup,
@@ -222,14 +231,14 @@ public class NodeFileSystemUploadService : BackgroundService
 
     }
 
-    private async Task<NodeInfoModel> FindNodeInfoAsync(string nodeInfoId, CancellationToken cancellationToken = default)
+    async Task<NodeInfoModel?> FindNodeInfoAsync(string nodeInfoId, CancellationToken cancellationToken = default)
     {
         using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
         var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeInfoId, cancellationToken);
         return nodeInfo;
     }
 
-    private static void BatchFail(
+    static void BatchFail(
         IEnumerable<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncResponse>> opGroup,
         int errorCode,
         string message)
@@ -248,19 +257,21 @@ public class NodeFileSystemUploadService : BackgroundService
         }
     }
 
-    private async ValueTask ProcessBatchOperationsByFtpProtocolAsync(
+    async ValueTask ProcessBatchOperationsByFtpProtocolAsync(
+        string nodeRoot,
         string configurationId,
         NodeInfoModel nodeInfo,
         IEnumerable<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncResponse>> batchQueueOperations,
         CancellationToken cancellationToken)
     {
-        FtpConfigModel? ftpConfig = await FindFtpConfigurationAsync(configurationId, cancellationToken);
+        var ftpConfig = await FindFtpConfigurationAsync(configurationId, cancellationToken);
 
         if (ftpConfig == null)
         {
             BatchFail(batchQueueOperations, -1, "invalid ftp configuration id");
             return;
         }
+
         await using var nodeFileFtpProcessContext = new NodeFileFtpProcessContext(nodeInfo, ftpConfig);
 
         foreach (var op in batchQueueOperations)
@@ -268,7 +279,7 @@ public class NodeFileSystemUploadService : BackgroundService
             try
             {
                 var fileSystemSyncResponse = new NodeFileSyncResponse();
-                NodeFileUploadContext? nodeFileUploadContext = op.Context as NodeFileUploadContext;
+                var nodeFileUploadContext = op.Context as NodeFileUploadContext;
                 fileSystemSyncResponse.SyncRecord = nodeFileUploadContext == null ?
                     op.Argument.FileInfo.CreateNodeFileSyncRecord() : nodeFileUploadContext.SyncRecord;
                 try
@@ -277,6 +288,25 @@ public class NodeFileSystemUploadService : BackgroundService
                     {
                         continue;
                     }
+
+                    var fullName = nodeFileUploadContext.SyncRecord.FileInfo.FullName;
+                    var directroy = Path.GetDirectoryName(fullName);
+                    if (directroy == null)
+                    {
+                        continue;
+                    }
+                    directroy = directroy.Replace(":\\", "\\");
+                    directroy = Path.Combine(nodeRoot, directroy);
+                    if (!Directory.Exists(directroy))
+                    {
+                        Directory.CreateDirectory(directroy);
+                    }
+                    var fileName = Path.GetFileName(fullName);
+                    var filePath = Path.Combine(directroy, fileName + ".json");
+
+                    nodeFileUploadContext.VFSRecordPath = filePath;
+
+                    File.WriteAllText(filePath, JsonSerializer.Serialize(fileSystemSyncResponse.SyncRecord));
 
                     await nodeFileFtpProcessContext.ProcessAsync(nodeFileUploadContext, cancellationToken);
                 }
@@ -291,7 +321,7 @@ public class NodeFileSystemUploadService : BackgroundService
                 finally
                 {
                     op.SetResult(fileSystemSyncResponse);
-
+                    File.WriteAllText(nodeFileUploadContext.VFSRecordPath, JsonSerializer.Serialize(fileSystemSyncResponse.SyncRecord));
                 }
             }
             catch (Exception ex)
@@ -304,7 +334,7 @@ public class NodeFileSystemUploadService : BackgroundService
 
     }
 
-    private async ValueTask<FtpConfigModel?> FindFtpConfigurationAsync(string configurationId, CancellationToken cancellationToken)
+    async ValueTask<FtpConfigModel?> FindFtpConfigurationAsync(string configurationId, CancellationToken cancellationToken)
     {
         using var ftpConfigRepo = _ftpConfigRepoFactory.CreateRepository();
         var ftpConfig = await ftpConfigRepo.GetByIdAsync(configurationId, cancellationToken);

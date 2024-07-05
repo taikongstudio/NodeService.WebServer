@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
@@ -120,11 +121,17 @@ public class Program
 
         app.UseStaticFiles();
 
-        app.UseDirectoryBrowser(new DirectoryBrowserOptions()
+        var vfsRoot = VirtualFileSystemHelper.GetRootDirectory();
+        if (!Directory.Exists(vfsRoot))
         {
-            FileProvider = new NodeFileProvider(),
-            RedirectToAppendTrailingSlash = true,
-            RequestPath = "/VirtualFileSystem"
+            Directory.CreateDirectory(vfsRoot);
+        }
+
+        app.UseFileServer(new FileServerOptions()
+        {
+            EnableDirectoryBrowsing = true,
+            RequestPath = "/NodeFileSystem/Nodes",
+            FileProvider = new PhysicalFileProvider(vfsRoot),
         });
 
         app.UseRouting();

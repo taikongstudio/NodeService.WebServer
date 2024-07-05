@@ -160,8 +160,8 @@ public class TaskLogQueryService : BackgroundService
                             pageIndex++;
                             await serviceResult.LogChannel.Writer.WriteAsync(new ListQueryResult<LogEntry>(
                             totalLogCount,
-                            taskLog.PageSize,
                             taskLog.PageIndex,
+                            taskLog.PageSize,
                             taskLog.LogEntries), cancellationToken);
                         }
                         if (result.Count < 10) break;
@@ -176,8 +176,8 @@ public class TaskLogQueryService : BackgroundService
                     {
                         await serviceResult.LogChannel.Writer.WriteAsync(new ListQueryResult<LogEntry>(
                             totalLogCount,
-                            taskLog.PageSize,
                             taskLog.PageIndex,
+                            taskLog.PageSize,
                             taskLog.LogEntries), cancellationToken);
                     }
 

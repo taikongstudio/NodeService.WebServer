@@ -406,5 +406,25 @@ public partial class ApplicationDbContext
                         .SetValueComparer(GetEnumerableComparer<TaskFlowStageExecutionInstance>());
                 });
         });
+
+        modelBuilder.Entity<NodeFileSyncRecordModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                });
+        });
+
+        modelBuilder.Entity<NodeFileSystemInfoModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                });
+        });
     }
 }

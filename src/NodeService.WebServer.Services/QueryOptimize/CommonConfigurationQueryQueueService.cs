@@ -526,7 +526,12 @@ public class CommonConfigurationQueryQueueService : BackgroundService
                         if (hasValue)
                         {
                             var results = FindResults(queryResult.Items, op.Argument.Parameters.AsT2.IdList).ToArray();
-                            op.SetResult(new CommonConfigurationQueryQueueServiceResult( new ListQueryResult<object>(results.Length, 1, results.Length, results)));
+                            op.SetResult(new CommonConfigurationQueryQueueServiceResult(
+                                new ListQueryResult<object>(
+                                results.Length,
+                                1,
+                                results.Length,
+                                results)));
                         }
                         else
                         {
@@ -677,8 +682,8 @@ public class CommonConfigurationQueryQueueService : BackgroundService
 
         ListQueryResult<object> queryResult = new(
             listQueryResult.TotalCount,
-            listQueryResult.PageSize,
             listQueryResult.PageIndex,
+            listQueryResult.PageSize,
             listQueryResult.Items.Select(x => x as object));
         return queryResult;
     }
@@ -717,8 +722,8 @@ public class CommonConfigurationQueryQueueService : BackgroundService
 
         ListQueryResult<object> queryResult = new(
             listQueryResult.TotalCount,
-            listQueryResult.PageSize,
             listQueryResult.PageIndex,
+            listQueryResult.PageSize,
             listQueryResult.Items.Select(x => x as object));
         return queryResult;
     }
@@ -734,7 +739,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         if (result != null)
             queryResult = new ListQueryResult<object>(
                 result.Count,
-                1,
+                                1,
                 result.Count,
                 result.Select(static x => x as object));
 

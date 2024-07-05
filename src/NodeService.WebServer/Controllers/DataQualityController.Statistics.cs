@@ -86,8 +86,8 @@ public partial class DataQualityController
 
             apiResponse.SetResult(new ListQueryResult<DataQualityCalendarEntry>(
                 calendarEntries.Count,
-                queryParameters.PageSize,
                 queryParameters.PageIndex,
+                queryParameters.PageSize,
                 calendarEntries));
         }
         catch (Exception ex)

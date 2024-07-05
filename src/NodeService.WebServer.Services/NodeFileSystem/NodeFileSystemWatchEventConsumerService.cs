@@ -1,25 +1,31 @@
 ﻿using Google.Protobuf.WellKnownTypes;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Models;
+using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Tasks;
+using Org.BouncyCastle.Utilities;
+using System.Security.Cryptography;
+using System.Text.Json.Nodes;
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
 public class NodeFileSystemWatchEventConsumerService : BackgroundService
 {
-    private readonly ILogger<NodeFileSystemWatchEventConsumerService> _logger;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<FileSystemWatchEventReportMessage> _reportMessageEventQueue;
-    private readonly BatchQueue<TaskActivateServiceParameters> _fireTaskParametersBatchQueue;
-    private readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepoFactory;
-    private readonly ApplicationRepositoryFactory<FileSystemWatchConfigModel> _fileSystemWatchRepoFactory;
-    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
-    private readonly ConcurrentDictionary<NodeConfigurationDirectoryKey, DirectoryChangeInfo> _directoryCounterDict;
+
+    readonly ILogger<NodeFileSystemWatchEventConsumerService> _logger;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly BatchQueue<FileSystemWatchEventReportMessage> _reportMessageEventQueue;
+    readonly BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>> _nodeFileSystemEventQueue;
+    readonly BatchQueue<TaskActivateServiceParameters> _fireTaskParametersBatchQueue;
+    readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepoFactory;
+    readonly ApplicationRepositoryFactory<FileSystemWatchConfigModel> _fileSystemWatchRepoFactory;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    readonly IDistributedCache _distributedCache;
 
     public NodeFileSystemWatchEventConsumerService(
         ILogger<NodeFileSystemWatchEventConsumerService> logger,
@@ -28,7 +34,8 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
         BatchQueue<TaskActivateServiceParameters> fireTaskParametersBatchQueue,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepoFactory,
-        ApplicationRepositoryFactory<FileSystemWatchConfigModel> fileSystemWatchRepoFactory)
+        ApplicationRepositoryFactory<FileSystemWatchConfigModel> fileSystemWatchRepoFactory,
+        BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>> nodeFileSystemEventQueue)
     {
         _logger = logger;
         _exceptionCounter = exceptionCounter;
@@ -37,25 +44,139 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
         _taskDefinitionRepoFactory = taskDefinitionRepoFactory;
         _fileSystemWatchRepoFactory = fileSystemWatchRepoFactory;
         _nodeInfoRepoFactory = nodeInfoRepoFactory;
-        _directoryCounterDict = new ConcurrentDictionary<NodeConfigurationDirectoryKey, DirectoryChangeInfo>();
+        _nodeFileSystemEventQueue = nodeFileSystemEventQueue;
+    }
+
+    string? GroupByFullPath(FileSystemWatchEventReportMessage message)
+    {
+        var report = message.GetMessage();
+        string? fullName = null;
+        if (report.EventSource == FileSystemWatchEventSourceTypes.File)
+        {
+            switch (report.EventCase)
+            {
+                case FileSystemWatchEventReport.EventOneofCase.None:
+                    break;
+                case FileSystemWatchEventReport.EventOneofCase.Created:
+                    fullName = report.Created.FullPath;
+                    break;
+                case FileSystemWatchEventReport.EventOneofCase.Deleted:
+                    fullName = report.Deleted.FullPath;
+                    break;
+                case FileSystemWatchEventReport.EventOneofCase.Changed:
+                    fullName = report.Changed.FullPath;
+                    break;
+                case FileSystemWatchEventReport.EventOneofCase.Renamed:
+                    fullName = report.Renamed.OldFullPath;
+                    break;
+                case FileSystemWatchEventReport.EventOneofCase.Error:
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return fullName;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Start");
+        await ConsumeNodeFileSystemWatchEventAsync(cancellationToken);
+
+    }
+
+    private async Task ConsumeNodeFileSystemWatchEventAsync(CancellationToken cancellationToken = default)
+    {
         await foreach (var array in _reportMessageEventQueue.ReceiveAllAsync(cancellationToken))
+        {
             try
             {
                 using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-                using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
-                using var fileSystemWatchRepo = _fileSystemWatchRepoFactory.CreateRepository();
                 foreach (var nodeEventReports in array.GroupBy(static x => x.NodeSessionId.NodeId))
                 {
                     var nodeId = nodeEventReports.Key;
                     var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId.Value, cancellationToken);
                     if (nodeInfo == null) continue;
-                    foreach (var messages in nodeEventReports.Chunk(100))
+                    foreach (var fileEventReportGroup in nodeEventReports.GroupBy(GroupByFullPath))
                     {
+                        try
+                        {
+                            if (fileEventReportGroup.Key == null)
+                            {
+                                continue;
+                            }
+                            var lastMessage = fileEventReportGroup.LastOrDefault();
+                            if (lastMessage == null)
+                            {
+                                continue;
+                            }
+                            var lastReport = lastMessage.GetMessage();
+                            var nodeFilePath = NodeFileSystemHelper.GetNodeFilePath(nodeInfo.Name, fileEventReportGroup.Key);
+                            var nodeFilePathHash = NodeFileSystemHelper.GetNodeFilePathHash(nodeFilePath);
+                            switch (lastReport.EventCase)
+                            {
+                                case FileSystemWatchEventReport.EventOneofCase.None:
+                                    break;
+                                case FileSystemWatchEventReport.EventOneofCase.Created:
+                                    {
+                                        var jsonValue = lastReport.Created.Properties["FileInfo"];
+                                        await AddOrUpdateFileSystemWatchRecordAsync(
+                                            nodeFilePath,
+                                            nodeFilePathHash,
+                                            jsonValue,
+                                            cancellationToken);
+                                    }
+                                    break;
+                                case FileSystemWatchEventReport.EventOneofCase.Changed:
+                                    {
+                                        var jsonValue = lastReport.Changed.Properties["FileInfo"];
+                                        await AddOrUpdateFileSystemWatchRecordAsync(
+                                            nodeFilePath,
+                                            nodeFilePathHash,
+                                            jsonValue,
+                                            cancellationToken);
+                                    }
+
+                                    break;
+                                case FileSystemWatchEventReport.EventOneofCase.Deleted:
+                                    await RemoveFileSystemWatchRecordAsync(
+                                        nodeFilePath,
+                                        nodeFilePathHash,
+                                        cancellationToken);
+                                    break;
+                                case FileSystemWatchEventReport.EventOneofCase.Renamed:
+                                    {
+                                        var newNodeFilePath = NodeFileSystemHelper.GetNodeFilePath(
+                                            nodeInfo.Name,
+                                            lastReport.Renamed.FullPath);
+
+                                        var jsonValue = lastReport.Renamed.Properties["FileInfo"];
+
+                                        await RemoveFileSystemWatchRecordAsync(
+                                            nodeFilePath,
+                                            nodeFilePathHash,
+                                            cancellationToken);
+
+                                        var newNodeFilePathHash = NodeFileSystemHelper.GetNodeFilePathHash(newNodeFilePath);
+                                        await AddOrUpdateFileSystemWatchRecordAsync(
+                                                newNodeFilePath,
+                                                newNodeFilePathHash,
+                                                jsonValue,
+                                                cancellationToken);
+                                    }
+                                    break;
+                                case FileSystemWatchEventReport.EventOneofCase.Error:
+                                    break;
+                                default:
+                                    break;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _exceptionCounter.AddOrUpdate(ex);
+                            _logger.LogError(ex.ToString());
+                        }
 
                     }
                 }
@@ -65,6 +186,37 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
                 _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
+        }
+    }
+
+    async Task AddOrUpdateFileSystemWatchRecordAsync(
+        string nodeFilePath,
+        string nodeFilePathHash,
+        string jsonValue,
+        CancellationToken cancellationToken = default)
+    {
+        var wapper = new NodeFileSystemInfoEvent()
+        {
+            NodeFilePath= nodeFilePath,
+            NodeFilePathHash = nodeFilePathHash,
+            ObjectInfo = JsonSerializer.Deserialize<NodeFileInfo>(jsonValue)
+        };
+        var op = new BatchQueueOperation<NodeFileSystemInfoEvent, bool>(wapper, BatchQueueOperationKind.AddOrUpdate);
+        await _nodeFileSystemEventQueue.SendAsync(op, cancellationToken);
+    }
+
+    async Task RemoveFileSystemWatchRecordAsync(
+                string nodeFilePath,
+        string nodeFilePathHash,
+        CancellationToken cancellationToken = default)
+    {
+        var wapper = new NodeFileSystemInfoEvent()
+        {
+            NodeFilePath = nodeFilePath,
+            NodeFilePathHash = nodeFilePathHash,
+        };
+        var op = new BatchQueueOperation<NodeFileSystemInfoEvent, bool>(wapper, BatchQueueOperationKind.Delete);
+        await _nodeFileSystemEventQueue.SendAsync(op, cancellationToken);
     }
 
     //private async Task ProcessNodeMessageReportListAsync(

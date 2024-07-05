@@ -1,29 +1,19 @@
 ﻿namespace NodeService.WebServer.Services.VirtualFileSystem;
 
-using NodeService.Infrastructure.Models;
+using NodeService.Infrastructure.NodeFileSystem;
 
 public class VirtualFileSystemInfoHelper
 {
-    public static VirtualFileSystemObjectInfo FromFtpListItem(FtpListItem ftpListItem)
+    public static NodeFileInfo FromFtpListItem(FtpListItem ftpListItem)
     {
-        return new VirtualFileSystemObjectInfo
+        return new NodeFileInfo
         {
             CreationTime = ftpListItem.Created,
             FullName = ftpListItem.FullName,
             LastWriteTime = ftpListItem.Modified,
             Length = ftpListItem.Size,
             Name = ftpListItem.Name,
-            Type = FromFtpObjectType(ftpListItem.Type)
-        };
-    }
-
-    private static VirtualFileSystemObjectType FromFtpObjectType(FtpObjectType ftpObjectType)
-    {
-        return ftpObjectType switch
-        {
-            FtpObjectType.File => VirtualFileSystemObjectType.File,
-            FtpObjectType.Directory => VirtualFileSystemObjectType.Directory,
-            _ => VirtualFileSystemObjectType.NotSupported
+            Attributes = ftpListItem.Type == FtpObjectType.Directory ? NodeFileAttributes.Directory : NodeFileAttributes.None
         };
     }
 }

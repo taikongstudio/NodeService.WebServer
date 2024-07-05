@@ -21,9 +21,21 @@ public partial class CommonConfigController
     [HttpGet("/api/CommonConfig/ftpupload/{id}")]
     public Task<ApiResponse<FtpUploadConfigModel>> QueryFtpUploadConfigAsync(string id, CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationAsync<FtpUploadConfigModel>(id, cancellationToken: cancellationToken);
+        return QueryConfigurationAsync<FtpUploadConfigModel>(id, QueryFtpConfigAsync, cancellationToken: cancellationToken);
     }
 
+    async ValueTask QueryFtpConfigAsync(FtpUploadConfigModel? ftpUploadConfig, CancellationToken cancellationToken = default)
+    {
+        if (ftpUploadConfig == null)
+        {
+            return;
+        }
+        var rsp = await QueryConfigurationAsync<FtpConfigModel>(ftpUploadConfig.Value.FtpConfigId, null, cancellationToken);
+        if (rsp.ErrorCode == 0)
+        {
+            ftpUploadConfig.Value.FtpConfig = rsp.Result;
+        }
+    }
 
     [HttpPost("/api/CommonConfig/ftpupload/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] FtpUploadConfigModel model, CancellationToken cancellationToken = default)

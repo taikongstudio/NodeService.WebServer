@@ -59,8 +59,8 @@ public static class RepositoryExtensions
 
         return new ListQueryResult<T>(
             totalCount,
-            pageSize,
             pageIndex,
+            pageSize,
             items);
     }
 }

@@ -100,6 +100,10 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<TaskFlowExecutionInstanceModel> TaskFlowExecutionInstanceDbSet { get; set; }
 
+    public DbSet<NodeFileSyncRecordModel> NodeFileSyncRecordDbSet { get; set; }
+
+    public DbSet<NodeFileSystemInfoModel> NodeFileSystemInfoDbSetDbSet { get; set; }
+
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
                                     DynamicallyAccessedMemberTypes.NonPublicConstructors |

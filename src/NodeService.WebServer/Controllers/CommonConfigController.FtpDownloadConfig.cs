@@ -21,7 +21,20 @@ public partial class CommonConfigController
     [HttpGet("/api/CommonConfig/ftpdownload/{id}")]
     public Task<ApiResponse<FtpDownloadConfigModel>> QueryFtpDownloadConfigAsync(string id, CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationAsync<FtpDownloadConfigModel>(id, cancellationToken: cancellationToken);
+        return QueryConfigurationAsync<FtpDownloadConfigModel>(id, QueryFtpConfigAsync, cancellationToken: cancellationToken);
+    }
+
+    async ValueTask QueryFtpConfigAsync(FtpDownloadConfigModel? ftpDownloadConfig, CancellationToken cancellationToken = default)
+    {
+        if (ftpDownloadConfig == null)
+        {
+            return;
+        }
+        var rsp = await QueryConfigurationAsync<FtpConfigModel>(ftpDownloadConfig.Value.FtpConfigId, null, cancellationToken);
+        if (rsp.ErrorCode == 0)
+        {
+            ftpDownloadConfig.Value.FtpConfig = rsp.Result;
+        }
     }
 
 

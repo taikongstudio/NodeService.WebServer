@@ -74,8 +74,8 @@ public partial class CommonConfigController : Controller
             if (queryResult.HasValue)
                 result = new ListQueryResult<T>(
                     queryResult.TotalCount,
-                    queryResult.PageSize,
                     queryResult.PageIndex,
+                    queryResult.PageSize,
                     queryResult.Items.Select(static x => (T)x));
             if (result.HasValue) apiResponse.SetResult(result);
         }
@@ -286,8 +286,8 @@ public partial class CommonConfigController : Controller
             if (queryResult.HasValue)
                 result = new ListQueryResult<T>(
                     queryResult.TotalCount,
-                    queryResult.PageSize,
                     queryResult.PageIndex,
+                    queryResult.PageSize,
                     queryResult.Items.Select(static x => (T)x));
             if (result.HasValue) apiResponse.SetResult(result);
         }

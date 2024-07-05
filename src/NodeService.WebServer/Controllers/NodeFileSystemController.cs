@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Net.Http.Headers;
 using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeFileSystem;
@@ -15,19 +17,25 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public class NodeFileSystemController : Controller
 {
-    private readonly ILogger<NodeFileSystemController> _logger;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncResponse>> _nodeFileSyncBatchQueue;
+    readonly ILogger<NodeFileSystemController> _logger;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly IDistributedCache _distributedCache;
+    readonly BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecord>> _nodeFileSyncBatchQueue;
+    readonly BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>> _queryQueue;
 
     public NodeFileSystemController(
         ILogger<NodeFileSystemController> logger,
         ExceptionCounter exceptionCounter,
-        BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncResponse>> fileSyncBatchQueue
+        IDistributedCache distributedCache,
+        BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecord>> nodeFileSyncBatchQueue,
+        BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>> queryQueue
     )
     {
         _logger = logger;
         _exceptionCounter = exceptionCounter;
-        _nodeFileSyncBatchQueue = fileSyncBatchQueue;
+        _distributedCache = distributedCache;
+        _nodeFileSyncBatchQueue = nodeFileSyncBatchQueue;
+        _queryQueue = queryQueue;
     }
 
     [HttpGet("/api/NodeFileSystem/QueueStatus")]
@@ -41,12 +49,65 @@ public class NodeFileSystemController : Controller
         return Task.FromResult(rsp);
     }
 
+    [HttpGet("/api/NodeFileSystem/GetObjectInfo")]
+    public async Task<PaginationResponse<NodeFileInfo>> GetObjectInfoAsync(
+        [FromQuery] QueryNodeFileSystemObjectInfoParameters queryParameters,
+        CancellationToken cancellationToken = default)
+    {
+        var rsp = new PaginationResponse<NodeFileInfo>();
+        try
+        {
+            if (queryParameters.NodeName == null)
+            {
+                rsp.SetError(-1, "invalid node name");
+                return rsp;
+            }
+            if (queryParameters.FilePathList != null && queryParameters.FilePathList.Count > 0)
+            {
+                List<NodeFileInfo> list = [];
+                List<string> notFoundFilePathList = new List<string>();
+                foreach (var filePath in queryParameters.FilePathList)
+                {
+                    var nodeFilePath = NodeFileSystemHelper.GetNodeFilePath(queryParameters.NodeName, filePath);
+                    var jsonString = _distributedCache.GetString(nodeFilePath);
+                    if (jsonString == null)
+                    {
+                        var nodeFilePathHash = NodeFileSystemHelper.GetNodeFilePathHash(nodeFilePath);
+                        notFoundFilePathList.Add(nodeFilePathHash);
+                    }
+                    else
+                    {
+                        list.Add(JsonSerializer.Deserialize<NodeFileInfo>(jsonString));
+                    }
+                }
+                var op = new BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>(
+                    new NodeFileSystemInfoIndexServiceParameters(new QueryNodeFileSystemInfoParameters(notFoundFilePathList))
+                    , BatchQueueOperationKind.Query
+                    );
+                await _queryQueue.SendAsync(op, cancellationToken);
+                var serviceResult = await op.WaitAsync(cancellationToken);
+                if (serviceResult.Result.HasValue)
+                {
+                    list.AddRange(serviceResult.Result.Items.Select(x => x.Value));
+                }
+                rsp.SetResult(new ListQueryResult<NodeFileInfo>(list.Count, 1, list.Count, list));
+            }
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+
+        return rsp;
+    }
+
     [HttpPost("/api/NodeFileSystem/UploadFile")]
     [DisableRequestSizeLimit]
-    public async Task<ApiResponse<NodeFileSyncResponse>> UploadFileAsync()
+    public async Task<ApiResponse<NodeFileSyncRecord>> UploadFileAsync()
     {
-        var rsp = new ApiResponse<NodeFileSyncResponse>();
-        NodeFileSyncResponse? nodeFileSyncResponse = null;
+        var rsp = new ApiResponse<NodeFileSyncRecord>();
+        NodeFileSyncRecord? nodeFileSyncResponse = null;
         try
         {
             if (_nodeFileSyncBatchQueue.AvailableCount > 100)
@@ -110,13 +171,13 @@ public class NodeFileSystemController : Controller
                             new DefaultSHA256HashAlgorithmProvider(),
                             new DefaultGzipCompressionProvider());
                         nodeFileSyncRequest = nodeFileSyncRequest with { Stream = nodeFileUploadContext.Stream };
-                        var op = new BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncResponse>(
+                        var op = new BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecord>(
                              nodeFileSyncRequest,
                              BatchQueueOperationKind.AddOrUpdate,
                              BatchQueueOperationPriority.Normal);
                         op.Context = nodeFileUploadContext;
                         await _nodeFileSyncBatchQueue.SendAsync(op);
-                        nodeFileSyncResponse = await op.WaitAsync();
+
                         stopwatch.Stop();
                     }
             }

@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Services.VirtualFileSystem;
+﻿using NodeService.Infrastructure.NodeFileSystem;
+
+namespace NodeService.WebServer.Services.VirtualFileSystem;
 
 public class ListDirectoryOptions
 {
@@ -20,7 +22,7 @@ public interface IVirtualFileSystem : IDisposable
         string path,
         CancellationToken cancellationToken = default);
 
-    IAsyncEnumerable<VirtualFileSystemObjectInfo> ListDirectoryAsync(
+    IAsyncEnumerable<NodeFileInfo> ListDirectoryAsync(
         string directory,
         ListDirectoryOptions? options = null,
         CancellationToken cancellationToken = default);
@@ -56,7 +58,7 @@ public abstract class VirtualFileSystemBase : IVirtualFileSystem
     public abstract ValueTask<Exception?> DeleteFileAsync(string file,
         CancellationToken cancellationToken = default);
 
-    public abstract IAsyncEnumerable<VirtualFileSystemObjectInfo> ListDirectoryAsync(string directory,
+    public abstract IAsyncEnumerable<NodeFileInfo> ListDirectoryAsync(string directory,
         ListDirectoryOptions? options = null,
         CancellationToken cancellationToken = default);
 
@@ -180,7 +182,7 @@ public class FtpVirtualFileSystem : VirtualFileSystemBase
         return previousWorkingDirectory;
     }
 
-    public override async IAsyncEnumerable<VirtualFileSystemObjectInfo> ListDirectoryAsync(
+    public override async IAsyncEnumerable<NodeFileInfo> ListDirectoryAsync(
         string directory,
         ListDirectoryOptions? options = null,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)

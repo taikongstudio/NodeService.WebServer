@@ -104,21 +104,7 @@ public class NodeFileSystemController : Controller
                             return rsp;
                         }
 
-                        //const string TempUploadedDirectory = "../NodeFileSystem/Uploaded";
-                        //if (!Directory.Exists(TempUploadedDirectory))
-                        //{
-                        //    Directory.CreateDirectory(TempUploadedDirectory);
-                        //}
-                        //var tempFilePath = Path.Combine(TempUploadedDirectory, Guid.NewGuid().ToString() + ".tmp");
-                        //var tempStream = System.IO.File.Create(tempFilePath);
-                        //using var disposeable = Disposable.Create(() =>
-                        //{
-                        //    tempStream.Close();
-                        //    System.IO.File.Delete(tempFilePath);
-                        //});
-                        //await section.Body.CopyToAsync(tempStream);
-                        //tempStream.Seek(0, SeekOrigin.Begin);
-                        Stopwatch stopwatch = Stopwatch.StartNew();
+                        var stopwatch = Stopwatch.StartNew();
                         nodeFileSyncRequest = nodeFileSyncRequest with { Stream = section.Body };
                         using var nodeFileUploadContext = await nodeFileSyncRequest.CreateNodeFileUploadContextAsync(
                             new DefaultSHA256HashAlgorithmProvider(),

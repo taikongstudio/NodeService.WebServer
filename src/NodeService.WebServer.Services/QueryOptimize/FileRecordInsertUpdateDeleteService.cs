@@ -83,7 +83,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
         try
         {
             await repo.DeleteAsync(operation.Argument);
-            _logger.LogInformation($"Delete SaveChanges:{repo.LastChangesCount} {repo.LastSaveChangesTimeSpan}");
+            _logger.LogInformation($"Delete SaveChanges:{repo.LastSaveChangesCount} {repo.LastOperationTimeSpan}");
             operation.SetResult(true);
         }
         catch (Exception ex)
@@ -138,6 +138,6 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
             repo.DbContext.ChangeTracker.Clear();
         }
 
-        _logger.LogInformation($"Add or update SaveChanges:{repo.LastChangesCount} {repo.LastSaveChangesTimeSpan}");
+        _logger.LogInformation($"Add or update SaveChanges:{repo.LastSaveChangesCount} {repo.LastOperationTimeSpan}");
     }
 }

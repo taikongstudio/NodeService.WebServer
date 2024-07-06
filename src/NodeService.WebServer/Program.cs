@@ -376,7 +376,6 @@ public class Program
             }
         );
 
-        builder.Services.AddTransient<TaskExecutionTimeLimitJob>();
         builder.Services.AddTransient<FireTaskJob>();
     }
 

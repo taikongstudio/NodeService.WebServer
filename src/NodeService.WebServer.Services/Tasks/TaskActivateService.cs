@@ -324,7 +324,13 @@ public class TaskActivateService : BackgroundService
                 TaskDefinitionJson = JsonSerializer.Serialize(taskDefinition.Value),
                 TaskExecutionInstanceInfoList = taskExecutionInstanceInfoList,
                 TotalCount = taskExecutionInstanceInfoList.Count,
-                Status = TaskExecutionStatus.Unknown
+                Status = TaskExecutionStatus.Unknown,
+                TaskFlowTemplateId = taskFlowTaskKey.TaskFlowTemplateId,
+                TaskFlowTaskId = taskFlowTaskKey.TaskFlowTaskId,
+                TaskFlowInstanceId = taskFlowTaskKey.TaskFlowInstanceId,
+                TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId,
+                TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId,
+
             }, cancellationToken);
 
             foreach (var kv in taskExecutionInstanceList)

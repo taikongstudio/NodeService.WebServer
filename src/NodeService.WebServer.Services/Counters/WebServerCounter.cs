@@ -52,7 +52,7 @@ public class WebServerCounter
 
     public CounterTimeSpanValue TaskExecutionReportSaveTimeSpan { get; set; } = new();
 
-    public CounterTimeSpanValue TaskLogUnitEntriesTimeSpan { get; set; } = new();
+    public CounterTimeSpanValue TaskLogUnitCollectLogEntriesTimeSpan { get; set; } = new();
 
     public CounterTimeSpanValue TaskLogUnitSaveTimeSpan { get; set; } = new();
 

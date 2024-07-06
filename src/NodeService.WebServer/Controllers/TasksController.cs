@@ -1,5 +1,7 @@
-﻿using System.Text;
+﻿using System.IO.Pipelines;
+using System.Text;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.WebUtilities;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.DataModels;
@@ -187,7 +189,7 @@ public class TasksController : Controller
     public async Task<IActionResult> QueryTaskLogAsync(
         string taskId,
         [FromQuery] PaginationQueryParameters queryParameters,
-        CancellationToken cancellationToken=default)
+        CancellationToken cancellationToken = default)
     {
         var apiResponse = new PaginationResponse<LogEntry>();
         try
@@ -195,57 +197,19 @@ public class TasksController : Controller
             var serviceParameters = new TaskLogQueryServiceParameters(
                                         taskId,
                                         queryParameters);
-            if (queryParameters.PageIndex == 0)
-            {
-                var op = new BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>(
-                    serviceParameters,
-                    BatchQueueOperationKind.Query,
-                    BatchQueueOperationPriority.Lowest);
-                
-                await _queryBatchQueue.SendAsync(op, cancellationToken);
+            var op = new BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>(
+                serviceParameters,
+                BatchQueueOperationKind.Query,
+                BatchQueueOperationPriority.Lowest,
+                cancellationToken);
 
-                var result =await op.WaitAsync(cancellationToken);
+            await _queryBatchQueue.SendAsync(op, cancellationToken);
 
-                var memoryStream = new MemoryStream();
-
-                using var streamWriter = new StreamWriter(memoryStream, leaveOpen: true);
-                await foreach (var listQueryResult in result.LogChannel.Reader.ReadAllAsync(cancellationToken))
-                {
-                    foreach (var taskLogEntry in listQueryResult.Items)
-                    {
-                        streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
-                    }
-        
-                }
-                await streamWriter.FlushAsync(cancellationToken);
-                memoryStream.Position = 0;
-                return File(memoryStream, "text/plain", result.LogFileName);
-            }
-            else
-            {
-                var op = new BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>(
-                        serviceParameters,
-                        BatchQueueOperationKind.Query,
-                        BatchQueueOperationPriority.Lowest);
-
-                await _queryBatchQueue.SendAsync(op, cancellationToken);
-
-                var result = await op.WaitAsync(cancellationToken);
-
-                var listQueryResults = await result.LogChannel.Reader.ReadAllAsync(cancellationToken).ToArrayAsync(cancellationToken);
-                if (listQueryResults == null||listQueryResults.Length==0)
-                {
-                    apiResponse.SetResult([]);
-                }
-                else
-                {
-                    var listQueryResult = listQueryResults.FirstOrDefault();
-                    apiResponse.SetResult(listQueryResult.Items);
-                    apiResponse.SetPageIndex(listQueryResult.PageIndex);
-                    apiResponse.SetPageSize(listQueryResult.PageSize);
-                    apiResponse.SetTotalCount(listQueryResult.TotalCount);
-                }
-            }
+            var result = await op.WaitAsync(cancellationToken);
+            HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.TotalCount), result.TotalCount.ToString());
+            HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.PageIndex), result.PageIndex.ToString());
+            HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.PageSize), result.PageSize.ToString());
+            return File(result.Pipe.Reader.AsStream(true), "text/plain", result.LogFileName);
         }
         catch (Exception ex)
         {

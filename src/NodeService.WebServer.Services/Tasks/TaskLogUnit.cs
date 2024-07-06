@@ -3,11 +3,11 @@ using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.Tasks;
 
-public class TaskLogUnit
+public record class TaskLogUnit
 {
-    public required string Id { get; set; }
+    public required string Id { get; init; }
 
-    public required ImmutableArray<LogEntry> LogEntries { get; set; } = [];
+    public required IEnumerable<TaskExecutionLogEntry> LogEntries { get; init; } = [];
 
-    public TaskExecutionStatus Status { get; set; }
+    public TaskExecutionStatus Status { get; init; }
 }

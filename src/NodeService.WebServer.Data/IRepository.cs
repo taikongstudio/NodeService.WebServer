@@ -8,9 +8,9 @@ public interface IRepository<T> :
     IAsyncDisposable
     where T : class, IAggregateRoot
 {
-    public int LastChangesCount { get; }
+    public int LastSaveChangesCount { get; }
 
-    public TimeSpan LastSaveChangesTimeSpan { get; }
+    public TimeSpan LastOperationTimeSpan { get; }
 
     public DbContext DbContext { get; }
 }

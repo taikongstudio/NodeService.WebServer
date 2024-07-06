@@ -155,21 +155,13 @@
 
         if (apiResponse.ErrorCode == 0)
         {
-            var sb = new StringBuilder();
-
-
-            if (apiResponse.Result == null || !apiResponse.Result.Any())
+            if (apiResponse.Result == null || apiResponse.PageIndex == 0)
             {
                 return false;
             }
+            var currentLogText = apiResponse.Result.FirstOrDefault();
 
-            foreach (var item in apiResponse.Result)
-            {
-                sb.AppendLine($"{item.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {item.Value}");
-            }
-
-            var currentLogText = sb.ToString();
-            var entiresCount = apiResponse.Result.Count();
+            var entiresCount = apiResponse.PageSize;
 
             var model = await _viewer.GetModel();
             var startLineNumber = await model.GetLineCount();
@@ -177,7 +169,7 @@
             var endLineNumber = startLineNumber;
             var endColumn = await model.GetLineMaxColumn(endLineNumber);
 
-            if (entiresCount == apiResponse.PageSize)
+            if (entiresCount == 1024)
             {
                 _nextLogPageIndex = apiResponse.PageIndex + 1;
                 _loadedLogEntriesCount = _loadedLogEntriesCount - _lastEntriesCount;
@@ -207,7 +199,7 @@
 
             _totalLogEntriesCount = apiResponse.TotalCount;
             await InvokeAsync(StateHasChanged);
-            return entiresCount == apiResponse.PageSize;
+            return entiresCount == 1024;
         }
 
         await _notice.Open(new NotificationConfig

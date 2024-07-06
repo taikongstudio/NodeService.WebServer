@@ -77,6 +77,11 @@ public partial class ApplicationDbContext
                                     .HasConversion(x => Serialize(x), x => Deserialize<List<TaskExecutionInstanceInfo>>(x))
                                     .Metadata
                                     .SetValueComparer(GetEnumerableComparer<TaskExecutionInstanceInfo>());
+                    ownedNavigationBuilder
+                                    .Property(x => x.TaskExecutionInstanceInfoRetryList)
+                                    .HasConversion(x => Serialize(x), x => Deserialize<List<TaskExecutionInstanceInfo>>(x))
+                                    .Metadata
+                                    .SetValueComparer(GetEnumerableComparer<TaskExecutionInstanceInfo>());
                 });
         });
     }

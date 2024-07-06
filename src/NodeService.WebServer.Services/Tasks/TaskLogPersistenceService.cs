@@ -147,14 +147,27 @@ public class TaskLogPersistenceService : BackgroundService
                         _logger.LogInformation($"Recieve task log unit:{item.Id}");
                     }
                     _logger.LogInformation("Begin");
-                    await Parallel.ForEachAsync(
-                        array.GroupBy(TaskLogUnitGroupFunc),
-                        new ParallelOptions()
+
+                    if (Debugger.IsAttached)
+                    {
+                        foreach (var item in array.GroupBy(TaskLogUnitGroupFunc))
                         {
-                            CancellationToken = cancellationToken,
-                            MaxDegreeOfParallelism = 4,
-                        },
-                        RunTaskLogHandlerAsync);
+                            await RunTaskLogHandlerAsync(item, cancellationToken);
+                        }
+                    }
+                    else
+                    {
+                        await Parallel.ForEachAsync(
+                                array.GroupBy(TaskLogUnitGroupFunc).Where(static x => x.Key != -1).ToArray(),
+                                new ParallelOptions()
+                                {
+                                    CancellationToken = cancellationToken,
+                                    MaxDegreeOfParallelism = 4,
+                                },
+                                RunTaskLogHandlerAsync);
+                    }
+
+
                     _logger.LogInformation("End");
                     _keys = _taskLogHandlers.Keys;
                     Stat();
@@ -180,9 +193,12 @@ public class TaskLogPersistenceService : BackgroundService
         _webServerCounter.TaskLogPageCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
         _webServerCounter.TaskLogUnitConsumeCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
         _webServerCounter.TaskLogEntriesSavedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
-        _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
-        _webServerCounter.TaskLogUnitQueryTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
-        _webServerCounter.TaskLogUnitSaveTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
+        if (_taskLogHandlers.Values.Count > 0)
+        {
+            _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
+            _webServerCounter.TaskLogUnitQueryTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
+            _webServerCounter.TaskLogUnitSaveTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
+        }
         _webServerCounter.TaskLogUnitAvailableCount.Value = _taskLogUnitBatchQueue.AvailableCount;
         _webServerCounter.TaskLogPageDetachedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
     }
@@ -209,7 +225,7 @@ public class TaskLogPersistenceService : BackgroundService
 
     int TaskLogUnitGroupFunc(TaskLogUnit unit)
     {
-        if (unit.Id == null) return _keys.ElementAtOrDefault(Random.Shared.Next(0, _taskLogHandlers.Count));
+        if (unit.Id == null) return 0;
         Math.DivRem(unit.Id[0], 10, out var result);
         return result;
     }

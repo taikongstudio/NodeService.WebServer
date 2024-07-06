@@ -1,4 +1,10 @@
-﻿namespace NodeService.WebServer.Data.Repositories;
+﻿
+
+
+
+using Google.Protobuf.WellKnownTypes;
+
+namespace NodeService.WebServer.Data.Repositories;
 
 public class EfRepository<T> :
     RepositoryBase<T>,
@@ -7,28 +13,118 @@ public class EfRepository<T> :
     IDisposable
     where T : class, IAggregateRoot
 {
-    private readonly ApplicationDbContext _dbContext;
+    readonly ApplicationDbContext _dbContext;
+
+    readonly Stopwatch _stopwatch;
+
 
     public EfRepository(ApplicationDbContext dbContext) : base(dbContext)
     {
         _dbContext = dbContext;
+        _stopwatch = new Stopwatch();
     }
 
-    public int LastChangesCount { get; private set; }
+
+    public int LastSaveChangesCount { get; private set; }
 
     public DbContext DbContext => _dbContext;
 
-    public TimeSpan LastSaveChangesTimeSpan { get; private set; }
+    public TimeSpan LastOperationTimeSpan { get; private set; }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var stopwatch = Stopwatch.StartNew();
-        LastChangesCount = await base.SaveChangesAsync(cancellationToken);
-        stopwatch.Stop();
-        LastSaveChangesTimeSpan = stopwatch.Elapsed;
-        return LastChangesCount;
+        _stopwatch.Restart();
+        LastSaveChangesCount = await base.SaveChangesAsync(cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return LastSaveChangesCount;
     }
 
+    public override Task<int> CountAsync(CancellationToken cancellationToken = default)
+    {
+        return base.CountAsync(cancellationToken);
+    }
+
+    public override async Task<List<T>> ListAsync(CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        var list = await base.ListAsync(cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return list;
+    }
+
+    public override Task<List<T>> ListAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        var list = base.ListAsync(specification, cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return list;
+    }
+
+    public override Task<List<TResult>> ListAsync<TResult>(ISpecification<T, TResult> specification, CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        var list = base.ListAsync(specification, cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return list;
+    }
+
+    public override async Task<T?> GetByIdAsync<TId>(TId id, CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        var item = await base.GetByIdAsync(id, cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return item;
+    }
+
+    public override Task<int> CountAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        var value = base.CountAsync(specification, cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return value;
+    }
+
+    public override Task<T?> FirstOrDefaultAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        var item = base.FirstOrDefaultAsync(specification, cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return item;
+    }
+
+    public override Task<TResult?> FirstOrDefaultAsync<TResult>(ISpecification<T, TResult> specification, CancellationToken cancellationToken = default) where TResult : default
+    {
+        _stopwatch.Restart();
+        var item = base.FirstOrDefaultAsync(specification, cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return item;
+    }
+
+    public override Task<T?> SingleOrDefaultAsync(ISingleResultSpecification<T> specification, CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        var item = base.SingleOrDefaultAsync(specification, cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return item;
+    }
+
+    public override Task<TResult?> SingleOrDefaultAsync<TResult>(ISingleResultSpecification<T, TResult> specification, CancellationToken cancellationToken = default) where TResult : default
+    {
+        _stopwatch.Restart();
+        var item = base.SingleOrDefaultAsync(specification, cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return item;
+    }
 
     public void Dispose()
     {

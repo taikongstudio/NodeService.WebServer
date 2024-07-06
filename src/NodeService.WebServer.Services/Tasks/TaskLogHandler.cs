@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using NodeService.Infrastructure.Logging;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -116,11 +117,10 @@ public class TaskLogHandler
         {
             var addedTaskLogs = _addedTaskLogPageDictionary.Values;
             var maxDegreeOfParallelism =Math.DivRem(addedTaskLogs.Count, PAGESIZE, out _);
-            await Parallel.ForEachAsync(addedTaskLogs.Chunk(5), new ParallelOptions()
+            foreach (var taskLogs in addedTaskLogs.Chunk(5))
             {
-                CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = Math.Max(maxDegreeOfParallelism, Environment.ProcessorCount / 4)
-            }, AddTaskLogsAsync);
+                await AddTaskLogsAsync(taskLogs, cancellationToken);
+            }
             CleanupDictionary(addedTaskLogs);
         }
 
@@ -129,11 +129,10 @@ public class TaskLogHandler
             var updatedTaskLogs = _updatedTaskLogPageDictionary.Values.Where(IsTaskLogPageChanged).ToArray();
             if (updatedTaskLogs.Any())
             {
-                await Parallel.ForEachAsync(updatedTaskLogs.Chunk(5), new ParallelOptions()
+                foreach (var taskLogs in updatedTaskLogs.Chunk(5))
                 {
-                    CancellationToken = cancellationToken,
-                    MaxDegreeOfParallelism = Environment.ProcessorCount / 4
-                }, UpdateTaskLogsAsync);
+                    await UpdateTaskLogsAsync(taskLogs, cancellationToken);
+                }
             }
 
             RemoveFullTaskLogPages(_updatedTaskLogPageDictionary);
@@ -152,12 +151,14 @@ public class TaskLogHandler
                 taskLog.DirtyCount = 0;
                 _logger.LogInformation($"Update task log:{taskLog.Id}");
             }
-
         }
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
+        }
+        finally
+        {
         }
     }
 
@@ -236,7 +237,7 @@ public class TaskLogHandler
             var taskLogInfoPageId = $"{taskId}_0";
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
             var dbContext = taskLogRepo.DbContext as ApplicationDbContext;
-            if (await dbContext.TaskLogDbSet.CountAsync(x => x.Id== taskLogInfoPageId) > 0)
+            if (await dbContext.TaskLogDbSet.CountAsync(x => x.Id == taskLogInfoPageId) > 0)
             {
                 var actualSize = await dbContext.TaskLogDbSet.Where(x => x.Id.StartsWith(taskId) && x.PageIndex >= 1)
                     .SumAsync(x => x.ActualSize, cancellationToken: cancellationToken);
@@ -247,8 +248,12 @@ public class TaskLogHandler
                 var changesCount = await taskLogRepo.DbContext.Database.ExecuteSqlAsync(
                     sql,
                     cancellationToken);
-                taskInfoLog =
-                    await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, 0), cancellationToken);
+                taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, 0), cancellationToken);
+                if (taskInfoLog != null)
+                {
+                    taskInfoLog.PageSize = 1 + Math.DivRem(taskInfoLog.ActualSize, PAGESIZE, out var result);
+                    _updatedTaskLogPageDictionary.TryAdd(taskInfoLog.Id, taskInfoLog);
+                }
             }
         }
 
@@ -261,10 +266,20 @@ public class TaskLogHandler
         return taskInfoLog;
     }
 
-     async ValueTask ProcessTaskLogPagesAsync(
+    private static LogEntry Convert(TaskExecutionLogEntry taskExecutionLogEntry)
+    {
+        return new LogEntry
+        {
+            DateTimeUtc = taskExecutionLogEntry.DateTime.ToDateTime().ToUniversalTime(),
+            Type = (int)taskExecutionLogEntry.Type,
+            Value = taskExecutionLogEntry.Value
+        };
+    }
+
+    async ValueTask ProcessTaskLogPagesAsync(
         string taskId,
         TaskLogModel taskInfoLog,
-        IEnumerable<LogEntry> logEntries,
+        IEnumerable<TaskExecutionLogEntry> logEntries,
         int logEntriesCount,
         CancellationToken cancellationToken = default)
     {
@@ -274,48 +289,73 @@ public class TaskLogHandler
         if (!_updatedTaskLogPageDictionary.TryGetValue(key, out var currentLogPage) || currentLogPage == null)
         {
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-            currentLogPage =
-                await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, taskInfoLog.PageSize),
-                    cancellationToken);
+            currentLogPage = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, taskInfoLog.PageSize), cancellationToken);
+            if (currentLogPage != null)
+            {
+                _updatedTaskLogPageDictionary.AddOrUpdate(key, currentLogPage, (key, oldValue) => currentLogPage);
+            }
         }
 
         while (logIndex < logEntriesCount)
         {
-            if (currentLogPage == null || currentLogPage.ActualSize == currentLogPage.PageSize)
+            if (currentLogPage == null || currentLogPage.ActualSize == PAGESIZE)
             {
-                if (currentLogPage != null && currentLogPage.ActualSize == currentLogPage.PageSize)
-                {
-                    taskInfoLog.PageSize += 1;
-                    _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
-                }
-
-                currentLogPage = CreateNewTaskLogPage(
-                    taskId,
-                    taskInfoLog.PageSize,
-                    PAGESIZE);
-                _taskLogStat.PageCreatedCount += 1;
-                _addedTaskLogPageDictionary.TryAdd(currentLogPage.Id, currentLogPage);
-                _logger.LogInformation($"{taskId} Create new page {currentLogPage.PageIndex}");
+                currentLogPage = CreateNewTaskLogPage(taskId, taskInfoLog);
             }
-
-            if (currentLogPage.ActualSize < currentLogPage.PageSize)
+            var takeCount = Math.Min(currentLogPage.PageSize - currentLogPage.ActualSize, logEntriesCount);
+            var takeItems = logEntries.Skip(logIndex).Take(takeCount).ToArray();
+            if (AppendEntriesToTaskLogPage(currentLogPage, takeItems))
             {
-                var takeCount = Math.Min(currentLogPage.PageSize - currentLogPage.ActualSize, logEntriesCount);
-                currentLogPage.Value.LogEntries =
-                    currentLogPage.Value.LogEntries.Union(logEntries.Skip(logIndex).Take(takeCount));
-                currentLogPage.ActualSize = currentLogPage.Value.LogEntries.Count();
-                currentLogPage.DirtyCount++;
-                currentLogPage.LastWriteTime = DateTime.UtcNow;
-                logIndex += takeCount;
-                _taskLogStat.LogEntriesSavedCount += (uint)takeCount;
-                taskInfoLog.ActualSize += takeCount;
-                taskInfoLog.DirtyCount++;
-                taskInfoLog.LastWriteTime = DateTime.UtcNow;
-                _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
-                _updatedTaskLogPageDictionary.AddOrUpdate(currentLogPage.Id, currentLogPage, (key, oldValue) => currentLogPage);
-                _logger.LogInformation($"{taskId} append {takeCount}");
+                logIndex += takeItems.Length;
+                UpdateTaskInfoLog(taskInfoLog, takeItems.Length);
+                _taskLogStat.LogEntriesSavedCount += (uint)takeItems.Length;
+                _logger.LogInformation($"{taskId} append {takeItems.Length}");
             }
         }
+
+    }
+
+    void UpdateTaskInfoLog(TaskLogModel taskInfoLog, int length)
+    {
+        taskInfoLog.ActualSize += length;
+        taskInfoLog.DirtyCount++;
+        taskInfoLog.PageSize = 1 + Math.DivRem(taskInfoLog.ActualSize, PAGESIZE, out int result);
+        taskInfoLog.LastWriteTime = DateTime.UtcNow;
+        _updatedTaskLogPageDictionary.AddOrUpdate(taskInfoLog.Id, taskInfoLog, (key, oldValue) => taskInfoLog);
+    }
+
+    bool AppendEntriesToTaskLogPage(TaskLogModel currentLogPage, TaskExecutionLogEntry[] logEntriesChunk)
+    {
+        if (currentLogPage.ActualSize >= currentLogPage.PageSize)
+        {
+            return false;
+        }
+        if (currentLogPage.ActualSize > 0)
+        {
+            currentLogPage.Value.LogEntries = currentLogPage.Value.LogEntries.Union(logEntriesChunk.Select(Convert));
+        }
+        else
+        {
+            currentLogPage.Value.LogEntries = logEntriesChunk.Select(Convert);
+        }
+        currentLogPage.ActualSize += logEntriesChunk.Length;
+        currentLogPage.DirtyCount++;
+        currentLogPage.LastWriteTime = DateTime.UtcNow;
+        _updatedTaskLogPageDictionary.AddOrUpdate(currentLogPage.Id, currentLogPage, (key, oldValue) => currentLogPage);
+        return true;
+    }
+
+    TaskLogModel CreateNewTaskLogPage(string taskId, TaskLogModel taskInfoLog)
+    {
+        var currentLogPage = CreateNewTaskLogPage(
+                                        taskId,
+                                        taskInfoLog.PageSize,
+                                        PAGESIZE);
+        currentLogPage.Added = true;
+        _taskLogStat.PageCreatedCount += 1;
+        _addedTaskLogPageDictionary.TryAdd(currentLogPage.Id, currentLogPage);
+        _logger.LogInformation($"{taskId} Create new page {currentLogPage.PageIndex}");
+        return currentLogPage;
     }
 
     void RemoveFullTaskLogPages(ConcurrentDictionary<string, TaskLogModel> dict)
@@ -347,17 +387,17 @@ public class TaskLogHandler
 
     private bool IsInactiveTaskLogPage(TaskLogModel taskLog)
     {
-        return DateTime.UtcNow - taskLog.LastWriteTime > TimeSpan.FromHours(1);
+        return DateTime.UtcNow - taskLog.LastWriteTime > TimeSpan.FromMinutes(5);
     }
 
     private bool IsTaskLogPageChanged(TaskLogModel taskLog)
     {
         if (taskLog.DirtyCount == 0) return false;
-        if (taskLog.PageIndex == 0) return DateTime.UtcNow - taskLog.LastWriteTime > TimeSpan.FromSeconds(5);
+        if (taskLog.PageIndex == 0) return true;
         return
             taskLog.ActualSize >= taskLog.PageSize
             ||
-            taskLog.DirtyCount > 5
+            taskLog.DirtyCount > 0
             ||
             DateTime.UtcNow - taskLog.LastWriteTime > TimeSpan.FromSeconds(10);
     }

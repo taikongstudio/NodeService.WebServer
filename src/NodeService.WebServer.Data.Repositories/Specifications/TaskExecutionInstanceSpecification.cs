@@ -133,18 +133,18 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
 
         if (taskDefinitionIdFilters.HasValue)
         {
-            if (nodeIdFilters.FilterType == DataFilterTypes.Include)
-                Query.Where(x => nodeIdFilters.Items.Contains(x.TaskDefinitionId));
-            else if (nodeIdFilters.FilterType == DataFilterTypes.Exclude)
-                Query.Where(x => !nodeIdFilters.Items.Contains(x.TaskDefinitionId));
+            if (taskDefinitionIdFilters.FilterType == DataFilterTypes.Include)
+                Query.Where(x => taskDefinitionIdFilters.Items.Contains(x.TaskDefinitionId));
+            else if (taskDefinitionIdFilters.FilterType == DataFilterTypes.Exclude)
+                Query.Where(x => !taskDefinitionIdFilters.Items.Contains(x.TaskDefinitionId));
         }
 
         if (taskExecutionInstanceIdFilters.HasValue)
         {
-            if (nodeIdFilters.FilterType == DataFilterTypes.Include)
-                Query.Where(x => nodeIdFilters.Items.Contains(x.Id));
-            else if (nodeIdFilters.FilterType == DataFilterTypes.Exclude)
-                Query.Where(x => !nodeIdFilters.Items.Contains(x.Id));
+            if (taskExecutionInstanceIdFilters.FilterType == DataFilterTypes.Include)
+                Query.Where(x => taskExecutionInstanceIdFilters.Items.Contains(x.Id));
+            else if (taskExecutionInstanceIdFilters.FilterType == DataFilterTypes.Exclude)
+                Query.Where(x => !taskExecutionInstanceIdFilters.Items.Contains(x.Id));
         }
 
     }
@@ -154,5 +154,11 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
 )
     {
         Query.Where(x => x.FireTimeUtc < dateTime && x.LogEntriesSaveCount > 0);
+    }
+
+    public TaskExecutionInstanceSpecification(DataFilterCollection<string> taskExecutionInstanceIdFilters)
+        : this(default, default, default, taskExecutionInstanceIdFilters)
+    {
+
     }
 }

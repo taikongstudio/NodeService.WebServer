@@ -42,5 +42,20 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
                 Query.SortBy(sortDescriptions);
             }
         }
+
+        public TaskActivationRecordSpecification(DataFilterCollection<string> idFilters)
+        {
+            if (idFilters.HasValue)
+            {
+                if (idFilters.FilterType== DataFilterTypes.Include)
+                {
+                    Query.Where(x => idFilters.Items.Contains(x.Id));
+                }
+                else if (idFilters.FilterType== DataFilterTypes.Exclude)
+                {
+                    Query.Where(x =>! idFilters.Items.Contains(x.Id));
+                }
+            }
+        }
     }
 }

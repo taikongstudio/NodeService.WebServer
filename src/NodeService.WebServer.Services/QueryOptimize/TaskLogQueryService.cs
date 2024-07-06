@@ -9,12 +9,13 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using OneOf;
+using System.IO.Pipelines;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.QueryOptimize;
 
-public record class TaskLogQueryServiceParameters
+public record struct TaskLogQueryServiceParameters
 {
     public TaskLogQueryServiceParameters(
         string taskId,
@@ -30,18 +31,24 @@ public record class TaskLogQueryServiceParameters
 
 }
 
-public class TaskLogQueryServiceResult
+public record class TaskLogQueryServiceResult
 {
 
-    public TaskLogQueryServiceResult(string logFileName, Channel<ListQueryResult<LogEntry>> channel)
+    public TaskLogQueryServiceResult(string logFileName, Pipe pipe)
     {
         LogFileName = logFileName;
-        LogChannel = channel;
+        Pipe = pipe;
     }
 
     public string LogFileName { get; private set; }
 
-    public Channel<ListQueryResult<LogEntry>> LogChannel { get; private set; }
+    public Pipe Pipe { get; private set; }
+
+    public int TotalCount { get; set; }
+
+    public int PageIndex { get; set; }
+
+    public int PageSize { get; set; }
 }
 
 public class TaskLogQueryService : BackgroundService
@@ -71,6 +78,12 @@ public class TaskLogQueryService : BackgroundService
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+    {
+        await ProcessTaskLogQueryAsync(cancellationToken);
+
+    }
+
+    private async Task ProcessTaskLogQueryAsync(CancellationToken cancellationToken = default)
     {
         await foreach (var array in _queryBatchQueue.ReceiveAllAsync(cancellationToken))
         {
@@ -112,7 +125,6 @@ public class TaskLogQueryService : BackgroundService
             {
             }
         }
-
     }
 
     async ValueTask QueryTaskLogAsync(
@@ -145,24 +157,28 @@ public class TaskLogQueryService : BackgroundService
             }
             else
             {
-                var serviceResult = new TaskLogQueryServiceResult(logFileName, Channel.CreateUnbounded<ListQueryResult<LogEntry>>());
+                var pipe = new Pipe();
+                using var streamWriter = new StreamWriter(pipe.Writer.AsStream());
+                var serviceResult = new TaskLogQueryServiceResult(logFileName, pipe);
                 var totalLogCount = taskInfoLog.ActualSize;
-                op.SetResult(serviceResult);
                 if (serviceParameters.QueryParameters.PageIndex == 0)
                 {
+                    serviceResult.TotalCount = taskInfoLog.ActualSize;
+                    serviceResult.PageIndex = taskInfoLog.PageIndex;
+                    serviceResult.PageSize = taskInfoLog.PageSize;
+                    op.SetResult(serviceResult);
                     var pageIndex = 1;
-                    while (true)
+                    while (!op.CancellationToken.IsCancellationRequested)
                     {
                         var result = await taskLogRepo.ListAsync(new TaskLogSpecification(taskId, pageIndex, 10), cancellationToken);
                         if (result.Count == 0) break;
+                        pageIndex++;
                         foreach (var taskLog in result)
                         {
-                            pageIndex++;
-                            await serviceResult.LogChannel.Writer.WriteAsync(new ListQueryResult<LogEntry>(
-                            totalLogCount,
-                            taskLog.PageIndex,
-                            taskLog.PageSize,
-                            taskLog.LogEntries), cancellationToken);
+                            foreach (var taskLogEntry in taskLog.Value.LogEntries)
+                            {
+                                streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
+                            }
                         }
                         if (result.Count < 10) break;
                     }
@@ -172,17 +188,29 @@ public class TaskLogQueryService : BackgroundService
                 {
                     var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, serviceParameters.QueryParameters.PageIndex), cancellationToken);
 
-                    if (taskLog != null)
+
+                    if (taskLog == null)
                     {
-                        await serviceResult.LogChannel.Writer.WriteAsync(new ListQueryResult<LogEntry>(
-                            totalLogCount,
-                            taskLog.PageIndex,
-                            taskLog.PageSize,
-                            taskLog.LogEntries), cancellationToken);
+                        op.SetResult(serviceResult);
+                    }
+                    else
+                    {
+                        serviceResult.TotalCount = taskInfoLog.ActualSize;
+                        serviceResult.PageIndex = taskLog.PageIndex;
+                        serviceResult.PageSize = taskLog.ActualSize;
+                        op.SetResult(serviceResult);
+                        if (taskLog != null)
+                        {
+                            foreach (var taskLogEntry in taskLog.Value.LogEntries)
+                            {
+                                streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
+                            }
+                        }
                     }
 
+
                 }
-                serviceResult.LogChannel.Writer.TryComplete();
+
             }
 
         }

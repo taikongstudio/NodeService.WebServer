@@ -58,11 +58,17 @@
             <OptionValueEditor @ref="@_optionValueEditor" OptionValueEditors="@TaskDefinition.OptionValueEditors" />
 
 
-            <FormItem Label="执行时长" Help="控制作业的执行时长，单位为秒，默认值0表示不限制执行时长。">
+            <FormItem Label="执行时长" Help="设置任务的执行时长，单位为秒，默认值0表示不限制执行时长。">
                 <AntDesign.InputNumber TValue="int" Min="1" @bind-Value="@context.ExecutionLimitTimeSeconds" /><Text> 秒</Text>
             </FormItem>
-            <FormItem Label="等待时长">
+            <FormItem Label="等待时长" Help="设置等待节点就绪的等待时长。">
                 <AntDesign.InputNumber Min="300" @bind-Value="@context.PenddingLimitTimeSeconds" /><Text> 秒</Text>
+            </FormItem>
+            <FormItem  Label="最大重试次数" Help="任务失败后的最大重试次数。">
+                <AntDesign.InputNumber TValue="int" Min="0" @bind-Value="@context.MaxRetryCount" /><Text> 次</Text>
+            </FormItem>
+            <FormItem Label="重试间隔" Help="任务失败后的重试间隔。">
+                <AntDesign.InputNumber Disabled="@(context.MaxRetryCount==0)" Min="0" @bind-Value="@context.Value.RetryDuration" /><Text> 秒</Text>
             </FormItem>
             <FormItem Label="触发方式">
                 <RadioGroup @bind-Value="@context.TriggerType">

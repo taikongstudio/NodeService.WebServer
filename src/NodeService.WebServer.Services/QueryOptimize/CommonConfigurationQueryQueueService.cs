@@ -768,7 +768,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             oldEntity = entityFromDb.JsonClone<T>();
             entityFromDb.With(entity);
             await configRepo.UpdateAsync(entityFromDb);
-            changesCount += configRepo.LastChangesCount;
+            changesCount += configRepo.LastSaveChangesCount;
             type = ConfigurationChangedType.Update;
         }
         if (changesCount > 0)
@@ -831,7 +831,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             .ExecuteDeleteAsync();
 
         var type = ConfigurationChangedType.Delete;
-        var changesCount = repo.LastChangesCount;
+        var changesCount = repo.LastSaveChangesCount;
         return new ConfigurationSaveChangesResult()
         {
             Type = type,
@@ -902,7 +902,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             await configVersionRepo.DeleteAsync(parameters.Value);
             return new ConfigurationVersionSaveChangesResult()
             {
-                ChangesCount = configVersionRepo.LastChangesCount,
+                ChangesCount = configVersionRepo.LastSaveChangesCount,
                 Entity = parameters.Value,
                 Type = ConfigurationChangedType.Delete,
             };

@@ -27,15 +27,22 @@
                     <Title Level="3">任务流实例</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RequestAsync" />
                 </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.QueryAsync"></Button>
+                    </SpaceItem>
+                </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
 
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="创建时间" Ellipsis Sortable Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="创建时间" Ellipsis Sortable Property="c => c.CreationDateTime" DefaultSortOrder="@SortDirection.Descending"></PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
@@ -61,6 +68,7 @@
             NavigationManager.BaseUri,
             ApiService.QueryTaskFlowExecutionInstanceListAsync,
             StateHasChanged);
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskFlowExecutionInstanceModel.CreationDateTime), "desc"));
         _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
     }

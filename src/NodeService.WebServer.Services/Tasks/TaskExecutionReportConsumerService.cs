@@ -661,12 +661,12 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         );
     }
 
-     async ValueTask ProcessTaskExecutionReportAsync(
-        TaskActivationRecordModel taskActivationRecord,
-        TaskDefinition taskDefinitionSnapshot,
-        TaskExecutionInstanceModel taskExecutionInstance,
-        TaskExecutionReport report,
-        CancellationToken cancellationToken = default)
+    async ValueTask ProcessTaskExecutionReportAsync(
+       TaskActivationRecordModel taskActivationRecord,
+       TaskDefinition taskDefinitionSnapshot,
+       TaskExecutionInstanceModel taskExecutionInstance,
+       TaskExecutionReport report,
+       CancellationToken cancellationToken = default)
     {
         try
         {
@@ -689,7 +689,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     break;
                 case TaskExecutionStatus.PenddingTimeout:
                 case TaskExecutionStatus.Failed:
-                    RetryTask(taskActivationRecord, taskDefinitionSnapshot, taskExecutionInstance);
+                    await RetryTaskAsync(taskActivationRecord, taskDefinitionSnapshot, taskExecutionInstance);
                     break;
                 case TaskExecutionStatus.Cancelled:
                     break;
@@ -736,13 +736,15 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             }
             if (!string.IsNullOrEmpty(report.Message))
             {
-                var key = $"{nameof(TaskCancellationQueueService)}:{taskExecutionInstance.Id}";
-                if (report.Status == TaskExecutionStatus.Cancelled
-                    &&
-                    _memoryCache.TryGetValue<TaskCancellationParameters>(key, out var parameters) && parameters != null)
+
+                if (report.Status == TaskExecutionStatus.Cancelled)
                 {
-                    _memoryCache.Remove(key);
-                    taskExecutionInstance.Message = $"{nameof(parameters.Source)}: {parameters.Source},{nameof(parameters.Context)}: {parameters.Context}";
+                    var key = $"{nameof(TaskCancellationQueueService)}:{taskExecutionInstance.Id}";
+                    if (_memoryCache.TryGetValue<TaskCancellationParameters>(key, out var parameters) && parameters != null)
+                    {
+                        _memoryCache.Remove(key);
+                        taskExecutionInstance.Message = $"{nameof(parameters.Source)}: {parameters.Source},{nameof(parameters.Context)}: {parameters.Context}";
+                    }
                 }
                 else
                 {
@@ -757,10 +759,11 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-    void RetryTask(
+    async ValueTask RetryTaskAsync(
         TaskActivationRecordModel taskActivationRecord,
         TaskDefinition taskDefinitionSnapshot,
-        TaskExecutionInstanceModel taskExecutionInstance)
+        TaskExecutionInstanceModel taskExecutionInstance,
+        CancellationToken cancellationToken=default)
     {
         TaskExecutionNodeInfo taskExecutionNodeInfo = default;
         foreach (var item in taskActivationRecord.Value.TaskExecutionNodeList)
@@ -778,36 +781,37 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             var taskDefinitionId = taskExecutionInstance.TaskDefinitionId;
             var fireInstanceId = taskExecutionInstance.FireInstanceId;
             var nodeInfoId = taskExecutionInstance.NodeInfoId;
-            List<StringEntry> nodeList = [taskActivationRecord.NodeList.FirstOrDefault(x => x.Value == nodeInfoId)];
-            var fireTaskParameters = new FireTaskParameters
+            var nodeList = taskActivationRecord.NodeList.Where(x => x.Value == nodeInfoId).ToList();
+            var fireTaskParameters = FireTaskParameters.BuildRetryTaskParameters(
+                taskActiveRecordId,
+                taskDefinitionId,
+                fireInstanceId,
+                nodeList);
+            if (taskDefinitionSnapshot.RetryDuration == 0)
             {
-                TaskActiveRecordId = taskActiveRecordId,
-                FireTimeUtc = DateTime.UtcNow,
-                TriggerSource = TriggerSource.Manual,
-                FireInstanceId = fireInstanceId,
-                TaskDefinitionId = taskDefinitionId,
-                ScheduledFireTimeUtc = DateTime.UtcNow,
-                NodeList = nodeList,
-                EnvironmentVariables = [],
-            };
-            var dueTime = TimeSpan.FromSeconds(taskDefinitionSnapshot.RetryDuration);
-            var token = Scheduler.Default.ScheduleAsync(
-                dueTime,
-                 async (scheduler, cancellationToken) =>
-                 {
-                     try
+                await _taskActivateQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
+            }
+            else
+            {
+                var dueTime = TimeSpan.FromSeconds(taskDefinitionSnapshot.RetryDuration);
+                IDisposable token = Disposable.Empty;
+                token = Scheduler.Default.ScheduleAsync(
+                    dueTime,
+                     async (scheduler, cancellationToken) =>
                      {
+                         try
+                         {
+                             await _taskActivateQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
+                             token.Dispose();
+                         }
+                         catch (Exception ex)
+                         {
+                             _exceptionCounter.AddOrUpdate(ex, taskExecutionInstanceId);
+                         }
 
-                         await _taskActivateQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
-                     }
-                     catch (Exception ex)
-                     {
-                         _exceptionCounter.AddOrUpdate(ex, taskExecutionInstanceId);
-                     }
-
-                     return Disposable.Empty;
-                 });
-
+                         return Disposable.Empty;
+                     });
+            }
         }
     }
 
@@ -945,8 +949,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         CancellationToken cancellationToken = default)
     {
         List<TaskExecutionInstanceModel> taskExecutionInstanceList = [];
-        foreach (var taskExecutionInstanceGroup in
-                 taskExeuctionInstances.GroupBy(static x => x.TaskDefinitionId))
+        foreach (var taskExecutionInstanceGroup in taskExeuctionInstances.GroupBy(static x => x.TaskDefinitionId))
         {
             var taskDefinitionId = taskExecutionInstanceGroup.Key;
             if (taskDefinitionId == null) continue;

@@ -14,7 +14,8 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         };
     }
 
-    public NodeInfoSpecification()
+    public NodeInfoSpecification(DataFilterCollection<string> keyFilters = default)
+        : this(AreaTags.Any, NodeStatus.All, NodeDeviceType.Computer, keyFilters, default, null)
     {
 
     }

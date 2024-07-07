@@ -96,6 +96,7 @@ public partial class NodesController : Controller
                     nodeInfo.Properties = dict;
                 }
             }
+            
             foreach (var item in queryResult.Items)
             {
                 item.PingReplyInfo = _nodeSessionService.GetNodeLastPingReplyInfo(new NodeSessionId(item.Id));

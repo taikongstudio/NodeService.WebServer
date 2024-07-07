@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore.Metadata;
 using NodeService.Infrastructure.Logging;
+using System.Reflection.Metadata;
 
 namespace NodeService.WebServer.Data;
 
@@ -117,7 +119,8 @@ public partial class ApplicationDbContext
 
         modelBuilder.Entity<TaskExecutionInstanceModel>()
             .Navigation(x => x.NodeInfo)
-            .AutoInclude();
+            .AutoInclude(false);
+
     }
 
     private void SqlServer_BuildNodePropertySnapshotModel(ModelBuilder modelBuilder)
@@ -142,12 +145,6 @@ public partial class ApplicationDbContext
     {
         modelBuilder.Entity<NodeInfoModel>()
             .HasKey(nameof(NodeInfoModel.Id));
-
-        modelBuilder.Entity<NodeInfoModel>()
-            .HasMany(x => x.TaskExecutionInstances)
-            .WithOne(x => x.NodeInfo)
-            .HasForeignKey(x => x.NodeInfoId)
-            .IsRequired();
 
         modelBuilder.Entity<NodeInfoModel>()
             .HasOne(x => x.Profile)

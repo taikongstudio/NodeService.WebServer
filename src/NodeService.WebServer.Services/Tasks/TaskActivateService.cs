@@ -18,6 +18,16 @@ public readonly record struct TaskFlowInfo
     public string? ParentTaskFlowInstanceId { get; init; }
 }
 
+public readonly record struct RetryTaskParameters
+{
+    public RetryTaskParameters(string taskExecutionInstanceId)
+    {
+        TaskExecutionInstanceId = taskExecutionInstanceId;
+    }
+
+    public string TaskExecutionInstanceId { get; init; }
+}
+
 public record struct FireTaskParameters
 {
     public string? TaskActiveRecordId { get; init; }
@@ -36,6 +46,25 @@ public record struct FireTaskParameters
     public List<StringEntry> EnvironmentVariables { get; init; }
 
     public TaskFlowTaskKey TaskFlowTaskKey { get; init; }
+
+    public static FireTaskParameters BuildRetryTaskParameters(
+        string taskActiveRecordId,
+        string taskDefinitionId,
+        string fireInstanceId,
+        List<StringEntry> nodeList)
+    {
+        return new FireTaskParameters
+        {
+            TaskActiveRecordId = taskActiveRecordId,
+            FireTimeUtc = DateTime.UtcNow,
+            TriggerSource = TriggerSource.Manual,
+            FireInstanceId = fireInstanceId,
+            TaskDefinitionId = taskDefinitionId,
+            ScheduledFireTimeUtc = DateTime.UtcNow,
+            NodeList = nodeList,
+            EnvironmentVariables = [],
+        };
+    }
 }
 
 public readonly struct FireTaskFlowParameters
@@ -62,7 +91,12 @@ public readonly struct TaskActivateServiceParameters
         this.Parameters = fireTaskFlowParameters;
     }
 
-    public OneOf<FireTaskParameters, FireTaskFlowParameters> Parameters { get; init; }
+    public TaskActivateServiceParameters(RetryTaskParameters retryTaskParameters)
+    {
+        Parameters = retryTaskParameters;
+    }
+
+    public OneOf<FireTaskParameters, FireTaskFlowParameters, RetryTaskParameters> Parameters { get; init; }
 
 }
 
@@ -248,7 +282,7 @@ public class TaskActivateService : BackgroundService
         }
     }
 
-    private async ValueTask ActivateRemoteNodeTasksAsync(
+    async ValueTask ActivateRemoteNodeTasksAsync(
         IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo,
         IRepository<NodeInfoModel> nodeInfoRepo,
         IRepository<TaskActivationRecordModel> taskActivationRecordRepo,
@@ -337,7 +371,7 @@ public class TaskActivateService : BackgroundService
                     taskExecutionNodeList.Add(taskExecutionNodeInfo);
                 }
 
-                await taskActivationRecordRepo.AddAsync(new TaskActivationRecordModel
+                var taskActivationRecord = new TaskActivationRecordModel
                 {
                     Id = fireTaskParameters.FireInstanceId,
                     TaskDefinitionId = taskDefinition.Id,
@@ -351,8 +385,9 @@ public class TaskActivateService : BackgroundService
                     TaskFlowInstanceId = taskFlowTaskKey.TaskFlowInstanceId,
                     TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId,
                     TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId,
-                    NodeList = taskDefinition.NodeList.ToList()
-                }, cancellationToken);
+                    NodeList = [.. taskDefinition.NodeList]
+                };
+                await taskActivationRecordRepo.AddAsync(taskActivationRecord, cancellationToken);
             }
 
             foreach (var kv in taskExecutionInstanceList)
@@ -397,7 +432,7 @@ public class TaskActivateService : BackgroundService
         return default;
     }
 
-    public TaskExecutionInstanceModel BuildTaskExecutionInstance(
+    TaskExecutionInstanceModel BuildTaskExecutionInstance(
         NodeInfoModel nodeInfo,
         TaskDefinitionModel taskDefinition,
         NodeSessionId nodeSessionId,
@@ -468,11 +503,6 @@ public class TaskActivateService : BackgroundService
             {
                 try
                 {
-                    using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
-                    using var taskActivationRecordRepo = _taskActivationRecordRepositoryFactory.CreateRepository();
-                    using var taskTypeDescRepo = _taskTypeDescConfigRepositoryFactory.CreateRepository();
-                    using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
-                    using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
 
                     foreach (var serviceParametersGroup in array.GroupBy(static x=>x.Parameters.Index))
                     {
@@ -480,11 +510,6 @@ public class TaskActivateService : BackgroundService
                         {
                             case 0:
                                 await ProcessFireTaskParametersAsync(
-                                    taskExecutionInstanceRepo,
-                                    taskActivationRecordRepo,
-                                    taskTypeDescRepo,
-                                    taskDefinitionRepo,
-                                    nodeInfoRepo,
                                     serviceParametersGroup.Select(x => x.Parameters.AsT0),
                                     cancellationToken);
 
@@ -493,6 +518,9 @@ public class TaskActivateService : BackgroundService
                                 await ProcessTaskFlowFireParametersAsync(
                                     serviceParametersGroup.Select(x => x.Parameters.AsT1),
                                     cancellationToken);
+                                break;
+                            case 2:
+                                await ProcessRetryTaskParametersAsync(serviceParametersGroup.Select(x => x.Parameters.AsT2), cancellationToken);
                                 break;
                             default:
                                 break;
@@ -519,7 +547,56 @@ public class TaskActivateService : BackgroundService
 
     }
 
-    async ValueTask ProcessTaskFlowFireParametersAsync(IEnumerable<FireTaskFlowParameters> fireTaskFlowParameterList, CancellationToken cancellationToken)
+    async ValueTask ProcessRetryTaskParametersAsync(
+        IEnumerable<RetryTaskParameters> retryTaskParameterList,
+        CancellationToken cancellationToken = default)
+    {
+        using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
+        using var taskActivationRecordRepo = _taskActivationRecordRepositoryFactory.CreateRepository();
+
+        foreach (var retryTaskFlowParametersGroup in retryTaskParameterList.GroupBy(static x => x.TaskExecutionInstanceId))
+        {
+            var taskExecutionInstanceId = retryTaskFlowParametersGroup.Key;
+            if (taskExecutionInstanceId == null)
+            {
+                continue;
+            }
+            var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
+            if (taskExecutionInstance == null)
+            {
+                continue;
+            }
+            if (!taskExecutionInstance.CanRetry())
+            {
+                continue;
+            }
+            var taskExecutionRecord = await taskActivationRecordRepo.GetByIdAsync(taskExecutionInstance.FireInstanceId, cancellationToken);
+            if (taskExecutionRecord == null)
+            {
+                continue;
+            }
+            var taskDefinition = taskExecutionRecord.GetTaskDefinition();
+            if (taskDefinition == null)
+            {
+                continue;
+            }
+            if (taskExecutionRecord.Value.NodeList == null)
+            {
+                continue;
+            }
+            var nodes = taskExecutionRecord.Value.NodeList.Where(x => x.Value == taskExecutionInstance.NodeInfoId).ToList();
+            var fireTaskParameters = FireTaskParameters.BuildRetryTaskParameters(
+                taskExecutionRecord.Id,
+                taskExecutionRecord.TaskDefinitionId,
+                taskExecutionInstance.FireInstanceId,
+                nodes);
+            await _serviceParametersBatchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
+        }
+    }
+
+    async ValueTask ProcessTaskFlowFireParametersAsync(
+        IEnumerable<FireTaskFlowParameters> fireTaskFlowParameterList,
+        CancellationToken cancellationToken = default)
     {
         using var taskFlowTemplateRepo = _taskFlowTemplateRepoFactory.CreateRepository();
         using var taskFlowExeuctionInstanceRepo = _taskFlowExecutionInstanceRepoFactory.CreateRepository();
@@ -599,15 +676,14 @@ public class TaskActivateService : BackgroundService
     }
 
     async Task ProcessFireTaskParametersAsync(
-        IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo, 
-        IRepository<TaskActivationRecordModel> taskActivationRecordRepo,
-        IRepository<TaskTypeDescConfigModel> taskTypeDescRepo, 
-        IRepository<TaskDefinitionModel> taskDefinitionRepo,
-        IRepository<NodeInfoModel> nodeInfoRepo, 
         IEnumerable<FireTaskParameters> fireTaskParameterList, 
         CancellationToken cancellationToken)
     {
-
+        using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
+        using var taskActivationRecordRepo = _taskActivationRecordRepositoryFactory.CreateRepository();
+        using var taskTypeDescRepo = _taskTypeDescConfigRepositoryFactory.CreateRepository();
+        using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
+        using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
         foreach (var fireTaskParameterGroup in fireTaskParameterList.GroupBy(static x => x.TaskDefinitionId))
         {
             var taskDefinitionId = fireTaskParameterGroup.Key;

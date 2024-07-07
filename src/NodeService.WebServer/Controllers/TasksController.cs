@@ -25,48 +25,56 @@ public class TasksController : Controller
     readonly INodeSessionService _nodeSessionService;
     readonly IServiceProvider _serviceProvider;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
-    readonly BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _queryBatchQueue;
-    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskInstanceRepositoryFactory;
+    readonly BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _logQueryBatchQueue;
+    readonly BatchQueue<TaskActivateServiceParameters> _taskActivateServiceParametersBatchQueue;
+    readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskDiagramTemplateFactory;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
 
     public TasksController(
+        ILogger<NodesController> logger,
         IServiceProvider serviceProvider,
+        IMemoryCache memoryCache,
         ExceptionCounter exceptionCounter,
+        INodeSessionService nodeSessionService,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskInstanceRepositoryFactory,
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRepositoryFactory,
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskDiagramTemplateFactory,
-        INodeSessionService nodeSessionService,
-        ILogger<NodesController> logger,
-        IMemoryCache memoryCache,
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
+        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         BatchQueue<TaskCancellationParameters> taskCancellationAsyncQueue,
-        BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> queryBatchQueue)
+        BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> logQueryBatchQueue,
+        BatchQueue<TaskActivateServiceParameters> taskActivateServiceParametersBatchQueue
+        )
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _taskInstanceRepositoryFactory = taskInstanceRepositoryFactory;
-        _taskActivationRepositoryFactory = taskActivationRepositoryFactory;
-        _taskDiagramTemplateFactory = taskDiagramTemplateFactory;
         _nodeSessionService = nodeSessionService;
         _memoryCache = memoryCache;
-        _taskLogRepoFactory = taskLogRepoFactory;
         _exceptionCounter = exceptionCounter;
+        _taskExecutionInstanceRepositoryFactory = taskInstanceRepositoryFactory;
+        _taskActivationRepositoryFactory = taskActivationRepositoryFactory;
+        _taskDiagramTemplateFactory = taskDiagramTemplateFactory;
+        _nodeInfoRepoFactory = nodeInfoRepoFactory;
+        _taskLogRepoFactory = taskLogRepoFactory;
         _taskCancellationAsyncQueue = taskCancellationAsyncQueue;
-        _queryBatchQueue = queryBatchQueue;
+        _logQueryBatchQueue = logQueryBatchQueue;
+        _taskActivateServiceParametersBatchQueue = taskActivateServiceParametersBatchQueue;
     }
 
     [HttpGet("/api/Tasks/Instances/List")]
     public async Task<PaginationResponse<TaskExecutionInstanceModel>> QueryTaskExecutionInstanceListAsync(
-        [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters
+        [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters,
+        CancellationToken cancellationToken = default
     )
     {
         var apiResponse = new PaginationResponse<TaskExecutionInstanceModel>();
         try
         {
-            using var repo = _taskInstanceRepositoryFactory.CreateRepository();
-            var queryResult = await repo.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
+            using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
+            var queryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
                     queryParameters.Keywords,
                     queryParameters.Status,
                     queryParameters.NodeIdList,
@@ -75,7 +83,8 @@ public class TasksController : Controller
                     queryParameters.FireInstanceIdList,
                     queryParameters.BeginDateTime,
                     queryParameters.EndDateTime,
-                    queryParameters.SortDescriptions),
+                    queryParameters.SortDescriptions,
+                    queryParameters.IncludeNodeInfo),
                 queryParameters.PageSize,
                 queryParameters.PageIndex
             );
@@ -92,7 +101,7 @@ public class TasksController : Controller
         return apiResponse;
     }
 
-    [HttpGet("/api/Tasks/ActiveRecords/List")]
+    [HttpGet("/api/Tasks/ActivationRecords/List")]
     public async Task<PaginationResponse<TaskActivationRecordModel>> QueryTaskExecutionInstanceGroupListAsync(
     [FromQuery] QueryTaskExecutionInstanceListParameters queryParameters
 )
@@ -106,6 +115,7 @@ public class TasksController : Controller
                     queryParameters.Status,
                     queryParameters.BeginDateTime,
                     queryParameters.EndDateTime,
+                    DataFilterCollection<string>.Includes(queryParameters.FireInstanceIdList),
                     DataFilterCollection<string>.Includes (queryParameters.TaskDefinitionIdList),
                     queryParameters.SortDescriptions),
                 queryParameters.PageSize,
@@ -124,30 +134,16 @@ public class TasksController : Controller
         return apiResponse;
     }
 
-    [HttpGet("/api/Tasks/Instances/{id}/Reinvoke")]
-    public async Task<ApiResponse<TaskExecutionInstanceModel>> ReinvokeAsync(string id)
+    [HttpGet("/api/Tasks/Instances/{id}/Retry")]
+    public async Task<ApiResponse<TaskExecutionInstanceModel>> RetryTaskAsync(string id, CancellationToken cancellationToken = default)
     {
         var apiResponse = new ApiResponse<TaskExecutionInstanceModel>();
         try
         {
-            using var repo = _taskInstanceRepositoryFactory.CreateRepository();
-            var taskExecutionInstance = await repo.GetByIdAsync(id);
-            if (taskExecutionInstance == null)
-            {
-                apiResponse.ErrorCode = -1;
-                apiResponse.Message = "invalid job execution instance id";
-            }
-            else
-            {
-                taskExecutionInstance.ReinvokeTimes++;
-                await repo.SaveChangesAsync();
-                var nodeId = new NodeId(id);
-                foreach (var nodeSessionId in _nodeSessionService.EnumNodeSessions(nodeId))
-                {
-                    var rsp = await _nodeSessionService.SendTaskExecutionEventAsync(nodeSessionId,
-                        taskExecutionInstance.ToReinvokeEvent());
-                }
-            }
+            var retryTaskParameters = new RetryTaskParameters(id);
+            await _taskActivateServiceParametersBatchQueue.SendAsync(
+                new TaskActivateServiceParameters(retryTaskParameters),
+                cancellationToken);
         }
         catch (Exception ex)
         {
@@ -203,13 +199,13 @@ public class TasksController : Controller
                 BatchQueueOperationPriority.Lowest,
                 cancellationToken);
 
-            await _queryBatchQueue.SendAsync(op, cancellationToken);
+            await _logQueryBatchQueue.SendAsync(op, cancellationToken);
 
             var result = await op.WaitAsync(cancellationToken);
             HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.TotalCount), result.TotalCount.ToString());
             HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.PageIndex), result.PageIndex.ToString());
             HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.PageSize), result.PageSize.ToString());
-            return File(result.Pipe.Reader.AsStream(true), "text/plain", result.LogFileName);
+            return File(result.Pipe.Reader.AsStream(), "text/plain", result.LogFileName);
         }
         catch (Exception ex)
         {

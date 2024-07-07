@@ -64,10 +64,10 @@
             <FormItem Label="等待时长" Help="设置等待节点就绪的等待时长。">
                 <AntDesign.InputNumber Min="0" @bind-Value="@context.PenddingLimitTimeSeconds" /><Text> 秒</Text>
             </FormItem>
-            <FormItem  Label="最大重试次数" Help="任务等待超时和失败后的最大重试次数，0表示不重试。">
+            <FormItem  Label="最大自动重试次数" Help="任务等待超时和失败后的最大重试次数，0次表示不重试。">
                 <AntDesign.InputNumber TValue="int" Min="0" @bind-Value="@context.MaxRetryCount" /><Text> 次</Text>
             </FormItem>
-            <FormItem Label="重试间隔" Help="任务等待超时和失败后的重试间隔，以秒为单位。">
+            <FormItem Label="自动重试间隔" Help="任务等待超时和失败后的重试间隔，以秒为单位，0秒表示立即重试。">
                 <AntDesign.InputNumber Disabled="@(context.MaxRetryCount==0)" Min="0" @bind-Value="@context.Value.RetryDuration" /><Text> 秒</Text>
             </FormItem>
             <FormItem Label="触发方式">
@@ -100,7 +100,7 @@
                 <RadioGroup @bind-Value="@context.ExecutionStrategy">
                     <Radio RadioButton Value="@TaskExecutionStrategy.Skip">请勿启动新实例</Radio>
                     <Radio RadioButton Value="@TaskExecutionStrategy.Concurrent">并行运行新实例</Radio>
-                    <Radio RadioButton Value="@TaskExecutionStrategy.Queue">对新实例排队</Radio>
+                    <Radio RadioButton Value="@TaskExecutionStrategy.Queue">对新实例等待节点响应</Radio>
                     <Radio RadioButton Value="@TaskExecutionStrategy.Stop">停止现有实例</Radio>
                 </RadioGroup>
             </FormItem>

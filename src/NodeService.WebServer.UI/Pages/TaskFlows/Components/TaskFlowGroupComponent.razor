@@ -6,7 +6,7 @@
     }
 
     .ant-list .ant-list-footer {
-        padding: 5px 5px 5px 5px;
+        padding: 5px 5px 15px 5px;
     }
 </style>
 
@@ -29,8 +29,8 @@
     <Body>
         <AntList Bordered="false" DataSource="@TaskGroup.Tasks">
             <ChildContent Context="taskTemplate">
-                <ListItem Style="padding:0px 0px 0px 0px;display:flex;flex-direction:column;align-content:stretch;align-items:stretch">
-                    <div draggable="true" @ondragstart:stopPropagation @ondrop:stopPropagation @ondrop="e=>OnDrop(e, taskTemplate)" @ondragstart="e=>OnDragStart(e, taskTemplate)" ondragover="event.preventDefault()">
+                <ListItem Style="padding:0px 0px 10px 0px;display:flex;flex-direction:column;align-content:stretch;align-items:stretch">
+                    <div draggable="@TaskGroup.IsEditable" @ondragstart:stopPropagation @ondrop:stopPropagation @ondrop="e=>OnDrop(e, taskTemplate)" @ondragstart="e=>OnDragStart(e, taskTemplate)" @ondragover:preventDefault>
                         <TaskFlowTaskComponent TaskTemplate="@taskTemplate" ExecutionInstance="@FindTaskFlowStageExecutionInstance(taskTemplate)" OnRemoved="@TaskGroup.RemoveTaskAsync" />
                     </div>
                 </ListItem>

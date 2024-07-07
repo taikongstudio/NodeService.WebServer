@@ -1,5 +1,5 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Tasks.InstanceGroups
-@page "/Tasks/ActiveRecords/"
+@page "/Tasks/ActivationRecords/"
 @using System.Collections.Concurrent
 @inject ApiService ApiService
 @inject NotificationService _notice
@@ -26,7 +26,7 @@
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
-                    <Title Level="3">任务流分组</Title>
+                    <Title Level="3">任务激活记录</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
@@ -78,7 +78,7 @@
         <ColumnDefinitions>
             <Selection  Key="@context.Id" Width="40" Fixed="left" Type="checkbox" />
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
-            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="任务组名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
                 @switch (context.Status)
                 {
@@ -89,7 +89,7 @@
                         <Text>已触发</Text>
                         break;
                     case TaskExecutionStatus.Pendding:
-                        <Text>排队</Text>
+                        <Text>等待节点响应</Text>
                         break;
                     case TaskExecutionStatus.Started:
                         <Text>已启动</Text>
@@ -184,11 +184,14 @@
                         </GridRow>
                     </TitleTemplate>
                     <ColumnDefinitions>
-                         <Selection Key="@TaskExecutionInstanceContext.Id" Width="40" Fixed="left" Type="checkbox" />
+                    @if (TaskExecutionInstanceContext != null)
+                    {
+                        <Selection CheckStrictly Width="40" Fixed="left" Type="checkbox" />
                         <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
-                        <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+                        <PropertyColumn Title="节点名称" Ellipsis Sortable Property="c => c.NodeInfo.Name"></PropertyColumn>
+                        <PropertyColumn Title="实例名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
                         <PropertyColumn Title="触发源头" Sortable="true" Property="c => c.TriggerSource">
-                             @switch (TaskExecutionInstanceContext.TriggerSource)
+                            @switch (TaskExecutionInstanceContext.TriggerSource)
                             {
                                 case TriggerSource.Schedule:
                                     <Text>调度触发</Text>
@@ -208,7 +211,7 @@
                                     <Text>已触发</Text>
                                     break;
                                 case TaskExecutionStatus.Pendding:
-                                    <Text>排队</Text>
+                                    <Text>等待节点响应</Text>
                                     break;
                                 case TaskExecutionStatus.Started:
                                     <Text>已启动</Text>
@@ -234,6 +237,8 @@
                         <PropertyColumn Title="开始时间" Ellipsis SorterMultiple="2" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
                         <PropertyColumn Title="结束时间" Ellipsis SorterMultiple="3" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionEndTimeUtc"></PropertyColumn>
                         <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.Message"></PropertyColumn>
+
+                    }
 
                     </ColumnDefinitions>
                 </Table>
@@ -267,7 +272,7 @@
 
     string _taskLogDialogTitle = "Loading";
 
-    RoutedPaginationDataSource<TaskActivationRecordModel, QueryTaskInstanceGroupListParameters> _dataSource;
+    RoutedPaginationDataSource<TaskActivationRecordModel, QueryTaskActivationRecordListParameters> _dataSource;
 
     ConcurrentDictionary<string, ContextInfo> _dataSourceDict;
     readonly List<TaskExeuctionStatusModel> _taskExeuctionStatusList = [];
@@ -281,11 +286,16 @@
 
     private string? _taskExecutionInstanceId { get; set; }
 
+    string? GroupByNodeInfo(string? nodeName)
+    {
+        return nodeName;
+    }
+
 
     protected override void OnInitialized()
     {
         _dataSourceDict = new ();
-        _dataSource = new RoutedPaginationDataSource<TaskActivationRecordModel, QueryTaskInstanceGroupListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstanceGroupsAsync, StateHasChanged);
+        _dataSource = new RoutedPaginationDataSource<TaskActivationRecordModel, QueryTaskActivationRecordListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskActivationRecordListAsync, StateHasChanged);
         _dataSource.ExceptionHandler = OnExepction;
         _dataSource.ItemInitializer = InitAsync;
         _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskActivationRecordModel.CreationDateTime), "desc"));
@@ -328,7 +338,7 @@
     {
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "排队" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待节点响应" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Started, Name = "已启动" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Running, Name = "运行中" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Failed, Name = "失败" });
@@ -371,8 +381,11 @@
         var dataSource = new RoutedPaginationDataSource<TaskExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
         dataSource.QueryParameters.PageIndex = 1;
         dataSource.QueryParameters.PageSize = 10;
+        dataSource.QueryParameters.IncludeNodeInfo = true;
         dataSource.QueryParameters.TaskDefinitionIdList.Add(taskActivationRecord.TaskDefinitionId);
         dataSource.QueryParameters.FireInstanceIdList.Add(taskActivationRecord.Id);
+        dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.Status), "asc"));
+        dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.FireTimeUtc), "desc"));
         dataSource.Completed = OnCompleted;
         return new ContextInfo()
             {
@@ -386,6 +399,7 @@
         {
             var contextInfo = this._dataSourceDict.GetOrAdd(taskActivationRecord.Id, (id) => CreateDataSource(taskActivationRecord));
             await contextInfo.DataSource.RequestAsync();
+            this.StateHasChanged();
         }
         catch (Exception ex)
         {
@@ -410,10 +424,7 @@
                 _dataSource.QueryParameters.TaskDefinitionIdList.AddRange(_selectedTaskDefinitionList.Select(x => x.Id));
             }
 
-            if (_selectedStatus != TaskExecutionStatus.Unknown)
-            {
-                _dataSource.QueryParameters.Status = _selectedStatus;
-            }
+            _dataSource.QueryParameters.Status = _selectedStatus;
 
             await _dataSource.RequestAsync();
         }

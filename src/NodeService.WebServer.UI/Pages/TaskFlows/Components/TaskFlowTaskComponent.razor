@@ -2,6 +2,13 @@
 @using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 @using NodeService.WebServer.Extensions
 @inject ApiService ApiService
+
+<style>
+    .ant-popover{
+        width:600px;
+    }
+</style>
+
 @if (TaskTemplate.IsEditable)
 {
     <TaskDefinitionEditor IsChildTaskSelectorVisible="false" Closed="@OnTaskDefinitionEditorDialogClosed" @bind-TaskDefinition="@TaskTemplate.TaskDefinition" @ref="_taskDefinitionEditor" />
@@ -46,19 +53,75 @@
 }
 else
 {
-    <DropdownButton Icon="@_icon" Block OnClick="@OnTaskClicked">
+    @if (_buttonRef != null)
+    {
+        <Popover 
+            ComplexAutoCloseAndVisible="false"
+            TriggerReference="@_buttonRef.Ref"
+            Placement="Placement.Top"
+            OnClick="@CloseTaskActivationRecordPopover"
+            OnVisibleChange="@OnTaskActivationRecordDrawerClosed" 
+            Visible="@_isTaskActivationRecordPopoverVisible" 
+            Trigger="@(new AntDesign.Trigger[] { AntDesign.Trigger.Click})">
+            <TitleTemplate>
+                <GridRow>
+                    <GridCol Flex=@("auto")>@ExecutionInstance.Name</GridCol>
+                    <GridCol Flex=@("30px")><Button Shape="@ButtonShape.Circle" Icon="close" OnClick="@CloseTaskActivationRecordPopover"></Button></GridCol>
+                </GridRow>
+            </TitleTemplate>
+            <ContentTemplate >
+                @if (_taskActivationRecord == null)
+                {
+
+                }
+                else
+                {
+                    <Table Size="TableSize.Small"
+                           Loading="false"
+                           EnableVirtualization="false"
+                           TItem="TaskExecutionNodeInfo"
+                           DataSource="@_taskActivationRecord.Value.TaskExecutionNodeList"
+                           Resizable
+                           Total="@_taskActivationRecord.Value.TaskExecutionNodeList.Count"
+                           PageIndex="1"
+                           PageSize="10">
+                        <ColumnDefinitions>
+                            <PropertyColumn Title="标志" Ellipsis Sortable Width="50" Property="c => c.NodeInfoId"></PropertyColumn>
+                            <PropertyColumn Title="名称" Ellipsis Sortable Width="50" Property="c => c.Status"></PropertyColumn>
+
+                            <ActionColumn Fixed="right" Width="100" Title="操作">
+                                <CellRender Context="cellData">
+                                    <Space>
+                                        @if (context.Status == TaskExecutionStatus.Failed || context.Status == TaskExecutionStatus.PenddingTimeout)
+                                        {
+                                            <Button Shape="@ButtonShape.Circle" OnClick="() => RetryTask(context.Instances.LastOrDefault().TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo"></Button>
+                                        }
+                                    </Space>
+                                </CellRender>
+                            </ActionColumn>
+                        </ColumnDefinitions>
+                    </Table>
+                }
+
+            </ContentTemplate>
+        </Popover>
+    }
+    <DropdownButton @ref="@_buttonRef" Icon="@_icon" Block OnClick="@OnTaskClicked">
         <Overlay>
-               <Menu>
-                @if(TaskTemplate.IsEditable)
+            <Menu Mode="MenuMode.Horizontal"
+                  Selectable="false"
+                  Accordion
+                  Style="width:256px ;">
+                @if (TaskTemplate.IsEditable)
                 {
                     if (TaskTemplate.TemplateType == TaskFlowTaskTemplateType.TriggerTask)
-                    {    
+                    {
 
                     }
                     else
                     {
                         <MenuItem Icon="@IconType.Outline.Delete" OnClick="()=>OnRemoved.InvokeAsync(TaskTemplate)">删除任务</MenuItem>
-                        if (TaskTemplate.TaskDefinitionId==null)
+                        if (TaskTemplate.TaskDefinitionId == null)
                         {
                             <MenuItem Icon="@IconType.Outline.Edit" OnClick="@ShowTaskDefinitionEditor">创建任务</MenuItem>
                         }
@@ -70,19 +133,23 @@ else
                     }
 
                 }
-                else if(ExecutionInstance != null)
+                else if (ExecutionInstance != null)
                 {
+
+                    <MenuItem Icon="@IconType.Outline.CloudServer" OnClick="@ShowTaskActivationRecordDrawerAsync">查看运行状态</MenuItem>
+
+
                     if (ExecutionInstance.Status == TaskExecutionStatus.Running)
                     {
                         <MenuItem Icon="@IconType.Outline.Close" OnClick="()=>ExecutionInstance.CancelTaskAsync(ApiService)">停止任务</MenuItem>
                     }
-                    else if (ExecutionInstance.Status == TaskExecutionStatus.Failed)
+                    else if (ExecutionInstance.Status == TaskExecutionStatus.Failed || ExecutionInstance.Status == TaskExecutionStatus.PenddingTimeout)
                     {
                         <MenuItem Icon="@IconType.Outline.Close" OnClick="()=>ExecutionInstance.RetryTaskAsync(ApiService)">重试运行</MenuItem>
                         <MenuItem Icon="@IconType.Outline.Redo" OnClick="()=>ExecutionInstance.RerunTaskAsync(ApiService)">重新运行</MenuItem>
                     }
                 }
-                </Menu>
+            </Menu>
         </Overlay>
         <ChildContent>
             <div style="display: flex;align-items:center;height:100%;padding-left:25px;">
@@ -90,14 +157,19 @@ else
             </div>
         </ChildContent>
     </DropdownButton>
+
 }
 
 @code {
+    DropdownButton _buttonRef;
+    bool _isTaskActivationRecordPopoverVisible;
+    bool _isTaskActivationRecordPopoverMouseEnter;
     TaskDefinitionEditor _taskDefinitionEditor;
     CommonDialog _taskDefinitionDialog;
     CommonDialog _triggerTaskSettingDialog;
     TaskDefinitionSelector _taskDefinitionSelector;
     IEnumerable<TaskDefinitionModel> _selectedTaskDefinitions;
+    TaskActivationRecordModel? _taskActivationRecord;
 
     [Parameter]
     public TaskFlowTaskTemplate TaskTemplate{ get; set; }
@@ -108,11 +180,49 @@ else
     [Parameter]
     public EventCallback<TaskFlowTaskTemplate> OnRemoved { get; set; }
 
+    [CascadingParameter]
+    public BlazorDiagram BlazorDiagram { get; set; }
+
 
     void AddCronExpression(AddingNewItemEventArgs<StringEntry> e)
     {
         e.DataItem.Tag = "CronExpression";
         e.DataItem.BeginEdit();
+    }
+
+    void OnTaskActivationRecordDrawerClosed(bool value)
+    {
+        this._isTaskActivationRecordPopoverVisible = value;
+        if (!value)
+        {
+            _isTaskActivationRecordPopoverMouseEnter = false;
+        }
+    }
+
+    void CloseTaskActivationRecordPopover() {
+        _isTaskActivationRecordPopoverVisible = false;
+    }
+
+    async Task ShowTaskActivationRecordDrawerAsync()
+    {
+        try
+        {
+            _taskActivationRecord = await ExecutionInstance.QueryTaskFlowTaskDetailsAsync(ApiService);
+            if (_taskActivationRecord == null)
+            {
+
+            }
+            else
+            {
+                _isTaskActivationRecordPopoverVisible = true;
+            }
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+
+        }
+
     }
 
     void OnCronExpressionValueChanged(ValueChangedEventArgs<StringEntry, string> e)
@@ -153,6 +263,23 @@ else
 
     private async Task OnTaskClicked()
     {
+        if (ExecutionInstance != null)
+        {
+            await ShowTaskActivationRecordDrawerAsync();
+        }
+
+    }
+
+    async Task RetryTask(string taskExecutionInstanceId)
+    {
+        try
+        {
+            var rsp = await this.ApiService.RetryTaskAsync(taskExecutionInstanceId);
+        }
+        catch (Exception ex)
+        {
+
+        }
 
     }
 
@@ -254,9 +381,8 @@ else
                 case TaskExecutionStatus.Cancelled:
                     return "close";
                 case TaskExecutionStatus.Failed:
-                    return "issues-close";
                 case TaskExecutionStatus.PenddingTimeout:
-                    return "clock-circle";
+                    return "warning";
                 default:
                     break;
             }

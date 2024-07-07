@@ -95,9 +95,9 @@
         "key": "Tasks.Instances"
       },
       {
-        "path": "/Tasks/ActiveRecords",
-        "name": "任务实例组",
-        "key": "Tasks.ActiveRecords"
+        "path": "/Tasks/ActivationRecords",
+        "name": "任务激活记录",
+        "key": "Tasks.ActivationRecords"
       }
     ]
   },

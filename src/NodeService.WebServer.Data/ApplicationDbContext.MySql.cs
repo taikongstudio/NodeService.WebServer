@@ -1,4 +1,5 @@
-﻿using NodeService.Infrastructure.NodeFileSystem;
+﻿using Microsoft.EntityFrameworkCore.Metadata;
+using NodeService.Infrastructure.NodeFileSystem;
 
 namespace NodeService.WebServer.Data;
 
@@ -98,7 +99,11 @@ public partial class ApplicationDbContext
 
         modelBuilder.Entity<TaskExecutionInstanceModel>()
             .Navigation(x => x.NodeInfo)
-            .AutoInclude(false);
+            .AutoInclude();
+
+
+        modelBuilder.Entity<TaskExecutionInstanceModel>().Property(e => e.NodeInfo)
+            .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
     }
 
     private void MySql_BuildNodePropertySnapshotModel(ModelBuilder modelBuilder)
@@ -124,12 +129,6 @@ public partial class ApplicationDbContext
     {
         modelBuilder.Entity<NodeInfoModel>()
             .HasKey(nameof(NodeInfoModel.Id));
-
-        modelBuilder.Entity<NodeInfoModel>()
-            .HasMany(x => x.TaskExecutionInstances)
-            .WithOne(x => x.NodeInfo)
-            .HasForeignKey(x => x.NodeInfoId)
-            .IsRequired();
 
         modelBuilder.Entity<NodeInfoModel>()
             .HasOne(x => x.Profile)

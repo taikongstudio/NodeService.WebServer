@@ -11,8 +11,11 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         IEnumerable<string> nodeIdList,
         IEnumerable<string> taskDefinitionIdList,
         IEnumerable<string> taskExecutionIdList,
-        IEnumerable<SortDescription>? sortDescriptions = null)
+        IEnumerable<SortDescription>? sortDescriptions = null,
+        bool includeNodeInfo = false)
     {
+        Query.AsSplitQuery();
+        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (status != TaskExecutionStatus.Unknown) Query.Where(x => x.Status == status);
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));
@@ -32,9 +35,11 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         IEnumerable<string> fireInstanceIdList,
         DateTime? startTime,
         DateTime? endTime,
-        IEnumerable<SortDescription>? sortDescriptions = null)
+        IEnumerable<SortDescription>? sortDescriptions = null,
+        bool includeNodeInfo = false)
     {
         Query.AsSplitQuery();
+        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (status != TaskExecutionStatus.Unknown) Query.Where(x => x.Status == status);
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));
@@ -59,9 +64,12 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
     public TaskExecutionInstanceSpecification(
         DataFilterCollection<TaskExecutionStatus> statusFilters,
         DataFilterCollection<string> parentInstanceIdFilters,
-        DataFilterCollection<string> childTaskDefinitionIdFilters
+        DataFilterCollection<string> childTaskDefinitionIdFilters,
+        bool includeNodeInfo = false
         )
     {
+        Query.AsSplitQuery();
+        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (statusFilters.HasValue)
         {
             if (statusFilters.FilterType == DataFilterTypes.Include)
@@ -92,10 +100,12 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
 
     public TaskExecutionInstanceSpecification(
         DataFilterCollection<TaskExecutionStatus> statusFilters,
-        bool includeChildTasks
+        bool includeChildTasks,
+        bool includeNodeInfo = false
     )
     {
         Query.AsSplitQuery();
+        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (statusFilters.HasValue)
         {
             if (statusFilters.FilterType == DataFilterTypes.Include)
@@ -113,9 +123,11 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         DataFilterCollection<TaskExecutionStatus> statusFilters,
         DataFilterCollection<string> nodeIdFilters,
         DataFilterCollection<string> taskDefinitionIdFilters,
-        DataFilterCollection<string> taskExecutionInstanceIdFilters)
+        DataFilterCollection<string> taskExecutionInstanceIdFilters,
+        bool includeNodeInfo = false)
     {
         Query.AsSplitQuery();
+        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (statusFilters.HasValue)
         {
             if (statusFilters.FilterType == DataFilterTypes.Include)
@@ -151,14 +163,24 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
     }
 
     public TaskExecutionInstanceSpecification(
-        DateTime dateTime
+        DateTime dateTime,
+        bool includeNodeInfo = false
 )
     {
+        Query.AsSplitQuery();
+        Query.Include(x => x.NodeInfo, includeNodeInfo);
         Query.Where(x => x.FireTimeUtc < dateTime && x.LogEntriesSaveCount > 0);
     }
 
-    public TaskExecutionInstanceSpecification(DataFilterCollection<string> taskExecutionInstanceIdFilters)
-        : this(default, default, default, taskExecutionInstanceIdFilters)
+    public TaskExecutionInstanceSpecification(
+        DataFilterCollection<string> taskExecutionInstanceIdFilters,
+        bool includeNodeInfo = false)
+        : this(
+              default,
+              default,
+              default,
+              taskExecutionInstanceIdFilters,
+              includeNodeInfo)
     {
 
     }

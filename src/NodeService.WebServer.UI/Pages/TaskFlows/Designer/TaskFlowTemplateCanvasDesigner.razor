@@ -19,151 +19,77 @@
 
 <PageTitle>任务流程图</PageTitle>
 
-    <div class="d-flex @NavMenuCssClass" id="wrapper">
-        <div class="bg-light border-right" id="sidebar-wrapper">
-        <div class="sidebar-heading">Demos</div>
-        <ul class="list-group list-group-flush">
-            <DemoMenu Href="demos/simple" Text="Simple" />
-            <DemoMenu Href="demos/locked" Text="Locked" />
-            <DemoMenu Href="demos/events" Text="Events" />
-            <DemoMenu Href="demos/dynamic-insertions" Text="Dynamic insertions" />
-            <DemoMenu Href="demos/performance" Text="Performance" />
-            <DemoMenu Href="demos/zoomtofit" Text="Zoom to fit" />
-            <DemoMenu Href="demos/snaptogrid" Text="Snap to Grid" />
-            <DemoMenu Href="demos/drag-and-drop" Text="Drag & Drop" />
-            <DemoMenu Text="Nodes">
-                <li>
-                    <a href="nodes/svg" class="list-group-item list-group-item-action bg-light">SVG</a>
-                </li>
-                <li>
-                    <a href="nodes/portless-links" class="list-group-item list-group-item-action bg-light">Portless Links</a>
-                </li>
-            </DemoMenu>
-            <DemoMenu Text="Links">
-                <li>
-                    <a href="links/snapping" class="list-group-item list-group-item-action bg-light">Snapping</a>
-                </li>
-                <li>
-                    <a href="links/labels" class="list-group-item list-group-item-action bg-light">Labels</a>
-                </li>
-                <li>
-                    <a href="links/vertices" class="list-group-item list-group-item-action bg-light">Vertices</a>
-                </li>
-                <li>
-                    <a href="links/markers" class="list-group-item list-group-item-action bg-light">Markers</a>
-                </li>
-                <li>
-                    <a href="links/routers" class="list-group-item list-group-item-action bg-light">Routers</a>
-                </li>
-                <li>
-                    <a href="links/path-generators" class="list-group-item list-group-item-action bg-light">Path generators</a>
-                </li>
-            </DemoMenu>
-            <DemoMenu Text="Groups">
-                <li>
-                    <a href="demos/groups" class="list-group-item list-group-item-action bg-light">Simple</a>
-                </li>
-                <li>
-                    <a href="demos/groups-factory" class="list-group-item list-group-item-action bg-light">Factory</a>
-                </li>
-                <li>
-                    <a href="demos/groups-dynamic" class="list-group-item list-group-item-action bg-light">Dynamic</a>
-                </li>
-                <li>
-                    <a href="demos/groups-custom-shortcut" class="list-group-item list-group-item-action bg-light">Custom shortcut</a>
-                </li>
-            </DemoMenu>
-            <DemoMenu Text="Customization">
-                <li>
-                    <a href="demos/custom-node" class="list-group-item list-group-item-action bg-light">Custom node</a>
-                </li>
-                <li>
-                    <a href="demos/custom-link" class="list-group-item list-group-item-action bg-light">Custom link</a>
-                </li>
-                <li>
-                    <a href="demos/custom-port" class="list-group-item list-group-item-action bg-light">Custom port</a>
-                </li>
-                <li>
-                    <a href="demos/custom-group" class="list-group-item list-group-item-action bg-light">Custom group</a>
-                </li>
-                <li>
-                    <a href="demos/custom-svg-group" class="list-group-item list-group-item-action bg-light">Custom SVG group</a>
-                </li>
-            </DemoMenu>
-            <DemoMenu Text="Algorithms">
-                <li>
-                    <a href="demos/reconnect-links" class="list-group-item list-group-item-action bg-light">Reconnect links</a>
-                </li>
-            </DemoMenu>
-        </ul>
-        </div>
-        <div id="page-content-wrapper">
-            <nav class="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-                <Space>
-                <ChildContent>
-                    <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home" OnClick="OnGoHomeAsync"></Button>
-                    </SpaceItem>
-                    <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="OnSaveAsync"></Button>
-                    </SpaceItem>
-                    <SpaceItem>
-                        @if (collapseNavMenu)
-                        {
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.ArrowRight" OnClick="ToggleNavMenu"></Button>
-                        }
-                        else
-                        {
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.ArrowLeft" OnClick="ToggleNavMenu"></Button>
-                        }
-                    </SpaceItem>
-                </ChildContent>
+<style>
+    .site-layout .site-layout-background {
+        background: #fff;
+    }
+</style>
 
-                </Space>
+<Layout>
+    <Header Style="background:#fff;position: fixed; z-index: 1; width: 100%;">
+        <Space>
+            <ChildContent>
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home" OnClick="OnGoHomeAsync"></Button>
+                </SpaceItem>
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="OnSaveAsync"></Button>
+                </SpaceItem>
+                <SpaceItem>
+                    @if (collapseNavMenu)
+                    {
+                        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.ArrowRight" OnClick="ToggleNavMenu"></Button>
+                    }
+                    else
+                    {
+                        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.ArrowLeft" OnClick="ToggleNavMenu"></Button>
+                    }
+                </SpaceItem>
+                <SpaceItem>
+                    <Checkbox @bind-Checked="@_blazorDiagram.Options.Zoom.Enabled">Toggle Zoom</Checkbox>
+                </SpaceItem>
+                <SpaceItem>
+                    <Checkbox @bind-Checked="@_blazorDiagram.Options.AllowPanning">Toggle Panning</Checkbox>
+                </SpaceItem>
+                <SpaceItem>
+                    <Checkbox @bind-Checked="@_blazorDiagram.Options.Virtualization.Enabled">Toggle Virtualization</Checkbox>
+                </SpaceItem>
+            </ChildContent>
 
-            </nav>
-            <div class="diagram-container">
-            <div class="row h-100">
-                <div class="col-12"  @ondragstart:preventDefault @ondragover:preventDefault @ondrop="OnDropAsync">
-                    <div style="position: absolute;width:">
-                        
-                        <div class="custom-control custom-checkbox ml-2">
-                            <input id="zoomCheckbox" type="checkbox" class="custom-control-input" @onchange="ToggleZoom" checked />
-                            <label class="custom-control-label" for="zoomCheckbox">Toggle Zoom</label>
-                        </div>
-                        <div class="custom-control custom-checkbox ml-2">
-                            <input id="panningCheckbox" type="checkbox" class="custom-control-input" @onchange="TogglePanning" checked />
-                            <label class="custom-control-label" for="panningCheckbox">Toggle Panning</label>
-                        </div>
-                        <div class="custom-control custom-checkbox ml-2">
-                            <input id="virtualizationCheckbox" type="checkbox" class="custom-control-input" @onchange="ToggleVirtualization" checked />
-                            <label class="custom-control-label" for="virtualizationCheckbox">Toggle Virtualization</label>
-                        </div>
-                    </div>
+        </Space>
+    </Header>
+    <Layout Style="flex:1;display:flex;padding-top:64px;">
+        <Content Style="flex:1;display:flex;">
+            <div style="width:100%;display:block;" @ondragstart:preventDefault @ondragover:preventDefault @ondrop="OnDropAsync">
+                <CascadingValue Value="_blazorDiagram">
+                    <DiagramCanvas>
+                        <Widgets>
+                            <SelectionBoxWidget />
+                            <NavigatorWidget Width="200"
+                                             Height="150"
+                                             Style="position: absolute; bottom: 15px; right: 15px; border: 1px solid black;">
+                            </NavigatorWidget>
 
-
-                    <CascadingValue Value="_blazorDiagram">
-                        <DiagramCanvas >
-                                    <Widgets>
-                                         <SelectionBoxWidget />
-                                        <NavigatorWidget Width="200"
-                                                            Height="150"
-                                                            Style="position: absolute; bottom: 15px; right: 15px; border: 1px solid black;">
-                                        </NavigatorWidget>
-                
-                                        <GridWidget Size="75" Mode="GridMode.Line" ZoomThreshold="0.5"></GridWidget>
-                                    </Widgets>
-                        </DiagramCanvas>
-                    </CascadingValue>
-                </div>
+                            <GridWidget Size="75" Mode="GridMode.Line" ZoomThreshold="0.5"></GridWidget>
+                        </Widgets>
+                    </DiagramCanvas>
+                </CascadingValue>
             </div>
-            </div>
+        </Content>
+        @if (_isSiderCollasped)
+        {
+            <Button OnClick="()=>OnSiderCollaspedAsync(false)" Style="position:absolute;right:0px;margin:0px auto;align-self:center;" Icon="@IconType.Outline.ArrowLeft"></Button>
+        }
+        <Sider Collapsible CollapsedWidth="0" Collapsed="@_isSiderCollasped" CollapsedChanged="OnSiderCollaspedAsync">
 
-        </div>
+        </Sider>
+    </Layout>
 
-</div>
+</Layout>
+
 
 @code {
+    bool _isSiderCollasped;
     readonly BlazorDiagram _blazorDiagram = new BlazorDiagram();
     int _draggedType;
     bool collapseNavMenu = false;
@@ -195,6 +121,19 @@
 
     }
 
+    async Task OnSiderCollaspedAsync(bool value)
+    {
+        if (value)
+        {
+            _isSiderCollasped = true;
+        }
+        else
+        {
+            _isSiderCollasped = false;
+        }
+        await Task.CompletedTask;
+    }
+
     async Task OnGoHomeAsync()
     {
         NavigationManager.NavigateTo("/TaskFlows/Instances");
@@ -209,12 +148,6 @@
         }
         await Task.CompletedTask;
     }
-
-    void ToggleZoom() => _blazorDiagram.Options.Zoom.Enabled = !_blazorDiagram.Options.Zoom.Enabled;
-
-    void TogglePanning() => _blazorDiagram.Options.AllowPanning = !_blazorDiagram.Options.AllowPanning;
-
-    void ToggleVirtualization() => _blazorDiagram.Options.Virtualization.Enabled = !_blazorDiagram.Options.Virtualization.Enabled;
 
     protected override void OnInitialized()
     {

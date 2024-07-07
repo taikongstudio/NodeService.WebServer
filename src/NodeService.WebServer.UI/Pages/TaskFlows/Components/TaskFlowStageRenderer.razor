@@ -2,17 +2,16 @@
 
 
 <div @ondrag:stopPropagation @ondragstart:stopPropagation>
-    <ul class="list-group list-group-horizontal">
+    <Space Align="start">
         @foreach (var taskStage in TaskStages)
         {
-            <li class="list-group-item" style="padding:2px 2px 2px 2px;">
-                <TaskFlowStageComponent 
-                    TaskStage="@taskStage" 
-                    TaskStageExecutionInstance="@FindTaskFlowStageExecutionInstance(taskStage)" 
-                    OnRemoved="OnTaskStageRemoved" />
-            </li>
+            <SpaceItem>
+                <TaskFlowStageComponent TaskStage="@taskStage"
+                                        TaskStageExecutionInstance="@FindTaskFlowStageExecutionInstance(taskStage)"
+                                        OnRemoved="OnTaskStageRemoved" />
+            </SpaceItem>
         }
-    </ul>
+    </Space>
 </div>
 
 

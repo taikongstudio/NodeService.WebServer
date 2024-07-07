@@ -1,4 +1,5 @@
-﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
+﻿@using Blazor.Diagrams
+@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
 @using NodeService.WebServer.Extensions
 @inject ApiService ApiService
 @if (TaskTemplate.IsEditable)
@@ -106,6 +107,7 @@ else
 
     [Parameter]
     public EventCallback<TaskFlowTaskTemplate> OnRemoved { get; set; }
+
 
     void AddCronExpression(AddingNewItemEventArgs<StringEntry> e)
     {

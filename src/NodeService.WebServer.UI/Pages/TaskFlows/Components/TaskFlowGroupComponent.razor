@@ -42,35 +42,8 @@
 
 
 @code {
+
     TaskFlowTaskTemplate? _dragging;
-    void OnDrop(DragEventArgs e, TaskFlowTaskTemplate item)
-    {
-        if (TaskGroupExecutionInstance != null)
-        {
-            return;
-        }
-        if (item != null && _dragging != null)
-        {
-            int index = TaskGroup.Tasks.IndexOf(item);
-            TaskGroup.Tasks.Remove(_dragging);
-            TaskGroup.Tasks.Insert(index, _dragging);
-            _dragging = null;
-            StateHasChanged();
-        }
-    }
-
-    void OnDragStart(DragEventArgs e, TaskFlowTaskTemplate item)
-    {
-        if (TaskGroupExecutionInstance != null)
-        {
-            return;
-        }
-        e.DataTransfer.DropEffect = "copyMove";
-        e.DataTransfer.EffectAllowed = "copyMove";
-        _dragging = item;
-    }
-
-
 
     [Parameter]
     public TaskFlowGroupTemplate TaskGroup { get; set; }
@@ -88,4 +61,34 @@
     {
         return TaskGroupExecutionInstance?.Tasks?.FirstOrDefault(x => x.TaskFlowTaskTemplateId == taskFlowTaskTemplate.Id);
     }
+
+    void OnDrop(DragEventArgs e, TaskFlowTaskTemplate item)
+    {
+        if (TaskGroupExecutionInstance != null)
+        {
+            return;
+        }
+        if (item != null && _dragging != null)
+        {
+            int index = TaskGroup.Tasks.IndexOf(item);
+            TaskGroup.Tasks.Remove(_dragging);
+            TaskGroup.Tasks.Insert(index, _dragging);
+            _dragging = null;
+            this.BlazorDiagram.TriggerPointerUp(this.BlazorDiagram.Nodes[0], null);
+            StateHasChanged();
+        }
+    }
+
+    void OnDragStart(DragEventArgs e, TaskFlowTaskTemplate item)
+    {
+        if (TaskGroupExecutionInstance != null)
+        {
+            return;
+        }
+        e.DataTransfer.DropEffect = "copyMove";
+        e.DataTransfer.EffectAllowed = "copyMove";
+        _dragging = item;
+    }
+
+
 }

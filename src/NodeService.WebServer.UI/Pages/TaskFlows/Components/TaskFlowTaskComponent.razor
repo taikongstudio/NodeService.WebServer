@@ -51,7 +51,7 @@
         <Button Block Icon="@_icon" >@TaskTemplate.Name</Button>
     }
 }
-else
+else if (TaskTemplate.TemplateType == TaskFlowTaskTemplateType.RemoteNodeTask)
 {
     @if (_buttonRef != null)
     {
@@ -65,7 +65,7 @@ else
             Trigger="@(new AntDesign.Trigger[] { AntDesign.Trigger.Click})">
             <TitleTemplate>
                 <GridRow>
-                    <GridCol Flex=@("auto")>@ExecutionInstance.Name</GridCol>
+                    <GridCol Flex=@("auto")>@ExecutionInstance?.Name</GridCol>
                     <GridCol Flex=@("30px")><Button Shape="@ButtonShape.Circle" Icon="close" OnClick="@CloseTaskActivationRecordPopover"></Button></GridCol>
                 </GridRow>
             </TitleTemplate>

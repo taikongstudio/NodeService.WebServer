@@ -177,7 +177,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
     readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
     readonly BatchQueue<TaskExecutionInstanceModel> taskScheduleAsyncQueue;
-    readonly TaskScheduler _taskScheduler;
+    readonly JobScheduler _taskScheduler;
     readonly ConcurrentDictionary<string, IDisposable> _taskExecutionLimitDictionary;
     readonly WebServerCounter _webServerCounter;
 
@@ -192,7 +192,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
         BatchQueue<TaskActivateServiceParameters> taskScheduleAsyncQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
-        TaskScheduler taskScheduler,
+        JobScheduler taskScheduler,
         IMemoryCache memoryCache,
         WebServerCounter webServerCounter,
         ExceptionCounter exceptionCounter,

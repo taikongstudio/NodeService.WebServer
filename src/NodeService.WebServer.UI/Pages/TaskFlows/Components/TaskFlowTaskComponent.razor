@@ -4,14 +4,14 @@
 @if (TaskTemplate.IsEditable)
 {
     <TaskDefinitionEditor IsChildTaskSelectorVisible="false" Closed="@OnTaskDefinitionEditorDialogClosed" @bind-TaskDefinition="@TaskTemplate.TaskDefinition" @ref="_taskDefinitionEditor" />
-    <CommonDialog @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
+    <CommonDialog Title="选择任务定义" @ref="_taskDefinitionDialog" Closed="OnTaskDefinitionSelectorDialogClosed">
         <TaskDefinitionSelector @ref="_taskDefinitionSelector" @bind-SelectedItems="@_selectedTaskDefinitions" Mode="SelectionMode.Single" />
     </CommonDialog>
-    <CommonDialog Maximizable="false" DefaultMaximized="false" @ref="_triggerTaskSettingDialog" Closed="OnTriggerTaskSettingsDialogClosed">
+    <CommonDialog Title="选择触发方式" Maximizable="false" DefaultMaximized="false" @ref="_triggerTaskSettingDialog" Closed="OnTriggerTaskSettingsDialogClosed">
         <Form Model="@TaskTemplate"
-              LabelColSpan="6"
+              LabelColSpan="4"
               Layout="@FormLayout.Horizontal"
-              WrapperColSpan="18">
+              WrapperColSpan="20">
             <FormItem Label="触发方式">
                 <RadioGroup @bind-Value="@TaskTemplate.TriggerType">
                     <Radio RadioButton Value="@TaskTriggerType.Schedule">定时触发</Radio>
@@ -21,7 +21,7 @@
             @if (TaskTemplate.TriggerType == TaskTriggerType.Schedule)
             {
                 <FormItem Label="Cron表达式">
-                    <StringEntryTable ItemsSource="@TaskTemplate.CronExpressions"
+                    <StringEntryTable ItemsSource="@TaskTemplate.TriggerSources"
                                       NameTitle="备注"
                                       ValueTitle="Cron表达式"
                                       IsTagHidden="false"
@@ -109,6 +109,7 @@ else
 
     void AddCronExpression(AddingNewItemEventArgs<StringEntry> e)
     {
+        e.DataItem.Tag = "CronExpression";
         e.DataItem.BeginEdit();
     }
 

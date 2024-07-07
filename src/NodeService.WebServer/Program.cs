@@ -30,7 +30,7 @@ using Quartz.Spi;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Threading.RateLimiting;
-using TaskScheduler = NodeService.WebServer.Services.Tasks.TaskScheduler;
+using JobScheduler = NodeService.WebServer.Services.Tasks.JobScheduler;
 
 public class Program
 {
@@ -376,7 +376,6 @@ public class Program
             }
         );
 
-        builder.Services.AddTransient<FireTaskJob>();
     }
 
     private static void ConfigureAuthentication(WebApplicationBuilder builder)
@@ -431,7 +430,7 @@ public class Program
     private static void ConfigureSingleton(WebApplicationBuilder builder)
     {
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
-        builder.Services.AddSingleton<TaskScheduler>();
+        builder.Services.AddSingleton<JobScheduler>();
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
         builder.Services.AddSingleton<ExceptionCounter>();
         builder.Services.AddSingleton<WebServerCounter>();

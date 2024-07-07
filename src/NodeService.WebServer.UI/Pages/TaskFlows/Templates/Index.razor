@@ -171,19 +171,19 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = apiResponse.Message
-                });
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = "加载配置失败"
-            });
+                {
+                    Message = "错误提示",
+                    Description = "加载配置失败:" + ex.ToString()
+                });
         }
     }
 
@@ -210,14 +210,17 @@
         {
             var invokeTaskFlowParameters = new InvokeTaskFlowParameters()
                 {
-                    TaskFlowTemplateId = taskFlowTemplate.Id,
                     UserName = "WebUser"
                 };
-            await ApiService.InvokeTaskFlowAsync(invokeTaskFlowParameters);
+            await ApiService.InvokeTaskFlowAsync(taskFlowTemplate.Id, invokeTaskFlowParameters);
         }
         catch (Exception ex)
         {
-            
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = "调用失败:" + ex.ToString()
+                });
         }
 
     }

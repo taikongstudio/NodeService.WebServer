@@ -3,7 +3,7 @@ using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.Tasks;
 
-public class TaskScheduler
+public class JobScheduler
 {
     private readonly ExceptionCounter _exceptionCounter;
     private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
@@ -14,9 +14,9 @@ public class TaskScheduler
     private readonly IServiceProvider _serviceProvider;
     private IScheduler _scheduler;
 
-    public TaskScheduler(
+    public JobScheduler(
         ISchedulerFactory schedulerFactory,
-        ILogger<TaskScheduler> logger,
+        ILogger<JobScheduler> logger,
         TaskSchedulerDictionary jobSchedulerDictionary,
         IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter

@@ -19,7 +19,7 @@ public class JobFactory : IJobFactory
 
     public IJob NewJob(TriggerFiredBundle bundle, IScheduler scheduler)
     {
-        var job = _serviceProvider.GetService(bundle.JobDetail.JobType) as JobBase;
+        var job = ActivatorUtilities.CreateInstance(_serviceProvider, bundle.JobDetail.JobType) as JobBase;
         job.Properties = bundle.JobDetail.JobDataMap[nameof(JobBase.Properties)] as IDictionary<string, object?>;
         job.TriggerSource = (TriggerSource)bundle.JobDetail.JobDataMap[nameof(JobBase.TriggerSource)];
         job.AsyncDispoable = bundle.JobDetail.JobDataMap[nameof(JobBase.AsyncDispoable)] as IAsyncDisposable;

@@ -7,7 +7,8 @@ public class FireTaskJob : JobBase
 {
     readonly ExceptionCounter _exceptionCounter;
 
-    public FireTaskJob(IServiceProvider serviceProvider,
+    public FireTaskJob(
+        IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter) : base(serviceProvider)
     {
         Logger = serviceProvider.GetService<ILogger<FireTaskJob>>();
@@ -18,7 +19,22 @@ public class FireTaskJob : JobBase
     {
         try
         {
-            await ExecuteCoreAsync(context);
+            Logger.LogInformation($"Task fire instance id:{context.FireInstanceId}");
+
+            var parentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string;
+            var fireTaskParameters = new FireTaskParameters
+            {
+                TaskDefinitionId = Properties[nameof(TaskDefinitionModel.Id)] as string,
+                FireInstanceId = $"ScheduleTask_{Guid.NewGuid()}",
+                FireTimeUtc = context.FireTimeUtc,
+                NextFireTimeUtc = context.NextFireTimeUtc,
+                PreviousFireTimeUtc = context.PreviousFireTimeUtc,
+                ScheduledFireTimeUtc = context.ScheduledFireTimeUtc,
+                ParentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string
+            };
+            var batchQueue = ServiceProvider.GetService<BatchQueue<TaskActivateServiceParameters>>();
+            await batchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters));
+            Logger.LogInformation($"Task fire instance id:{context.FireInstanceId} end init");
         }
         catch (Exception ex)
         {
@@ -32,23 +48,4 @@ public class FireTaskJob : JobBase
         }
     }
 
-    private async Task ExecuteCoreAsync(IJobExecutionContext context)
-    {
-        Logger.LogInformation($"Task fire instance id:{context.FireInstanceId}");
-
-        var parentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string;
-        var fireTaskParameters = new FireTaskParameters
-        {
-            TaskDefinitionId = Properties[nameof(TaskDefinitionModel.Id)] as string,
-            FireInstanceId = $"ScheduleTask_{Guid.NewGuid()}",
-            FireTimeUtc = context.FireTimeUtc,
-            NextFireTimeUtc = context.NextFireTimeUtc,
-            PreviousFireTimeUtc = context.PreviousFireTimeUtc,
-            ScheduledFireTimeUtc = context.ScheduledFireTimeUtc,
-            ParentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string
-        };
-        var batchQueue = ServiceProvider.GetService<BatchQueue<TaskActivateServiceParameters>>();
-        await batchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters));
-        Logger.LogInformation($"Task fire instance id:{context.FireInstanceId} end init");
-    }
 }

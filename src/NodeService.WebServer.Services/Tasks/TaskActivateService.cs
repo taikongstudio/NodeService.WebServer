@@ -20,6 +20,7 @@ public readonly record struct TaskFlowInfo
 
 public record struct FireTaskParameters
 {
+    public string? TaskActiveRecordId { get; init; }
     public string TaskDefinitionId { get; init; }
     public string FireInstanceId { get; init; }
     public TriggerSource TriggerSource { get; init; }
@@ -309,29 +310,50 @@ public class TaskActivateService : BackgroundService
 
             await taskExecutionInstanceRepo.AddRangeAsync(taskExecutionInstanceList.Select(static x => x.Value), cancellationToken);
 
-            var taskExecutionInstanceInfoList = taskExecutionInstanceList.Select(x => new TaskExecutionInstanceInfo()
+            if (fireTaskParameters.TaskActiveRecordId == null)
             {
-                NodeInfoId = x.Value.NodeInfoId,
-                TaskExecutionInstanceId = x.Value.Id,
-                Status = TaskExecutionStatus.Unknown
-            }).ToList();
+                List<TaskExecutionNodeInfo> taskExecutionNodeList = [];
 
-            await taskActivationRecordRepo.AddAsync(new TaskActivationRecordModel
-            {
-                Id = fireTaskParameters.FireInstanceId,
-                TaskDefinitionId = taskDefinition.Id,
-                Name = taskDefinition.Name,
-                TaskDefinitionJson = JsonSerializer.Serialize(taskDefinition.Value),
-                TaskExecutionInstanceInfoList = taskExecutionInstanceInfoList,
-                TotalCount = taskExecutionInstanceInfoList.Count,
-                Status = TaskExecutionStatus.Unknown,
-                TaskFlowTemplateId = taskFlowTaskKey.TaskFlowTemplateId,
-                TaskFlowTaskId = taskFlowTaskKey.TaskFlowTaskId,
-                TaskFlowInstanceId = taskFlowTaskKey.TaskFlowInstanceId,
-                TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId,
-                TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId,
+                foreach (var nodeEntry in taskDefinition.NodeList)
+                {
+                    if (nodeEntry == null || nodeEntry.Value == null)
+                    {
+                        continue;
+                    }
+                    var taskExecutionNodeInfo = new TaskExecutionNodeInfo(fireTaskParameters.FireInstanceId, nodeEntry.Value);
+                    foreach (var item in taskExecutionInstanceList)
+                    {
+                        if (item.Key.NodeId.Value == nodeEntry.Value)
+                        {
+                            taskExecutionNodeInfo.Instances.Add(new TaskExecutionInstanceInfo()
+                            {
+                                TaskExecutionInstanceId = item.Value.Id,
+                                Status = TaskExecutionStatus.Unknown,
+                                Message = item.Value.Message,
+                            });
+                            break;
+                        }
+                    }
+                    taskExecutionNodeList.Add(taskExecutionNodeInfo);
+                }
 
-            }, cancellationToken);
+                await taskActivationRecordRepo.AddAsync(new TaskActivationRecordModel
+                {
+                    Id = fireTaskParameters.FireInstanceId,
+                    TaskDefinitionId = taskDefinition.Id,
+                    Name = taskDefinition.Name,
+                    TaskDefinitionJson = JsonSerializer.Serialize(taskDefinition.Value),
+                    TaskExecutionNodeList = taskExecutionNodeList,
+                    TotalCount = taskExecutionNodeList.Count,
+                    Status = TaskExecutionStatus.Unknown,
+                    TaskFlowTemplateId = taskFlowTaskKey.TaskFlowTemplateId,
+                    TaskFlowTaskId = taskFlowTaskKey.TaskFlowTaskId,
+                    TaskFlowInstanceId = taskFlowTaskKey.TaskFlowInstanceId,
+                    TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId,
+                    TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId,
+                    NodeList = taskDefinition.NodeList.ToList()
+                }, cancellationToken);
+            }
 
             foreach (var kv in taskExecutionInstanceList)
             {
@@ -346,7 +368,9 @@ public class TaskActivateService : BackgroundService
                 };
 
                 if (_taskPenddingContextManager.AddContext(context))
+                {
                     await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
+                }
 
             }
 
@@ -381,11 +405,11 @@ public class TaskActivateService : BackgroundService
         TaskFlowTaskKey taskFlowTaskKey=default,
         CancellationToken cancellationToken = default)
     {
-        var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);
+        var nodeName = _nodeSessionService.GetNodeName(nodeSessionId) ?? nodeInfo.Name;
         var taskExecutionInstance = new TaskExecutionInstanceModel
         {
             Id = Guid.NewGuid().ToString(),
-            Name = $"{nodeName ?? nodeInfo.Name} {taskDefinition.Name}",
+            Name = $"{nodeName} {taskDefinition.Name}",
             NodeInfoId = nodeSessionId.NodeId.Value,
             Status = TaskExecutionStatus.Triggered,
             FireTimeUtc = parameters.FireTimeUtc.DateTime,

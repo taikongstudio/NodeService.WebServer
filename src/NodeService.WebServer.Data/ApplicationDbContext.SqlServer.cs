@@ -73,15 +73,16 @@ public partial class ApplicationDbContext
                 {
                     ownedNavigationBuilder.ToJson();
                     ownedNavigationBuilder
-                                    .Property(x => x.TaskExecutionInstanceInfoList)
-                                    .HasConversion(x => Serialize(x), x => Deserialize<List<TaskExecutionInstanceInfo>>(x))
+                                    .Property(x => x.TaskExecutionNodeList)
+                                    .HasConversion(x => Serialize(x), x => Deserialize<List<TaskExecutionNodeInfo>>(x))
                                     .Metadata
-                                    .SetValueComparer(GetEnumerableComparer<TaskExecutionInstanceInfo>());
+                                    .SetValueComparer(GetEnumerableComparer<TaskExecutionNodeInfo>());
+
                     ownedNavigationBuilder
-                                    .Property(x => x.TaskExecutionInstanceInfoRetryList)
-                                    .HasConversion(x => Serialize(x), x => Deserialize<List<TaskExecutionInstanceInfo>>(x))
+                                    .Property(x => x.NodeList)
+                                    .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
                                     .Metadata
-                                    .SetValueComparer(GetEnumerableComparer<TaskExecutionInstanceInfo>());
+                                    .SetValueComparer(GetEnumerableComparer<StringEntry>());
                 });
         });
     }

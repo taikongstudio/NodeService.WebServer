@@ -1,5 +1,8 @@
 ﻿using Microsoft.Extensions.Hosting;
+using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Logging;
+using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
@@ -56,32 +59,35 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
             var taskExecutionInstanceInfoList = TaskExecutionInstanceProcessContexts.Select(static x => new TaskExecutionInstanceInfo()
             {
-                NodeInfoId = x.TaskExecutionInstance!.NodeInfoId,
                 TaskExecutionInstanceId = x.TaskExecutionInstance.Id,
                 Status = x.TaskExecutionInstance.Status,
                 Message = x.TaskExecutionInstance.Message
             });
             TaskActivationRecord.Value.ResetCounters();
-            for (int i = 0; i < TaskActivationRecord.TaskExecutionInstanceInfoList.Count; i++)
+            for (int i = 0; i < TaskActivationRecord.TaskExecutionNodeList.Count; i++)
             {
-                var info = TaskActivationRecord.TaskExecutionInstanceInfoList[i];
-                var id = info.TaskExecutionInstanceId;
-                TaskExecutionInstanceInfo newValue = default;
-                foreach (var item in taskExecutionInstanceInfoList)
+                var taskExecutionNodeInfo = TaskActivationRecord.TaskExecutionNodeList[i];
+                var nodeInfoId = taskExecutionNodeInfo.NodeInfoId;
+                TaskExecutionInstanceModel? newValue = null;
+                foreach (var processContext in TaskExecutionInstanceProcessContexts)
                 {
-                    if (item.TaskExecutionInstanceId == id)
+                    if (processContext.TaskExecutionInstance==null)
                     {
-                        newValue = item;
+                        continue;
+                    }
+                    if (processContext.TaskExecutionInstance.NodeInfoId == nodeInfoId)
+                    {
+                        newValue = processContext.TaskExecutionInstance;
                         break;
                     }
                 }
-                if (newValue != default)
+                if (newValue != null)
                 {
-                    info.Status = newValue.Status;
-                    info.Message = newValue.Message;
-                    TaskActivationRecord.TaskExecutionInstanceInfoList[i] = info;
+                    taskExecutionNodeInfo.AddOrUpdateInstance(newValue);
                 }
-                switch (info.Status)
+                taskExecutionNodeInfo.UpdateCounters();
+                TaskActivationRecord.TaskExecutionNodeList[i] = taskExecutionNodeInfo;
+                switch (taskExecutionNodeInfo.Status)
                 {
                     case TaskExecutionStatus.Unknown:
                         break;
@@ -144,20 +150,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             {
                 TaskActivationRecord.Status = TaskExecutionStatus.Running;
             }
-            TaskActivationRecord.TaskExecutionInstanceInfoList = [.. TaskActivationRecord.TaskExecutionInstanceInfoList];
-
-
-        
-//                foreach (var array in taskActivationRecordList.Chunk(10))
-//                {
-//                    await taskActivationRecordRepo.UpdateRangeAsync(array, cancellationToken);
-//        int changes = taskActivationRecordRepo.LastChangesCount;
-//    }
-//    taskActivationRecordList = taskActivationRecordList.Where(x => x.GetTaskFlowTaskKey() != default).ToList();
-//                if (taskActivationRecordList.Count > 0)
-//                {
-//                    await ProcessTaskFlowActiveRecordListAsync(taskActivationRecordList, cancellationToken);
-//}
+            TaskActivationRecord.TaskExecutionNodeList = [.. TaskActivationRecord.TaskExecutionNodeList];
+            await ValueTask.CompletedTask;
         }
 
     }
@@ -173,7 +167,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
     readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
     readonly BatchQueue<TaskLogUnit> _taskLogUnitBatchQueue;
-    readonly BatchQueue<TaskActivateServiceParameters> _taskScheduleAsyncQueue;
+    readonly BatchQueue<TaskActivateServiceParameters> _taskActivateQueue;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
     readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
     readonly BatchQueue<TaskExecutionInstanceModel> taskScheduleAsyncQueue;
@@ -190,7 +184,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
         BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
-        BatchQueue<TaskActivateServiceParameters> taskScheduleAsyncQueue,
+        BatchQueue<TaskActivateServiceParameters> taskScheduleQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
         JobScheduler taskScheduler,
         IMemoryCache memoryCache,
@@ -206,7 +200,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
         _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
         _taskExecutionReportBatchQueue = taskExecutionReportBatchQueue;
-        _taskScheduleAsyncQueue = taskScheduleAsyncQueue;
+        _taskActivateQueue = taskScheduleQueue;
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
         _taskExecutionLimitDictionary = new ConcurrentDictionary<string, IDisposable>();
         _taskScheduler = taskScheduler;
@@ -348,7 +342,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     async ValueTask<TaskActivationRecordProcessContext> CreateTaskActivationRecordProcessContextAsync(
         TaskActivationRecordModel taskActivationRecord,
         TaskDefinition taskDefinition,
-       IEnumerable<TaskExecutionInstanceModel> taskExecutionInstances,
+        IEnumerable<TaskExecutionInstanceModel> taskExecutionInstances,
         IGrouping<string?, TaskExecutionReport>[] messageGroups,
         CancellationToken cancellationToken)
     {
@@ -693,7 +687,10 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     break;
                 case TaskExecutionStatus.Running:
                     break;
+                case TaskExecutionStatus.PenddingTimeout:
                 case TaskExecutionStatus.Failed:
+                    RetryTask(taskActivationRecord, taskDefinitionSnapshot, taskExecutionInstance);
+                    break;
                 case TaskExecutionStatus.Cancelled:
                     break;
                 case TaskExecutionStatus.Finished:
@@ -704,8 +701,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                             taskExecutionInstance,
                             cancellationToken);
                     }
-                    break;
-                case TaskExecutionStatus.PenddingTimeout:
                     break;
             }
 
@@ -762,6 +757,59 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
+    void RetryTask(
+        TaskActivationRecordModel taskActivationRecord,
+        TaskDefinition taskDefinitionSnapshot,
+        TaskExecutionInstanceModel taskExecutionInstance)
+    {
+        TaskExecutionNodeInfo taskExecutionNodeInfo = default;
+        foreach (var item in taskActivationRecord.Value.TaskExecutionNodeList)
+        {
+            if (item.NodeInfoId == taskExecutionInstance.NodeInfoId)
+            {
+                taskExecutionNodeInfo = item;
+                break;
+            }
+        }
+        if (taskDefinitionSnapshot.MaxRetryCount > 0 && taskExecutionNodeInfo.RetryCount < taskDefinitionSnapshot.MaxRetryCount - 1)
+        {
+            var taskActiveRecordId = taskActivationRecord.Id;
+            var taskExecutionInstanceId = taskExecutionInstance.Id;
+            var taskDefinitionId = taskExecutionInstance.TaskDefinitionId;
+            var fireInstanceId = taskExecutionInstance.FireInstanceId;
+            var nodeInfoId = taskExecutionInstance.NodeInfoId;
+            List<StringEntry> nodeList = [taskActivationRecord.NodeList.FirstOrDefault(x => x.Value == nodeInfoId)];
+            var fireTaskParameters = new FireTaskParameters
+            {
+                TaskActiveRecordId = taskActiveRecordId,
+                FireTimeUtc = DateTime.UtcNow,
+                TriggerSource = TriggerSource.Manual,
+                FireInstanceId = fireInstanceId,
+                TaskDefinitionId = taskDefinitionId,
+                ScheduledFireTimeUtc = DateTime.UtcNow,
+                NodeList = nodeList,
+                EnvironmentVariables = [],
+            };
+            var dueTime = TimeSpan.FromSeconds(taskDefinitionSnapshot.RetryDuration);
+            var token = Scheduler.Default.ScheduleAsync(
+                dueTime,
+                 async (scheduler, cancellationToken) =>
+                 {
+                     try
+                     {
+
+                         await _taskActivateQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
+                     }
+                     catch (Exception ex)
+                     {
+                         _exceptionCounter.AddOrUpdate(ex, taskExecutionInstanceId);
+                     }
+
+                     return Disposable.Empty;
+                 });
+
+        }
+    }
 
     private async Task ScheduleChildTasksAsync(
         TaskActivationRecordModel taskActivationRecord,
@@ -781,7 +829,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         {
             var childTaskScheduleDefinition = await taskDefinitionRepo.GetByIdAsync(childTaskDefinition.Value, cancellationToken);
             if (childTaskScheduleDefinition == null) continue;
-            await _taskScheduleAsyncQueue.SendAsync(new TaskActivateServiceParameters(new FireTaskParameters
+            await _taskActivateQueue.SendAsync(new TaskActivateServiceParameters(new FireTaskParameters
             {
                 FireTimeUtc = DateTime.UtcNow,
                 TriggerSource = TriggerSource.Manual,

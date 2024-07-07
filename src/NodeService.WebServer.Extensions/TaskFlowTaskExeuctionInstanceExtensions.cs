@@ -1,4 +1,5 @@
-﻿using NodeService.Infrastructure.DataModels;
+﻿using NodeService.Infrastructure;
+using NodeService.Infrastructure.DataModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,21 +12,24 @@ namespace NodeService.WebServer.Extensions
     {
         public static async Task CancelTaskAsync(
             this TaskFlowTaskExecutionInstance taskFlowTaskExeuctionInstance,
+            ApiService apiService,
             CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;
         }
 
         public static async Task RerunTaskAsync(
-    this TaskFlowTaskExecutionInstance taskFlowTaskExeuctionInstance,
-    CancellationToken cancellationToken = default)
+            this TaskFlowTaskExecutionInstance taskFlowTaskExeuctionInstance,
+            ApiService apiService,
+            CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;
         }
 
         public static async Task RetryTaskAsync(
-this TaskFlowTaskExecutionInstance taskFlowTaskExeuctionInstance,
-CancellationToken cancellationToken = default)
+            this TaskFlowTaskExecutionInstance taskFlowTaskExeuctionInstance,
+            ApiService apiService,
+            CancellationToken cancellationToken = default)
         {
             await Task.CompletedTask;
         }

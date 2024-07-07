@@ -34,6 +34,7 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         DateTime? endTime,
         IEnumerable<SortDescription>? sortDescriptions = null)
     {
+        Query.AsSplitQuery();
         if (status != TaskExecutionStatus.Unknown) Query.Where(x => x.Status == status);
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));

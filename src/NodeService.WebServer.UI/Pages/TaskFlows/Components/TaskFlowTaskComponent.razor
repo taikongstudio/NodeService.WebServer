@@ -74,12 +74,12 @@ else
                 {
                     if (ExecutionInstance.Status == TaskExecutionStatus.Running)
                     {
-                        <MenuItem Icon="@IconType.Outline.Close" OnClick="()=>ExecutionInstance.CancelTaskAsync()">停止任务</MenuItem>
+                        <MenuItem Icon="@IconType.Outline.Close" OnClick="()=>ExecutionInstance.CancelTaskAsync(ApiService)">停止任务</MenuItem>
                     }
                     else if (ExecutionInstance.Status == TaskExecutionStatus.Failed)
                     {
-                        <MenuItem Icon="@IconType.Outline.Close" OnClick="()=>ExecutionInstance.RetryTaskAsync()">重试运行</MenuItem>
-                        <MenuItem Icon="@IconType.Outline.Redo" OnClick="()=>ExecutionInstance.RerunTaskAsync()">重新运行</MenuItem>
+                        <MenuItem Icon="@IconType.Outline.Close" OnClick="()=>ExecutionInstance.RetryTaskAsync(ApiService)">重试运行</MenuItem>
+                        <MenuItem Icon="@IconType.Outline.Redo" OnClick="()=>ExecutionInstance.RerunTaskAsync(ApiService)">重新运行</MenuItem>
                     }
                 }
                 </Menu>

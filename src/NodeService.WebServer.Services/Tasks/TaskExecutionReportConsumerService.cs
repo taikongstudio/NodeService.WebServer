@@ -786,7 +786,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 taskActiveRecordId,
                 taskDefinitionId,
                 fireInstanceId,
-                nodeList);
+                nodeList,
+                taskExecutionInstance.GetTaskFlowTaskKey());
             if (taskDefinitionSnapshot.RetryDuration == 0)
             {
                 await _taskActivateQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);

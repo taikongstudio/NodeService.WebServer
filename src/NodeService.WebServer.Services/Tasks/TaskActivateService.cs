@@ -51,7 +51,8 @@ public record struct FireTaskParameters
         string taskActiveRecordId,
         string taskDefinitionId,
         string fireInstanceId,
-        List<StringEntry> nodeList)
+        List<StringEntry> nodeList,
+        TaskFlowTaskKey taskFlowTaskKey = default)
     {
         return new FireTaskParameters
         {
@@ -63,6 +64,7 @@ public record struct FireTaskParameters
             ScheduledFireTimeUtc = DateTime.UtcNow,
             NodeList = nodeList,
             EnvironmentVariables = [],
+            TaskFlowTaskKey = taskFlowTaskKey,
         };
     }
 }
@@ -437,7 +439,7 @@ public class TaskActivateService : BackgroundService
         TaskDefinitionModel taskDefinition,
         NodeSessionId nodeSessionId,
         FireTaskParameters parameters,
-        TaskFlowTaskKey taskFlowTaskKey=default,
+        TaskFlowTaskKey taskFlowTaskKey = default,
         CancellationToken cancellationToken = default)
     {
         var nodeName = _nodeSessionService.GetNodeName(nodeSessionId) ?? nodeInfo.Name;
@@ -589,7 +591,8 @@ public class TaskActivateService : BackgroundService
                 taskExecutionRecord.Id,
                 taskExecutionRecord.TaskDefinitionId,
                 taskExecutionInstance.FireInstanceId,
-                nodes);
+                nodes,
+                taskExecutionInstance.GetTaskFlowTaskKey());
             await _serviceParametersBatchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
         }
     }

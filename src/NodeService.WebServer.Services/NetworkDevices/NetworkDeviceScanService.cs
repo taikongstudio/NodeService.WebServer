@@ -63,13 +63,16 @@ public class NetworkDeviceScanService : BackgroundService
             using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
             var networkDeviceList = await QueryNetworkDeviceListAsync(nodeInfoRepo, cancellationToken);
 
-            await Parallel.ForEachAsync(networkDeviceList, new ParallelOptions()
+            if (networkDeviceList.Count > 0)
             {
-                CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = 4
-            }, ProcessNodeInfoAsync);
+                await Parallel.ForEachAsync(networkDeviceList, new ParallelOptions()
+                {
+                    CancellationToken = cancellationToken,
+                    MaxDegreeOfParallelism = 4
+                }, ProcessNodeInfoAsync);
 
-            await nodeInfoRepo.UpdateRangeAsync(networkDeviceList, cancellationToken);
+                await nodeInfoRepo.UpdateRangeAsync(networkDeviceList, cancellationToken);
+            }
         }
         catch (Exception ex)
         {

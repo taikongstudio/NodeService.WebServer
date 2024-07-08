@@ -1,5 +1,4 @@
-﻿using NodeService.WebServer.Extensions;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,17 +6,20 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class NodeStatusChangeRecordSpecification : ListSpecification<NodeStatusChangeRecordModel>
+public class DataQualityStatisticsSelectSpecification<TProject> : SelectSpecification<DataQualityNodeStatisticsRecordModel, TProject>
+    where TProject : class
 {
-    public NodeStatusChangeRecordSpecification(
-        string? keywords,
+    public DataQualityStatisticsSelectSpecification(string nodeId, DateTime dateTime)
+    {
+        Query.Where(x => x.Id == nodeId);
+        Query.Where(x => x.CreationDateTime == dateTime);
+    }
+
+    public DataQualityStatisticsSelectSpecification(
         DateTime beginDateTime,
         DateTime endDateTime,
-        DataFilterCollection<string> nodeIdFilters,
-        IEnumerable<SortDescription>? sortDescriptions = null
-    )
+        DataFilterCollection<string> nodeIdFilters = default)
     {
-        if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         Query.Where(x => x.CreationDateTime >= beginDateTime && x.CreationDateTime <= endDateTime);
         if (nodeIdFilters.HasValue)
         {
@@ -26,7 +28,5 @@ public class NodeStatusChangeRecordSpecification : ListSpecification<NodeStatusC
             else if (nodeIdFilters.FilterType == DataFilterTypes.Exclude)
                 Query.Where(x => !nodeIdFilters.Items.Contains(x.NodeId));
         }
-
-        if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 }

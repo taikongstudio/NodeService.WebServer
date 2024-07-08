@@ -1,6 +1,7 @@
 ﻿using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using System.Net;
 
@@ -114,7 +115,7 @@ public class TaskPenddingContext : IAsyncDisposable
         QueryTaskExecutionInstanceListParameters queryParameters,
         CancellationToken cancellationToken = default)
     {
-        var queryResult = await repository.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
+        var queryResult = await repository.PaginationQueryAsync(new TaskExecutionInstanceListSpecification(
                 queryParameters.Keywords,
                 queryParameters.Status,
                 queryParameters.NodeIdList,

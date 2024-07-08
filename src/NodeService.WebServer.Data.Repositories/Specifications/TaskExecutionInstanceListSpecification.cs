@@ -3,9 +3,9 @@ using System.Linq;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class TaskExecutionInstanceSpecification : Specification<TaskExecutionInstanceModel>
+public class TaskExecutionInstanceListSpecification : Specification<TaskExecutionInstanceModel>
 {
-    public TaskExecutionInstanceSpecification(
+    public TaskExecutionInstanceListSpecification(
         string? keywords,
         TaskExecutionStatus status,
         IEnumerable<string> nodeIdList,
@@ -15,7 +15,6 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         bool includeNodeInfo = false)
     {
         Query.AsSplitQuery();
-        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (status != TaskExecutionStatus.Unknown) Query.Where(x => x.Status == status);
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));
@@ -26,7 +25,7 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 
-    public TaskExecutionInstanceSpecification(
+    public TaskExecutionInstanceListSpecification(
         string? keywords,
         TaskExecutionStatus status,
         IEnumerable<string> nodeIdList,
@@ -39,7 +38,6 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         bool includeNodeInfo = false)
     {
         Query.AsSplitQuery();
-        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (status != TaskExecutionStatus.Unknown) Query.Where(x => x.Status == status);
         if (!string.IsNullOrEmpty(keywords)) Query.Where(x => x.Name.Contains(keywords));
         if (nodeIdList != null && nodeIdList.Any()) Query.Where(x => nodeIdList.Contains(x.NodeInfoId));
@@ -61,7 +59,7 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 
-    public TaskExecutionInstanceSpecification(
+    public TaskExecutionInstanceListSpecification(
         DataFilterCollection<TaskExecutionStatus> statusFilters,
         DataFilterCollection<string> parentInstanceIdFilters,
         DataFilterCollection<string> childTaskDefinitionIdFilters,
@@ -69,7 +67,6 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         )
     {
         Query.AsSplitQuery();
-        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (statusFilters.HasValue)
         {
             if (statusFilters.FilterType == DataFilterTypes.Include)
@@ -98,14 +95,13 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
 
     }
 
-    public TaskExecutionInstanceSpecification(
+    public TaskExecutionInstanceListSpecification(
         DataFilterCollection<TaskExecutionStatus> statusFilters,
         bool includeChildTasks,
         bool includeNodeInfo = false
     )
     {
         Query.AsSplitQuery();
-        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (statusFilters.HasValue)
         {
             if (statusFilters.FilterType == DataFilterTypes.Include)
@@ -119,7 +115,7 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         }
     }
 
-    public TaskExecutionInstanceSpecification(
+    public TaskExecutionInstanceListSpecification(
         DataFilterCollection<TaskExecutionStatus> statusFilters,
         DataFilterCollection<string> nodeIdFilters,
         DataFilterCollection<string> taskDefinitionIdFilters,
@@ -127,7 +123,6 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
         bool includeNodeInfo = false)
     {
         Query.AsSplitQuery();
-        Query.Include(x => x.NodeInfo, includeNodeInfo);
         if (statusFilters.HasValue)
         {
             if (statusFilters.FilterType == DataFilterTypes.Include)
@@ -162,17 +157,16 @@ public class TaskExecutionInstanceSpecification : Specification<TaskExecutionIns
 
     }
 
-    public TaskExecutionInstanceSpecification(
+    public TaskExecutionInstanceListSpecification(
         DateTime dateTime,
         bool includeNodeInfo = false
 )
     {
         Query.AsSplitQuery();
-        Query.Include(x => x.NodeInfo, includeNodeInfo);
         Query.Where(x => x.FireTimeUtc < dateTime && x.LogEntriesSaveCount > 0);
     }
 
-    public TaskExecutionInstanceSpecification(
+    public TaskExecutionInstanceListSpecification(
         DataFilterCollection<string> taskExecutionInstanceIdFilters,
         bool includeNodeInfo = false)
         : this(

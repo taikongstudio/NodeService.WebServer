@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications
 {
-    public class TaskFlowTemplateSpecification : Specification<TaskFlowTemplateModel>
+    public class TaskFlowTemplateSpecification : SelectSpecification<TaskFlowTemplateModel, string>
     {
         public TaskFlowTemplateSpecification(DataFilterCollection<string> idFilters)
         {

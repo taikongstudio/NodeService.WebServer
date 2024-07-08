@@ -550,13 +550,13 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             }
     }
 
-    static IEnumerable<ModelBase> FindResults(
+    static IEnumerable<RecordBase> FindResults(
         IEnumerable<object> items,
         IEnumerable<string> idList)
     {
         foreach (var item in items)
         {
-            if (item is not ModelBase model) continue;
+            if (item is not RecordBase model) continue;
             foreach (var id in idList)
             {
                 if (model.Id == id)
@@ -657,7 +657,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         {
             using var configurationRepo = repoFactory.CreateRepository();
             listQueryResult = await configurationRepo.PaginationQueryAsync(
-                new CommonConfigurationSpecification<T>(queryParameters.Keywords, queryParameters.SortDescriptions),
+                new ConfigurationSelectSpecification<T, string>(queryParameters.Keywords, queryParameters.SortDescriptions),
                 queryParameters.PageSize,
                 queryParameters.PageIndex);
         }
@@ -669,7 +669,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             {
                 using var repo = repoFactory.CreateRepository();
                 listQueryResult = await repo.PaginationQueryAsync(
-                    new CommonConfigurationSpecification<T>(
+                    new ConfigurationSelectSpecification<T, string>(
                         queryParameters.Keywords,
                         queryParameters.SortDescriptions),
                     queryParameters.PageSize,
@@ -690,7 +690,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
 
     async ValueTask<ListQueryResult<object>> QueryConfigurationVersionByQueryParametersAsync<T>(
     PaginationQueryParameters queryParameters)
-    where T : LightJsonBasedDataModel
+    where T : JsonBasedDataModel
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<ConfigurationVersionRecordModel>>();
         _logger.LogInformation($"{typeof(T).FullName}:{queryParameters}");
@@ -699,7 +699,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         {
             using var repo = repoFactory.CreateRepository();
             listQueryResult = await repo.PaginationQueryAsync(
-                new ConfigurationVersionSpecification<ConfigurationVersionRecordModel>(queryParameters.Keywords, queryParameters.SortDescriptions),
+                new ConfigurationVersionSelectSpecification<string>(queryParameters.Keywords, queryParameters.SortDescriptions),
                 queryParameters.PageSize,
                 queryParameters.PageIndex);
         }
@@ -711,7 +711,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             {
                 using var repo = repoFactory.CreateRepository();
                 listQueryResult = await repo.PaginationQueryAsync(
-                new ConfigurationVersionSpecification<ConfigurationVersionRecordModel>(queryParameters.Keywords, queryParameters.SortDescriptions),
+                new ConfigurationVersionSelectSpecification<string>(queryParameters.Keywords, queryParameters.SortDescriptions),
                     queryParameters.PageSize,
                     queryParameters.PageIndex);
 
@@ -734,7 +734,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
         using var repo = repoFactory.CreateRepository();
         _logger.LogInformation($"{typeof(T).FullName}:{string.Join(",", idList)}");
-        var result = await repo.ListAsync(new CommonConfigurationSpecification<T>(DataFilterCollection<string>.Includes(idList)));
+        var result = await repo.ListAsync(new ListSpecification<T>(DataFilterCollection<string>.Includes(idList)));
         ListQueryResult<object> queryResult = default;
         if (result != null)
             queryResult = new ListQueryResult<object>(
@@ -848,7 +848,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             var configurationId = parameters.ConfigurationId;
             var targetVersion = parameters.TargetVersion;
             using var configVersionRepo = _configVersionRepoFactory.CreateRepository();
-            var config = await configVersionRepo.FirstOrDefaultAsync(new ConfigurationVersionSpecification<ConfigurationVersionRecordModel>(
+            var config = await configVersionRepo.FirstOrDefaultAsync(new ConfigurationVersionSelectSpecification<ConfigurationVersionRecordModel>(
                 parameters.ConfigurationId,
                 parameters.TargetVersion));
             if (config == null)

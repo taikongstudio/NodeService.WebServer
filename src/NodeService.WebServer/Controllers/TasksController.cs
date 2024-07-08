@@ -74,7 +74,7 @@ public class TasksController : Controller
         try
         {
             using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
-            var queryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
+            var queryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(new TaskExecutionInstanceListSpecification(
                     queryParameters.Keywords,
                     queryParameters.Status,
                     queryParameters.NodeIdList,
@@ -88,6 +88,26 @@ public class TasksController : Controller
                 queryParameters.PageSize,
                 queryParameters.PageIndex
             );
+            if (queryParameters.IncludeNodeInfo)
+            {
+                using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+                var idFilterList = queryResult.Items.Select(static x => x.NodeInfoId);
+                var nodeInfoList = await nodeInfoRepo.ListAsync(
+                    new NodeInfoSpecification(DataFilterCollection<string>.Includes(idFilterList)),
+                    cancellationToken);
+                foreach (var nodeInfo in nodeInfoList)
+                {
+                    foreach (var taskExecutionInstance in queryResult.Items)
+                    {
+                        if (taskExecutionInstance.NodeInfoId == nodeInfo.Id)
+                        {
+                            taskExecutionInstance.NodeInfo = nodeInfo;
+                            break;
+                        }
+                    }
+                }
+            }
+
             apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
@@ -110,7 +130,7 @@ public class TasksController : Controller
         try
         {
             using var repo = _taskActivationRepositoryFactory.CreateRepository();
-            var queryResult = await repo.PaginationQueryAsync(new TaskActivationRecordSpecification(
+            var queryResult = await repo.PaginationQueryAsync(new TaskActivationRecordSelectSpecification(
                     queryParameters.Keywords,
                     queryParameters.Status,
                     queryParameters.BeginDateTime,

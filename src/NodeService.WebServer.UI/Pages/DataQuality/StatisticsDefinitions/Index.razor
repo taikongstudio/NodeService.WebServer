@@ -99,7 +99,9 @@
         <ColumnDefinitions>
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="脚本" Ellipsis Sortable="true" Property="c => c.Value.Scripts"></PropertyColumn>
+            <PropertyColumn Title="创建时间" Ellipsis Sortable="true" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="修改时间" Ellipsis Sortable="true" Property="c => c.ModifiedDateTime"></PropertyColumn>
+            <PropertyColumn Title="统计脚本" Ellipsis Sortable="true" Property="c => c.Value.Scripts"></PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>

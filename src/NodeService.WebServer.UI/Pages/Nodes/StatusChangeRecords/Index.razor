@@ -64,7 +64,7 @@
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="节点标志" Ellipsis Sortable Property="c => c.NodeId"></PropertyColumn>
             <PropertyColumn Title="节点名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="时间" Sortable Property="c => c.DateTime" DefaultSortOrder="SortDirection.Descending"></PropertyColumn>
+            <PropertyColumn Title="时间" Sortable Property="c => c.CreationDateTime" DefaultSortOrder="SortDirection.Descending"></PropertyColumn>
             <PropertyColumn Title="消息" Sortable="true" Property="c => c.Message"></PropertyColumn>
         </ColumnDefinitions>
     </Table>
@@ -85,8 +85,8 @@
 
     protected override void OnInitialized()
     {
-        BeginDateTime = DateTime.Today.Date;
-        EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        BeginDateTime = DateTime.Today.Date.AddDays(-7);
+        EndDateTime = DateTime.Today.Date.AddDays(1).AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
 
@@ -96,7 +96,7 @@
         _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
         _dataSource.QueryParameters.EndDateTime = EndDateTime;
         _dataSource.ExceptionHandler = OnExepction;
-        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(NodeStatusChangeRecordModel.DateTime), "desc"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(NodeStatusChangeRecordModel.CreationDateTime), "desc"));
         base.OnInitialized();
     }
 

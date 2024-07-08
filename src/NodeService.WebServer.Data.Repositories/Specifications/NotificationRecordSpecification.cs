@@ -2,7 +2,7 @@
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class NotificationRecordSpecification : Specification<NotificationRecordModel>
+public class NotificationRecordSpecification : ListSpecification<NotificationRecordModel>
 {
     public NotificationRecordSpecification(
         string? keywords,

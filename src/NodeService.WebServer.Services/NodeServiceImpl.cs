@@ -72,7 +72,7 @@ public class NodeServiceImpl : NodeServiceBase
         {
             nodeInfo = NodeInfoModel.Create(nodeId, nodeName, NodeDeviceType.Computer);
             var nodeProfile =
-                await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileSpecification(nodeName), cancellationToken);
+                await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileListSpecification(nodeName), cancellationToken);
             if (nodeProfile != null)
             {
                 var oldNodeInfo = await nodeInfoRepo.GetByIdAsync(nodeProfile.NodeInfoId, cancellationToken);

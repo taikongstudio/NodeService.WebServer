@@ -94,7 +94,7 @@ public class TaskLogPersistenceService : BackgroundService
             while (!cancellationToken.IsCancellationRequested)
             {
                 var queryResult = await repoFactory.PaginationQueryAsync(
-                     new TaskExecutionInstanceSpecification(DateTime.UtcNow.AddDays(-14)),
+                     new TaskExecutionInstanceListSpecification(DateTime.UtcNow.AddDays(-14)),
                      new PaginationInfo(pageIndex, pageSize),
                      cancellationToken);
                 if (!queryResult.HasValue)

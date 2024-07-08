@@ -1,4 +1,5 @@
 ﻿using NodeService.Infrastructure.Data;
+using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 
 namespace NodeService.WebServer.Controllers;
@@ -55,7 +56,7 @@ public partial class NodesController
             {
                 queryParameters.NodeIdList = [nodeId];
                 using var repo = _taskExecutionInstanceRepoFactory.CreateRepository();
-                var queryResult = await repo.PaginationQueryAsync(new TaskExecutionInstanceSpecification(
+                var queryResult = await repo.PaginationQueryAsync(new TaskExecutionInstanceListSpecification(
                         queryParameters.Keywords,
                         queryParameters.Status,
                         queryParameters.NodeIdList,

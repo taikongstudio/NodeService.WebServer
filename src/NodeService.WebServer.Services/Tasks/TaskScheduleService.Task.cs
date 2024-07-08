@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using System;
 using System.Collections.Generic;
@@ -91,8 +92,7 @@ namespace NodeService.WebServer.Services.Tasks
             try
             {
                 using var repository = _taskDefinitionRepositoryFactory.CreateRepository();
-                var taskDefinitions =
-                    await repository.ListAsync(new TaskDefinitionSpecification(true, TaskTriggerType.Schedule));
+                var taskDefinitions = await repository.ListAsync(new ListSpecification<TaskDefinitionModel>(), cancellationToken);
                 taskDefinitions = taskDefinitions.Where(x => x.IsEnabled && x.TriggerType == TaskTriggerType.Schedule)
                     .ToList();
                 foreach (var taskDefinition in taskDefinitions)

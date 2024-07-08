@@ -116,11 +116,6 @@ public partial class ApplicationDbContext
     {
         modelBuilder.Entity<TaskExecutionInstanceModel>()
             .HasKey(nameof(TaskExecutionInstanceModel.Id));
-
-        modelBuilder.Entity<TaskExecutionInstanceModel>()
-            .Navigation(x => x.NodeInfo)
-            .AutoInclude(false);
-
     }
 
     private void SqlServer_BuildNodePropertySnapshotModel(ModelBuilder modelBuilder)

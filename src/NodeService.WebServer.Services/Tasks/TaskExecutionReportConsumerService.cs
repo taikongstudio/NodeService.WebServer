@@ -220,7 +220,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     private async Task ProcessExipredTasksAsync(CancellationToken cancellationToken = default)
     {
-        //await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
+        await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
         while (!cancellationToken.IsCancellationRequested)
         {
             await ProcessExpiredTaskExecutionInstanceAsync(cancellationToken);
@@ -278,7 +278,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         var taskExecutionInstanceIdList = Filter(messageGroups.Select(x => x.Key).Distinct()).ToArray();
         var taskExecutionInstanceIdFilters = DataFilterCollection<string>.Includes(taskExecutionInstanceIdList);
         var taskExecutionInstanceList = await taskExecutionInstanceRepo.ListAsync(
-                                                                            new TaskExecutionInstanceSpecification(taskExecutionInstanceIdFilters),
+                                                                            new TaskExecutionInstanceListSpecification(taskExecutionInstanceIdFilters),
                                                                             cancellationToken);
 
         _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
@@ -292,7 +292,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
         var taskActivationRecordIdFilters = DataFilterCollection<string>.Includes(fireInstanceIdList);
         var taskActivationRecords = await taskActivationRecordRepo.ListAsync(
-                                                                    new TaskActivationRecordSpecification(taskActivationRecordIdFilters),
+                                                                    new ListSpecification<TaskActivationRecordModel>(taskActivationRecordIdFilters),
                                                                     cancellationToken);
         _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
 
@@ -881,7 +881,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             }
 
             var childTaskExectionInstances = await taskExecutionInstanceRepo.ListAsync(
-                new TaskExecutionInstanceSpecification(
+                new TaskExecutionInstanceListSpecification(
                     DataFilterCollection<TaskExecutionStatus>.Includes(
                     [
                         TaskExecutionStatus.Triggered,
@@ -915,7 +915,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             while (true)
             {
                 var listQueryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(
-                                            new TaskExecutionInstanceSpecification(
+                                            new TaskExecutionInstanceListSpecification(
                                                 DataFilterCollection<TaskExecutionStatus>.Includes(
                                                 [
                                                     TaskExecutionStatus.Triggered,

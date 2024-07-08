@@ -1,8 +1,8 @@
 ﻿namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class NodeProfileSpecification : Specification<NodeProfileModel>
+public class NodeProfileListSpecification : ListSpecification<NodeProfileModel>
 {
-    public NodeProfileSpecification(string name)
+    public NodeProfileListSpecification(string name)
     {
         Query.Where(x => x.Name == name);
         Query.OrderByDescending(x => x.ServerUpdateTimeUtc);

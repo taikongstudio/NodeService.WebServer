@@ -3,9 +3,9 @@ using NodeService.WebServer.Extensions;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class FileRecordSpecification : Specification<FileRecordModel>
+public class FileRecordListSpecification : Specification<FileRecordModel>
 {
-    public FileRecordSpecification(
+    public FileRecordListSpecification(
         string nodeId,
         string? category,
         string? keywords,
@@ -18,7 +18,7 @@ public class FileRecordSpecification : Specification<FileRecordModel>
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 
-    public FileRecordSpecification(
+    public FileRecordListSpecification(
         DataFilterCollection<string> nameFilters = default,
         IEnumerable<SortDescription>? sortDescriptions = null)
     {
@@ -33,7 +33,7 @@ public class FileRecordSpecification : Specification<FileRecordModel>
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 
-    public FileRecordSpecification(
+    public FileRecordListSpecification(
         string? category,
         FileRecordState state,
         DataFilterCollection<string> idFilters = default,

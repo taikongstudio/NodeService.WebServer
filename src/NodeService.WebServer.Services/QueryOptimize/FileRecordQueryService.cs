@@ -79,7 +79,7 @@ public class FileRecordQueryService : BackgroundService
         {
             var queryParameters = argument.QueryParameters;
             queryResult = await repo.PaginationQueryAsync(
-                new FileRecordSpecification(
+                new FileRecordListSpecification(
                     queryParameters.Category,
                     queryParameters.State,
                     DataFilterCollection<string>.Includes(queryParameters.NodeIdList),

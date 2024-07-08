@@ -3,7 +3,7 @@ using NodeService.WebServer.Extensions;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class NodeInfoSpecification : Specification<NodeInfoModel>
+public class NodeInfoSpecification : ListSpecification<NodeInfoModel>
 {
     private static string PathSelector(string name)
     {
@@ -15,7 +15,13 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
     }
 
     public NodeInfoSpecification(DataFilterCollection<string> keyFilters = default)
-        : this(AreaTags.Any, NodeStatus.All, NodeDeviceType.Computer, keyFilters, default, null)
+        : this(
+              AreaTags.Any,
+              NodeStatus.All,
+              NodeDeviceType.Computer,
+              keyFilters,
+              default,
+              null)
     {
 
     }
@@ -38,6 +44,8 @@ public class NodeInfoSpecification : Specification<NodeInfoModel>
         NodeDeviceType deviceType,
         IEnumerable<SortDescription>? sortDescriptions)
     {
+
+
         Query.AsSplitQuery();
         if (deviceType != NodeDeviceType.All) Query.Where(x => x.DeviceType == deviceType);
         Query.Where(x => !x.Deleted);

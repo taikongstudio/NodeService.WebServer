@@ -1,15 +1,10 @@
 ﻿using NodeService.WebServer.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications
 {
-    public class TaskActivationRecordSpecification : Specification<TaskActivationRecordModel>
+    public class TaskActivationRecordSelectSpecification : SelectSpecification<TaskActivationRecordModel, string>
     {
-        public TaskActivationRecordSpecification(
+        public TaskActivationRecordSelectSpecification(
             string? keywords,
             TaskExecutionStatus status,
             DateTime? startTime,
@@ -18,6 +13,8 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
             DataFilterCollection<string> taskDefinitionFilters = default,
             IEnumerable<SortDescription>? sortDescriptions = null)
         {
+
+            Query.AsSplitQuery();
             if (!string.IsNullOrEmpty(keywords))
             {
                 Query.Where(x => x.Name.Contains(keywords));
@@ -67,17 +64,17 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
             }
         }
 
-        public TaskActivationRecordSpecification(DataFilterCollection<string> idFilters)
+        public TaskActivationRecordSelectSpecification(DataFilterCollection<string> idFilters)
         {
             if (idFilters.HasValue)
             {
-                if (idFilters.FilterType== DataFilterTypes.Include)
+                if (idFilters.FilterType == DataFilterTypes.Include)
                 {
                     Query.Where(x => idFilters.Items.Contains(x.Id));
                 }
-                else if (idFilters.FilterType== DataFilterTypes.Exclude)
+                else if (idFilters.FilterType == DataFilterTypes.Exclude)
                 {
-                    Query.Where(x =>! idFilters.Items.Contains(x.Id));
+                    Query.Where(x => !idFilters.Items.Contains(x.Id));
                 }
             }
         }

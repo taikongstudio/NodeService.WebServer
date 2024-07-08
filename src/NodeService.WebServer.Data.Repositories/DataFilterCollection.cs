@@ -1,4 +1,4 @@
-﻿namespace NodeService.WebServer.Data.Repositories.Specifications;
+﻿namespace NodeService.WebServer.Data.Repositories;
 
 public enum DataFilterTypes
 {

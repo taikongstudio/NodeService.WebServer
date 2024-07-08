@@ -1,5 +1,6 @@
 ﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
+using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 
 namespace NodeService.WebServer.Controllers;
@@ -17,7 +18,7 @@ public partial class DataQualityController
         {
             using var recordRepo = _nodeStatisticsRecordRepoFactory.CreateRepository();
             var queryResult = await recordRepo.PaginationQueryAsync(
-                new DataQualityStatisticsSpecification(
+                new DataQualityStatisticsSelectSpecification<DataQualityNodeStatisticsRecordModel>(
                     queryParameters.BeginDateTime,
                     queryParameters.EndDateTime,
                     DataFilterCollection<string>.Includes(queryParameters.NodeIdList)),
@@ -48,7 +49,7 @@ public partial class DataQualityController
             using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
 
             var queryResult = await recordRepo.PaginationQueryAsync(
-                new DataQualityStatisticsSpecification(
+                new DataQualityStatisticsSelectSpecification<DataQualityNodeStatisticsRecordModel>(
                     queryParameters.BeginDateTime,
                     queryParameters.EndDateTime),
                 0, 0,

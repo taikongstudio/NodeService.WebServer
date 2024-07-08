@@ -96,14 +96,6 @@ public partial class ApplicationDbContext
     {
         modelBuilder.Entity<TaskExecutionInstanceModel>()
             .HasKey(nameof(TaskExecutionInstanceModel.Id));
-
-        modelBuilder.Entity<TaskExecutionInstanceModel>()
-            .Navigation(x => x.NodeInfo)
-            .AutoInclude();
-
-
-        modelBuilder.Entity<TaskExecutionInstanceModel>().Property(e => e.NodeInfo)
-            .Metadata.SetBeforeSaveBehavior(PropertySaveBehavior.Ignore);
     }
 
     private void MySql_BuildNodePropertySnapshotModel(ModelBuilder modelBuilder)

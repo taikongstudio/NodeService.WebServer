@@ -248,7 +248,7 @@ public class TaskLogHandler
                 var changesCount = await taskLogRepo.DbContext.Database.ExecuteSqlAsync(
                     sql,
                     cancellationToken);
-                taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, 0), cancellationToken);
+                taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, 0), cancellationToken);
                 if (taskInfoLog != null)
                 {
                     taskInfoLog.PageSize = 1 + Math.DivRem(taskInfoLog.ActualSize, PAGESIZE, out var result);
@@ -289,7 +289,7 @@ public class TaskLogHandler
         if (!_updatedTaskLogPageDictionary.TryGetValue(key, out var currentLogPage) || currentLogPage == null)
         {
             using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-            currentLogPage = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, taskInfoLog.PageSize), cancellationToken);
+            currentLogPage = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, taskInfoLog.PageSize), cancellationToken);
             if (currentLogPage != null)
             {
                 _updatedTaskLogPageDictionary.AddOrUpdate(key, currentLogPage, (key, oldValue) => currentLogPage);

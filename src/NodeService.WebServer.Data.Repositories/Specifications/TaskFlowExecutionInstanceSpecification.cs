@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications
 {
-    public class TaskFlowExecutionInstanceSpecification : Specification<TaskFlowExecutionInstanceModel>
+    public class TaskFlowExecutionInstanceSpecification : SelectSpecification<TaskFlowExecutionInstanceModel, string>
     {
         public TaskFlowExecutionInstanceSpecification(
             string keywords,

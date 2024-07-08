@@ -135,7 +135,6 @@ public partial class CommonConfigController : Controller
             await _batchQueue.SendAsync(op);
             var serviceResult = await op.WaitAsync(cancellationToken);
             var queryResult = serviceResult.Value.AsT1;
-            _memoryCache.Remove(model.MemoryCacheKey);
             if (queryResult.ChangesCount > 0)
             {
                 if (changesFunc != null)
@@ -264,7 +263,7 @@ public partial class CommonConfigController : Controller
     private async Task<PaginationResponse<T>> QueryConfigurationVersionListAsync<T>(
     PaginationQueryParameters queryParameters,
     CancellationToken cancellationToken = default)
-    where T : LightJsonBasedDataModel
+    where T : JsonBasedDataModel
     {
         var apiResponse = new PaginationResponse<T>();
 

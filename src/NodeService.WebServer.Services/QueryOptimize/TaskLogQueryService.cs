@@ -149,7 +149,7 @@ public class TaskLogQueryService : BackgroundService
             }
             var logFileName = $"{taskExecutionInstance.Name}.log";
 
-            var taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(serviceParameters.TaskId, 0), cancellationToken);
+            var taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(serviceParameters.TaskId, 0), cancellationToken);
             if (taskInfoLog == null)
             {
                 op.SetException(new Exception("Could not found task log"));
@@ -170,11 +170,15 @@ public class TaskLogQueryService : BackgroundService
                     var pageIndex = 1;
                     while (!op.CancellationToken.IsCancellationRequested)
                     {
-                        var result = await taskLogRepo.ListAsync(new TaskLogSpecification(taskId, pageIndex, 10), cancellationToken);
+                        var result = await taskLogRepo.ListAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, pageIndex, 10), cancellationToken);
                         if (result.Count == 0) break;
                         pageIndex++;
                         foreach (var taskLog in result)
                         {
+                            if (taskLog == null)
+                            {
+                                continue;
+                            }
                             foreach (var taskLogEntry in taskLog.Value.LogEntries)
                             {
                                 streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
@@ -186,7 +190,7 @@ public class TaskLogQueryService : BackgroundService
                 }
                 else
                 {
-                    var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSpecification(taskId, serviceParameters.QueryParameters.PageIndex), cancellationToken);
+                    var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, serviceParameters.QueryParameters.PageIndex), cancellationToken);
 
 
                     if (taskLog == null)

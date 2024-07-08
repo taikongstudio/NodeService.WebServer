@@ -2,9 +2,11 @@
 
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
-public class CommonConfigurationSpecification<T> : Specification<T> where T : JsonBasedDataModel
+public class ConfigurationSelectSpecification<TConfiguration, TProjection> : SelectSpecification<TConfiguration, TProjection>
+    where TConfiguration : JsonBasedDataModel
+    where TProjection : class
 {
-    public CommonConfigurationSpecification(
+    public ConfigurationSelectSpecification(
         string? keywords,
         IEnumerable<SortDescription>? sortDescriptions = null)
     {
@@ -12,7 +14,7 @@ public class CommonConfigurationSpecification<T> : Specification<T> where T : Js
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
 
-    public CommonConfigurationSpecification(
+    public ConfigurationSelectSpecification(
         DataFilterCollection<string> idFilters)
     {
         if (idFilters.HasValue)

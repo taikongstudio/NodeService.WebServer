@@ -103,7 +103,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
         try
         {
             var modelFromRepo = await repo.FirstOrDefaultAsync(
-                new FileRecordSpecification(
+                new FileRecordListSpecification(
                     operation.Argument.Id,
                     null,
                     operation.Argument.Name),

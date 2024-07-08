@@ -247,7 +247,7 @@ public class DataQualityStatisticsService : BackgroundService
     {
         var key = $"{nodeInfo.Id}-{dateTime:yyyyMMdd}";
         var report = await statisticsRecordRepo.FirstOrDefaultAsync(
-            new DataQualityStatisticsSpecification(key, dateTime),
+            new DataQualityStatisticsSelectSpecification<DataQualityNodeStatisticsRecordModel>(key, dateTime),
             cancellationToken);
         if (report == null)
         {

@@ -54,19 +54,19 @@ public class EfRepository<T> :
         return list;
     }
 
-    public override Task<List<T>> ListAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
+    public override async Task<List<T>> ListAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
-        var list = base.ListAsync(specification, cancellationToken);
+        var list = await base.ListAsync(specification, cancellationToken);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return list;
     }
 
-    public override Task<List<TResult>> ListAsync<TResult>(ISpecification<T, TResult> specification, CancellationToken cancellationToken = default)
+    public override async Task<List<TResult>> ListAsync<TResult>(ISpecification<T, TResult> specification, CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
-        var list = base.ListAsync(specification, cancellationToken);
+        var list = await base.ListAsync(specification, cancellationToken);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return list;
@@ -81,46 +81,46 @@ public class EfRepository<T> :
         return item;
     }
 
-    public override Task<int> CountAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
+    public override async Task<int> CountAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
-        var value = base.CountAsync(specification, cancellationToken);
+        var value = await base.CountAsync(specification, cancellationToken);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return value;
     }
 
-    public override Task<T?> FirstOrDefaultAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
+    public override async Task<T?> FirstOrDefaultAsync(ISpecification<T> specification, CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
-        var item = base.FirstOrDefaultAsync(specification, cancellationToken);
+        var item = await base.FirstOrDefaultAsync(specification, cancellationToken);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return item;
     }
 
-    public override Task<TResult?> FirstOrDefaultAsync<TResult>(ISpecification<T, TResult> specification, CancellationToken cancellationToken = default) where TResult : default
+    public override async Task<TResult?> FirstOrDefaultAsync<TResult>(ISpecification<T, TResult> specification, CancellationToken cancellationToken = default) where TResult : default
     {
         _stopwatch.Restart();
-        var item = base.FirstOrDefaultAsync(specification, cancellationToken);
+        var item = await base.FirstOrDefaultAsync(specification, cancellationToken);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return item;
     }
 
-    public override Task<T?> SingleOrDefaultAsync(ISingleResultSpecification<T> specification, CancellationToken cancellationToken = default)
+    public override async Task<T?> SingleOrDefaultAsync(ISingleResultSpecification<T> specification, CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
-        var item = base.SingleOrDefaultAsync(specification, cancellationToken);
+        var item = await base.SingleOrDefaultAsync(specification, cancellationToken);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return item;
     }
 
-    public override Task<TResult?> SingleOrDefaultAsync<TResult>(ISingleResultSpecification<T, TResult> specification, CancellationToken cancellationToken = default) where TResult : default
+    public override async Task<TResult?> SingleOrDefaultAsync<TResult>(ISingleResultSpecification<T, TResult> specification, CancellationToken cancellationToken = default) where TResult : default
     {
         _stopwatch.Restart();
-        var item = base.SingleOrDefaultAsync(specification, cancellationToken);
+        var item = await base.SingleOrDefaultAsync(specification, cancellationToken);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return item;

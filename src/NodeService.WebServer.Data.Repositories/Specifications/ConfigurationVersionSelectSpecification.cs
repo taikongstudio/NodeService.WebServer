@@ -7,9 +7,10 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications
 {
-    public class ConfigurationVersionSpecification<T> : Specification<T> where T : ConfigurationVersionRecordModel
+    public class ConfigurationVersionSelectSpecification<TProjection> : SelectSpecification<ConfigurationVersionRecordModel, TProjection>
+        where TProjection : class
     {
-        public ConfigurationVersionSpecification(string id, IEnumerable<SortDescription> sortDescriptions = null)
+        public ConfigurationVersionSelectSpecification(string id, IEnumerable<SortDescription>? sortDescriptions = null)
         {
             Query.Where(x => x.ConfigurationId == id);
             if (sortDescriptions != null && sortDescriptions.Any())
@@ -18,7 +19,7 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
             }
         }
 
-        public ConfigurationVersionSpecification(string id, int version)
+        public ConfigurationVersionSelectSpecification(string id, int version)
         {
             Query.Where(x => x.ConfigurationId == id && x.Version == version);
         }

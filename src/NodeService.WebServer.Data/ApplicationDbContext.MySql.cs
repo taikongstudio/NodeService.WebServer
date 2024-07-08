@@ -17,7 +17,7 @@ public partial class ApplicationDbContext
         MySql_BuildFileRecordModel(modelBuilder);
         Mysql_BuildNodeStatisticsRecordModel(modelBuilder);
         MySql_BuildNotificationRecordModel(modelBuilder);
-        MySql_BuildJobFireConfigurationModel(modelBuilder);
+        MySql_BuildTaskActivationRecordModel(modelBuilder);
         MySql_BuildClientUpdateCounterModel(modelBuilder);
     }
 
@@ -61,7 +61,7 @@ public partial class ApplicationDbContext
         });
     }
 
-    private void MySql_BuildJobFireConfigurationModel(ModelBuilder modelBuilder)
+    private void MySql_BuildTaskActivationRecordModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<TaskActivationRecordModel>(entityBuilder =>
         {

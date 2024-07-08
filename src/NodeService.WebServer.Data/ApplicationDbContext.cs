@@ -92,7 +92,7 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<FileSystemWatchConfigModel> FileSystemWatchConfigurationDbSet { get; set; }
 
-    public DbSet<TaskLogModel> TaskLogDbSet { get; set; }
+    //public DbSet<TaskLogModel> TaskLogDbSet { get; set; }
 
     public DbSet<TaskLogModel> TaskLogStorageDbSet { get; set; }
 

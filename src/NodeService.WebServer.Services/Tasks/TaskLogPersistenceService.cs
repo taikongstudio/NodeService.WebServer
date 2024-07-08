@@ -116,7 +116,7 @@ public class TaskLogPersistenceService : BackgroundService
 
         async Task DeleteTaskLogAsync(TaskExecutionInstanceModel taskExecutionInstance, ApplicationDbContext applicationDbContext, CancellationToken cancellationToken = default)
         {
-            int deleteCount = await applicationDbContext.TaskLogDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
+            int deleteCount = await applicationDbContext.TaskLogStorageDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
             if (deleteCount > 0)
             {
                 await applicationDbContext.TaskExecutionInstanceDbSet.Where(x => x.Id == taskExecutionInstance.Id)

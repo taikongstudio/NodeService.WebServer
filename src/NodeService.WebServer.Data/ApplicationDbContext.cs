@@ -94,6 +94,8 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<TaskLogModel> TaskLogDbSet { get; set; }
 
+    public DbSet<TaskLogModel> TaskLogStorageDbSet { get; set; }
+
     public DbSet<ConfigurationVersionRecordModel> ConfigurationVersionRecordDbSet { get; set; }
 
     public DbSet<TaskFlowTemplateModel> TaskFlowTemplateDbSet { get; set; }

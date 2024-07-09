@@ -12,7 +12,7 @@ using System.Collections.Immutable;
 using System.Configuration;
 using System.Linq.Expressions;
 
-namespace NodeService.WebServer.Services.QueryOptimize;
+namespace NodeService.WebServer.Services.DataQueue;
 
 
 
@@ -76,40 +76,53 @@ public record struct ConfigurationVersionIdentityQueryParameters
     public string Id { get; private set; }
 }
 
-public record struct CommonConfigurationQueryQueueServiceParameters
+
+public record struct ConfigurationVersionSwitchParameters
 {
-    public CommonConfigurationQueryQueueServiceParameters(Type type, ConfigurationVersionPaginationQueryParameters queryParameters)
+    public ConfigurationVersionSwitchParameters(string configurationId, int targetVersion)
+    {
+        ConfigurationId = configurationId;
+        TargetVersion = targetVersion;
+    }
+
+    public string ConfigurationId { get; internal set; }
+    public int TargetVersion { get; internal set; }
+}
+
+public record struct ConfigurationQueryQueueServiceParameters
+{
+    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationVersionPaginationQueryParameters queryParameters)
     {
         Parameters = queryParameters;
         Type = type;
     }
 
-    public CommonConfigurationQueryQueueServiceParameters(Type type, ConfigurationPaginationQueryParameters queryParameters)
+    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationPaginationQueryParameters queryParameters)
     {
         Parameters = queryParameters;
         Type = type;
     }
 
-    public CommonConfigurationQueryQueueServiceParameters(Type type, ConfigurationIdentityListQueryParameters queryParameters)
+    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationIdentityListQueryParameters queryParameters)
     {
         Parameters = queryParameters;
         Type = type;
     }
 
 
-    public CommonConfigurationQueryQueueServiceParameters(Type type, ConfigurationAddUpdateDeleteParameters   parameters)
+    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationAddUpdateDeleteParameters parameters)
     {
         Parameters = parameters;
         Type = type;
     }
 
-    public CommonConfigurationQueryQueueServiceParameters(Type type, ConfigurationVersionSwitchParameters  parameters)
+    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationVersionSwitchParameters parameters)
     {
         Parameters = parameters;
         Type = type;
     }
 
-    public CommonConfigurationQueryQueueServiceParameters(Type type, ConfigurationVersionDeleteParameters  parameters)
+    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationVersionDeleteParameters parameters)
     {
         Parameters = parameters;
         Type = type;
@@ -128,19 +141,20 @@ public record struct CommonConfigurationQueryQueueServiceParameters
     public Type Type { get; private set; }
 }
 
-public record struct CommonConfigurationQueryQueueServiceResult
+
+public record struct ConfigurationQueryQueueServiceResult
 {
-    public CommonConfigurationQueryQueueServiceResult(ListQueryResult<object> result)
+    public ConfigurationQueryQueueServiceResult(ListQueryResult<object> result)
     {
         Value = result;
     }
 
-    public CommonConfigurationQueryQueueServiceResult(ConfigurationSaveChangesResult saveChangesResult)
+    public ConfigurationQueryQueueServiceResult(ConfigurationSaveChangesResult saveChangesResult)
     {
         Value = saveChangesResult;
     }
 
-    public CommonConfigurationQueryQueueServiceResult(ConfigurationVersionSaveChangesResult saveChangesResult)
+    public ConfigurationQueryQueueServiceResult(ConfigurationVersionSaveChangesResult saveChangesResult)
     {
         Value = saveChangesResult;
     }
@@ -149,22 +163,22 @@ public record struct CommonConfigurationQueryQueueServiceResult
 }
 
 
-public class CommonConfigurationQueryQueueService : BackgroundService
+public class ConfigurationDataQueueService : BackgroundService
 {
-    readonly BatchQueue<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> _batchQueue;
+    readonly BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> _batchQueue;
 
     readonly IServiceProvider _serviceProvider;
     readonly IMemoryCache _memoryCache;
     readonly ApplicationRepositoryFactory<ConfigurationVersionRecordModel> _configVersionRepoFactory;
-    readonly ILogger<CommonConfigurationQueryQueueService> _logger;
+    readonly ILogger<ConfigurationDataQueueService> _logger;
     readonly ExceptionCounter _exceptionCounter;
     readonly ConcurrentDictionary<string, Delegate> _funcDict;
 
-    public CommonConfigurationQueryQueueService(
-        ILogger<CommonConfigurationQueryQueueService> logger,
+    public ConfigurationDataQueueService(
+        ILogger<ConfigurationDataQueueService> logger,
         ExceptionCounter exceptionCounter,
         IServiceProvider serviceProvider,
-        BatchQueue<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> batchQueue,
+        BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> batchQueue,
         IMemoryCache memoryCache,
         ApplicationRepositoryFactory<ConfigurationVersionRecordModel> configVersionRepoFactory
     )
@@ -232,7 +246,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         }
     }
 
-    async Task ProcessDeleteConfigurationVersionAsync(ImmutableArray<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> array)
+    async Task ProcessDeleteConfigurationVersionAsync(ImmutableArray<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> array)
     {
         foreach (var batchQueueOperationGroup in array
              .Where(static x => x != null && x.Argument.Parameters.Index == 6)
@@ -257,12 +271,13 @@ public class CommonConfigurationQueryQueueService : BackgroundService
                 var result = await task;
                 foreach (var operation in batchQueueOperationGroup)
                 {
-                    operation.SetResult(new CommonConfigurationQueryQueueServiceResult(result));
+                    operation.SetResult(new ConfigurationQueryQueueServiceResult(result));
                 }
             }
             catch (Exception ex)
             {
-                foreach (var operation in batchQueueOperationGroup) {
+                foreach (var operation in batchQueueOperationGroup)
+                {
                     operation.SetException(ex);
                 }
                 _exceptionCounter.AddOrUpdate(ex);
@@ -271,7 +286,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         }
     }
 
-    async Task ProcessSwitchConfigurationVersionAsync(ImmutableArray<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> array)
+    async Task ProcessSwitchConfigurationVersionAsync(ImmutableArray<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> array)
     {
         foreach (var batchQueueOperationGroup in array
                      .Where(static x => x != null && x.Argument.Parameters.Index == 5)
@@ -296,7 +311,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
                 var result = await task;
                 foreach (var operation in batchQueueOperationGroup)
                 {
-                    operation.SetResult(new CommonConfigurationQueryQueueServiceResult(result));
+                    operation.SetResult(new ConfigurationQueryQueueServiceResult(result));
                 }
             }
             catch (Exception ex)
@@ -311,7 +326,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         }
     }
 
-    async Task ProcessQueryConfigurationVersionByParameterAsync(ImmutableArray<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> array)
+    async Task ProcessQueryConfigurationVersionByParameterAsync(ImmutableArray<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> array)
     {
         foreach (var batchQueueOperationGroup in array
                      .Where(static x => x != null && x.Argument.Parameters.Index == 1)
@@ -337,7 +352,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
                 result = await task;
                 foreach (var operation in batchQueueOperationGroup)
                 {
-                    operation.SetResult(new CommonConfigurationQueryQueueServiceResult(result));
+                    operation.SetResult(new ConfigurationQueryQueueServiceResult(result));
                 }
             }
             catch (Exception ex)
@@ -349,8 +364,8 @@ public class CommonConfigurationQueryQueueService : BackgroundService
         }
     }
 
-    static IEnumerable<ImmutableArray<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>>>
-        GroupAdjacent(BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>[] array)
+    static IEnumerable<ImmutableArray<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>>>
+        GroupAdjacent(BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>[] array)
     {
         var eble = array.AsEnumerable();
         var etor = eble.GetEnumerator();
@@ -374,15 +389,15 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             yield return immutableArray;
         }
 
-        static bool Predicate(BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult> left,
-           BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult> right)
+        static bool Predicate(BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult> left,
+           BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult> right)
         {
             return left.Kind == right.Kind && left.Argument.Parameters.Index == right.Argument.Parameters.Index;
         }
     }
 
     async Task ProcessDeleteConfigurationAsync(
-        IEnumerable<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> array)
+        IEnumerable<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> array)
     {
         foreach (var operationGroup in array.Where(static x => x.Argument.Parameters.Index == 4)
                      .OrderByDescending(static x => x.Priority)
@@ -404,7 +419,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
 
                     var task = ((Func<object, ValueTask<ConfigurationSaveChangesResult>>)func).Invoke(operation.Argument.Parameters.AsT4.Value);
                     var saveChangesResult = await task;
-                    operation.SetResult(new CommonConfigurationQueryQueueServiceResult(saveChangesResult));
+                    operation.SetResult(new ConfigurationQueryQueueServiceResult(saveChangesResult));
                 }
 
             }
@@ -419,7 +434,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
     }
 
     async Task ProcessAddOrUpdateConfigurationAsync(
-    IEnumerable<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> array)
+    IEnumerable<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> array)
     {
         foreach (var operationGroup in array
                      .Where(x => x.Argument.Parameters.Index == 4)
@@ -442,7 +457,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
 
                     var task = ((Func<object, ValueTask<ConfigurationSaveChangesResult>>)func).Invoke(operation.Argument.Parameters.AsT4.Value);
                     var saveChangesResult = await task;
-                    operation.SetResult(new CommonConfigurationQueryQueueServiceResult(saveChangesResult));
+                    operation.SetResult(new ConfigurationQueryQueueServiceResult(saveChangesResult));
                 }
 
             }
@@ -458,10 +473,10 @@ public class CommonConfigurationQueryQueueService : BackgroundService
 
 
     async Task ProcessQueryConfigurationByParameterAsync(
-      IEnumerable<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> array)
+      IEnumerable<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> array)
     {
         foreach (var batchQueueOperationGroup in array
-                     .Where(static x => x != null && x.Argument.Parameters.Index==0)
+                     .Where(static x => x != null && x.Argument.Parameters.Index == 0)
                      .OrderByDescending(static x => x.Priority)
                      .GroupBy(static x => x.Argument))
         {
@@ -482,7 +497,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
 
                 var task = ((Func<PaginationQueryParameters, ValueTask<ListQueryResult<object>>>)func).Invoke(argument.Parameters.AsT0.Parameters);
                 result = await task;
-                foreach (var operation in batchQueueOperationGroup) operation.SetResult(new CommonConfigurationQueryQueueServiceResult(result));
+                foreach (var operation in batchQueueOperationGroup) operation.SetResult(new ConfigurationQueryQueueServiceResult(result));
             }
             catch (Exception ex)
             {
@@ -494,7 +509,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
 
     }
 
-    async Task ProcessQueryConfigurationByIdAsync(IEnumerable<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> array)
+    async Task ProcessQueryConfigurationByIdAsync(IEnumerable<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> array)
     {
         foreach (var batchQueueOperationGroup in array
                      .Where(static x => x != null && x.Argument.Parameters.Index == 2)
@@ -526,7 +541,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
                         if (hasValue)
                         {
                             var results = FindResults(queryResult.Items, op.Argument.Parameters.AsT2.IdList).ToArray();
-                            op.SetResult(new CommonConfigurationQueryQueueServiceResult(
+                            op.SetResult(new ConfigurationQueryQueueServiceResult(
                                 new ListQueryResult<object>(
                                 results.Length,
                                 1,
@@ -629,7 +644,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
     CreateAddOrUpdateLambdaExpression(Type type)
     {
         var thisExpr = Expression.Constant(this);
-        var entityParameters = Expression.Parameter( typeof(object), "entity");
+        var entityParameters = Expression.Parameter(typeof(object), "entity");
 
         var callExpr = Expression.Call(thisExpr, nameof(AddOrUpdateConfigurationAsync), [type], entityParameters);
 
@@ -795,7 +810,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
                 .Where(x => x.ConfigurationId == entity.Id)
                 .OrderByDescending(x => x.Version)
                 .FirstOrDefaultAsync();
-            
+
             var json = JsonSerializer.Serialize(entity.JsonClone<T>());
             var version = configurationVersion == null ? 1 : configurationVersion.Version + 1;
             await applicationDbContext.ConfigurationVersionRecordDbSet
@@ -804,6 +819,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             await configVersionRepo.AddAsync(new ConfigurationVersionRecordModel()
             {
                 Id = Guid.NewGuid().ToString(),
+                Name = entity.Name,
                 ConfigurationId = entity.Id,
                 IsCurrent = true,
                 Version = version,
@@ -893,8 +909,8 @@ public class CommonConfigurationQueryQueueService : BackgroundService
     }
 
 
-     async ValueTask<ConfigurationVersionSaveChangesResult> DeleteConfigurationVersionAsync<T>(ConfigurationVersionDeleteParameters parameters)
-                where T : JsonBasedDataModel
+    async ValueTask<ConfigurationVersionSaveChangesResult> DeleteConfigurationVersionAsync<T>(ConfigurationVersionDeleteParameters parameters)
+               where T : JsonBasedDataModel
     {
         try
         {
@@ -903,7 +919,7 @@ public class CommonConfigurationQueryQueueService : BackgroundService
             return new ConfigurationVersionSaveChangesResult()
             {
                 ChangesCount = configVersionRepo.LastSaveChangesCount,
-                Entity = parameters.Value,
+                VersionRecord = parameters.Value,
                 Type = ConfigurationChangedType.Delete,
             };
         }

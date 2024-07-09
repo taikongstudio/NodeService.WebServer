@@ -198,7 +198,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             _nodeSettings = JsonSerializer.Deserialize<NodeSettings>(value as string);
     }
 
-    private async Task ProcessHeartBeatMessageAsync(
+    async ValueTask ProcessHeartBeatMessageAsync(
         IRepository<NodePropertySnapshotModel> nodePropertyRepo,
         NodeHeartBeatSessionMessage hearBeatMessage,
         NodeInfoModel  nodeInfo,
@@ -219,6 +219,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
             var nodeStatus = _nodeSessionService.GetNodeStatus(hearBeatMessage.NodeSessionId);
             nodeInfo.Status = nodeStatus;
+            nodeInfo.ModifiedDateTime = DateTime.UtcNow;
             var propsDict = _memoryCache.GetOrCreate<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id,
                     TimeSpan.FromHours(1));
             if (hearBeatResponse != null)

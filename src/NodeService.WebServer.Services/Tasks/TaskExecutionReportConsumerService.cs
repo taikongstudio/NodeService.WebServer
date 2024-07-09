@@ -291,7 +291,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                                                                  .Distinct()).ToArray();
 
         var taskActivationRecordIdFilters = DataFilterCollection<string>.Includes(fireInstanceIdList);
-        var taskActivationRecords = await taskActivationRecordRepo.ListAsync(
+        var taskActivationRecordList = await taskActivationRecordRepo.ListAsync(
                                                                     new ListSpecification<TaskActivationRecordModel>(taskActivationRecordIdFilters),
                                                                     cancellationToken);
         _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
@@ -304,7 +304,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 continue;
             }
             TaskActivationRecordModel? taskActivationRecord = null;
-            foreach (var item in taskActivationRecords)
+            foreach (var item in taskActivationRecordList)
             {
                 if (item.Id == fireInstanceId)
                 {
@@ -328,14 +328,17 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 messageGroups,
                 cancellationToken);
             await processContext.ProcessAsync(cancellationToken);
+            taskActivationRecord.ModifiedDateTime = DateTime.UtcNow;
         }
 
         await taskExecutionInstanceRepo.SaveChangesAsync(cancellationToken);
+        var taskExecutionInstanceUpdateCount = taskExecutionInstanceRepo.LastSaveChangesCount;
         await taskActivationRecordRepo.SaveChangesAsync(cancellationToken);
+        var taskActivationRecordUpdateCount = taskExecutionInstanceRepo.LastSaveChangesCount;
         _webServerCounter.TaskExecutionReportSaveTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
         _webServerCounter.TaskExecutionReportSaveChangesCount.Value += (uint)taskExecutionInstanceRepo.LastSaveChangesCount;
 
-        await ProcessTaskFlowActiveRecordListAsync(taskActivationRecords, cancellationToken);
+        await ProcessTaskFlowActiveRecordListAsync(taskActivationRecordList, cancellationToken);
 
     }
 
@@ -842,7 +845,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 TaskDefinitionId = childTaskDefinition.Id,
                 ScheduledFireTimeUtc = DateTime.UtcNow,
                 NodeList = taskDefinition.NodeList,
-                ParentTaskId = parentTaskInstance.Id
+                ParentTaskExecutionInstanceId = parentTaskInstance.Id
             }), cancellationToken);
             parentTaskInstance.ChildTaskScheduleCount++;
         }

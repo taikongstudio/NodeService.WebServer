@@ -13,7 +13,7 @@ using System.IO.Pipelines;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.QueryOptimize;
+namespace NodeService.WebServer.Services.DataQueue;
 
 public record struct TaskLogQueryServiceParameters
 {
@@ -21,11 +21,11 @@ public record struct TaskLogQueryServiceParameters
         string taskId,
         PaginationQueryParameters parameters)
     {
-        TaskId = taskId;
+        TaskExecutionInstanceId = taskId;
         QueryParameters = parameters;
     }
 
-    public string TaskId { get; private set; }
+    public string TaskExecutionInstanceId { get; private set; }
 
     public PaginationQueryParameters QueryParameters { get; private set; }
 
@@ -140,7 +140,7 @@ public class TaskLogQueryService : BackgroundService
 
             var serviceParameters = op.Argument;
             var queryParameters = serviceParameters.QueryParameters;
-            string taskId = serviceParameters.TaskId;
+            string taskId = serviceParameters.TaskExecutionInstanceId;
             var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
             if (taskExecutionInstance == null)
             {
@@ -149,7 +149,7 @@ public class TaskLogQueryService : BackgroundService
             }
             var logFileName = $"{taskExecutionInstance.Name}.log";
 
-            var taskInfoLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(serviceParameters.TaskId, 0), cancellationToken);
+            var taskInfoLog = await taskLogRepo.GetByIdAsync(serviceParameters.TaskExecutionInstanceId, cancellationToken);
             if (taskInfoLog == null)
             {
                 op.SetException(new Exception("Could not found task log"));
@@ -172,7 +172,7 @@ public class TaskLogQueryService : BackgroundService
                     {
                         var result = await taskLogRepo.ListAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, pageIndex, 10), cancellationToken);
                         if (result.Count == 0) break;
-                        pageIndex++;
+                        pageIndex += 10;
                         foreach (var taskLog in result)
                         {
                             if (taskLog == null)

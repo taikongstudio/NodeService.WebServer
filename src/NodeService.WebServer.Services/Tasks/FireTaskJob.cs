@@ -21,7 +21,7 @@ public class FireTaskJob : JobBase
         {
             Logger.LogInformation($"Task fire instance id:{context.FireInstanceId}");
 
-            var parentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string;
+            var parentTaskId = Properties[nameof(FireTaskParameters.ParentTaskExecutionInstanceId)] as string;
             var fireTaskParameters = new FireTaskParameters
             {
                 TaskDefinitionId = Properties[nameof(TaskDefinitionModel.Id)] as string,
@@ -30,7 +30,7 @@ public class FireTaskJob : JobBase
                 NextFireTimeUtc = context.NextFireTimeUtc,
                 PreviousFireTimeUtc = context.PreviousFireTimeUtc,
                 ScheduledFireTimeUtc = context.ScheduledFireTimeUtc,
-                ParentTaskId = Properties[nameof(FireTaskParameters.ParentTaskId)] as string
+                ParentTaskExecutionInstanceId = Properties[nameof(FireTaskParameters.ParentTaskExecutionInstanceId)] as string
             };
             var batchQueue = ServiceProvider.GetService<BatchQueue<TaskActivateServiceParameters>>();
             await batchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters));

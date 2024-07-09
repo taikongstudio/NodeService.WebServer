@@ -157,21 +157,24 @@
     {
         try
         {
-            var rsp = await ApiService.SwitchConfigurationVersionAsync<TItem>(new ConfigurationVersionSwitchParameters()
-                {
-                    ConfigurationId = entity.ConfigurationId,
-                    TargetVersion = entity.Version
-                });
+            var rsp = await ApiService.SwitchConfigurationVersionAsync<TItem>(entity.ConfigurationId, entity.Version);
             if (rsp.ErrorCode==0)
             {
                 await _dataSource.QueryAsync();
+            }else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "切换失败",
+                        Description = rsp.Message
+                    });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
                 {
-                    Message = "加载失败",
+                    Message = "错误",
                     Description = ex.ToString()
                 });
         }

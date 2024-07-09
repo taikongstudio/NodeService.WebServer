@@ -39,7 +39,7 @@ public record struct FireTaskParameters
     public DateTimeOffset? ScheduledFireTimeUtc { get; init; }
     public DateTimeOffset FireTimeUtc { get; init; }
 
-    public string? ParentTaskId { get; init; }
+    public string? ParentTaskExecutionInstanceId { get; init; }
 
     public List<StringEntry> NodeList { get; init; }
 
@@ -375,6 +375,8 @@ public class TaskActivateService : BackgroundService
 
                 var taskActivationRecord = new TaskActivationRecordModel
                 {
+                    CreationDateTime = DateTime.UtcNow,
+                    ModifiedDateTime = DateTime.UtcNow,
                     Id = fireTaskParameters.FireInstanceId,
                     TaskDefinitionId = taskDefinition.Id,
                     Name = taskDefinition.Name,
@@ -454,7 +456,7 @@ public class TaskActivateService : BackgroundService
             FireType = "Server",
             TriggerSource = parameters.TriggerSource,
             TaskDefinitionId = taskDefinition.Id,
-            ParentId = parameters.ParentTaskId,
+            ParentId = parameters.ParentTaskExecutionInstanceId,
             FireInstanceId = parameters.FireInstanceId
         };
         taskExecutionInstance.Status = TaskExecutionStatus.Pendding;

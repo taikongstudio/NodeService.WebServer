@@ -9,5 +9,6 @@
             Query.AsNoTrackingWithIdentityResolution();
             Query.Select(x => x as TResult);
         }
+
     }
 }

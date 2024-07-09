@@ -1,7 +1,7 @@
 ﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Services.QueryOptimize;
+using NodeService.WebServer.Services.DataQueue;
 
 namespace NodeService.WebServer.Controllers;
 

@@ -125,6 +125,10 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         nameof(TaskDefinitionModel.Id),
                         taskDefinition.Id
+                    },
+                    {
+                        nameof(FireTaskParameters.ParentTaskExecutionInstanceId),
+                        taskDefinition.Id
                     }
                 },
                 cancellationToken

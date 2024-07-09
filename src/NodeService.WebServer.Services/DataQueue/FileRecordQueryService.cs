@@ -7,7 +7,7 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 
-namespace NodeService.WebServer.Services.QueryOptimize;
+namespace NodeService.WebServer.Services.DataQueue;
 
 public class FileRecordQueryService : BackgroundService
 {

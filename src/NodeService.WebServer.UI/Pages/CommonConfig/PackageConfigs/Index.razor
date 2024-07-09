@@ -1,5 +1,5 @@
 @namespace NodeService.WebServer.UI.Pages.CommonConfig.PackageConfigs
-@page "/CommonConfig/Package"
+@page "/Configuration/Package"
 @inject NotificationService _notice
 @inject ApiService ApiService
 @inject ConfirmService _confirmService
@@ -149,7 +149,7 @@
                 <TabPane Tab="插件属性" Key="1">
                     <Space Size=@("small")>
                         <SpaceItem>
-                            <a target="_blank" href="@("/api/CommonConfig/Package/Download/" + context.Data.Id)">下载插件</a>
+                            <a target="_blank" href="@("/api/Configuration/Package/Download/" + context.Data.Id)">下载插件</a>
                         </SpaceItem>
                         <SpaceItem>
                             <Button Type="@ButtonType.Link" OnClick="() => OpenPackageConfigJsonStringDrawer(context.Data)">查看</Button>

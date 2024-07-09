@@ -1,10 +1,10 @@
-﻿using NodeService.WebServer.Services.QueryOptimize;
+﻿using NodeService.WebServer.Services.DataQueue;
 
 namespace NodeService.WebServer.Controllers;
 
-public partial class CommonConfigController
+public partial class ConfigurationController
 {
-    [HttpPost("/api/CommonConfig/TaskTypeDesc/AddOrUpdate")]
+    [HttpPost("/api/Configuration/TaskTypeDesc/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync(
         [FromBody] TaskTypeDescConfigModel model,
         CancellationToken cancellationToken)
@@ -12,7 +12,7 @@ public partial class CommonConfigController
         return AddOrUpdateConfigurationAsync(model, cancellationToken: cancellationToken);
     }
 
-    [HttpGet("/api/CommonConfig/TaskTypeDesc/List")]
+    [HttpGet("/api/Configuration/TaskTypeDesc/List")]
     public Task<PaginationResponse<TaskTypeDescConfigModel>> QueryTaskTypeDescConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
     {
@@ -20,33 +20,33 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/TaskTypeDesc/Remove")]
+    [HttpPost("/api/Configuration/TaskTypeDesc/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] TaskTypeDescConfigModel model, CancellationToken cancellationToken = default)
     {
         return DeleteConfigurationAsync(model, cancellationToken: cancellationToken);
     }
 
-    [HttpGet("/api/CommonConfig/TaskTypeDesc/{id}")]
+    [HttpGet("/api/Configuration/TaskTypeDesc/{id}")]
     public Task<ApiResponse<TaskTypeDescConfigModel>> QueryTaskTypeDescConfigAsync(string id, CancellationToken cancellationToken = default)
     {
         return QueryConfigurationAsync<TaskTypeDescConfigModel>(id, cancellationToken: cancellationToken);
     }
 
-    [HttpGet("/api/CommonConfig/TaskTypeDesc/VersionList")]
+    [HttpGet("/api/Configuration/TaskTypeDesc/VersionList")]
     public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryTaskTypeDescVersionListAsync(
     [FromQuery] PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
     {
         return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters, cancellationToken: cancellationToken);
     }
 
-    [HttpPost("/api/CommonConfig/TaskTypeDesc/SwitchVersion")]
+    [HttpPost("/api/Configuration/TaskTypeDesc/SwitchVersion")]
     public Task<ApiResponse> SwitchTaskTypeDescVersionAsync(
         [FromBody] ConfigurationVersionSwitchParameters parameters, CancellationToken cancellationToken = default)
     {
         return SwitchConfigurationVersionAsync<TaskTypeDescConfigModel>(parameters, cancellationToken: cancellationToken);
     }
 
-    [HttpPost("/api/CommonConfig/TaskTypeDesc/DeleteVersion")]
+    [HttpPost("/api/Configuration/TaskTypeDesc/DeleteVersion")]
     public Task<ApiResponse> DeleteTaskTypeDescVersionAsync(
     [FromBody] ConfigurationVersionRecordModel entity, CancellationToken cancellationToken = default)
     {

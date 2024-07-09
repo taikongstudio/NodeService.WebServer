@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.QueryOptimize
+namespace NodeService.WebServer.Services.DataQueue
 {
     public record struct PackageDownloadParameters
     {
@@ -68,7 +68,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
                     {
                         continue;
                     }
-                   await  DownloadPackageAsync(packageQueryGroup);
+                    await DownloadPackageAsync(packageQueryGroup);
 
                 }
             }
@@ -94,7 +94,7 @@ namespace NodeService.WebServer.Services.QueryOptimize
                     }
                     using var stream = new MemoryStream();
                     using var scope = _serviceProvider.CreateScope();
-                   using var virtualFileSystem =scope.ServiceProvider.GetService<IVirtualFileSystem>();
+                    using var virtualFileSystem = scope.ServiceProvider.GetService<IVirtualFileSystem>();
                     await virtualFileSystem.ConnectAsync();
                     if (await virtualFileSystem.DownloadStream(model.DownloadUrl, stream))
                     {

@@ -12,7 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.QueryOptimize;
+namespace NodeService.WebServer.Services.DataQueue;
 
 public class ClientUpdateBatchQueryParameters
 {
@@ -86,7 +86,7 @@ public class ClientUpdateQueueService : BackgroundService
                         _memoryCache.Set(key, true, TimeSpan.FromMinutes(10));
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(60*10-5), cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(60 * 10 - 5), cancellationToken);
                 }
             }
             catch (Exception ex)

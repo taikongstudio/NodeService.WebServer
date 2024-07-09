@@ -16,12 +16,12 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
+using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NetworkDevices;
 using NodeService.WebServer.Services.NodeFileSystem;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Notifications;
-using NodeService.WebServer.Services.QueryOptimize;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.Services.VirtualFileSystem;
 using NodeService.WebServer.UI.Services;
@@ -287,7 +287,7 @@ public class Program
         builder.Services.AddHostedService<DataQualityStatisticsService>();
         builder.Services.AddHostedService<DataQualityAlarmService>();
         builder.Services.AddHostedService<ClientUpdateQueueService>();
-        builder.Services.AddHostedService<CommonConfigurationQueryQueueService>();
+        builder.Services.AddHostedService<ConfigurationDataQueueService>();
         builder.Services.AddHostedService<TaskCancellationQueueService>();
         builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
         builder.Services.AddHostedService<NodeFileSystemWatchEventConsumerService>();
@@ -455,7 +455,7 @@ public class Program
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<FileRecordModel, bool>>(1024 * 2, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(
-            new BatchQueue<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>>(64,
+            new BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>>(64,
                 TimeSpan.FromMilliseconds(300)));
         builder.Services.AddSingleton(
             new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(64,

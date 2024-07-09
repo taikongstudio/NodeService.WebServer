@@ -17,7 +17,7 @@ public class ManagementController : Controller
     }
 
 
-    [HttpGet("/api/management/gennode")]
+    [HttpGet("/api/Test/GenNode")]
     public async Task<ApiResponse<int>> TestAsync()
     {
         var apiResponse = new ApiResponse<int>();
@@ -33,35 +33,35 @@ public class ManagementController : Controller
         return apiResponse;
     }
 
-    [HttpGet("/api/management/clearjobtypedesc")]
+    [HttpGet("/api/Test/Clearjobtypedesc")]
     public async Task<ApiResponse<int>> ClearJobTypeDescAsync()
     {
         var apiResponse = new ApiResponse<int>();
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-        dbContext.TaskDefinitionDbSet.RemoveRange(dbContext.TaskDefinitionDbSet.ToArray());
+        await dbContext.TaskDefinitionDbSet.ExecuteDeleteAsync();
         var changesCount = await dbContext.SaveChangesAsync();
         apiResponse.SetResult(changesCount);
         return apiResponse;
     }
 
-    [HttpGet("/api/management/genjobtypedesc")]
+    [HttpGet("/api/Test/GenTaskTypedesc")]
     public async Task<ApiResponse<int>> GenJobTypeDescAsync()
     {
         var apiResponse = new ApiResponse<int>();
 
         await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
-        var serviceOptionsTypes = typeof(JobOptionsBase)
+        var serviceOptionsTypes = typeof(TaskOptionsBase)
             .Assembly
             .GetTypes()
-            .Where(x => !x.IsAbstract && x.IsAssignableTo(typeof(JobOptionsBase)));
+            .Where(x => !x.IsAbstract && x.IsAssignableTo(typeof(TaskOptionsBase)));
 
         foreach (var type in serviceOptionsTypes)
         {
             var model = new TaskTypeDescConfigModel();
             model.Id = Guid.NewGuid().ToString();
             model.Name = type.Name.Replace("Options", string.Empty);
-            model.FullName = "NodeService.WindowsService.Services." + model.Name;
+            model.FullName = "NodeService.ServiceHost.Tasks." + model.Name;
             model.Description = type.Name;
             dbContext.TaskTypeDescConfigurationDbSet.Add(model);
             foreach (var propertyInfo in type.GetProperties())

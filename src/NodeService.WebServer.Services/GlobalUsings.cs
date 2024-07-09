@@ -21,4 +21,4 @@ global using System.Text.Json;
 global using System.Threading;
 global using System.Threading.Tasks;
 global using System.Threading.Tasks.Dataflow;
-global using NodeService.WebServer.Services.QueryOptimize;
+global using NodeService.WebServer.Services.DataQueue;

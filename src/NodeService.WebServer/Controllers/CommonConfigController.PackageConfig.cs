@@ -7,7 +7,7 @@ using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Services.QueryOptimize;
+using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.VirtualFileSystem;
 
 namespace NodeService.WebServer.Controllers;
@@ -17,9 +17,9 @@ public record class PackageConfigUploadModel : PackageConfigModel
     [NotMapped] [JsonIgnore] public IFormFile? File { get; set; }
 }
 
-public partial class CommonConfigController
+public partial class ConfigurationController
 {
-    [HttpGet("/api/CommonConfig/Package/List")]
+    [HttpGet("/api/Configuration/Package/List")]
     public Task<PaginationResponse<PackageConfigModel>> QueryPackageConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -27,8 +27,8 @@ public partial class CommonConfigController
         return QueryConfigurationListAsync<PackageConfigModel>(queryParameters, cancellationToken);
     }
 
-
     [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
+    [HttpGet("/api/Configuration/Package/Download/{packageId}")]
     public async Task<IActionResult> DownloadPackageAsync(
         string packageId,
         CancellationToken cancellationToken = default)
@@ -49,7 +49,7 @@ public partial class CommonConfigController
         return File(serviceResult.Contents, "application/octet-stream", packageId);
     }
 
-    [HttpPost("/api/CommonConfig/Package/AddOrUpdate")]
+    [HttpPost("/api/Configuration/Package/AddOrUpdate")]
     [DisableRequestSizeLimit]
     public async Task<ApiResponse> AddOrUpdatePackageAsync(
         [FromForm] PackageConfigUploadModel uploadPackage,
@@ -73,7 +73,7 @@ public partial class CommonConfigController
         return apiResponse;
     }
 
-    public async ValueTask<ApiResponse> UploadFileAsync(
+    async ValueTask<ApiResponse> UploadFileAsync(
         PackageConfigUploadModel uploadPackage,
         PackageConfigModel? packageConfig,
         CancellationToken cancellationToken = default)
@@ -137,7 +137,7 @@ public partial class CommonConfigController
         return apiResponse;
     }
 
-    [HttpPost("/api/CommonConfig/Package/Remove")]
+    [HttpPost("/api/Configuration/Package/Remove")]
     public Task<ApiResponse> DeletePackageConfigAsync(
         [FromBody] PackageConfigModel model,
         CancellationToken cancellationToken = default)
@@ -149,7 +149,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpGet("/api/CommonConfig/Package/{id}")]
+    [HttpGet("/api/Configuration/Package/{id}")]
     public Task<ApiResponse<PackageConfigModel>> QueryPackageConfigAsync(
         string id,
         CancellationToken cancellationToken = default)
@@ -159,7 +159,7 @@ public partial class CommonConfigController
             cancellationToken: cancellationToken);
     }
 
-    [HttpGet("/api/CommonConfig/Package/VersionList")]
+    [HttpGet("/api/Configuration/Package/VersionList")]
     public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryPackageConfigurationVersionListAsync(
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -169,7 +169,7 @@ public partial class CommonConfigController
             cancellationToken: cancellationToken);
     }
 
-    [HttpPost("/api/CommonConfig/Package/SwitchVersion")]
+    [HttpPost("/api/Configuration/Package/SwitchVersion")]
     public Task<ApiResponse> SwitchPackageConfigurationVersionAsync(
         [FromBody] ConfigurationVersionSwitchParameters parameters,
         CancellationToken cancellationToken = default)
@@ -180,7 +180,7 @@ public partial class CommonConfigController
             cancellationToken: cancellationToken);
     }
 
-    [HttpPost("/api/CommonConfig/Package/DeleteVersion")]
+    [HttpPost("/api/Configuration/Package/DeleteVersion")]
     public Task<ApiResponse> DeletePackageConfigurationVersionAsync(
         [FromBody] ConfigurationVersionRecordModel entity,
         CancellationToken cancellationToken = default)

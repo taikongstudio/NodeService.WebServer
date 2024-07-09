@@ -23,7 +23,7 @@ public class TaskLogPersistenceService : BackgroundService
     readonly IServiceProvider _serviceProvider;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceFactory;
-    readonly ConcurrentDictionary<int, TaskLogHandler> _taskLogHandlers;
+    readonly ConcurrentDictionary<int, TaskLogStorageHandler> _taskLogHandlers;
     readonly Timer _timer;
     IEnumerable<int> _keys = [];
 
@@ -44,7 +44,7 @@ public class TaskLogPersistenceService : BackgroundService
         _taskLogUnitBatchQueue = taskLogUnitBatchQueue;
         _webServerCounter = webServerCounter;
         _memoryCache = memoryCache;
-        _taskLogHandlers = new ConcurrentDictionary<int, TaskLogHandler>();
+        _taskLogHandlers = new ConcurrentDictionary<int, TaskLogStorageHandler>();
         _serviceProvider = serviceProvider;
         _timer = new Timer(OnTimer);
         _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
@@ -211,10 +211,10 @@ public class TaskLogPersistenceService : BackgroundService
         await handler.ProcessAsync(taskLogUnitGroup, cancellationToken);
     }
 
-    TaskLogHandler CreateTaskLogHandlerFactory(int id)
+    TaskLogStorageHandler CreateTaskLogHandlerFactory(int id)
     {
-        var taskLogHandler = new TaskLogHandler(
-            _serviceProvider.GetService<ILogger<TaskLogHandler>>(),
+        var taskLogHandler = new TaskLogStorageHandler(
+            _serviceProvider.GetService<ILogger<TaskLogStorageHandler>>(),
             _taskLogRepoFactory,
             _exceptionCounter)
         {

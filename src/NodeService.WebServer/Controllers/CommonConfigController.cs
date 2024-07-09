@@ -4,37 +4,37 @@ using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.QueryOptimize;
+using NodeService.WebServer.Services.DataQueue;
 using System.Threading;
 
 namespace NodeService.WebServer.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]
-public partial class CommonConfigController : Controller
+public partial class ConfigurationController : Controller
 {
     private readonly ExceptionCounter _exceptionCounter;
 
-    private readonly BatchQueue<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>>
+    private readonly BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>>
         _batchQueue;
 
     private readonly IAsyncQueue<ConfigurationChangedEvent> _eventQueue;
-    private readonly ILogger<CommonConfigController> _logger;
+    private readonly ILogger<ConfigurationController> _logger;
     private readonly IMemoryCache _memoryCache;
     private readonly INodeSessionService _nodeSessionService;
     private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
     private readonly IServiceProvider _serviceProvider;
     private readonly WebServerOptions _webServerOptions;
 
-    public CommonConfigController(
-        ILogger<CommonConfigController> logger,
+    public ConfigurationController(
+        ILogger<ConfigurationController> logger,
         IMemoryCache memoryCache,
         ExceptionCounter exceptionCounter,
         IOptionsSnapshot<WebServerOptions> optionSnapshot,
         IServiceProvider serviceProvider,
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationMessageQueue,
-        BatchQueue<BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>> batchQueue,
+        BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> batchQueue,
         IAsyncQueue<ConfigurationChangedEvent> eventQueue
     )
     {
@@ -60,11 +60,11 @@ public partial class CommonConfigController : Controller
         {
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
             ListQueryResult<T> result = default;
-            var paramters = new CommonConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationPaginationQueryParameters(queryParameters));
+            var paramters = new ConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationPaginationQueryParameters(queryParameters));
             var priority = queryParameters.QueryStrategy == QueryStrategy.QueryPreferred
                 ? BatchQueueOperationPriority.High
                 : BatchQueueOperationPriority.Normal;
-            var op = new BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>(
+            var op = new BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>(
                 paramters,
                 BatchQueueOperationKind.Query,
                 priority);
@@ -100,8 +100,8 @@ public partial class CommonConfigController : Controller
         try
         {
             _logger.LogInformation($"{typeof(T)}:{id}");
-            var paramters = new CommonConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationIdentityListQueryParameters([id]));
-            var op = new BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>(paramters,
+            var paramters = new ConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationIdentityListQueryParameters([id]));
+            var op = new BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>(paramters,
                 BatchQueueOperationKind.Query);
             await _batchQueue.SendAsync(op);
             var serviceResult = await op.WaitAsync(cancellationToken);
@@ -129,8 +129,8 @@ public partial class CommonConfigController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            var paramters = new CommonConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationAddUpdateDeleteParameters(model));
-            var op = new BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>(paramters,
+            var paramters = new ConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationAddUpdateDeleteParameters(model));
+            var op = new BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>(paramters,
                 BatchQueueOperationKind.Delete);
             await _batchQueue.SendAsync(op);
             var serviceResult = await op.WaitAsync(cancellationToken);
@@ -171,8 +171,8 @@ public partial class CommonConfigController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            var paramters = new CommonConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationAddUpdateDeleteParameters(model));
-            var op = new BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>(paramters,
+            var paramters = new ConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationAddUpdateDeleteParameters(model));
+            var op = new BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>(paramters,
                 BatchQueueOperationKind.AddOrUpdate);
             await _batchQueue.SendAsync(op);
             var serviceResult = await op.WaitAsync(cancellationToken);
@@ -213,8 +213,8 @@ public partial class CommonConfigController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            var paramters = new CommonConfigurationQueryQueueServiceParameters(typeof(T), parameters);
-            var op = new BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>(paramters,
+            var paramters = new ConfigurationQueryQueueServiceParameters(typeof(T), parameters);
+            var op = new BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>(paramters,
                 BatchQueueOperationKind.AddOrUpdate);
             await _batchQueue.SendAsync(op);
             var serviceResult = await op.WaitAsync(cancellationToken);
@@ -243,8 +243,8 @@ public partial class CommonConfigController : Controller
         try
         {
             var entity = parameters.Value;
-            var paramters = new CommonConfigurationQueryQueueServiceParameters(typeof(T), parameters);
-            var op = new BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>(paramters,
+            var paramters = new ConfigurationQueryQueueServiceParameters(typeof(T), parameters);
+            var op = new BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>(paramters,
                 BatchQueueOperationKind.Delete);
             await _batchQueue.SendAsync(op);
             var serviceResult = await op.WaitAsync(cancellationToken);
@@ -271,11 +271,11 @@ public partial class CommonConfigController : Controller
         {
             _logger.LogInformation($"{typeof(T)}:{queryParameters}");
             ListQueryResult<T> result = default;
-            var paramters = new CommonConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationVersionPaginationQueryParameters(queryParameters));
+            var paramters = new ConfigurationQueryQueueServiceParameters(typeof(T), new ConfigurationVersionPaginationQueryParameters(queryParameters));
             var priority = queryParameters.QueryStrategy == QueryStrategy.QueryPreferred
                 ? BatchQueueOperationPriority.High
                 : BatchQueueOperationPriority.Normal;
-            var op = new BatchQueueOperation<CommonConfigurationQueryQueueServiceParameters, CommonConfigurationQueryQueueServiceResult>(
+            var op = new BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>(
                 paramters,
                 BatchQueueOperationKind.Query,
                 priority);

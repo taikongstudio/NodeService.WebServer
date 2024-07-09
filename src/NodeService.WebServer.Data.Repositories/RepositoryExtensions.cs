@@ -5,7 +5,12 @@ namespace NodeService.WebServer.Data.Repositories;
 
 public static class RepositoryExtensions
 {
-    private static readonly ConcurrentDictionary<IEntityType, bool> _optimizeQueryEntityDict = new();
+    record struct OptimizeInfo
+    {
+        public bool OptimizeJsonColumnSort { get; init; }
+    }
+
+    private static readonly ConcurrentDictionary<IEntityType, OptimizeInfo> _optimizeQueryEntityDict = new();
 
     public static Task<ListQueryResult<T>> PaginationQueryAsync<T>(
         this IRepository<T> repository,
@@ -53,37 +58,40 @@ public static class RepositoryExtensions
         }
 
         List<T>? items = null;
-        var optimizeQuery = false;
+        OptimizeInfo optimizeInfo = default;
         var entityType = repository.DbContext.Set<T>().EntityType;
-        if (!_optimizeQueryEntityDict.TryGetValue(entityType, out optimizeQuery))
+        if (!_optimizeQueryEntityDict.TryGetValue(entityType, out optimizeInfo))
         {
             foreach (var property in entityType.GetProperties())
             {
                 if (property.GetColumnType() == "json")
                 {
-                    optimizeQuery = true;
-                    _optimizeQueryEntityDict.TryAdd(entityType, true);
+                    optimizeInfo = optimizeInfo with { OptimizeJsonColumnSort = true };
                     break;
                 }
             }
+            _optimizeQueryEntityDict.TryAdd(entityType, optimizeInfo);
         }
 
-        if (optimizeQuery)
+        if (optimizeInfo != default)
         {
 
-            if (typeof(T).IsAssignableTo(typeof(JsonBasedDataModel)))
+            if (optimizeInfo.OptimizeJsonColumnSort)
             {
                 if (specification is SelectSpecification<T, string> selectIdSpecification)
                 {
                     selectIdSpecification.Query.Select(x => x.Id);
                     var idList = await repository.ListAsync(selectIdSpecification, cancellationToken);
-                    if (idList == null)
+                    if (idList == null || idList.Count == 0)
                     {
                         items = [];
                     }
-                    items = await repository.ListAsync(
-                        new ListSpecification<T>(DataFilterCollection<string>.Includes(idList)),
-                        cancellationToken);
+                    else
+                    {
+                        items = await repository.ListAsync(
+                                            new ListSpecification<T>(DataFilterCollection<string>.Includes(idList)),
+                                            cancellationToken);
+                    }
                 }
             }
         }
@@ -91,8 +99,8 @@ public static class RepositoryExtensions
         if (items == null)
         {
             items = await repository.ListAsync(
-                             specification,
-                             cancellationToken);
+                         specification,
+                         cancellationToken);
         }
 
         return new ListQueryResult<T>(

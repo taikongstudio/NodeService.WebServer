@@ -3,16 +3,16 @@
 public class TaskLogSelectSpecification<TProjection> : SelectSpecification<TaskLogModel, TProjection>
     where TProjection : class
 {
-    public TaskLogSelectSpecification(string id, int pageIndex)
+
+    public TaskLogSelectSpecification(string id, int pageIndex = 0)
     {
-        var key = $"{id}_{pageIndex}";
-        Query.Where(x => x.Id == key && x.PageIndex == pageIndex);
+        Query.Where(x => x.TaskExecutionInstanceId == id && x.PageIndex == pageIndex);
         Query.OrderBy(x => x.PageIndex);
     }
 
-    public TaskLogSelectSpecification(string id, int pageIndex, int pageCount)
+    public TaskLogSelectSpecification(string id, int pageIndex, int count)
     {
-        Query.Where(x => x.Id.Contains(id) && x.PageIndex >= pageIndex && x.PageIndex < pageIndex + pageCount);
+        Query.Where(x => x.TaskExecutionInstanceId == id && x.PageIndex >= pageIndex && x.PageIndex < pageIndex + count);
         Query.OrderBy(x => x.PageIndex);
     }
 }

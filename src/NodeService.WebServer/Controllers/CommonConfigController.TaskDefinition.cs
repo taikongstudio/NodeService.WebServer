@@ -1,14 +1,14 @@
 ﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.DataModels;
-using NodeService.WebServer.Services.QueryOptimize;
+using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.Tasks;
 using System.Security.Cryptography;
 
 namespace NodeService.WebServer.Controllers;
 
-public partial class CommonConfigController
+public partial class ConfigurationController
 {
-    [HttpPost("/api/CommonConfig/TaskDefinition/AddOrUpdate")]
+    [HttpPost("/api/Configuration/TaskDefinition/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync(
         [FromBody] TaskDefinitionModel model,
         CancellationToken cancellationToken = default)
@@ -17,7 +17,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/TaskDefinition/{taskDefinitionId}/Invoke")]
+    [HttpPost("/api/Configuration/TaskDefinition/{taskDefinitionId}/Invoke")]
     public async Task<ApiResponse<InvokeTaskResult>> InvokeTaskAsync(
         string taskDefinitionId,
         [FromBody] InvokeTaskParameters invokeTaskParameters,
@@ -54,7 +54,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpGet("/api/CommonConfig/TaskDefinition/List")]
+    [HttpGet("/api/Configuration/TaskDefinition/List")]
     public Task<PaginationResponse<TaskDefinitionModel>> QueryTaskDefinitionListAsync(
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -62,7 +62,7 @@ public partial class CommonConfigController
         return QueryConfigurationListAsync<TaskDefinitionModel>(queryParameters, cancellationToken);
     }
 
-    [HttpGet("/api/CommonConfig/TaskDefinition/{id}")]
+    [HttpGet("/api/Configuration/TaskDefinition/{id}")]
     public Task<ApiResponse<TaskDefinitionModel>> QueryTaskDefinitionAsync(
         string id,
         CancellationToken cancellationToken = default)
@@ -71,7 +71,7 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/TaskDefinition/Remove")]
+    [HttpPost("/api/Configuration/TaskDefinition/Remove")]
     public Task<ApiResponse> RemoveAsync(
         [FromBody] TaskDefinitionModel model,
         CancellationToken cancellationToken = default)
@@ -92,7 +92,7 @@ public partial class CommonConfigController
         await messageQueue.EnqueueAsync(op, cancellationToken);
     }
 
-    [HttpGet("/api/CommonConfig/TaskDefinition/VersionList")]
+    [HttpGet("/api/Configuration/TaskDefinition/VersionList")]
     public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryTaskDefinitionVersionListAsync(
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -146,7 +146,7 @@ public partial class CommonConfigController
         }
     }
 
-    [HttpPost("/api/CommonConfig/TaskDefinition/SwitchVersion")]
+    [HttpPost("/api/Configuration/TaskDefinition/SwitchVersion")]
     public Task<ApiResponse> SwitchTaskDefinitionVersionAsync(
         [FromBody] ConfigurationVersionSwitchParameters parameters,
         CancellationToken cancellationToken = default)
@@ -157,7 +157,7 @@ public partial class CommonConfigController
             cancellationToken: cancellationToken);
     }
 
-    [HttpPost("/api/CommonConfig/TaskDefinition/DeleteVersion")]
+    [HttpPost("/api/Configuration/TaskDefinition/DeleteVersion")]
     public Task<ApiResponse> DeleteTaskDefinitionVersionAsync(
         [FromBody] ConfigurationVersionRecordModel entity,
         CancellationToken cancellationToken = default)

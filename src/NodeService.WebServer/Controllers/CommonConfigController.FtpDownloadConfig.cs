@@ -1,24 +1,24 @@
-﻿using NodeService.WebServer.Services.QueryOptimize;
+﻿using NodeService.WebServer.Services.DataQueue;
 
 namespace NodeService.WebServer.Controllers;
 
-public partial class CommonConfigController
+public partial class ConfigurationController
 {
-    [HttpPost("/api/CommonConfig/ftpdownload/AddOrUpdate")]
+    [HttpPost("/api/Configuration/ftpdownload/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] FtpDownloadConfigModel model)
     {
         model.FtpConfig = null;
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/CommonConfig/ftpdownload/List")]
+    [HttpGet("/api/Configuration/ftpdownload/List")]
     public Task<PaginationResponse<FtpDownloadConfigModel>> QueryFtpDownloadConfigAsync(
         [FromQuery] PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
     {
         return QueryConfigurationListAsync<FtpDownloadConfigModel>(queryParameters, cancellationToken);
     }
 
-    [HttpGet("/api/CommonConfig/ftpdownload/{id}")]
+    [HttpGet("/api/Configuration/ftpdownload/{id}")]
     public Task<ApiResponse<FtpDownloadConfigModel>> QueryFtpDownloadConfigAsync(string id, CancellationToken cancellationToken = default)
     {
         return QueryConfigurationAsync<FtpDownloadConfigModel>(id, QueryFtpConfigAsync, cancellationToken: cancellationToken);
@@ -38,27 +38,27 @@ public partial class CommonConfigController
     }
 
 
-    [HttpPost("/api/CommonConfig/ftpdownload/Remove")]
+    [HttpPost("/api/Configuration/ftpdownload/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] FtpDownloadConfigModel model, CancellationToken cancellationToken = default)
     {
         return DeleteConfigurationAsync(model, cancellationToken: cancellationToken);
     }
 
-    [HttpGet("/api/CommonConfig/ftpdownload/VersionList")]
+    [HttpGet("/api/Configuration/ftpdownload/VersionList")]
     public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryFtpDownloadConfigurationVersionListAsync(
     [FromQuery] PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
     {
         return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters, cancellationToken);
     }
 
-    [HttpPost("/api/CommonConfig/ftpdownload/SwitchVersion")]
+    [HttpPost("/api/Configuration/ftpdownload/SwitchVersion")]
     public Task<ApiResponse> SwitchFtpDownloadConfigurationVersionAsync(
         [FromBody] ConfigurationVersionSwitchParameters parameters,CancellationToken  cancellationToken=default)
     {
         return SwitchConfigurationVersionAsync<FtpDownloadConfigModel>(parameters, cancellationToken: cancellationToken);
     }
 
-    [HttpPost("/api/CommonConfig/ftpdownload/DeleteVersion")]
+    [HttpPost("/api/Configuration/ftpdownload/DeleteVersion")]
     public Task<ApiResponse> DeleteFtpDownloadConfigurationVersionAsync(
     [FromBody] ConfigurationVersionRecordModel entity, CancellationToken cancellationToken = default)
     {

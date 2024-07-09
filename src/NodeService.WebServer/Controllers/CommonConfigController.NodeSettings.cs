@@ -3,9 +3,9 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 
 namespace NodeService.WebServer.Controllers;
 
-public partial class CommonConfigController
+public partial class ConfigurationController
 {
-    [HttpGet("/api/CommonConfig/NodeSettings/")]
+    [HttpGet("/api/Configuration/NodeSettings/")]
     public async Task<ApiResponse<NodeSettings>> QueryNodeSettingsAsync()
     {
         var rsp = new ApiResponse<NodeSettings>();
@@ -46,7 +46,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpPost("/api/CommonConfig/NodeSettings/Update")]
+    [HttpPost("/api/Configuration/NodeSettings/Update")]
     public async Task<ApiResponse> UpdateNodeSettingAsync([FromBody] NodeSettings model)
     {
         var rsp = new ApiResponse();

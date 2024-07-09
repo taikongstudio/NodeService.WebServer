@@ -1,58 +1,58 @@
 ﻿using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Services.QueryOptimize;
+using NodeService.WebServer.Services.DataQueue;
 
 namespace NodeService.WebServer.Controllers;
 
-public partial class CommonConfigController
+public partial class ConfigurationController
 {
-    [HttpPost("/api/CommonConfig/Notification/AddOrUpdate")]
+    [HttpPost("/api/Configuration/Notification/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] NotificationConfigModel model, CancellationToken cancellationToken = default)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/CommonConfig/Notification/List")]
+    [HttpGet("/api/Configuration/Notification/List")]
     public Task<PaginationResponse<NotificationConfigModel>> QueryNotificationConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<NotificationConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/CommonConfig/Notification/VersionList")]
+    [HttpGet("/api/Configuration/Notification/VersionList")]
     public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryNotificationConfigurationVersionListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters);
     }
 
-    [HttpPost("/api/CommonConfig/Notification/SwitchVersion")]
+    [HttpPost("/api/Configuration/Notification/SwitchVersion")]
     public Task<ApiResponse> SwitchNotificationVersionAsync(
         [FromBody] ConfigurationVersionSwitchParameters parameters, CancellationToken cancellationToken = default)
     {
         return SwitchConfigurationVersionAsync<NotificationConfigModel>(parameters);
     }
 
-    [HttpPost("/api/CommonConfig/Notification/DeleteVersion")]
+    [HttpPost("/api/Configuration/Notification/DeleteVersion")]
     public Task<ApiResponse> DeleteNotificationConfigurationVersionAsync(
     [FromBody] ConfigurationVersionRecordModel entity, CancellationToken cancellationToken = default)
     {
         return DeleteConfigurationVersionAsync<NotificationConfigModel>(new ConfigurationVersionDeleteParameters(entity));
     }
 
-    [HttpGet("/api/CommonConfig/Notification/{id}")]
+    [HttpGet("/api/Configuration/Notification/{id}")]
     public Task<ApiResponse<NotificationConfigModel>> QueryNotificationConfigAsync(string id)
     {
         return QueryConfigurationAsync<NotificationConfigModel>(id);
     }
 
-    [HttpPost("/api/CommonConfig/Notification/Remove")]
+    [HttpPost("/api/Configuration/Notification/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] NotificationConfigModel model, CancellationToken cancellationToken = default)
     {
         return DeleteConfigurationAsync(model);
     }
 
-    [HttpPost("/api/CommonConfig/Notification/{id}/Invoke")]
+    [HttpPost("/api/Configuration/Notification/{id}/Invoke")]
     public async Task<ApiResponse> InvokeAsync(string id, [FromBody] InvokeNotificationParameters parameters)
     {
         var rsp = await QueryNotificationConfigAsync(id);
@@ -71,7 +71,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpGet("/api/CommonConfig/NotificationSource/NodeHealthyCheck")]
+    [HttpGet("/api/Configuration/NotificationSource/NodeHealthyCheck")]
     public async Task<ApiResponse<NodeHealthyCheckConfiguration>> QueryNodeHealthyCheckConfigurationAsync()
     {
         var rsp = new ApiResponse<NodeHealthyCheckConfiguration>();
@@ -107,7 +107,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpPost("/api/CommonConfig/NotificationSource/NodeHealthyCheck/Update")]
+    [HttpPost("/api/Configuration/NotificationSource/NodeHealthyCheck/Update")]
     public async Task<ApiResponse> UpdateNodeHealthyCheckConfigurationAsync(
         [FromBody] NodeHealthyCheckConfiguration model, CancellationToken cancellationToken = default)
     {
@@ -130,7 +130,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpGet("/api/CommonConfig/NotificationSource/DataQualityCheck")]
+    [HttpGet("/api/Configuration/NotificationSource/DataQualityCheck")]
     public async Task<ApiResponse<DataQualityCheckConfiguration>> QueryDataQualityCheckConfigurationAsync()
     {
         var rsp = new ApiResponse<DataQualityCheckConfiguration>();
@@ -166,7 +166,7 @@ public partial class CommonConfigController
         return rsp;
     }
 
-    [HttpPost("/api/CommonConfig/NotificationSource/DataQualityCheck/Update")]
+    [HttpPost("/api/Configuration/NotificationSource/DataQualityCheck/Update")]
     public async Task<ApiResponse> UpdateDataQualityCheckConfigurationAsync(
         [FromBody] DataQualityCheckConfiguration model, CancellationToken cancellationToken = default)
     {

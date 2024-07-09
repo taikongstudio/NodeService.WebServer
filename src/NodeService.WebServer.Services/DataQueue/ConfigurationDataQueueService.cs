@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.Models;
@@ -38,12 +40,12 @@ public record struct ConfigurationVersionPaginationQueryParameters
 
 public record struct ConfigurationAddUpdateDeleteParameters
 {
-    public ConfigurationAddUpdateDeleteParameters(JsonBasedDataModel value)
+    public ConfigurationAddUpdateDeleteParameters(JsonRecordBase value)
     {
         Value = value;
     }
 
-    public JsonBasedDataModel Value { get; private set; }
+    public JsonRecordBase Value { get; private set; }
 }
 
 public record struct ConfigurationVersionDeleteParameters
@@ -686,7 +688,7 @@ public class ConfigurationDataQueueService : BackgroundService
 
     async ValueTask<ListQueryResult<object>> QueryConfigurationByQueryParametersAsync<T>(
         PaginationQueryParameters queryParameters)
-        where T : JsonBasedDataModel, IAggregateRoot
+        where T : JsonRecordBase, IAggregateRoot
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
         _logger.LogInformation($"{typeof(T).FullName}:{queryParameters}");
@@ -728,7 +730,7 @@ public class ConfigurationDataQueueService : BackgroundService
 
     async ValueTask<ListQueryResult<object>> QueryConfigurationVersionByQueryParametersAsync<T>(
     PaginationQueryParameters queryParameters)
-    where T : JsonBasedDataModel
+    where T : JsonRecordBase
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<ConfigurationVersionRecordModel>>();
         _logger.LogInformation($"{typeof(T).FullName}:{queryParameters}");
@@ -767,7 +769,7 @@ public class ConfigurationDataQueueService : BackgroundService
     }
 
     async ValueTask<ListQueryResult<object>> QueryConfigurationByIdListAsync<T>(IEnumerable<string> idList)
-        where T : JsonBasedDataModel, IAggregateRoot
+        where T : JsonRecordBase, IAggregateRoot
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
         using var repo = repoFactory.CreateRepository();
@@ -785,84 +787,100 @@ public class ConfigurationDataQueueService : BackgroundService
     }
 
     async ValueTask<ConfigurationSaveChangesResult> AddOrUpdateConfigurationAsync<T>(object entityObject)
-                where T : JsonBasedDataModel
+                where T : JsonRecordBase
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
-        using var configRepo = repoFactory.CreateRepository();
+        using var configurationRepo = repoFactory.CreateRepository();
         var entity = entityObject as T;
         if (entity == null)
         {
             return default;
         }
-        var entityFromDb = await configRepo.GetByIdAsync(entity.Id);
-        T? oldEntity = null;
-        var type = ConfigurationChangedType.None;
-        var changesCount = 0;
-        if (entityFromDb == null)
-        {
-            await configRepo.AddAsync(entity);
-            changesCount = 1;
-            entityFromDb = entity;
-            type = ConfigurationChangedType.Add;
-        }
-        else
-        {
-            oldEntity = entityFromDb.JsonClone<T>();
-            entityFromDb.With(entity);
-            await configRepo.UpdateAsync(entityFromDb);
-            changesCount += configRepo.LastSaveChangesCount;
-            type = ConfigurationChangedType.Update;
-        }
-        if (changesCount > 0)
-        {
-            await AddConfigurationVersionRecordAsync(entityFromDb);
-        }
+        var entityFromDb = await configurationRepo.GetByIdAsync(entity.Id);
 
-        return new ConfigurationSaveChangesResult()
-        {
-            Type = type,
-            ChangesCount = changesCount,
-            OldValue = oldEntity,
-            NewValue = entityFromDb
-        };
-    }
-
-    async ValueTask AddConfigurationVersionRecordAsync<T>(T entity) where T : JsonBasedDataModel
-    {
         try
         {
-            using var configVersionRepo = _configVersionRepoFactory.CreateRepository();
-            var applicationDbContext = configVersionRepo.DbContext as ApplicationDbContext;
-            var configurationVersion = await applicationDbContext.ConfigurationVersionRecordDbSet
-                .Where(x => x.ConfigurationId == entity.Id)
-                .OrderByDescending(x => x.Version)
-                .FirstOrDefaultAsync();
-
-            var json = JsonSerializer.Serialize(entity.JsonClone<T>());
-            var version = configurationVersion == null ? 1 : configurationVersion.Version + 1;
-            await applicationDbContext.ConfigurationVersionRecordDbSet
-                .Where(x => x.ConfigurationId == entity.Id)
-                .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x.IsCurrent, x => x.Version == version));
-            await configVersionRepo.AddAsync(new ConfigurationVersionRecordModel()
+            T? oldEntity = null;
+            var type = ConfigurationChangedType.None;
+            var changesCount = 0;
+            await ResilientTransaction.New(configurationRepo.DbContext).ExecuteAsync(async (transaction, cancellationToken) =>
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = entity.Name,
-                ConfigurationId = entity.Id,
-                IsCurrent = true,
-                Version = version,
-                Value = new ConfigurationVersionRecord() { FullName = typeof(T).FullName, Json = json }
+
+                if (entityFromDb == null)
+                {
+                    await configurationRepo.AddAsync(entity);
+                    changesCount = 1;
+                    entityFromDb = entity;
+                    type = ConfigurationChangedType.Add;
+                }
+                else
+                {
+                    oldEntity = entityFromDb.JsonClone<T>();
+                    entityFromDb.With(entity);
+                    await configurationRepo.UpdateAsync(entityFromDb);
+                    changesCount += configurationRepo.LastSaveChangesCount;
+                    type = ConfigurationChangedType.Update;
+                }
+                if (changesCount > 0)
+                {
+                    await AddConfigurationVersionRecordAsync(entityFromDb, configurationRepo.DbContext);
+                }
             });
+
+
+            return new ConfigurationSaveChangesResult()
+            {
+                Type = type,
+                ChangesCount = changesCount,
+                OldValue = oldEntity,
+                NewValue = entityFromDb
+            };
         }
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
+            throw;
         }
 
+        return default;
+    }
+
+    async ValueTask AddConfigurationVersionRecordAsync<T>(T entity, DbContext dbContext) where T : JsonRecordBase
+    {
+        var configurationRepo = new EfRepository<ConfigurationVersionRecordModel, DbContext>(dbContext);
+
+        var configurationVersion = await configurationRepo.DbContext.Set<ConfigurationVersionRecordModel>()
+            .Where(x => x.ConfigurationId == entity.Id)
+            .OrderByDescending(x => x.Version)
+            .FirstOrDefaultAsync();
+
+        var json = JsonSerializer.Serialize(entity.JsonClone<T>());
+        var version = configurationVersion == null ? 1 : configurationVersion.Version + 1;
+
+        await dbContext.Set<ConfigurationVersionRecordModel>()
+            .Where(x => x.ConfigurationId == entity.Id)
+            .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(
+                x => x.IsCurrent,
+                x => x.Version == version));
+        bool throwEx = false;
+        if (throwEx)
+        {
+            throw new Exception();
+        }
+        await configurationRepo.AddAsync(new ConfigurationVersionRecordModel()
+        {
+            Id = Guid.NewGuid().ToString(),
+            Name = entity.Name,
+            ConfigurationId = entity.Id,
+            IsCurrent = true,
+            Version = version,
+            Value = new ConfigurationVersionRecord() { FullName = typeof(T).FullName, Json = json }
+        });
     }
 
     async ValueTask<ConfigurationSaveChangesResult> DeleteConfigurationAsync<T>(object entityObject)
-            where T : JsonBasedDataModel
+            where T : JsonRecordBase
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
         using var repo = repoFactory.CreateRepository();
@@ -884,11 +902,12 @@ public class ConfigurationDataQueueService : BackgroundService
     }
 
     async ValueTask<ConfigurationSaveChangesResult> SwitchConfigurationVersionAsync<T>(ConfigurationVersionSwitchParameters parameters)
-        where T : JsonBasedDataModel
+        where T : JsonRecordBase
     {
         var configurationId = parameters.ConfigurationId;
         var targetVersion = parameters.TargetVersion;
         using var configVersionRepo = _configVersionRepoFactory.CreateRepository();
+        var applicationDbContext = configVersionRepo.DbContext as ApplicationDbContext;
         var config = await configVersionRepo.FirstOrDefaultAsync(new ConfigurationVersionSelectSpecification<ConfigurationVersionRecordModel>(
             parameters.ConfigurationId,
             parameters.TargetVersion));
@@ -905,6 +924,10 @@ public class ConfigurationDataQueueService : BackgroundService
         var targetConfig = await dbSet.FindAsync(parameters.ConfigurationId);
         if (targetConfig == null)
         {
+            await applicationDbContext.ConfigurationVersionRecordDbSet
+                .Where(x => x.ConfigurationId == configurationId)
+                .ExecuteDeleteAsync();
+
             return default;
         }
         var oldConfig = targetConfig with { };
@@ -912,7 +935,7 @@ public class ConfigurationDataQueueService : BackgroundService
         var changesCount = await configVersionRepo.SaveChangesAsync();
         if (changesCount > 0)
         {
-            var applicationDbContext = configVersionRepo.DbContext as ApplicationDbContext;
+
             await applicationDbContext.ConfigurationVersionRecordDbSet
                 .Where(x => x.ConfigurationId == configurationId)
                 .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x.IsCurrent, x => x.Version == targetVersion));
@@ -929,7 +952,7 @@ public class ConfigurationDataQueueService : BackgroundService
 
 
     async ValueTask<ConfigurationVersionSaveChangesResult> DeleteConfigurationVersionAsync<T>(ConfigurationVersionDeleteParameters parameters)
-               where T : JsonBasedDataModel
+               where T : JsonRecordBase
     {
         try
         {

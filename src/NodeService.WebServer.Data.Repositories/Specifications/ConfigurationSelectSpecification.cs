@@ -3,7 +3,7 @@
 namespace NodeService.WebServer.Data.Repositories.Specifications;
 
 public class ConfigurationSelectSpecification<TConfiguration, TProjection> : SelectSpecification<TConfiguration, TProjection>
-    where TConfiguration : JsonBasedDataModel
+    where TConfiguration : JsonRecordBase
     where TProjection : class
 {
     public ConfigurationSelectSpecification(

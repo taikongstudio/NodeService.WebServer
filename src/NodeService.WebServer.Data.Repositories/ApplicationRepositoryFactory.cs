@@ -1,13 +1,18 @@
-﻿namespace NodeService.WebServer.Data.Repositories;
+﻿using Microsoft.EntityFrameworkCore.Infrastructure;
 
-public class ApplicationRepositoryFactory<T> :
-    EFRepositoryFactory<IRepository<T>,
-        EfRepository<T>,
+namespace NodeService.WebServer.Data.Repositories;
+
+public class ApplicationRepositoryFactory<TEntity> :
+    EFRepositoryFactory<IRepository<TEntity>,
+        EfRepository<TEntity, ApplicationDbContext>,
         ApplicationDbContext>
-    where T : class, IAggregateRoot
+    where TEntity : class, IAggregateRoot
 {
     public ApplicationRepositoryFactory(IDbContextFactory<ApplicationDbContext> dbContextFactory) : base(
         dbContextFactory)
     {
     }
+
+
+
 }

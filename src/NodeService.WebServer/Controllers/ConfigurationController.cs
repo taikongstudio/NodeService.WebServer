@@ -52,7 +52,7 @@ public partial class ConfigurationController : Controller
     private async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(
         PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
-        where T : JsonBasedDataModel, new()
+        where T : JsonRecordBase, new()
     {
         var apiResponse = new PaginationResponse<T>();
 
@@ -97,7 +97,7 @@ public partial class ConfigurationController : Controller
         string id,
         Func<T?, CancellationToken, ValueTask>? func = null,
         CancellationToken cancellationToken = default)
-        where T : JsonBasedDataModel
+        where T : JsonRecordBase
     {
         var apiResponse = new ApiResponse<T>();
         try
@@ -127,7 +127,7 @@ public partial class ConfigurationController : Controller
         T model,
         Func<ConfigurationSaveChangesResult, CancellationToken, ValueTask>? changesFunc = null,
         CancellationToken cancellationToken = default)
-        where T : JsonBasedDataModel
+        where T : JsonRecordBase
     {
         var apiResponse = new ApiResponse();
         try
@@ -169,7 +169,7 @@ public partial class ConfigurationController : Controller
         T model,
         Func<ConfigurationSaveChangesResult, CancellationToken, ValueTask>? changesFunc = null,
         CancellationToken cancellationToken = default)
-        where T : JsonBasedDataModel
+        where T : JsonRecordBase
     {
         var apiResponse = new ApiResponse();
         try
@@ -211,7 +211,7 @@ public partial class ConfigurationController : Controller
         ConfigurationVersionSwitchParameters parameters,
         Func<ConfigurationSaveChangesResult, CancellationToken, ValueTask>? func = null,
         CancellationToken cancellationToken = default)
-        where T : JsonBasedDataModel
+        where T : JsonRecordBase
     {
         var apiResponse = new ApiResponse();
         try
@@ -240,7 +240,7 @@ public partial class ConfigurationController : Controller
     async Task<ApiResponse> DeleteConfigurationVersionAsync<T>(
         ConfigurationVersionDeleteParameters parameters,
         CancellationToken cancellationToken = default)
-        where T : JsonBasedDataModel
+        where T : JsonRecordBase
     {
         var apiResponse = new ApiResponse();
         try
@@ -266,7 +266,7 @@ public partial class ConfigurationController : Controller
     private async Task<PaginationResponse<T>> QueryConfigurationVersionListAsync<T>(
     PaginationQueryParameters queryParameters,
     CancellationToken cancellationToken = default)
-    where T : JsonBasedDataModel
+    where T : JsonRecordBase
     {
         var apiResponse = new PaginationResponse<T>();
 

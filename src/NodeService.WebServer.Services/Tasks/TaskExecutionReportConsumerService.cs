@@ -280,7 +280,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                                                                             new TaskExecutionInstanceListSpecification(taskExecutionInstanceIdFilters),
                                                                             cancellationToken);
 
-        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
+        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskExecutionInstanceRepo.TimeSpan;
         if (taskExecutionInstanceList == null)
         {
             return;
@@ -293,7 +293,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         var taskActivationRecordList = await taskActivationRecordRepo.ListAsync(
                                                                     new ListSpecification<TaskActivationRecordModel>(taskActivationRecordIdFilters),
                                                                     cancellationToken);
-        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
+        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskActivationRecordRepo.TimeSpan;
 
         foreach (var taskExecutionInstanceGroup in taskExecutionInstanceList.GroupBy(static x => x.FireInstanceId))
         {
@@ -333,7 +333,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         var taskExecutionInstanceUpdateCount = taskExecutionInstanceRepo.LastSaveChangesCount;
         await taskActivationRecordRepo.SaveChangesAsync(cancellationToken);
         var taskActivationRecordUpdateCount = taskExecutionInstanceRepo.LastSaveChangesCount;
-        _webServerCounter.TaskExecutionReportSaveTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
+        _webServerCounter.TaskExecutionReportSaveTimeSpan.Value += taskExecutionInstanceRepo.TimeSpan;
         _webServerCounter.TaskExecutionReportSaveChangesCount.Value += (uint)taskExecutionInstanceRepo.LastSaveChangesCount;
 
         await ProcessTaskFlowActiveRecordListAsync(taskActivationRecordList, cancellationToken);

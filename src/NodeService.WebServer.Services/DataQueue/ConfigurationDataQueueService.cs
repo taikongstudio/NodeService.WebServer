@@ -444,17 +444,16 @@ public class ConfigurationDataQueueService : BackgroundService
             try
             {
                 var type = operationGroup.Key;
+                var funcKey = $"{type}-{nameof(CreateAddOrUpdateLambdaExpression)}";
+                if (!_funcDict.TryGetValue(funcKey, out var func))
+                {
+                    var expr = CreateAddOrUpdateLambdaExpression(type);
+                    func = expr.Compile();
+                    _funcDict.TryAdd(funcKey, func);
+                }
 
                 foreach (var operation in operationGroup)
                 {
-                    var funcKey = $"{type}-{nameof(CreateAddOrUpdateLambdaExpression)}";
-                    if (!_funcDict.TryGetValue(funcKey, out var func))
-                    {
-                        var expr = CreateAddOrUpdateLambdaExpression(type);
-                        func = expr.Compile();
-                        _funcDict.TryAdd(funcKey, func);
-                    }
-
                     var task = ((Func<object, ValueTask<ConfigurationSaveChangesResult>>)func).Invoke(operation.Argument.Parameters.AsT4.Value);
                     var saveChangesResult = await task;
                     operation.SetResult(new ConfigurationQueryQueueServiceResult(saveChangesResult));
@@ -767,6 +766,10 @@ public class ConfigurationDataQueueService : BackgroundService
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
         using var configRepo = repoFactory.CreateRepository();
         var entity = entityObject as T;
+        if (entity == null)
+        {
+            return default;
+        }
         var entityFromDb = await configRepo.GetByIdAsync(entity.Id);
         T? oldEntity = null;
         var type = ConfigurationChangedType.None;

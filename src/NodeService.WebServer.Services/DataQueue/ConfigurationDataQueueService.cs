@@ -235,6 +235,10 @@ public class ConfigurationDataQueueService : BackgroundService
             }
             catch (Exception ex)
             {
+                foreach (var operation in array)
+                {
+                    operation.SetException(ex);
+                }
                 _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
@@ -407,19 +411,30 @@ public class ConfigurationDataQueueService : BackgroundService
             {
                 var type = operationGroup.Key;
 
+                var funcKey = $"{type}-{nameof(CreateDeleteConfigurationLambdaExpression)}";
+                if (!_funcDict.TryGetValue(funcKey, out var func))
+                {
+                    var expr = CreateDeleteConfigurationLambdaExpression(type);
+                    func = expr.Compile();
+                    _funcDict.TryAdd(funcKey, func);
+                }
+
+
                 foreach (var operation in operationGroup)
                 {
-                    var funcKey = $"{type}-{nameof(CreateDeleteConfigurationLambdaExpression)}";
-                    if (!_funcDict.TryGetValue(funcKey, out var func))
+                    try
                     {
-                        var expr = CreateDeleteConfigurationLambdaExpression(type);
-                        func = expr.Compile();
-                        _funcDict.TryAdd(funcKey, func);
+                        var task = ((Func<object, ValueTask<ConfigurationSaveChangesResult>>)func).Invoke(operation.Argument.Parameters.AsT4.Value);
+                        var saveChangesResult = await task;
+                        operation.SetResult(new ConfigurationQueryQueueServiceResult(saveChangesResult));
+                    }
+                    catch (Exception ex)
+                    {
+                        operation.SetException(ex);
+                        _exceptionCounter.AddOrUpdate(ex);
+                        _logger.LogError(ex.ToString());
                     }
 
-                    var task = ((Func<object, ValueTask<ConfigurationSaveChangesResult>>)func).Invoke(operation.Argument.Parameters.AsT4.Value);
-                    var saveChangesResult = await task;
-                    operation.SetResult(new ConfigurationQueryQueueServiceResult(saveChangesResult));
                 }
 
             }
@@ -454,9 +469,18 @@ public class ConfigurationDataQueueService : BackgroundService
 
                 foreach (var operation in operationGroup)
                 {
-                    var task = ((Func<object, ValueTask<ConfigurationSaveChangesResult>>)func).Invoke(operation.Argument.Parameters.AsT4.Value);
-                    var saveChangesResult = await task;
-                    operation.SetResult(new ConfigurationQueryQueueServiceResult(saveChangesResult));
+                    try
+                    {
+                        var task = ((Func<object, ValueTask<ConfigurationSaveChangesResult>>)func).Invoke(operation.Argument.Parameters.AsT4.Value);
+                        var saveChangesResult = await task;
+                        operation.SetResult(new ConfigurationQueryQueueServiceResult(saveChangesResult));
+                    }
+                    catch (Exception ex)
+                    {
+                        operation.SetException(ex);
+                        _exceptionCounter.AddOrUpdate(ex);
+                        _logger.LogError(ex.ToString());
+                    }
                 }
 
             }

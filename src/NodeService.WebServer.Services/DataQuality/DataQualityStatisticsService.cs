@@ -255,7 +255,6 @@ public class DataQualityStatisticsService : BackgroundService
             {
                 Id = key,
                 NodeId = nodeInfo.Id,
-                CreationDateTime = dateTime,
                 Name = nodeInfo.Name
             };
             addRecordList.Add(report);

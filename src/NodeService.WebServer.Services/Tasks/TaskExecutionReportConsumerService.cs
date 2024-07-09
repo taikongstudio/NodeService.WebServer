@@ -328,7 +328,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 messageGroups,
                 cancellationToken);
             await processContext.ProcessAsync(cancellationToken);
-            taskActivationRecord.ModifiedDateTime = DateTime.UtcNow;
         }
 
         await taskExecutionInstanceRepo.SaveChangesAsync(cancellationToken);

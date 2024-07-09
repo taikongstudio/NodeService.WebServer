@@ -134,7 +134,7 @@ public class TaskLogStorageHandler
             var addedTaskLogPageGroups = addedTaskLogs.GroupBy(static x => x.GetKey().TaskExecutionInstanceId);
             foreach (var taskLogPageGroup in addedTaskLogPageGroups)
             {
-                await UpdateTaskLogsAsync(taskLogPageGroup, taskLogRepo.AddAsync, cancellationToken);
+                await AddTaskLogsAsync(taskLogPageGroup, taskLogRepo.AddAsync, cancellationToken);
             }
             CleanupDictionary(addedTaskLogs);
         }

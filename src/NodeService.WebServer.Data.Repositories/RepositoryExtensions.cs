@@ -88,9 +88,7 @@ public static class RepositoryExtensions
                     }
                     else
                     {
-                        items = await repository.ListAsync(
-                                            new ListSpecification<T>(DataFilterCollection<string>.Includes(idList)),
-                                            cancellationToken);
+                        items = await repository.ListAsync(selectIdSpecification.CreateListSpecification(DataFilterCollection<string>.Includes(idList.Where(static x=>x!=null))), cancellationToken);
                     }
                 }
             }

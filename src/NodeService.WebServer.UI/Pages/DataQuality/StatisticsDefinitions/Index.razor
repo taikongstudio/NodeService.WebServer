@@ -14,6 +14,12 @@
 </style>
 
 <GridContent>
+    <ConfigurationVersionSelectorDialog Closed="()=>_dataSource.QueryAsync()"
+                                        Title="版本列表"
+                                        ConfigurationId="@_configurationId"
+                                        @bind-Visible="@_versionSelectorDialogVisible"
+                                        TItem="DataQualityStatisticsDefinitionModel">
+    </ConfigurationVersionSelectorDialog>
     <Modal Width="800"
            Title="@_modalTitle"
            Style="top:0"
@@ -112,6 +118,9 @@
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => ShowEditForm(context.JsonClone<DataQualityStatisticsDefinitionModel>())"></Button>
                         </SpaceItem>
                         <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.UnorderedList" OnClick="() => ShowVersionSelectorDialog(context.Id)"></Button>
+                        </SpaceItem>
+                        <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
                         </SpaceItem>
 
@@ -145,6 +154,16 @@
     bool _loading;
 
     RoutedPaginationDataSource<DataQualityStatisticsDefinitionModel, PaginationQueryParameters> _dataSource;
+
+    string _configurationId;
+    bool _versionSelectorDialogVisible;
+
+    async Task ShowVersionSelectorDialog(string id)
+    {
+        _configurationId = id;
+        _versionSelectorDialogVisible = true;
+        await Task.CompletedTask;
+    }
 
     protected override void OnInitialized()
     {

@@ -10,5 +10,10 @@
             Query.Select(x => x as TResult);
         }
 
+        public ListSpecification<TEntity> CreateListSpecification(DataFilterCollection<string> idFilters)
+        {
+            return new ListSpecification<TEntity>(this, idFilters);
+        }
+
     }
 }

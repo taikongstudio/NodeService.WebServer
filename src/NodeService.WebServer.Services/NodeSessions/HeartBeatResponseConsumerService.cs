@@ -67,7 +67,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             try
             {
                 stopwatch.Start();
-                await ProcessHeartBeatMessagesAsync(array);
+                await ProcessHeartBeatMessagesAsync(array, cancellationToken);
                 _logger.LogInformation(
                     $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
                 _webServerCounter.HeartBeatAvailableCount.Value = _hearBeatMessageBatchQueue.AvailableCount;
@@ -116,12 +116,12 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private string GetNodeId(NodeHeartBeatSessionMessage sessionMessage)
+    string GetNodeId(NodeHeartBeatSessionMessage sessionMessage)
     {
         return sessionMessage.NodeSessionId.NodeId.Value;
     }
 
-    private async Task ProcessHeartBeatMessagesAsync(
+    async ValueTask ProcessHeartBeatMessagesAsync(
         NodeHeartBeatSessionMessage[] array,
         CancellationToken cancellationToken = default)
     {
@@ -219,7 +219,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
             var nodeStatus = _nodeSessionService.GetNodeStatus(hearBeatMessage.NodeSessionId);
             nodeInfo.Status = nodeStatus;
-            nodeInfo.ModifiedDateTime = DateTime.UtcNow;
             var propsDict = _memoryCache.GetOrCreate<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id,
                     TimeSpan.FromHours(1));
             if (hearBeatResponse != null)
@@ -278,15 +277,16 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             if (nodeInfo.Status == NodeStatus.Offline)
             {
-                var nodeProps =
-                    new NodePropertySnapshotModel
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Name = $"{nodeInfo.Name} Snapshot",
-                        CreationDateTime = nodeInfo.Profile.UpdateTime,
-                        NodeProperties = propsDict?.Select(NodePropertyEntry.From).ToList() ?? [],
-                        NodeInfoId = nodeInfo.Id
-                    };
+
+                var nodeProps = new NodePropertySnapshotModel
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = $"{nodeInfo.Name} Snapshot",
+                    CreationDateTime = nodeInfo.Profile.UpdateTime,
+                    ModifiedDateTime = DateTime.UtcNow,
+                    NodeProperties = propsDict?.Select(NodePropertyEntry.From).ToList() ?? [],
+                    NodeInfoId = nodeInfo.Id
+                };
                 await nodePropertyRepo.AddAsync(nodeProps, cancellationToken);
                 var oldId = nodeInfo.LastNodePropertySnapshotId;
                 nodeInfo.LastNodePropertySnapshotId = nodeProps.Id;

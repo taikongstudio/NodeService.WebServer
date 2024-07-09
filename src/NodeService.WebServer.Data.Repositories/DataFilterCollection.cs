@@ -25,7 +25,7 @@ public readonly struct DataFilterCollection<T>
 
     public static DataFilterCollection<T> Includes(IEnumerable<T> items)
     {
-        return new DataFilterCollection<T>(DataFilterTypes.Include, items);
+        return new DataFilterCollection<T>(DataFilterTypes.Include, items.ToArray());
     }
 
     public static DataFilterCollection<T> Includes(params T[] items)
@@ -35,7 +35,7 @@ public readonly struct DataFilterCollection<T>
 
     public static DataFilterCollection<T> Excludes(IEnumerable<T> items)
     {
-        return new DataFilterCollection<T>(DataFilterTypes.Exclude, items);
+        return new DataFilterCollection<T>(DataFilterTypes.Exclude, items.ToArray());
     }
 
     public static DataFilterCollection<T> Excludes(params T[] items)

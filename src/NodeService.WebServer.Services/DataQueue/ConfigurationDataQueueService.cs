@@ -85,8 +85,8 @@ public record struct ConfigurationVersionSwitchParameters
         TargetVersion = targetVersion;
     }
 
-    public string ConfigurationId { get; internal set; }
-    public int TargetVersion { get; internal set; }
+    public string ConfigurationId { get; set; }
+    public int TargetVersion { get; set; }
 }
 
 public record struct ConfigurationQueryQueueServiceParameters
@@ -859,52 +859,44 @@ public class ConfigurationDataQueueService : BackgroundService
     async ValueTask<ConfigurationSaveChangesResult> SwitchConfigurationVersionAsync<T>(ConfigurationVersionSwitchParameters parameters)
         where T : JsonBasedDataModel
     {
-        try
+        var configurationId = parameters.ConfigurationId;
+        var targetVersion = parameters.TargetVersion;
+        using var configVersionRepo = _configVersionRepoFactory.CreateRepository();
+        var config = await configVersionRepo.FirstOrDefaultAsync(new ConfigurationVersionSelectSpecification<ConfigurationVersionRecordModel>(
+            parameters.ConfigurationId,
+            parameters.TargetVersion));
+        if (config == null)
         {
-            var configurationId = parameters.ConfigurationId;
-            var targetVersion = parameters.TargetVersion;
-            using var configVersionRepo = _configVersionRepoFactory.CreateRepository();
-            var config = await configVersionRepo.FirstOrDefaultAsync(new ConfigurationVersionSelectSpecification<ConfigurationVersionRecordModel>(
-                parameters.ConfigurationId,
-                parameters.TargetVersion));
-            if (config == null)
-            {
-                return default;
-            }
-            var value = JsonSerializer.Deserialize(config.Value.Json, typeof(T)) as T;
-            if (value == null)
-            {
-                return default;
-            }
-            var dbSet = configVersionRepo.DbContext.Set<T>();
-            var targetConfig = await dbSet.FindAsync(parameters.ConfigurationId);
-            if (targetConfig == null)
-            {
-                return default;
-            }
-            var oldConfig = targetConfig with { };
-            targetConfig.With(value);
-            var changesCount = await configVersionRepo.SaveChangesAsync();
-            if (changesCount > 0)
-            {
-                var applicationDbContext = configVersionRepo.DbContext as ApplicationDbContext;
-                await applicationDbContext.ConfigurationVersionRecordDbSet
-                    .Where(x => x.ConfigurationId == configurationId)
-                    .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x.IsCurrent, x => x.Version == targetVersion));
-            }
-            return new ConfigurationSaveChangesResult()
-            {
-                ChangesCount = changesCount,
-                NewValue = targetConfig,
-                OldValue = oldConfig,
-                Type = ConfigurationChangedType.Update,
-            };
+            return default;
         }
-        catch (Exception ex)
+        var value = JsonSerializer.Deserialize(config.Value.Json, typeof(T)) as T;
+        if (value == null)
         {
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
+            return default;
         }
+        var dbSet = configVersionRepo.DbContext.Set<T>();
+        var targetConfig = await dbSet.FindAsync(parameters.ConfigurationId);
+        if (targetConfig == null)
+        {
+            return default;
+        }
+        var oldConfig = targetConfig with { };
+        targetConfig.With(value);
+        var changesCount = await configVersionRepo.SaveChangesAsync();
+        if (changesCount > 0)
+        {
+            var applicationDbContext = configVersionRepo.DbContext as ApplicationDbContext;
+            await applicationDbContext.ConfigurationVersionRecordDbSet
+                .Where(x => x.ConfigurationId == configurationId)
+                .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x.IsCurrent, x => x.Version == targetVersion));
+        }
+        return new ConfigurationSaveChangesResult()
+        {
+            ChangesCount = changesCount,
+            NewValue = targetConfig,
+            OldValue = oldConfig,
+            Type = ConfigurationChangedType.Update,
+        };
         return default;
     }
 

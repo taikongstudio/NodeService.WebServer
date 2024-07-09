@@ -68,15 +68,18 @@ public partial class ConfigurationController : Controller
                 paramters,
                 BatchQueueOperationKind.Query,
                 priority);
-            await _batchQueue.SendAsync(op);
+            await _batchQueue.SendAsync(op, cancellationToken);
             var serviceResult = await op.WaitAsync(cancellationToken);
             var queryResult = serviceResult.Value.AsT0;
             if (queryResult.HasValue)
+            {
                 result = new ListQueryResult<T>(
-                    queryResult.TotalCount,
-                    queryResult.PageIndex,
-                    queryResult.PageSize,
-                    queryResult.Items.Select(static x => (T)x));
+                                    queryResult.TotalCount,
+                                    queryResult.PageIndex,
+                                    queryResult.PageSize,
+                                    queryResult.Items.Select(static x => (T)x));
+            }
+
             if (result.HasValue) apiResponse.SetResult(result);
         }
         catch (Exception ex)

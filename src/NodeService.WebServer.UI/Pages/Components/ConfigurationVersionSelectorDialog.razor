@@ -1,6 +1,8 @@
 ﻿@typeparam TItem where TItem : class, new()
 @inject ApiService ApiService
 @inject NotificationService _notice
+@inject IMessageService _message
+
 <Modal Width="800"
        Visible="@Visible"
        Title="@Title"

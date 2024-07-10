@@ -10,16 +10,23 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 {
     public static class NodeFileSyncRequestExtensions
     {
-        public static NodeFileSyncRecord CreateNodeFileSyncRecord(this NodeFileSyncRequest nodeFileSyncRequest)
+        public static NodeFileSyncRecordModel CreateNodeFileSyncRecord(this NodeFileSyncRequest nodeFileSyncRequest)
         {
-            return new NodeFileSyncRecord()
+            var record = new NodeFileSyncRecord()
             {
                 StoragePath = nodeFileSyncRequest.StoragePath,
-                NodeInfoId = nodeFileSyncRequest.NodeInfoId,
                 ConfigurationId = nodeFileSyncRequest.ConfigurationId,
                 ConfigurationProtocol = nodeFileSyncRequest.ConfigurationProtocol,
-                Status = NodeFileSyncStatus.Unknown,
                 FileInfo = NodeFileInfoSnapshot.From(nodeFileSyncRequest.FileInfo),
+            };
+            return new NodeFileSyncRecordModel()
+            {
+                Id = Guid.NewGuid().ToString(),
+                NodeInfoId = nodeFileSyncRequest.NodeInfoId,
+                Name = nodeFileSyncRequest.FileInfo.FullName,
+                Value = record,
+                Status = NodeFileSyncStatus.Pendding,
+                FullName = nodeFileSyncRequest.FileInfo.FullName,
             };
         }
 
@@ -89,12 +96,8 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             {
                 stream.Seek(0, SeekOrigin.Begin);
             }
-            return new NodeFileUploadContext()
-            {
-                FileInfo = nodeFileSyncRequest.FileInfo,
-                SyncRecord = CreateNodeFileSyncRecord(nodeFileSyncRequest),
-                Stream = stream,
-            };
+            var syncRecord = CreateNodeFileSyncRecord(nodeFileSyncRequest);
+            return new NodeFileUploadContext(syncRecord.Value.FileInfo, syncRecord, stream);
         }
 
     }

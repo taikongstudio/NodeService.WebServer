@@ -10,9 +10,9 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 {
     public static class NodeFileSystemHelper
     {
-        public static string GetNodeFilePath(string nodeName, string filePath)
+        public static string GetNodeFilePath(string nodeInfoId, string filePath)
         {
-            return $"NodeFileSystem://{nodeName}//{filePath}";
+            return $"NodeFileSystem://{nodeInfoId}//{filePath}";
         }
 
         public static string GetNodeFilePathHash(string nodeFilePath)

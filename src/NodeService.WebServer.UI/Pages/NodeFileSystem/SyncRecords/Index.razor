@@ -1,0 +1,286 @@
+﻿@namespace NodeService.WebServer.UI.Pages.NodeFileSystem.SyncRecords
+@page "/NodeFileSystem/SyncRecords/"
+@using NodeService.Infrastructure.NodeFileSystem
+@inject ApiService ApiService
+@inject NotificationService _notice
+@inject NavigationManager NavigationManager
+@implements IDisposable
+<GridContent>
+    <CommonDialog Closed="OnDialogClosed" @ref="_nodeSelectorDialog">
+        <NodeSelector @bind-SelectedItems="_selectedNodeList" Mode="SelectionMode.Multiple" />
+    </CommonDialog>
+
+    <Table Size="TableSize.Small"
+           Loading="@_dataSource.IsLoading"
+           ScrollX="1500px"
+           Resizable
+           Total="@_dataSource.TotalCount"
+           EnableVirtualization="false"
+           PageSize="@_dataSource.PageSize"
+           PageIndex="@_dataSource.PageIndex"
+           OnChange="OnTableChange"
+           OnPageSizeChange="@_dataSource.OnPaginationEvent"
+           OnPageIndexChange="@_dataSource.OnPaginationEvent"
+           TItem="NodeFileSyncRecordModel"
+           DataSource="@_dataSource.ItemsSource">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="6">
+                    <Title Level="3">任务实例</Title>
+                </GridCol>
+                <GridCol Span="6" Offset="12">
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync" />
+                </GridCol>
+            </GridRow>
+            <GridRow Wrap Style="min-height:30px">
+                <Text>节点：</Text>
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowNodeSelectorDialogAsync"></Button>
+
+                @if (_selectedNodeList != null)
+                {
+                    foreach (var item in _selectedNodeList)
+                    {
+                        <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
+                    }
+                }
+                else
+                {
+                    <Text>全部</Text>
+                }
+
+            </GridRow>
+            <GridRow>
+                <Space Wrap Style="margin-bottom:16px">
+                    <SpaceItem>
+                        <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged" />
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Select TItem="NodeFileSyncStatusModel"
+                                TItemValue="NodeFileSyncStatus"
+                                DataSource="@_nodeFileSyncStatusList"
+                                @bind-Value="@_selectedStatus"
+                                LabelName="@nameof(NodeFileSyncStatusModel.Name)"
+                                ValueName="@nameof(NodeFileSyncStatusModel.Value)"
+                                Placeholder="选择状态"
+                                DefaultActiveFirstOption="true"
+                                Style="width:200px"
+                                OnSelectedItemChanged="OnSelectedStatusChanged">
+                        </Select>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Type="@ButtonType.Primary" OnClick="QueryNodeFileSyncRecordListAsync">查询</Button>
+                    </SpaceItem>
+
+                </Space>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+            <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox" />
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="节点标志" Ellipsis Sortable Property="c => c.NodeInfoId"></PropertyColumn>
+            <PropertyColumn Title="文件路径" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
+                @switch (context.Status)
+                {
+                    case NodeFileSyncStatus.Unknown:
+                        <Text>全部</Text>
+                        break;
+                    case NodeFileSyncStatus.Pendding:
+                        <Text>排队</Text>
+                        break;
+                    case NodeFileSyncStatus.Queued:
+                        <Text>队列中</Text>
+                        break;
+                    case NodeFileSyncStatus.Processing:
+                        <Text>正在处理</Text>
+                        break;
+                    case NodeFileSyncStatus.Processed:
+                        <Text>处理完成</Text>
+                        break;
+                    case NodeFileSyncStatus.Canceled:
+                        <Text>已取消</Text>
+                        break;
+                    case NodeFileSyncStatus.Faulted:
+                        <Text>错误</Text>
+                        break;
+                    default:
+                        break;
+                }
+            </PropertyColumn>
+            <PropertyColumn Title="创建时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="修改时间" Ellipsis SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="开始时间" Ellipsis Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.UtcBeginTime"></PropertyColumn>
+            <PropertyColumn Title="结束时间" Ellipsis Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.UtcEndTime"></PropertyColumn>
+            <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.ErrorCode"></PropertyColumn>
+            <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.Message"></PropertyColumn>
+
+        </ColumnDefinitions>
+    </Table>
+</GridContent>
+
+@code {
+
+    class NodeFileSyncStatusModel
+    {
+        public NodeFileSyncStatus Value { get; set; }
+
+        public string Name { get; set; }
+    }
+
+    CommonDialog _nodeSelectorDialog;
+    CommonDialog _taskDefinitionSelectorDialog;
+    CommonDialog _taskLogViewerDialog;
+
+    DateTime BeginDateTime;
+    DateTime EndDateTime;
+
+    readonly DateTime?[] DateTimes = [default, default];
+
+    string _taskLogDialogTitle = "Loading";
+
+    RoutedPaginationDataSource<NodeFileSyncRecordModel, QueryNodeFileSystemSyncRecordParameters> _dataSource;
+
+
+    readonly List<NodeFileSyncStatusModel> _nodeFileSyncStatusList = [];
+
+    IEnumerable<NodeInfoModel> _selectedNodeList = [];
+    NodeFileSyncStatus _selectedStatus;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new RoutedPaginationDataSource<NodeFileSyncRecordModel, QueryNodeFileSystemSyncRecordParameters>(NavigationManager.BaseUri, ApiService.QueryNodeFileSyncRecordListAsync, StateHasChanged);
+        _dataSource.ExceptionHandler = OnExepction;
+        base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Unknown, Name = "全部" });
+        _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Pendding, Name = "排队" });
+        _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Queued, Name = "队列中" });
+        _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Processing, Name = "正在处理" });
+        _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Processed, Name = "处理完成" });
+        _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Canceled, Name = "已取消" });
+        _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Faulted, Name = "错误" });
+        BeginDateTime = DateTime.Today.Date.AddDays(-7);
+        EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        DateTimes[0] = BeginDateTime;
+        DateTimes[1] = EndDateTime;
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.Status), "ascend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.FireTimeUtc), "descend"));
+        await QueryNodeFileSyncRecordListAsync();
+        await base.OnInitializedAsync();
+    }
+
+    void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
+    {
+        BeginDateTime = e.Dates[0] ?? DateTime.Today.Date.AddDays(-7);
+        EndDateTime = e.Dates[1] ?? DateTime.Today.Date.AddDays(1).Date.AddSeconds(-1);
+    }
+
+    async Task QueryNodeFileSyncRecordListAsync()
+    {
+        try
+        {
+            _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
+            _dataSource.QueryParameters.EndDateTime = EndDateTime;
+            _dataSource.QueryParameters.NodeIdList.Clear();
+            if (_selectedNodeList != null)
+            {
+                _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
+            }
+
+            _dataSource.QueryParameters.Status = _selectedStatus;
+
+            await _dataSource.RequestAsync();
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    async Task RetryTaskAsync(TaskExecutionInstanceModel instance)
+    {
+        try
+        {
+            await ApiService.RetryTaskAsync(instance.Id);
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    async Task CancelTaskAsync(TaskExecutionInstanceModel model)
+    {
+        try
+        {
+            await ApiService.CancelTaskAsync(model.Id, new TaskCancellationParameters(model.Id, "WebUser", System.Net.Dns.GetHostName()));
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    void OnSelectedStatusChanged(NodeFileSyncStatusModel status)
+    {
+    }
+
+    async Task OnTableChange(QueryModel<NodeFileSyncRecordModel> query)
+    {
+
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        await _dataSource.RequestAsync();
+    }
+
+    async Task ShowNodeSelectorDialogAsync()
+    {
+        await _nodeSelectorDialog.ShowAsync();
+    }
+
+    Task OnDialogClosed()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        _dataSource.Dispose();
+    }
+
+}

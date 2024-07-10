@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.WebUtilities;
+﻿using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Net.Http.Headers;
 using NodeService.Infrastructure.Concurrent;
@@ -7,9 +6,6 @@ using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeFileSystem;
-using System.Net;
-using System.Reactive.Disposables;
-using System.Threading;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -20,15 +16,17 @@ public class NodeFileSystemController : Controller
     readonly ILogger<NodeFileSystemController> _logger;
     readonly ExceptionCounter _exceptionCounter;
     readonly IDistributedCache _distributedCache;
-    readonly BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecord>> _nodeFileSyncBatchQueue;
+    readonly BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>> _nodeFileSyncBatchQueue;
     readonly BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>> _queryQueue;
+    readonly BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> _syncRecordQueryQueue;
 
     public NodeFileSystemController(
         ILogger<NodeFileSystemController> logger,
         ExceptionCounter exceptionCounter,
         IDistributedCache distributedCache,
-        BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecord>> nodeFileSyncBatchQueue,
-        BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>> queryQueue
+        BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>> nodeFileSyncBatchQueue,
+        BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>> queryQueue,
+        BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> syncRecordQueryQueue
     )
     {
         _logger = logger;
@@ -36,6 +34,7 @@ public class NodeFileSystemController : Controller
         _distributedCache = distributedCache;
         _nodeFileSyncBatchQueue = nodeFileSyncBatchQueue;
         _queryQueue = queryQueue;
+        _syncRecordQueryQueue = syncRecordQueryQueue;
     }
 
     [HttpGet("/api/NodeFileSystem/QueueStatus")]
@@ -49,6 +48,33 @@ public class NodeFileSystemController : Controller
         return Task.FromResult(rsp);
     }
 
+    [HttpGet("/api/NodeFileSystem/SyncRecord/List")]
+    public async Task<PaginationResponse<NodeFileSyncRecordModel>> GetSyncRecordListAsync(
+        [FromQuery] QueryNodeFileSystemSyncRecordParameters parameters,
+        CancellationToken cancellationToken = default)
+    {
+        var rsp = new PaginationResponse<NodeFileSyncRecordModel>();
+        try
+        {
+            var queryParameter = new NodeFileSystemSyncRecordQueryParameters(parameters);
+            var serviceParameter = new NodeFileSystemSyncRecordServiceParameters(queryParameter);
+            var op = new BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>
+                (serviceParameter, BatchQueueOperationKind.Query);
+            await _syncRecordQueryQueue.SendAsync(op, cancellationToken);
+            var result = await op.WaitAsync(cancellationToken);
+            var listQueryResult = result.Result.AsT1.Result;
+            rsp.SetResult(listQueryResult);
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.Message;
+        }
+        return rsp;
+    }
+
     [HttpGet("/api/NodeFileSystem/GetObjectInfo")]
     public async Task<PaginationResponse<NodeFileInfo>> GetObjectInfoAsync(
         [FromQuery] QueryNodeFileSystemObjectInfoParameters queryParameters,
@@ -57,18 +83,18 @@ public class NodeFileSystemController : Controller
         var rsp = new PaginationResponse<NodeFileInfo>();
         try
         {
-            if (queryParameters.NodeName == null)
+            if (queryParameters.NodeInfoId == null)
             {
-                rsp.SetError(-1, "invalid node name");
+                rsp.SetError(-1, "invalid node info id");
                 return rsp;
             }
             if (queryParameters.FilePathList != null && queryParameters.FilePathList.Count > 0)
             {
                 List<NodeFileInfo> list = [];
-                List<string> notFoundFilePathList = new List<string>();
+                List<string> notFoundFilePathList = [];
                 foreach (var filePath in queryParameters.FilePathList)
                 {
-                    var nodeFilePath = NodeFileSystemHelper.GetNodeFilePath(queryParameters.NodeName, filePath);
+                    var nodeFilePath = NodeFileSystemHelper.GetNodeFilePath(queryParameters.NodeInfoId, filePath);
                     var jsonString = _distributedCache.GetString(nodeFilePath);
                     if (jsonString == null)
                     {
@@ -104,10 +130,9 @@ public class NodeFileSystemController : Controller
 
     [HttpPost("/api/NodeFileSystem/UploadFile")]
     [DisableRequestSizeLimit]
-    public async Task<ApiResponse<NodeFileSyncRecord>> UploadFileAsync()
+    public async Task<ApiResponse<NodeFileSyncRecordModel>> UploadFileAsync()
     {
-        var rsp = new ApiResponse<NodeFileSyncRecord>();
-        NodeFileSyncRecord? nodeFileSyncResponse = null;
+        var rsp = new ApiResponse<NodeFileSyncRecordModel>();
         try
         {
             if (_nodeFileSyncBatchQueue.AvailableCount > 100)
@@ -171,13 +196,14 @@ public class NodeFileSystemController : Controller
                             new DefaultSHA256HashAlgorithmProvider(),
                             new DefaultGzipCompressionProvider());
                         nodeFileSyncRequest = nodeFileSyncRequest with { Stream = nodeFileUploadContext.Stream };
-                        var op = new BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecord>(
+                        var op = new BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>(
                              nodeFileSyncRequest,
                              BatchQueueOperationKind.AddOrUpdate,
                              BatchQueueOperationPriority.Normal);
                         op.Context = nodeFileUploadContext;
                         await _nodeFileSyncBatchQueue.SendAsync(op);
-
+                        var syncRecord = await op.WaitAsync();
+                        rsp.SetResult(syncRecord);
                         stopwatch.Stop();
                     }
             }
@@ -192,8 +218,6 @@ public class NodeFileSystemController : Controller
             rsp.ErrorCode = ex.HResult;
             rsp.Message = ex.Message;
         }
-
-        rsp.SetResult(nodeFileSyncResponse);
         return rsp;
     }
 

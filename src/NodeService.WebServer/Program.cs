@@ -292,10 +292,12 @@ public class Program
         builder.Services.AddHostedService<TaskCancellationQueueService>();
         builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
         builder.Services.AddHostedService<NodeFileSystemWatchEventConsumerService>();
-        builder.Services.AddHostedService<NetworkDeviceScanService>();
         builder.Services.AddHostedService<NodeFileSystemUploadService>();
+        builder.Services.AddHostedService<NodeFileSystemSyncRecordService>();
+        builder.Services.AddHostedService<NetworkDeviceScanService>();
         builder.Services.AddHostedService<TaskLogQueryService>();
         builder.Services.AddHostedService<PackageQueryQueueService>();
+
     }
 
     private static void ConfigureScoped(WebApplicationBuilder builder)
@@ -430,7 +432,7 @@ public class Program
 
     private static void ConfigureSingleton(WebApplicationBuilder builder)
     {
-        builder.Services.AddSingleton<MyDynamicRouteValueTransformer>();
+        //builder.Services.AddSingleton<MyDynamicRouteValueTransformer>();
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
         builder.Services.AddSingleton<JobScheduler>();
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
@@ -465,11 +467,12 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(64, TimeSpan.FromSeconds(1)));
         builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(256, TimeSpan.FromSeconds(1)));
-        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecord>>(256, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>>(256, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(64, TimeSpan.FromMilliseconds(100)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>>(1024, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>>(1024, TimeSpan.FromSeconds(5)));
-        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>>(1024, TimeSpan.FromSeconds(5)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>>(1024, TimeSpan.FromSeconds(3)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>>(64, TimeSpan.FromSeconds(1)));
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

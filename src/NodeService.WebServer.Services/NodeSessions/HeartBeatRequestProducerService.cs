@@ -146,6 +146,10 @@ public class HeartBeatRequestProducerService : BackgroundService
                 continue;
             }
 
+            if (DateTime.UtcNow - _nodeSessionService.GetLastHeartBeatOutputDateTime(nodeSessionId) < TimeSpan.FromSeconds(30))
+            {
+                continue;
+            }
             var nodeName = _nodeSessionService.GetNodeName(nodeSessionId);
             _logger.LogInformation($"Send heart beat to {nodeSessionId}:{nodeName}");
             await _nodeSessionService.PostHeartBeatRequestAsync(nodeSessionId, cancellationToken);

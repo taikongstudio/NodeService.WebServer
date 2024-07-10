@@ -126,62 +126,62 @@
     "icon": "setting",
     "children": [
       {
-        "path": "/Configuration/Database/",
+        "path": "/CommonConfig/Database/",
         "name": "数据库配置",
         "key": "CommonConfig.Database"
       },
       {
-        "path": "/Configuration/Ftp",
+        "path": "/CommonConfig/Ftp",
         "name": "Ftp配置",
         "key": "CommonConfig.Ftp"
       },
       {
-        "path": "/Configuration/Kafka",
+        "path": "/CommonConfig/Kafka",
         "name": "Kafka配置",
         "key": "CommonConfig.Kafka"
       },
       {
-        "path": "/Configuration/NodeEnvVars",
+        "path": "/CommonConfig/NodeEnvVars",
         "name": "节点环境变量配置",
         "key": "CommonConfig.NodeEnvVars"
       },
       {
-        "path": "/Configuration/Package",
+        "path": "/CommonConfig/Package",
         "name": "包配置",
         "key": "CommonConfig.Package"
       },
       {
-        "path": "/Configuration/FtpUpload",
+        "path": "/CommonConfig/FtpUpload",
         "name": "Ftp上传配置",
         "key": "CommonConfig.FtpUpload"
       },
       {
-        "path": "/Configuration/FtpDownload",
+        "path": "/CommonConfig/FtpDownload",
         "name": "Ftp下载配置",
         "key": "CommonConfig.FtpDownload"
       },
       {
-        "path": "/Configuration/RestApi",
+        "path": "/CommonConfig/RestApi",
         "name": "RestApi配置",
         "key": "CommonConfig.RestApi"
       },
       {
-        "path": "/Configuration/FileSystemWatch",
+        "path": "/CommonConfig/FileSystemWatch",
         "name": "文件系统监控配置",
         "key": "CommonConfig.FileSystemWatch"
       },
       {
-        "path": "/Configuration/WindowsTask",
+        "path": "/CommonConfig/WindowsTask",
         "name": "Windows计划任务配置",
         "key": "CommonConfig.WindowsTask"
       },
       {
-        "path": "/Configuration/TaskTypeDesc",
+        "path": "/CommonConfig/TaskTypeDesc",
         "name": "作业类型描述配置",
         "key": "CommonConfig.TaskTypeDesc"
       },
       {
-        "path": "/Configuration/ClientUpdates",
+        "path": "/CommonConfig/ClientUpdates",
         "name": "客户端更新配置",
         "key": "CommonConfig.ClientUpdates"
       }

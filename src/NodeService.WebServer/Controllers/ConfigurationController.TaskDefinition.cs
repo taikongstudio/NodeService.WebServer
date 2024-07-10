@@ -8,7 +8,7 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class ConfigurationController
 {
-    [HttpPost("/api/Configuration/TaskDefinition/AddOrUpdate")]
+    [HttpPost("/api/CommonConfig/TaskDefinition/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync(
         [FromBody] TaskDefinitionModel model,
         CancellationToken cancellationToken = default)
@@ -17,7 +17,7 @@ public partial class ConfigurationController
     }
 
 
-    [HttpPost("/api/Configuration/TaskDefinition/{taskDefinitionId}/Invoke")]
+    [HttpPost("/api/CommonConfig/TaskDefinition/{taskDefinitionId}/Invoke")]
     public async Task<ApiResponse<InvokeTaskResult>> InvokeTaskAsync(
         string taskDefinitionId,
         [FromBody] InvokeTaskParameters invokeTaskParameters,
@@ -54,7 +54,7 @@ public partial class ConfigurationController
     }
 
 
-    [HttpGet("/api/Configuration/TaskDefinition/List")]
+    [HttpGet("/api/CommonConfig/TaskDefinition/List")]
     public Task<PaginationResponse<TaskDefinitionModel>> QueryTaskDefinitionListAsync(
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -62,7 +62,7 @@ public partial class ConfigurationController
         return QueryConfigurationListAsync<TaskDefinitionModel>(queryParameters, cancellationToken);
     }
 
-    [HttpGet("/api/Configuration/TaskDefinition/{id}")]
+    [HttpGet("/api/CommonConfig/TaskDefinition/{id}")]
     public Task<ApiResponse<TaskDefinitionModel>> QueryTaskDefinitionAsync(
         string id,
         CancellationToken cancellationToken = default)
@@ -71,7 +71,7 @@ public partial class ConfigurationController
     }
 
 
-    [HttpPost("/api/Configuration/TaskDefinition/Remove")]
+    [HttpPost("/api/CommonConfig/TaskDefinition/Remove")]
     public Task<ApiResponse> RemoveAsync(
         [FromBody] TaskDefinitionModel model,
         CancellationToken cancellationToken = default)
@@ -92,7 +92,7 @@ public partial class ConfigurationController
         await messageQueue.EnqueueAsync(op, cancellationToken);
     }
 
-    [HttpGet("/api/Configuration/TaskDefinition/VersionList")]
+    [HttpGet("/api/CommonConfig/TaskDefinition/VersionList")]
     public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryTaskDefinitionVersionListAsync(
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -146,7 +146,7 @@ public partial class ConfigurationController
         }
     }
 
-    [HttpPost("/api/Configuration/TaskDefinition/SwitchVersion")]
+    [HttpPost("/api/CommonConfig/TaskDefinition/SwitchVersion")]
     public Task<ApiResponse> SwitchTaskDefinitionVersionAsync(
         [FromBody] ConfigurationVersionSwitchParameters parameters,
         CancellationToken cancellationToken = default)
@@ -157,7 +157,7 @@ public partial class ConfigurationController
             cancellationToken: cancellationToken);
     }
 
-    [HttpPost("/api/Configuration/TaskDefinition/DeleteVersion")]
+    [HttpPost("/api/CommonConfig/TaskDefinition/DeleteVersion")]
     public Task<ApiResponse> DeleteTaskDefinitionVersionAsync(
         [FromBody] ConfigurationVersionRecordModel entity,
         CancellationToken cancellationToken = default)

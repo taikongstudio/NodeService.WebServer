@@ -10,7 +10,7 @@ namespace NodeService.WebServer.Controllers
 {
     public partial class ConfigurationController
     {
-        [HttpPost("/api/Configuration/TaskFlowTemplate/AddOrUpdate")]
+        [HttpPost("/api/CommonConfig/TaskFlowTemplate/AddOrUpdate")]
         public Task<ApiResponse> AddOrUpdateAsync([FromBody] TaskFlowTemplateModel model, CancellationToken cancellationToken = default)
         {
             return AddOrUpdateConfigurationAsync(model, OnTaskFlowTemplateVersionChanged, cancellationToken: cancellationToken);
@@ -72,7 +72,7 @@ namespace NodeService.WebServer.Controllers
             await messageQueue.EnqueueAsync(op, cancellationToken);
         }
 
-        [HttpGet("/api/Configuration/TaskFlowTemplate/List")]
+        [HttpGet("/api/CommonConfig/TaskFlowTemplate/List")]
         public Task<PaginationResponse<TaskFlowTemplateModel>> QueryTaskFlowTemplateListAsync(
             [FromQuery] PaginationQueryParameters queryParameters,
             CancellationToken cancellationToken = default)
@@ -80,7 +80,7 @@ namespace NodeService.WebServer.Controllers
             return QueryConfigurationListAsync<TaskFlowTemplateModel>(queryParameters, cancellationToken: cancellationToken);
         }
 
-        [HttpGet("/api/Configuration/TaskFlowTemplate/{id}")]
+        [HttpGet("/api/CommonConfig/TaskFlowTemplate/{id}")]
         public Task<ApiResponse<TaskFlowTemplateModel>> QueryTaskFlowTemplateAsync(
             string id,
             CancellationToken cancellationToken = default)
@@ -89,7 +89,7 @@ namespace NodeService.WebServer.Controllers
         }
 
 
-        [HttpPost("/api/Configuration/TaskFlowTemplate/Remove")]
+        [HttpPost("/api/CommonConfig/TaskFlowTemplate/Remove")]
         public Task<ApiResponse> RemoveAsync(
             [FromBody] TaskFlowTemplateModel model,
             CancellationToken cancellationToken = default)
@@ -97,7 +97,7 @@ namespace NodeService.WebServer.Controllers
             return DeleteConfigurationAsync(model, OnTaskDefinitionVersionChanged, cancellationToken: cancellationToken);
         }
 
-        [HttpGet("/api/Configuration/TaskFlowTemplate/VersionList")]
+        [HttpGet("/api/CommonConfig/TaskFlowTemplate/VersionList")]
         public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryTaskFlowTemplateConfigurationVersionListAsync(
             [FromQuery] PaginationQueryParameters queryParameters,
             CancellationToken cancellationToken = default)
@@ -105,7 +105,7 @@ namespace NodeService.WebServer.Controllers
             return QueryConfigurationVersionListAsync<ConfigurationVersionRecordModel>(queryParameters, cancellationToken: cancellationToken);
         }
 
-        [HttpPost("/api/Configuration/TaskFlowTemplate/SwitchVersion")]
+        [HttpPost("/api/CommonConfig/TaskFlowTemplate/SwitchVersion")]
         public Task<ApiResponse> SwitchTaskFlowTemplateConfigurationVersionAsync(
             [FromBody] ConfigurationVersionSwitchParameters parameters,
             CancellationToken cancellationToken = default)
@@ -113,7 +113,7 @@ namespace NodeService.WebServer.Controllers
             return SwitchConfigurationVersionAsync<TaskFlowTemplateModel>(parameters, cancellationToken: cancellationToken);
         }
 
-        [HttpPost("/api/Configuration/TaskFlowTemplate/DeleteVersion")]
+        [HttpPost("/api/CommonConfig/TaskFlowTemplate/DeleteVersion")]
         public Task<ApiResponse> DeleteTaskFlowTemplateConfigurationVersionAsync(
             [FromBody] ConfigurationVersionRecordModel entity,
             CancellationToken cancellationToken = default)
@@ -121,7 +121,7 @@ namespace NodeService.WebServer.Controllers
             return DeleteConfigurationVersionAsync<TaskFlowTemplateModel>(new ConfigurationVersionDeleteParameters(entity), cancellationToken);
         }
 
-        [HttpPost("/api/Configuration/TaskFlowTemplate/{taskFlowTemplateId}/Invoke")]
+        [HttpPost("/api/CommonConfig/TaskFlowTemplate/{taskFlowTemplateId}/Invoke")]
         public async Task<ApiResponse<InvokeTaskFlowResult>> InvokeTaskFlowAsync(
             string taskFlowTemplateId,
             [FromBody] InvokeTaskFlowParameters invokeTaskFlowParameters,

@@ -13,6 +13,7 @@ using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Routes;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
@@ -138,7 +139,7 @@ public class Program
 
         app.UseCors("AllowAll");
 
-        app.UseEndpoints(builder => { });
+       // app.MapDynamicControllerRoute<MyDynamicRouteValueTransformer>("api/{controller}/{action}/{**path}");
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapRazorPages();
@@ -429,6 +430,7 @@ public class Program
 
     private static void ConfigureSingleton(WebApplicationBuilder builder)
     {
+        builder.Services.AddSingleton<MyDynamicRouteValueTransformer>();
         builder.Services.AddSingleton<TaskSchedulerDictionary>();
         builder.Services.AddSingleton<JobScheduler>();
         builder.Services.AddSingleton<NodeHealthyCounterDictionary>();

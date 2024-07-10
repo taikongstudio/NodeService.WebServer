@@ -2,27 +2,27 @@
 
 public partial class ConfigurationController
 {
-    [HttpPost("/api/Configuration/restapi/AddOrUpdate")]
+    [HttpPost("/api/CommonConfig/RestApi/AddOrUpdate")]
     public Task<ApiResponse> AddOrUpdateAsync([FromBody] RestApiConfigModel model)
     {
         return AddOrUpdateConfigurationAsync(model);
     }
 
-    [HttpGet("/api/Configuration/restapi/List")]
+    [HttpGet("/api/CommonConfig/RestApi/List")]
     public Task<PaginationResponse<RestApiConfigModel>> QueryRestApiConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters)
     {
         return QueryConfigurationListAsync<RestApiConfigModel>(queryParameters);
     }
 
-    [HttpGet("/api/Configuration/restapi/{id}")]
+    [HttpGet("/api/CommonConfig/RestApi/{id}")]
     public Task<ApiResponse<RestApiConfigModel>> QueryRestApiConfigAsync(string id)
     {
         return QueryConfigurationAsync<RestApiConfigModel>(id);
     }
 
 
-    [HttpPost("/api/Configuration/restapi/Remove")]
+    [HttpPost("/api/CommonConfig/RestApi/Remove")]
     public Task<ApiResponse> RemoveAsync([FromBody] RestApiConfigModel model)
     {
         return DeleteConfigurationAsync(model);

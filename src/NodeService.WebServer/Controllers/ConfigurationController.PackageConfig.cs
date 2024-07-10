@@ -19,7 +19,7 @@ public record class PackageConfigUploadModel : PackageConfigModel
 
 public partial class ConfigurationController
 {
-    [HttpGet("/api/Configuration/Package/List")]
+    [HttpGet("/api/CommonConfig/Package/List")]
     public Task<PaginationResponse<PackageConfigModel>> QueryPackageConfigurationListAsync(
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -28,7 +28,7 @@ public partial class ConfigurationController
     }
 
     [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
-    [HttpGet("/api/Configuration/Package/Download/{packageId}")]
+    [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
     public async Task<IActionResult> DownloadPackageAsync(
         string packageId,
         CancellationToken cancellationToken = default)
@@ -49,7 +49,7 @@ public partial class ConfigurationController
         return File(serviceResult.Contents, "application/octet-stream", packageId);
     }
 
-    [HttpPost("/api/Configuration/Package/AddOrUpdate")]
+    [HttpPost("/api/CommonConfig/Package/AddOrUpdate")]
     [DisableRequestSizeLimit]
     public async Task<ApiResponse> AddOrUpdatePackageAsync(
         [FromForm] PackageConfigUploadModel uploadPackage,
@@ -137,7 +137,7 @@ public partial class ConfigurationController
         return apiResponse;
     }
 
-    [HttpPost("/api/Configuration/Package/Remove")]
+    [HttpPost("/api/CommonConfig/Package/Remove")]
     public Task<ApiResponse> DeletePackageConfigAsync(
         [FromBody] PackageConfigModel model,
         CancellationToken cancellationToken = default)
@@ -149,7 +149,7 @@ public partial class ConfigurationController
     }
 
 
-    [HttpGet("/api/Configuration/Package/{id}")]
+    [HttpGet("/api/CommonConfig/Package/{id}")]
     public Task<ApiResponse<PackageConfigModel>> QueryPackageConfigAsync(
         string id,
         CancellationToken cancellationToken = default)
@@ -159,7 +159,7 @@ public partial class ConfigurationController
             cancellationToken: cancellationToken);
     }
 
-    [HttpGet("/api/Configuration/Package/VersionList")]
+    [HttpGet("/api/CommonConfig/Package/VersionList")]
     public Task<PaginationResponse<ConfigurationVersionRecordModel>> QueryPackageConfigurationVersionListAsync(
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
@@ -169,7 +169,7 @@ public partial class ConfigurationController
             cancellationToken: cancellationToken);
     }
 
-    [HttpPost("/api/Configuration/Package/SwitchVersion")]
+    [HttpPost("/api/CommonConfig/Package/SwitchVersion")]
     public Task<ApiResponse> SwitchPackageConfigurationVersionAsync(
         [FromBody] ConfigurationVersionSwitchParameters parameters,
         CancellationToken cancellationToken = default)
@@ -180,7 +180,7 @@ public partial class ConfigurationController
             cancellationToken: cancellationToken);
     }
 
-    [HttpPost("/api/Configuration/Package/DeleteVersion")]
+    [HttpPost("/api/CommonConfig/Package/DeleteVersion")]
     public Task<ApiResponse> DeletePackageConfigurationVersionAsync(
         [FromBody] ConfigurationVersionRecordModel entity,
         CancellationToken cancellationToken = default)

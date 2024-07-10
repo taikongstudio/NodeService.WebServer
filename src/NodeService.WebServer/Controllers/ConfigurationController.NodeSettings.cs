@@ -5,7 +5,7 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class ConfigurationController
 {
-    [HttpGet("/api/Configuration/NodeSettings/")]
+    [HttpGet("/api/CommonConfig/NodeSettings/")]
     public async Task<ApiResponse<NodeSettings>> QueryNodeSettingsAsync()
     {
         var rsp = new ApiResponse<NodeSettings>();
@@ -46,7 +46,7 @@ public partial class ConfigurationController
         return rsp;
     }
 
-    [HttpPost("/api/Configuration/NodeSettings/Update")]
+    [HttpPost("/api/CommonConfig/NodeSettings/Update")]
     public async Task<ApiResponse> UpdateNodeSettingAsync([FromBody] NodeSettings model)
     {
         var rsp = new ApiResponse();

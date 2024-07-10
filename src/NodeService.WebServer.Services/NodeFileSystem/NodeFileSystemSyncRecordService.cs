@@ -101,8 +101,8 @@ namespace NodeService.WebServer.Services.NodeFileSystem
     {
         private readonly ILogger<NodeFileSystemSyncRecordService> _logger;
         private readonly ExceptionCounter _exceptionCounter;
-        readonly BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> _nodeFileSyncRecordQueue;
-        readonly ApplicationRepositoryFactory<NodeFileSyncRecordModel> _nodeFileSyncRecordRepoFactory;
+        readonly BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> _syncRecordQueue;
+        readonly ApplicationRepositoryFactory<NodeFileSyncRecordModel> _syncRecordRepoFactory;
 
         public NodeFileSystemSyncRecordService(
             ILogger<NodeFileSystemSyncRecordService> logger,
@@ -112,13 +112,13 @@ namespace NodeService.WebServer.Services.NodeFileSystem
         {
             _logger = logger;
             _exceptionCounter = exceptionCounter;
-            _nodeFileSyncRecordQueue = nodeFileSyncRecordQueue;
-            _nodeFileSyncRecordRepoFactory = nodeFileSyncRecordRepoFactory;
+            _syncRecordQueue = nodeFileSyncRecordQueue;
+            _syncRecordRepoFactory = nodeFileSyncRecordRepoFactory;
         }
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
         {
-            await foreach (var array in _nodeFileSyncRecordQueue.ReceiveAllAsync(cancellationToken))
+            await foreach (var array in _syncRecordQueue.ReceiveAllAsync(cancellationToken))
             {
                 try
                 {
@@ -126,7 +126,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                     {
                         continue;
                     }
-                    using var nodeFileSyncRecordRepo = _nodeFileSyncRecordRepoFactory.CreateRepository();
+                    using var nodeFileSyncRecordRepo = _syncRecordRepoFactory.CreateRepository();
                     foreach (var op in array)
                     {
                         try
@@ -167,7 +167,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             }
         }
 
-        static async ValueTask ProcessQueryAsync(IRepository<NodeFileSyncRecordModel> nodeFileSyncRecordRepo, BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult> op, CancellationToken cancellationToken)
+        static async ValueTask ProcessQueryAsync(IRepository<NodeFileSyncRecordModel> syncRecordRepo, BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult> op, CancellationToken cancellationToken)
         {
             var queryParameters = op.Argument.Parameters.AsT1.QueryParameters;
             var nodeInfoIdFilters = DataFilterCollection<string>.Includes(queryParameters.NodeIdList);
@@ -179,7 +179,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                 queryParameters.BeginDateTime,
                 queryParameters.EndDateTime,
                 queryParameters.SortDescriptions);
-            var list = await nodeFileSyncRecordRepo.PaginationQueryAsync(
+            var list = await syncRecordRepo.PaginationQueryAsync(
                 specification,
                 new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
                 cancellationToken);

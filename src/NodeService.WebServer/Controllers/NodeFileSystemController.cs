@@ -191,8 +191,23 @@ public class NodeFileSystemController : Controller
                         }
 
                         var stopwatch = Stopwatch.StartNew();
-                        nodeFileSyncRequest = nodeFileSyncRequest with { Stream = section.Body };
-                        using var nodeFileUploadContext = await nodeFileSyncRequest.CreateNodeFileUploadContextAsync(
+                        var type = section.Body.GetType();
+                        var tempFilePath = Path.Combine(NodeFileSystemHelper.TempDirectory, Guid.NewGuid() + ".tmp");
+                        if (!Directory.Exists(NodeFileSystemHelper.TempDirectory))
+                        {
+                            Directory.CreateDirectory(NodeFileSystemHelper.TempDirectory);
+                        }
+                        var fileStream = System.IO.File.Open(tempFilePath, new FileStreamOptions()
+                        {
+                            Access = FileAccess.ReadWrite,
+                            Mode = FileMode.OpenOrCreate,
+                            Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+                            Share = FileShare.ReadWrite,
+                        });
+                        await section.Body.CopyToAsync(fileStream);
+                        fileStream.Position = 0;
+                        nodeFileSyncRequest = nodeFileSyncRequest with { Stream = fileStream };
+                        var nodeFileUploadContext = await nodeFileSyncRequest.CreateNodeFileUploadContextAsync(
                             new DefaultSHA256HashAlgorithmProvider(),
                             new DefaultGzipCompressionProvider());
                         nodeFileSyncRequest = nodeFileSyncRequest with { Stream = nodeFileUploadContext.Stream };

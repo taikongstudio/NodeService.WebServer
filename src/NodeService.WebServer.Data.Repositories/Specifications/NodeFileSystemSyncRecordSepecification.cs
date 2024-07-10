@@ -1,4 +1,5 @@
 ﻿using NodeService.Infrastructure.NodeFileSystem;
+using NodeService.WebServer.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,16 +11,16 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
     public class NodeFileSystemSyncRecordSepecification : SelectSpecification<NodeFileSyncRecordModel, string>
     {
         public NodeFileSystemSyncRecordSepecification(
-            NodeFileSyncStatus nodeFileSyncStatus,
+            NodeFileSyncStatus status,
             DataFilterCollection<string> nodeIdFilters,
-            DataFilterCollection<string> nodeFileSyncRecordIdList,
+            DataFilterCollection<string> syncRecordIdList,
             DateTime? beginTime,
             DateTime? endTime,
             IEnumerable<SortDescription> sortDescriptions)
         {
-            if (nodeFileSyncStatus != NodeFileSyncStatus.Unknown)
+            if (status != NodeFileSyncStatus.Unknown)
             {
-                Query.Where(x => x.Status == NodeFileSyncStatus.Unknown);
+                Query.Where(x => x.Status == status);
             }
             if (nodeIdFilters.HasValue)
             {
@@ -32,15 +33,15 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
                     Query.Where(x => !nodeIdFilters.Items.Contains(x.NodeInfoId));
                 }
             }
-            if (nodeFileSyncRecordIdList.HasValue)
+            if (syncRecordIdList.HasValue)
             {
-                if (nodeFileSyncRecordIdList.FilterType == DataFilterTypes.Include)
+                if (syncRecordIdList.FilterType == DataFilterTypes.Include)
                 {
-                    Query.Where(x => nodeFileSyncRecordIdList.Items.Contains(x.Id));
+                    Query.Where(x => syncRecordIdList.Items.Contains(x.Id));
                 }
-                else if (nodeFileSyncRecordIdList.FilterType == DataFilterTypes.Exclude)
+                else if (syncRecordIdList.FilterType == DataFilterTypes.Exclude)
                 {
-                    Query.Where(x => !nodeFileSyncRecordIdList.Items.Contains(x.Id));
+                    Query.Where(x => !syncRecordIdList.Items.Contains(x.Id));
                 }
             }
             if (beginTime != null && beginTime.HasValue && endTime != null && endTime.HasValue)
@@ -49,6 +50,10 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
                 Query.Where(x => x.CreationDateTime <= endTime);
             else if (beginTime != null && beginTime.HasValue && endTime == null)
                 Query.Where(x => x.CreationDateTime >= beginTime);
+            if (sortDescriptions != null)
+            {
+                Query.SortBy(sortDescriptions);
+            }
         }
     }
 }

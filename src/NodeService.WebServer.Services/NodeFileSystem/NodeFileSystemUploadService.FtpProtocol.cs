@@ -9,8 +9,6 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 {
     public partial class NodeFileSystemUploadService
     {
-        readonly List<FtpClientProcessContext> _asyncFtpClients;
-
         AsyncFtpClient CreateFtpClient(FtpConfigModel ftpConfig)
         {
             var asyncFtpClient = new AsyncFtpClient(ftpConfig.Host, ftpConfig.Username, ftpConfig.Password, ftpConfig.Port,
@@ -25,9 +23,15 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             return asyncFtpClient;
         }
 
-        void ReturnFtpClient(AsyncFtpClient asyncFtpClient)
+        async ValueTask<FtpConfigModel?> FindFtpConfigurationAsync(string configurationId, CancellationToken cancellationToken)
         {
-
+            using var ftpConfigRepo = _ftpConfigRepoFactory.CreateRepository();
+            var ftpConfig = await ftpConfigRepo.GetByIdAsync(
+                configurationId,
+                cancellationToken);
+            return ftpConfig;
         }
+
+
     }
 }

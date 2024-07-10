@@ -15,11 +15,65 @@ public record struct NodeFileUploadGroupKey
     public long LengthBase { get; init; }
 }
 
+public record struct NodeFileKey
+{
+    public NodeFileKey(string nodeInfoId, string fullName)
+    {
+        NodeInfoId = nodeInfoId;
+        FullName = fullName;
+    }
+
+    public string NodeInfoId { get; private set; }
+
+    public string FullName { get; private set; }
+}
+
 public record class BatchProcessContext
 {
-    public required string ContextId { get; init; }
-    public required ProcessContext ProcessContext { get; init; }
-    public required ConcurrentQueue<NodeFileUploadContext> UploadQueue { get; init; }
+    public BatchProcessContext(string contextId, ProcessContext processContext)
+    {
+        ContextId = contextId;
+        ProcessContext = processContext;
+        _uploadQueue = new ConcurrentQueue<NodeFileUploadContext>();
+        _uploadQueueFileDictionary = new ConcurrentDictionary<NodeFileKey, NodeFileUploadContext>();
+    }
+
+    public  string ContextId { get; init; }
+    public  ProcessContext ProcessContext { get; init; }
+    ConcurrentQueue<NodeFileUploadContext> _uploadQueue;
+
+    ConcurrentDictionary<NodeFileKey, NodeFileUploadContext> _uploadQueueFileDictionary;
+
+    public void AddNodeFileUploadContext(NodeFileUploadContext nodeFileUploadContext)
+    {
+        _uploadQueue.Enqueue(nodeFileUploadContext);
+        var key = new NodeFileKey(
+            nodeFileUploadContext.SyncRecord.NodeInfoId,
+            nodeFileUploadContext.SyncRecord.FullName);
+        if (_uploadQueueFileDictionary.TryRemove(key, out var oldNodeFileUploadContext))
+        {
+            oldNodeFileUploadContext.IsCancellationRequested = true;
+        }
+        _uploadQueueFileDictionary.TryAdd(key, nodeFileUploadContext);
+    }
+
+    public bool TryGetNextUploadContext(out NodeFileUploadContext? nodeFileUploadContext)
+    {
+        nodeFileUploadContext = default;
+        if (_uploadQueue.IsEmpty)
+        {
+            return false;
+        }
+        if (_uploadQueue.TryDequeue(out nodeFileUploadContext))
+        {
+            var key = new NodeFileKey(
+            nodeFileUploadContext.SyncRecord.NodeInfoId,
+            nodeFileUploadContext.SyncRecord.FullName);
+            _uploadQueueFileDictionary.TryRemove(key, out _);
+            return true;
+        }
+        return false;
+    }
 }
 
 public class NodeFileUploadContext :  IDisposable
@@ -39,6 +93,8 @@ public class NodeFileUploadContext :  IDisposable
     public NodeFileSyncRecordModel SyncRecord { get; private set; }
 
     public Stream Stream { get; private set; }
+
+    public bool IsCancellationRequested { get; set; }
 
     public void Dispose()
     {
@@ -64,9 +120,9 @@ public class FtpClientProcessContext : ProcessContext
 {
 
     readonly AsyncFtpClient _asyncFtpClient;
-    readonly ActionBlock<NodeFileSyncRecordModel> _actionBlock;
+    readonly BatchQueue<NodeFileSyncRecordModel> _actionBlock;
 
-    public FtpClientProcessContext(AsyncFtpClient asyncFtpClient, ActionBlock<NodeFileSyncRecordModel> actionBlock)
+    public FtpClientProcessContext(AsyncFtpClient asyncFtpClient, BatchQueue<NodeFileSyncRecordModel> actionBlock)
     {
         _asyncFtpClient = asyncFtpClient;
         _actionBlock = actionBlock;
@@ -98,7 +154,10 @@ public class FtpClientProcessContext : ProcessContext
             var lambdaProgress = new LambdaProgress<FtpProgress>((ftpProgress) =>
             {
                 nodeFileUploadContext.SyncRecord.Progress = ftpProgress.Progress;
-                nodeFileUploadContext.SyncRecord.TransferSpeed = ftpProgress.TransferSpeed;
+                if (ftpProgress.Progress < 100)
+                {
+                    nodeFileUploadContext.SyncRecord.TransferSpeed = ftpProgress.TransferSpeed;
+                }
                 nodeFileUploadContext.SyncRecord.EstimatedTimeSpan = ftpProgress.ETA;
                 nodeFileUploadContext.SyncRecord.TransferredBytes = ftpProgress.TransferredBytes;
                 _actionBlock.Post(nodeFileUploadContext.SyncRecord);
@@ -141,12 +200,12 @@ public partial class NodeFileSystemUploadService : BackgroundService
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
     readonly ActionBlock<BatchProcessContext> _nodeFtpUploadActionBlock;
     readonly ConcurrentDictionary<string, BatchProcessContext> _inprogressBatchContextDict;
-    readonly ActionBlock<NodeFileSyncRecordModel> _syncRecordAddOrUpdateActionBlock;
+    readonly BatchQueue<NodeFileSyncRecordModel> _syncRecordAddOrUpdateActionBlock;
 
     public NodeFileSystemUploadService(
         ILogger<NodeFileSystemUploadService> logger,
         ExceptionCounter exceptionCounter,
-       WebServerCounter webServerCounter,
+        WebServerCounter webServerCounter,
         BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>> fileSyncBatchQueue,
         BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>> nodeFileSystemEventQueue,
         BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> nodeFileSystemSyncRecordQueue,
@@ -161,31 +220,31 @@ public partial class NodeFileSystemUploadService : BackgroundService
         _nodeFileSystemSyncRecordQueue = nodeFileSystemSyncRecordQueue;
         _ftpConfigRepoFactory = ftpConfigRepoFactory;
         _nodeInfoRepoFactory = nodeInfoRepoFactory;
-        _syncRecordAddOrUpdateActionBlock = new ActionBlock<NodeFileSyncRecordModel>(AddOrUpdateSyncRecordAsync, new ExecutionDataflowBlockOptions()
-        {
-            EnsureOrdered = true,
-            MaxDegreeOfParallelism = 1,
-        });
+        _syncRecordAddOrUpdateActionBlock = new BatchQueue<NodeFileSyncRecordModel>(1024, TimeSpan.FromSeconds(3));
         _inprogressBatchContextDict = new ConcurrentDictionary<string, BatchProcessContext>();
-        _nodeFtpUploadActionBlock = new ActionBlock<BatchProcessContext>(ProcessNodeFtpBatchContextAsync, new ExecutionDataflowBlockOptions()
+        _nodeFtpUploadActionBlock = new ActionBlock<BatchProcessContext>(ProcessBatchProcessContextAsync, new ExecutionDataflowBlockOptions()
         {
             EnsureOrdered = true,
             MaxDegreeOfParallelism = Debugger.IsAttached ? 1 : 8,
         });
     }
 
-    async Task AddOrUpdateSyncRecordAsync(NodeFileSyncRecordModel model)
+    async ValueTask AddOrUpdateSyncRecordToBatchQueueAsync(NodeFileSyncRecordModel model)
     {
-        await BatchAddOrUpdateSyncRecordsAsync([model]);
+        await _syncRecordAddOrUpdateActionBlock.SendAsync(model);
     }
 
-    async Task ProcessNodeFtpBatchContextAsync(BatchProcessContext batchContext)
+    async Task ProcessBatchProcessContextAsync(BatchProcessContext batchContext)
     {
         int count = 0;
-        while (count < 60)
+        while (count < 600)
         {
-            await ProcessBatchContext(batchContext);
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            if (await ProcessBatchContextAsync(batchContext))
+            {
+                count = 0;
+                continue;
+            }
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
             count++;
         }
         _inprogressBatchContextDict.TryRemove(batchContext.ContextId, out _);
@@ -194,21 +253,22 @@ public partial class NodeFileSystemUploadService : BackgroundService
         _webServerCounter.NodeFileSyncServiceBatchProcessContextRemovedCount.Value++;
     }
 
-    async Task ProcessBatchContext(BatchProcessContext batchContext)
+    async ValueTask<bool> ProcessBatchContextAsync(BatchProcessContext batchContext)
     {
-        while (!batchContext.UploadQueue.IsEmpty)
+        var count = 0;
+        while (batchContext.TryGetNextUploadContext(out NodeFileUploadContext? nodeFileUploadContext))
         {
-            if (!batchContext.UploadQueue.TryDequeue(out NodeFileUploadContext? nodeFileUploadContext))
+            if (nodeFileUploadContext == null)
             {
-                continue;
+                break;
             }
             nodeFileUploadContext.SyncRecord.Status = NodeFileSyncStatus.Processing;
-            await BatchAddOrUpdateSyncRecordsAsync([nodeFileUploadContext.SyncRecord]);
+            await AddOrUpdateSyncRecordToBatchQueueAsync(nodeFileUploadContext.SyncRecord);
             await ProcessUploadContextAsync(batchContext.ProcessContext, nodeFileUploadContext);
-            await BatchAddOrUpdateSyncRecordsAsync([nodeFileUploadContext.SyncRecord]);
+            await AddOrUpdateSyncRecordToBatchQueueAsync(nodeFileUploadContext.SyncRecord);
+            count++;
         }
-
-
+        return count > 0;
     }
 
     NodeFileUploadGroupKey NodeFileGroup(BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext> op)
@@ -226,7 +286,17 @@ public partial class NodeFileSystemUploadService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        await ConsumeNodeFileUploadOperationAsync(cancellationToken);
+        await Task.WhenAll(
+            ProcessNodeSyncRecordQueueActionBlockAsync(cancellationToken),
+            ConsumeNodeFileUploadOperationAsync(cancellationToken));
+    }
+
+    private async Task ProcessNodeSyncRecordQueueActionBlockAsync(CancellationToken cancellationToken = default)
+    {
+        await foreach (var array in _syncRecordAddOrUpdateActionBlock.ReceiveAllAsync(cancellationToken))
+        {
+            await BatchAddOrUpdateSyncRecordsAsync(array, cancellationToken);
+        }
     }
 
     async Task ConsumeNodeFileUploadOperationAsync(CancellationToken cancellationToken = default)
@@ -240,8 +310,10 @@ public partial class NodeFileSystemUploadService : BackgroundService
             var syncRecords = array.Select(static x => x.Context.SyncRecord).ToArray();
             try
             {
-
-                await BatchAddOrUpdateSyncRecordsAsync(syncRecords, cancellationToken);
+                foreach (var syncRecord in syncRecords)
+                {
+                    await AddOrUpdateSyncRecordToBatchQueueAsync(syncRecord);
+                }
                 var nodeInfoIdList = syncRecords.Select(x => x.NodeInfoId).Distinct();
                 var nodeInfoList = await FindNodeInfoListAsync(nodeInfoIdList, cancellationToken);
                 if (nodeInfoList == null || nodeInfoList.Count == 0)
@@ -268,7 +340,7 @@ public partial class NodeFileSystemUploadService : BackgroundService
             }
             finally
             {
-                await BatchAddOrUpdateSyncRecordsAsync(syncRecords, cancellationToken);
+
             }
         }
     }
@@ -326,38 +398,29 @@ public partial class NodeFileSystemUploadService : BackgroundService
                         return;
                     }
 
-    
-                    var contextId = ftpConfig.ToString();
-                    if (!_inprogressBatchContextDict.TryGetValue(contextId, out BatchProcessContext? batchContext) || batchContext == null)
+
+                    var contextId = ftpConfig.Value.ToString();
+
+                    await BatchAddOrUpdateAndSetResult(
+                                                           opGroup,
+                                                           NodeFileSyncStatus.Queued,
+                                                           0,
+                                                           null);
+
+                    if (!_inprogressBatchContextDict.TryGetValue(contextId, out BatchProcessContext? batchProcessContext) || batchProcessContext == null)
                     {
                         var asyncFtpClient = CreateFtpClient(ftpConfig);
-                        batchContext = new BatchProcessContext()
-                        {
-                            ContextId = contextId,
-                            ProcessContext = new FtpClientProcessContext(asyncFtpClient, _syncRecordAddOrUpdateActionBlock),
-                            UploadQueue = new ConcurrentQueue<NodeFileUploadContext>(opGroup.Select(x => x.Context))
-                        };
-                        _inprogressBatchContextDict.TryAdd(contextId, batchContext);
+                        var processContext = new FtpClientProcessContext(asyncFtpClient, _syncRecordAddOrUpdateActionBlock);
+                        batchProcessContext = new BatchProcessContext(contextId, processContext);
+                        AddToBatchProcessContext(batchProcessContext, opGroup);
+                        _inprogressBatchContextDict.TryAdd(contextId, batchProcessContext);
                         _webServerCounter.NodeFileSyncServiceBatchProcessContextAddedCount.Value++;
-                        await _nodeFtpUploadActionBlock.SendAsync(batchContext, cancellationToken);
+                        await _nodeFtpUploadActionBlock.SendAsync(batchProcessContext, cancellationToken);
                     }
                     else
                     {
-                        foreach (var context in opGroup.Select(static x => x.Context))
-                        {
-                            if (context == null)
-                            {
-                                continue;
-                            }
-                            batchContext.UploadQueue.Enqueue(context);
-                        }
+                        AddToBatchProcessContext(batchProcessContext, opGroup);
                     }
-
-                    await BatchAddOrUpdateAndSetResult(
-                       opGroup,
-                       NodeFileSyncStatus.Queued,
-                       0,
-                       null);
                     break;
                 default:
                     break;
@@ -372,6 +435,22 @@ public partial class NodeFileSystemUploadService : BackgroundService
                   ex.Message);
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
+        }
+    }
+
+    void AddToBatchProcessContext(
+        BatchProcessContext batchContext,
+        IEnumerable<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>> ops
+
+   )
+    {
+        foreach (var op in ops)
+        {
+            if (op.Context == null)
+            {
+                continue;
+            }
+            batchContext.AddNodeFileUploadContext(op.Context);
         }
     }
 
@@ -406,9 +485,8 @@ public partial class NodeFileSystemUploadService : BackgroundService
             syncRecord.ErrorCode = errorCode;
             syncRecord.Message = message;
             syncRecord.Status = status;
+            await AddOrUpdateSyncRecordToBatchQueueAsync(op.Context.SyncRecord);
         }
-
-        await BatchAddOrUpdateSyncRecordsAsync(opGroup.Select(x => x.Context.SyncRecord));
 
         foreach (var op in opGroup)
         {
@@ -427,11 +505,11 @@ public partial class NodeFileSystemUploadService : BackgroundService
             var syncRecord = nodeFileUploadContext.SyncRecord;
             try
             {
-                if (nodeFileUploadContext == null)
+                if (nodeFileUploadContext.IsCancellationRequested)
                 {
+                    syncRecord.Status = NodeFileSyncStatus.Canceled;
                     return;
                 }
-
                 await processContext.ProcessAsync(
                     nodeFileUploadContext,
                     cancellationToken);
@@ -457,7 +535,7 @@ public partial class NodeFileSystemUploadService : BackgroundService
             }
             finally
             {
-
+                nodeFileUploadContext.Dispose();
             }
         }
         catch (Exception ex)
@@ -488,12 +566,4 @@ public partial class NodeFileSystemUploadService : BackgroundService
             cancellationToken);
     }
 
-    async ValueTask<FtpConfigModel?> FindFtpConfigurationAsync(string configurationId, CancellationToken cancellationToken)
-    {
-        using var ftpConfigRepo = _ftpConfigRepoFactory.CreateRepository();
-        var ftpConfig = await ftpConfigRepo.GetByIdAsync(
-            configurationId,
-            cancellationToken);
-        return ftpConfig;
-    }
 }

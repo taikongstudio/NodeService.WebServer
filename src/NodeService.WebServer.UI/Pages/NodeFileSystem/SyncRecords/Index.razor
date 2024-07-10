@@ -12,7 +12,7 @@
 
     <Table Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
-           ScrollX="1500px"
+           ScrollX="3000px"
            Resizable
            Total="@_dataSource.TotalCount"
            EnableVirtualization="false"
@@ -26,7 +26,7 @@
         <TitleTemplate>
             <GridRow Style="margin-bottom:16px">
                 <GridCol Span="6">
-                    <Title Level="3">任务实例</Title>
+                    <Title Level="3">文件同步记录</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
                     <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync" />
@@ -79,6 +79,7 @@
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="节点标志" Ellipsis Sortable Property="c => c.NodeInfoId"></PropertyColumn>
             <PropertyColumn Title="文件路径" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="存储路径" Ellipsis Sortable="true" Property="c => c.StoragePath"></PropertyColumn>
             <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
                 @switch (context.Status)
                 {
@@ -108,17 +109,73 @@
                 }
             </PropertyColumn>
             <PropertyColumn Title="创建时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
-            <PropertyColumn Title="修改时间" Ellipsis SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="修改时间" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
             <PropertyColumn Title="开始时间" Ellipsis Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.UtcBeginTime"></PropertyColumn>
             <PropertyColumn Title="结束时间" Ellipsis Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.UtcEndTime"></PropertyColumn>
-            <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.ErrorCode"></PropertyColumn>
-            <PropertyColumn Title="消息" Sortable="true" Ellipsis Property="c => c.Message"></PropertyColumn>
+            <PropertyColumn Title="传输速度"  Ellipsis Property="c => c.TransferSpeed">
+                <Text>@FormatSize(context.TransferSpeed)</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="剩余时间" Ellipsis Property="c => c.EstimatedTimeSpan">
+                <Text>@FormatTime(context.Value.EstimatedTimeSpan.TotalSeconds)</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="进度" Ellipsis Property="c => c.Progress">
+                <AntDesign.Progress Percent="@((double)context.Progress)" ShowInfo="false"></AntDesign.Progress>
+            </PropertyColumn>
+            <PropertyColumn Title="总大小" Ellipsis Property="c => c.FileInfo.Length">
+                <Text>@FormatSize(context.FileInfo.Length)</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="已传输大小"  Ellipsis Property="c => c.TransferredBytes">
+                <Text>@FormatSize(context.TransferredBytes)</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="错误代码"  Ellipsis Property="c => c.ErrorCode"></PropertyColumn>
+            <PropertyColumn Title="消息"  Ellipsis Property="c => c.Message"></PropertyColumn>
 
         </ColumnDefinitions>
     </Table>
 </GridContent>
 
 @code {
+    string FormatSize(double length)
+    {
+
+        if (length >= 1024 * 1024 * 1024)
+        {
+            return (length / 1024d / 1024 / 1024).ToString("n2") + "GB";
+        }
+        else if (length > 1024 * 1024)
+        {
+            return (length / 1024d / 1024).ToString("n2") + "MB";
+        }
+        else if (length > 1024)
+        {
+            return (length / 1024d).ToString("n2") + "KB";
+        }
+        else
+        {
+            return length.ToString() + "B";
+        }
+    }
+
+    string FormatTime(double seconds)
+    {
+
+        if (seconds >= 60 * 60 * 24)
+        {
+            return (seconds / 60d / 60 / 24).ToString("n2") + " Days";
+        }
+        else if (seconds > 60 * 60)
+        {
+            return (seconds / 60d / 60).ToString("n2") + " H";
+        }
+        else if (seconds > 60)
+        {
+            return (seconds / 60d).ToString("n2") + " Min";
+        }
+        else
+        {
+            return seconds.ToString("n2") + " Sec";
+        }
+    }
 
     class NodeFileSyncStatusModel
     {
@@ -176,8 +233,8 @@
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
         _dataSource.QueryParameters.SortDescriptions.Clear();
-        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.Status), "ascend"));
-        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.FireTimeUtc), "descend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(NodeFileSyncRecordModel.Status), "ascend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(NodeFileSyncRecordModel.CreationDateTime), "descend"));
         await QueryNodeFileSyncRecordListAsync();
         await base.OnInitializedAsync();
     }

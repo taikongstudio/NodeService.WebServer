@@ -472,7 +472,7 @@ public class Program
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>>(1024, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>>(1024, TimeSpan.FromSeconds(5)));
         builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>>(1024, TimeSpan.FromSeconds(3)));
-        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>>(64, TimeSpan.FromSeconds(1)));
+        builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>>(128, TimeSpan.FromSeconds(3)));
     }
 
     private static void ConfigureDbContext(WebApplicationBuilder builder)

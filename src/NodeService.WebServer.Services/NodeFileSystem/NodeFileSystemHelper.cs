@@ -10,6 +10,8 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 {
     public static class NodeFileSystemHelper
     {
+       public   const string TempDirectory = "../NodeFileSystem/DecompressionTemp";
+
         public static string GetNodeFilePath(string nodeInfoId, string filePath)
         {
             return $"NodeFileSystem://{nodeInfoId}//{filePath}";

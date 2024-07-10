@@ -37,7 +37,6 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                                 bool validateHash = false,
                                 CancellationToken cancellationToken = default)
         {
-            const string TempDirectory = "../NodeFileSystem/DecompressionTemp";
             var stream = nodeFileSyncRequest.Stream;
             if (nodeFileSyncRequest.FileInfo.CompressionInfo != null)
             {
@@ -60,11 +59,11 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                         throw new InvalidDataException();
                     }
                 }
-                if (!Directory.Exists(TempDirectory))
+                if (!Directory.Exists(NodeFileSystemHelper.TempDirectory))
                 {
-                    Directory.CreateDirectory(TempDirectory);
+                    Directory.CreateDirectory(NodeFileSystemHelper.TempDirectory);
                 }
-                var tempFilePath = Path.Combine(TempDirectory, Guid.NewGuid().ToString());
+                var tempFilePath = Path.Combine(NodeFileSystemHelper.TempDirectory, Guid.NewGuid().ToString());
                 var decompressedStream = File.Create(tempFilePath);
                 if (stream.CanSeek)
                 {

@@ -28,7 +28,6 @@ public partial class ConfigurationController
     }
 
     [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
-    [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
     public async Task<IActionResult> DownloadPackageAsync(
         string packageId,
         CancellationToken cancellationToken = default)

@@ -37,7 +37,7 @@ public class WebServerCounter
 {
 
     public CounterLongValue TaskExecutionReportRecieveCount { get; set; } = new();
-    public CounterLongValue TaskExecutionReportAvailableCount { get; set; } =new ();
+    public CounterLongValue TaskExecutionReportAvailableCount { get; set; } = new();
     public CounterLongValue TaskExecutionReportSaveChangesCount { get; set; } = new();
     public CounterLongValue HeartBeatAvailableCount { get; set; } = new();
     public CounterLongValue TaskLogUnitEntriesCount { get; set; } = new();
@@ -75,4 +75,14 @@ public class WebServerCounter
     public CounterLongValue NodeServiceExpiredMessagesCount { get; set; } = new();
 
     public CounterLongValue TaskLogPageDetachedCount { get; set; } = new();
+
+    public CounterLongValue NodeFileSyncServiceBatchProcessContextActiveCount { get; set; } = new();
+
+    public CounterLongValue NodeFileSyncServiceBatchProcessContextAddedCount { get; set; } = new();
+
+    public CounterLongValue NodeFileSyncServiceBatchProcessContextRemovedCount { get; set; } = new();
+
+    public CounterTimeSpanValue NodeFileSyncServiceBatchProcessContext_MaxTimeSpan { get; set; } = new();
+
+    public CounterLongValue NodeFileSyncServiceBatchProcessContext_MaxFileLength { get; set; } = new();
 }

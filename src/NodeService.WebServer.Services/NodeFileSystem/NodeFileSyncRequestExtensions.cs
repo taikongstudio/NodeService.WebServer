@@ -97,7 +97,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                 stream.Seek(0, SeekOrigin.Begin);
             }
             var syncRecord = CreateNodeFileSyncRecord(nodeFileSyncRequest);
-            return new NodeFileUploadContext(syncRecord.Value.FileInfo, syncRecord, stream);
+            return new NodeFileUploadContext(syncRecord.FileInfo, syncRecord, stream);
         }
 
     }

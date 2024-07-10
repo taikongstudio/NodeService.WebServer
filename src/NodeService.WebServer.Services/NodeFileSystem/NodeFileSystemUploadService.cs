@@ -22,7 +22,7 @@ public record class BatchProcessContext
     public required ConcurrentQueue<NodeFileUploadContext> UploadQueue { get; init; }
 }
 
-public class NodeFileUploadContext : IProgress<FtpProgress>, IDisposable
+public class NodeFileUploadContext :  IDisposable
 {
     public NodeFileUploadContext(
         NodeFileInfo fileInfo,
@@ -49,13 +49,6 @@ public class NodeFileUploadContext : IProgress<FtpProgress>, IDisposable
         }
     }
 
-    public void Report(FtpProgress ftpProgress)
-    {
-        SyncRecord.Progress = ftpProgress.Progress;
-        SyncRecord.TransferSpeed = ftpProgress.TransferSpeed;
-        SyncRecord.EstimatedTimeSpan = ftpProgress.ETA;
-        SyncRecord.TransferredBytes = ftpProgress.TransferredBytes;
-    }
 }
 
 public abstract class ProcessContext : IAsyncDisposable
@@ -70,11 +63,13 @@ public abstract class ProcessContext : IAsyncDisposable
 public class FtpClientProcessContext : ProcessContext
 {
 
-    AsyncFtpClient _asyncFtpClient;
+    readonly AsyncFtpClient _asyncFtpClient;
+    readonly ActionBlock<NodeFileSyncRecordModel> _actionBlock;
 
-    public FtpClientProcessContext(AsyncFtpClient asyncFtpClient)
+    public FtpClientProcessContext(AsyncFtpClient asyncFtpClient, ActionBlock<NodeFileSyncRecordModel> actionBlock)
     {
         _asyncFtpClient = asyncFtpClient;
+        _actionBlock = actionBlock;
     }
 
     async ValueTask DisposeFtpClientAsync()
@@ -92,7 +87,6 @@ public class FtpClientProcessContext : ProcessContext
         await DisposeFtpClientAsync();
     }
 
-
     public override async ValueTask ProcessAsync(NodeFileUploadContext nodeFileUploadContext, CancellationToken cancellationToken = default)
     {
         try
@@ -101,12 +95,20 @@ public class FtpClientProcessContext : ProcessContext
             await _asyncFtpClient.AutoConnect(cancellationToken);
             nodeFileUploadContext.SyncRecord.UtcBeginTime = DateTime.UtcNow;
             nodeFileUploadContext.SyncRecord.Status = NodeFileSyncStatus.Processing;
+            var lambdaProgress = new LambdaProgress<FtpProgress>((ftpProgress) =>
+            {
+                nodeFileUploadContext.SyncRecord.Progress = ftpProgress.Progress;
+                nodeFileUploadContext.SyncRecord.TransferSpeed = ftpProgress.TransferSpeed;
+                nodeFileUploadContext.SyncRecord.EstimatedTimeSpan = ftpProgress.ETA;
+                nodeFileUploadContext.SyncRecord.TransferredBytes = ftpProgress.TransferredBytes;
+                _actionBlock.Post(nodeFileUploadContext.SyncRecord);
+            });
             var ftpStatus = await this._asyncFtpClient.UploadStream(
                 nodeFileUploadContext.Stream,
                 nodeFileUploadContext.SyncRecord.StoragePath,
                 FtpRemoteExists.Overwrite,
                 true,
-                nodeFileUploadContext,
+                lambdaProgress,
                 cancellationToken);
            await _asyncFtpClient.SetModifiedTime(nodeFileUploadContext.SyncRecord.StoragePath,
                nodeFileUploadContext.FileInfo.LastWriteTime,
@@ -130,6 +132,7 @@ public partial class NodeFileSystemUploadService : BackgroundService
 {
     readonly ILogger<NodeFileSystemUploadService> _logger;
     readonly ExceptionCounter _exceptionCounter;
+    readonly WebServerCounter _webServerCounter;
     readonly BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>> _fileSyncOperationQueueBatchQueue;
     readonly BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>> _nodeFileSystemEventQueue;
     readonly BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> _nodeFileSystemSyncRecordQueue;
@@ -138,10 +141,12 @@ public partial class NodeFileSystemUploadService : BackgroundService
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
     readonly ActionBlock<BatchProcessContext> _nodeFtpUploadActionBlock;
     readonly ConcurrentDictionary<string, BatchProcessContext> _inprogressBatchContextDict;
+    readonly ActionBlock<NodeFileSyncRecordModel> _syncRecordAddOrUpdateActionBlock;
 
     public NodeFileSystemUploadService(
         ILogger<NodeFileSystemUploadService> logger,
         ExceptionCounter exceptionCounter,
+       WebServerCounter webServerCounter,
         BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>> fileSyncBatchQueue,
         BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>> nodeFileSystemEventQueue,
         BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> nodeFileSystemSyncRecordQueue,
@@ -150,17 +155,28 @@ public partial class NodeFileSystemUploadService : BackgroundService
     {
         _logger = logger;
         _exceptionCounter = exceptionCounter;
+        _webServerCounter = webServerCounter;
         _fileSyncOperationQueueBatchQueue = fileSyncBatchQueue;
         _nodeFileSystemEventQueue = nodeFileSystemEventQueue;
         _nodeFileSystemSyncRecordQueue = nodeFileSystemSyncRecordQueue;
         _ftpConfigRepoFactory = ftpConfigRepoFactory;
         _nodeInfoRepoFactory = nodeInfoRepoFactory;
-        _inprogressBatchContextDict = new ConcurrentDictionary<string, BatchProcessContext>();
-        _nodeFtpUploadActionBlock = new ActionBlock<BatchProcessContext>(ProcessNodeFtpBatchContextAsync, new ExecutionDataflowBlockOptions()
+        _syncRecordAddOrUpdateActionBlock = new ActionBlock<NodeFileSyncRecordModel>(AddOrUpdateSyncRecordAsync, new ExecutionDataflowBlockOptions()
         {
             EnsureOrdered = true,
             MaxDegreeOfParallelism = 1,
         });
+        _inprogressBatchContextDict = new ConcurrentDictionary<string, BatchProcessContext>();
+        _nodeFtpUploadActionBlock = new ActionBlock<BatchProcessContext>(ProcessNodeFtpBatchContextAsync, new ExecutionDataflowBlockOptions()
+        {
+            EnsureOrdered = true,
+            MaxDegreeOfParallelism = Debugger.IsAttached ? 1 : 8,
+        });
+    }
+
+    async Task AddOrUpdateSyncRecordAsync(NodeFileSyncRecordModel model)
+    {
+        await BatchAddOrUpdateSyncRecordsAsync([model]);
     }
 
     async Task ProcessNodeFtpBatchContextAsync(BatchProcessContext batchContext)
@@ -174,6 +190,8 @@ public partial class NodeFileSystemUploadService : BackgroundService
         }
         _inprogressBatchContextDict.TryRemove(batchContext.ContextId, out _);
         await batchContext.ProcessContext.DisposeAsync();
+        _webServerCounter.NodeFileSyncServiceBatchProcessContextActiveCount.Value = _inprogressBatchContextDict.Count;
+        _webServerCounter.NodeFileSyncServiceBatchProcessContextRemovedCount.Value++;
     }
 
     async Task ProcessBatchContext(BatchProcessContext batchContext)
@@ -316,10 +334,11 @@ public partial class NodeFileSystemUploadService : BackgroundService
                         batchContext = new BatchProcessContext()
                         {
                             ContextId = contextId,
-                            ProcessContext = new FtpClientProcessContext(asyncFtpClient),
+                            ProcessContext = new FtpClientProcessContext(asyncFtpClient, _syncRecordAddOrUpdateActionBlock),
                             UploadQueue = new ConcurrentQueue<NodeFileUploadContext>(opGroup.Select(x => x.Context))
                         };
                         _inprogressBatchContextDict.TryAdd(contextId, batchContext);
+                        _webServerCounter.NodeFileSyncServiceBatchProcessContextAddedCount.Value++;
                         await _nodeFtpUploadActionBlock.SendAsync(batchContext, cancellationToken);
                     }
                     else

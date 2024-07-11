@@ -77,7 +77,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 
                 stream = decompressedStream;
             }
-            if (stream.Length != nodeFileSyncRequest.FileInfo.Length)
+            if (stream.CanSeek && stream.Length != nodeFileSyncRequest.FileInfo.Length)
             {
                 throw new InvalidDataException();
             }

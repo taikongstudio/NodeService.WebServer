@@ -4,7 +4,7 @@ using Blazor.Diagrams.Core.Models;
 using Blazor.Diagrams.Options;
 using Microsoft.AspNetCore.Components;
 
-namespace NodeService.WebServer.UI.Diagrams;
+namespace NodeService.WebServer.UI.Diagrams.Demos;
 
 public class SnapToGridComponent : ComponentBase
 {

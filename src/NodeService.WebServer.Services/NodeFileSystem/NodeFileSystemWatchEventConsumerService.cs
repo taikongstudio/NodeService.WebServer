@@ -31,7 +31,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
         ILogger<NodeFileSystemWatchEventConsumerService> logger,
         ExceptionCounter exceptionCounter,
         BatchQueue<FileSystemWatchEventReportMessage> reportMessageEventQueue,
-        BatchQueue<TaskActivateServiceParameters> fireTaskParametersBatchQueue,
+        //BatchQueue<TaskActivateServiceParameters> fireTaskParametersBatchQueue,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepoFactory,
         ApplicationRepositoryFactory<FileSystemWatchConfigModel> fileSystemWatchRepoFactory,
@@ -40,7 +40,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
         _logger = logger;
         _exceptionCounter = exceptionCounter;
         _reportMessageEventQueue = reportMessageEventQueue;
-        _fireTaskParametersBatchQueue = fireTaskParametersBatchQueue;
+        //_fireTaskParametersBatchQueue = fireTaskParametersBatchQueue;
         _taskDefinitionRepoFactory = taskDefinitionRepoFactory;
         _fileSystemWatchRepoFactory = fileSystemWatchRepoFactory;
         _nodeInfoRepoFactory = nodeInfoRepoFactory;

@@ -5,7 +5,7 @@ using Blazor.Diagrams.Core.PathGenerators;
 using Blazor.Diagrams.Core.Routers;
 using Microsoft.AspNetCore.Components;
 
-namespace NodeService.WebServer.UI.Diagrams;
+namespace NodeService.WebServer.UI.Diagrams.Demos;
 
 public class SimpleComponent : ComponentBase
 {

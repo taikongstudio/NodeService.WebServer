@@ -6,6 +6,7 @@ using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeFileSystem;
+using System.IO.Pipelines;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -133,11 +134,13 @@ public class NodeFileSystemController : Controller
     public async Task<ApiResponse<NodeFileSyncRecordModel>> UploadFileAsync()
     {
         var rsp = new ApiResponse<NodeFileSyncRecordModel>();
+        FileStream? fileStream = null;
         try
         {
             if (_nodeFileSyncBatchQueue.AvailableCount > 100)
             {
-                throw new InvalidOperationException("queue limit");
+                rsp.SetError(-1, "reach queue limit");
+                return rsp;
             }
             var request = HttpContext.Request;
 
@@ -166,61 +169,84 @@ public class NodeFileSystemController : Controller
             {
                 var hasContentDispositionHeader = ContentDispositionHeaderValue.TryParse(section.ContentDisposition, out var contentDisposition);
 
-                if (hasContentDispositionHeader)
+                if (!hasContentDispositionHeader)
+                {
+                    rsp.SetError(-1, "content disposition header not found");
+                    return rsp;
+                }
 
-                    if (hasContentDispositionHeader && contentDisposition.DispositionType.Equals("form-data") &&
-                        !string.IsNullOrEmpty(contentDisposition.FileName.Value))
+
+                if (hasContentDispositionHeader && contentDisposition != null && contentDisposition.DispositionType.Equals("form-data") &&
+                    !string.IsNullOrEmpty(contentDisposition.FileName.Value))
+                {
+                    // Don't trust any file name, file extension, and file data from the request unless you trust them completely
+                    // Otherwise, it is very likely to cause problems such as virus uploading, disk filling, etc
+                    // In short, it is necessary to restrict and verify the upload
+                    // Here, we just use the temporary folder and a random file name
+
+                    // Get the temporary folder, and combine a random file name with it
+
+                    NodeFileSyncRequest? nodeFileSyncRequest = null;
+
+                    if (section.Headers == null)
                     {
-                        // Don't trust any file name, file extension, and file data from the request unless you trust them completely
-                        // Otherwise, it is very likely to cause problems such as virus uploading, disk filling, etc
-                        // In short, it is necessary to restrict and verify the upload
-                        // Here, we just use the temporary folder and a random file name
+                        rsp.SetError(-1, "section header not found");
+                        return rsp;
+                    }
 
-                        // Get the temporary folder, and combine a random file name with it
+                    if (section.Headers.TryGetValue("NodeFileSyncRequest", out var values))
+                    {
+                        var str = values.FirstOrDefault();
+                        nodeFileSyncRequest = JsonSerializer.Deserialize<NodeFileSyncRequest>(str);
+                    }
+                    if (nodeFileSyncRequest == null)
+                    {
+                        rsp.SetError(-1, "NodeFileSyncRequest not found");
+                        return rsp;
+                    }
 
-                        NodeFileSyncRequest? nodeFileSyncRequest = null;
-                        if (section.Headers.TryGetValue("NodeFileSyncRequest", out var values))
-                        {
-                            var str = values.FirstOrDefault();
-                            nodeFileSyncRequest = JsonSerializer.Deserialize<NodeFileSyncRequest>(str);
-                        }
-                        if (nodeFileSyncRequest == null)
-                        {
-                            rsp.SetError(-1, "NodeFileSyncRequest not found");
-                            return rsp;
-                        }
+                    //var queryParameters = new QueryNodeFileSystemSyncRecordParameters()
+                    //{
+                    //    NodeIdList = [nodeFileSyncRequest.NodeInfoId],
+                    //    Status = NodeFileSyncStatus.Unknown,
+                    //    SortDescriptions = [new SortDescription(nameof(NodeFileSyncRecordModel.Status), "desc")]
+                    //};
+                    //var result = await GetSyncRecordListAsync(queryParameters);
 
-                        var stopwatch = Stopwatch.StartNew();
-                        var type = section.Body.GetType();
-                        var tempFilePath = Path.Combine(NodeFileSystemHelper.TempDirectory, Guid.NewGuid() + ".tmp");
-                        if (!Directory.Exists(NodeFileSystemHelper.TempDirectory))
-                        {
-                            Directory.CreateDirectory(NodeFileSystemHelper.TempDirectory);
-                        }
-                        var fileStream = System.IO.File.Open(tempFilePath, new FileStreamOptions()
-                        {
-                            Access = FileAccess.ReadWrite,
-                            Mode = FileMode.OpenOrCreate,
-                            Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
-                            Share = FileShare.ReadWrite,
-                        });
-                        await section.Body.CopyToAsync(fileStream);
-                        fileStream.Position = 0;
-                        nodeFileSyncRequest = nodeFileSyncRequest with { Stream = fileStream };
-                        var nodeFileUploadContext = await nodeFileSyncRequest.CreateNodeFileUploadContextAsync(
-                            new DefaultSHA256HashAlgorithmProvider(),
-                            new DefaultGzipCompressionProvider());
-                        nodeFileSyncRequest = nodeFileSyncRequest with { Stream = nodeFileUploadContext.Stream };
-                        var op = new BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>(
-                             nodeFileSyncRequest,
-                             BatchQueueOperationKind.AddOrUpdate,
-                             BatchQueueOperationPriority.Normal);
-                        op.Context = nodeFileUploadContext;
-                        await _nodeFileSyncBatchQueue.SendAsync(op);
-                        var syncRecord = await op.WaitAsync();
-                        rsp.SetResult(syncRecord);
+                    //if (result.TotalCount > 0)
+                    //{
+
+                    //}
+
+                     var stopwatch = Stopwatch.StartNew();
+                    var pipe = new Pipe();
+
+                    nodeFileSyncRequest = nodeFileSyncRequest with
+                    {
+                        Stream = new NodeFilePipleReaderStream(pipe.Reader, nodeFileSyncRequest.FileInfo.Length)
+                    };
+                    var nodeFileUploadContext = await nodeFileSyncRequest.CreateNodeFileUploadContextAsync(
+                        new DefaultSHA256HashAlgorithmProvider(),
+                        new DefaultGzipCompressionProvider());
+                    nodeFileSyncRequest = nodeFileSyncRequest with { Stream = nodeFileUploadContext.Stream };
+                    var op = new BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>(
+                         nodeFileSyncRequest,
+                         BatchQueueOperationKind.AddOrUpdate,
+                         BatchQueueOperationPriority.Normal);
+                    op.Context = nodeFileUploadContext;
+                    await _nodeFileSyncBatchQueue.SendAsync(op);
+                    var syncRecord = await op.WaitAsync();
+                    rsp.SetResult(syncRecord);
+
+                    if (syncRecord.Status == NodeFileSyncStatus.Queued)
+                    {
+                        using var writerStream = pipe.Writer.AsStream();
+
+                        await section.Body.CopyToAsync(writerStream);
                         stopwatch.Stop();
                     }
+                }
+                return rsp;
             }
 
             // If the code runs to this location, it means that no files have been saved

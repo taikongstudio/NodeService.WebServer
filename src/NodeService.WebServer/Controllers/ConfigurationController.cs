@@ -13,18 +13,15 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class ConfigurationController : Controller
 {
-    private readonly ExceptionCounter _exceptionCounter;
+    readonly ExceptionCounter _exceptionCounter;
 
-    private readonly BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>>
+    readonly BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>>
         _batchQueue;
 
-    private readonly IAsyncQueue<ConfigurationChangedEvent> _eventQueue;
-    private readonly ILogger<ConfigurationController> _logger;
-    private readonly IMemoryCache _memoryCache;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly WebServerOptions _webServerOptions;
+    readonly ILogger<ConfigurationController> _logger;
+    readonly IMemoryCache _memoryCache;
+    readonly IServiceProvider _serviceProvider;
+    readonly WebServerOptions _webServerOptions;
 
     public ConfigurationController(
         ILogger<ConfigurationController> logger,
@@ -32,21 +29,15 @@ public partial class ConfigurationController : Controller
         ExceptionCounter exceptionCounter,
         IOptionsSnapshot<WebServerOptions> optionSnapshot,
         IServiceProvider serviceProvider,
-        INodeSessionService nodeSessionService,
-        IAsyncQueue<NotificationMessage> notificationMessageQueue,
-        BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> batchQueue,
-        IAsyncQueue<ConfigurationChangedEvent> eventQueue
+        BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> batchQueue
     )
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
         _memoryCache = memoryCache;
         _webServerOptions = optionSnapshot.Value;
-        _nodeSessionService = nodeSessionService;
-        _notificationMessageQueue = notificationMessageQueue;
         _exceptionCounter = exceptionCounter;
         _batchQueue = batchQueue;
-        _eventQueue = eventQueue;
     }
 
     private async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(
@@ -144,7 +135,8 @@ public partial class ConfigurationController : Controller
                 {
                     await changesFunc.Invoke(queryResult, cancellationToken);
                 }
-                await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
+                var eventQueue = _serviceProvider.GetService<IAsyncQueue<ConfigurationChangedEvent>>();
+                await eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
                     ChangedType = ConfigurationChangedType.Delete,
                     TypeName = typeof(T).FullName,
@@ -186,7 +178,8 @@ public partial class ConfigurationController : Controller
                 {
                     await changesFunc.Invoke(saveChangesResult, cancellationToken);
                 }
-                await _eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
+                var eventQueue = _serviceProvider.GetService<IAsyncQueue<ConfigurationChangedEvent>>();
+                await eventQueue.EnqueueAsync(new ConfigurationChangedEvent()
                 {
                     NodeIdList = model is INodeIdentityListProvider nodeIdentityListProvider ? nodeIdentityListProvider.GetNodeIdentityList() : [],
                     ChangedType = saveChangesResult.Type,

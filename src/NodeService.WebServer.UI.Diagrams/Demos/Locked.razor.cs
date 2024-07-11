@@ -3,7 +3,7 @@ using Blazor.Diagrams.Core.Geometry;
 using Blazor.Diagrams.Core.Models;
 using Microsoft.AspNetCore.Components;
 
-namespace NodeService.WebServer.UI.Diagrams;
+namespace NodeService.WebServer.UI.Diagrams.Demos;
 
 public class LockedComponent : ComponentBase
 {

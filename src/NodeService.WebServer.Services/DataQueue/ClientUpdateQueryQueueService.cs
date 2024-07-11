@@ -26,9 +26,9 @@ public class ClientUpdateBatchQueryParameters
     public string IpAddress { get; private set; }
 }
 
-public class ClientUpdateQueueService : BackgroundService
+public class ClientUpdateQueryQueueService : BackgroundService
 {
-    private readonly ILogger<ClientUpdateQueueService> _logger;
+    private readonly ILogger<ClientUpdateQueryQueueService> _logger;
     private readonly IMemoryCache _memoryCache;
     private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
     private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
@@ -37,8 +37,8 @@ public class ClientUpdateQueueService : BackgroundService
     private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>
         _batchQueue;
 
-    public ClientUpdateQueueService(
-        ILogger<ClientUpdateQueueService> logger,
+    public ClientUpdateQueryQueueService(
+        ILogger<ClientUpdateQueryQueueService> logger,
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
@@ -70,16 +70,15 @@ public class ClientUpdateQueueService : BackgroundService
                 using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
 
                 var itemsCount = await nodeInfoRepo.CountAsync(cancellationToken);
-                var pageSize = 20;
-                var pageCount = Math.DivRem(itemsCount, pageSize, out var result);
-                if (result > 0) pageCount += 1;
+                var nodeNumbers = Enumerable.Range(0, itemsCount);
                 if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(10));
-                for (var pageIndex = 0; pageIndex < pageCount; pageIndex++)
+                int pageIndex = 1;
+                foreach (var array in nodeNumbers.Chunk(20))
                 {
                     var nodeList = await nodeInfoRepo.PaginationQueryAsync(
-                        new NodeInfoSpecification(),
-                        new PaginationInfo(pageIndex, pageSize),
-                        cancellationToken);
+                                                    new NodeInfoSpecification(),
+                                                    new PaginationInfo(pageIndex, 20),
+                                                    cancellationToken);
                     foreach (var item in nodeList.Items)
                     {
                         var key = CreateKey(item.Profile.IpAddress);
@@ -87,6 +86,7 @@ public class ClientUpdateQueueService : BackgroundService
                     }
 
                     await Task.Delay(TimeSpan.FromSeconds(60 * 10 - 5), cancellationToken);
+                    pageIndex++;
                 }
             }
             catch (Exception ex)

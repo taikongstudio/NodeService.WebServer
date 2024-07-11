@@ -1,4 +1,5 @@
-﻿using NodeService.WebServer.Data.Repositories;
+﻿using NodeService.Infrastructure.Concurrent;
+using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.DataQueue;
 
@@ -59,6 +60,7 @@ public partial class ConfigurationController
         if (rsp.ErrorCode != 0) return rsp;
         try
         {
+            var _notificationMessageQueue = _serviceProvider.GetService<IAsyncQueue<NotificationMessage>>();
             await _notificationMessageQueue.EnqueueAsync(new NotificationMessage(parameters.Subject, parameters.Message,
                 rsp.Result.Value));
         }

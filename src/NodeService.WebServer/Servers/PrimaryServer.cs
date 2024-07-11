@@ -238,7 +238,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddHostedService<DataQualityStatisticsService>();
             builder.Services.AddHostedService<DataQualityAlarmService>();
             builder.Services.AddHostedService<ClientUpdateQueryQueueService>();
-            builder.Services.AddHostedService<ConfigurationDataQueueService>();
+            builder.Services.AddHostedService<ConfigurationQueryQueueService>();
             builder.Services.AddHostedService<TaskCancellationQueueService>();
             builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
             builder.Services.AddHostedService<NodeFileSystemWatchEventConsumerService>();

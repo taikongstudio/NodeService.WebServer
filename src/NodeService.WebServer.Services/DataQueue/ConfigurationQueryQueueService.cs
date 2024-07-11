@@ -165,19 +165,19 @@ public record struct ConfigurationQueryQueueServiceResult
 }
 
 
-public class ConfigurationDataQueueService : BackgroundService
+public class ConfigurationQueryQueueService : BackgroundService
 {
     readonly BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> _batchQueue;
 
     readonly IServiceProvider _serviceProvider;
     readonly IMemoryCache _memoryCache;
     readonly ApplicationRepositoryFactory<ConfigurationVersionRecordModel> _configVersionRepoFactory;
-    readonly ILogger<ConfigurationDataQueueService> _logger;
+    readonly ILogger<ConfigurationQueryQueueService> _logger;
     readonly ExceptionCounter _exceptionCounter;
     readonly ConcurrentDictionary<string, Delegate> _funcDict;
 
-    public ConfigurationDataQueueService(
-        ILogger<ConfigurationDataQueueService> logger,
+    public ConfigurationQueryQueueService(
+        ILogger<ConfigurationQueryQueueService> logger,
         ExceptionCounter exceptionCounter,
         IServiceProvider serviceProvider,
         BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>> batchQueue,

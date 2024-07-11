@@ -179,6 +179,7 @@ namespace NodeService.WebServer.Servers
         {
             builder.Services.AddHostedService<PackageQueryQueueService>();
             builder.Services.AddHostedService<ClientUpdateQueryQueueService>();
+            builder.Services.AddHostedService<ConfigurationQueryQueueService>();
             builder.Services.AddHostedService<NodeFileSystemUploadService>();
             builder.Services.AddHostedService<NodeFileSystemSyncRecordService>();
         }

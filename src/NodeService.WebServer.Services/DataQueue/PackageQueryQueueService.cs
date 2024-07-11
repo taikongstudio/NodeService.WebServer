@@ -107,7 +107,7 @@ namespace NodeService.WebServer.Services.DataQueue
                         stream.Position = 0;
                     }
                     return stream.ToArray();
-                }, TimeSpan.FromHours(1));
+                }, TimeSpan.FromMinutes(10));
                 foreach (var op in packageQueryGroup)
                 {
                     op.SetResult(new PackageDownloadResult(fileContents));

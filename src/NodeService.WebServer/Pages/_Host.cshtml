@@ -4,6 +4,7 @@
 @{
     Layout = null;
 }
+@inject CommandLineOptions CommandLineOptions
 
 <!DOCTYPE html>
 <html lang="en">
@@ -22,23 +23,31 @@
     <link href="_content/Z.Blazor.Diagrams/default.styles.css" rel="stylesheet" />
 </head>
 <body>
-<app>
-    <component type="typeof(App)" render-mode="Server"/>
-</app>
-<script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/jquery-3.4.1.min.js"></script>
-<script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/bootstrap/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/prism/prism.js"></script>
-<script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/jquery-scrollTo/jquery.scrollTo.min.js"></script>
-<script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/stickyfill/dist/stickyfill.min.js"></script>
-<script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/js/main.js"></script>
-<script src="_content/AntDesign/js/ant-design-blazor.js"></script>
-<script src="_content/AntDesign.Charts/ant-design-charts-blazor.js"></script>
-<script src="_content/AntDesign.Charts/g2plot.min.js"></script>
-<script src="_content/CurrieTechnologies.Razor.Clipboard/clipboard.min.js"></script>
-<script src="_content/Z.Blazor.Diagrams/script.min.js"></script>
-<script src="_content/BlazorMonaco/jsInterop.js"></script>
-<script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
-<script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
-<script src="_framework/blazor.server.js"></script>
+    @if (string.IsNullOrEmpty(CommandLineOptions.features))
+    {
+        <app>
+            <component type="typeof(App)" render-mode="Server" />
+        </app>
+        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/jquery-3.4.1.min.js"></script>
+        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/bootstrap/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/prism/prism.js"></script>
+        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/jquery-scrollTo/jquery.scrollTo.min.js"></script>
+        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/stickyfill/dist/stickyfill.min.js"></script>
+        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/js/main.js"></script>
+        <script src="_content/AntDesign/js/ant-design-blazor.js"></script>
+        <script src="_content/AntDesign.Charts/ant-design-charts-blazor.js"></script>
+        <script src="_content/AntDesign.Charts/g2plot.min.js"></script>
+        <script src="_content/CurrieTechnologies.Razor.Clipboard/clipboard.min.js"></script>
+        <script src="_content/Z.Blazor.Diagrams/script.min.js"></script>
+        <script src="_content/BlazorMonaco/jsInterop.js"></script>
+        <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
+        <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>
+        <script src="_framework/blazor.server.js"></script>
+    }
+    else
+    {
+        <h1>网页已迁移:<a href="http://10.201.76.21:50060" target="_blank">http://10.201.76.21:50060</a></h1>
+    }
+
 </body>
 </html>

@@ -78,6 +78,7 @@ namespace NodeService.WebServer.Servers
             app.UseAuthorization();
             app.MapControllers();
             app.MapPrometheusScrapingEndpoint();
+            app.MapRazorPages();
 
             var factory = app.Services.GetService<IDbContextFactory<ApplicationDbContext>>();
             await using var dbContext = await factory.CreateDbContextAsync();
@@ -90,8 +91,6 @@ namespace NodeService.WebServer.Servers
 
         void Configure(WebApplicationBuilder builder)
         {
-            builder.Services.AddDistributedMemoryCache();
-            builder.Services.AddDirectoryBrowser();
             builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
             builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
             builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
@@ -103,6 +102,8 @@ namespace NodeService.WebServer.Servers
             });
             builder.Services.AddControllersWithViews();
             builder.Services.AddControllers();
+            builder.Services.AddRazorPages();
+
             builder.WebHost.ConfigureKestrel(options => { options.Limits.MaxRequestLineSize = 8192 * 10; });
 
             builder.Services.AddOpenApiDocument();
@@ -223,6 +224,7 @@ namespace NodeService.WebServer.Servers
 
         void ConfigureSingleton(WebApplicationBuilder builder)
         {
+            builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
             builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));

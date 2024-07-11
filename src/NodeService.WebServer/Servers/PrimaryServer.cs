@@ -383,7 +383,7 @@ namespace NodeService.WebServer.Servers
         void ConfigureSingleton(WebApplicationBuilder builder)
         {
             //builder.Services.AddSingleton<MyDynamicRouteValueTransformer>();
-
+            builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
             builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));

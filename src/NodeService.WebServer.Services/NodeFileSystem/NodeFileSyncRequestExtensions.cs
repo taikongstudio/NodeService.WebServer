@@ -24,6 +24,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             {
                 Id = Guid.NewGuid().ToString(),
                 NodeInfoId = nodeFileSyncRequest.NodeInfoId,
+                ContextId = nodeFileSyncRequest.ContextId,
                 Name = nodeFileSyncRequest.FileInfo.FullName,
                 Value = record,
                 Status = NodeFileSyncStatus.Pendding,

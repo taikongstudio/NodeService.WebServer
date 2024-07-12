@@ -171,14 +171,18 @@ public class NodeServiceImpl : NodeServiceBase
                         if (message is not INodeMessage nodeMessage || nodeMessage.IsExpired)
                         {
                             _webServerCounter.NodeServiceExpiredMessagesCount.Value++;
+                            await outputQueue.DeuqueAsync(cancellationToken);
                             continue;
                         }
 
                         if (message.Descriptor == SubscribeEvent.Descriptor)
                         {
-                            if (message is not SubscribeEvent subscribeEvent) continue;
-                            subscribeEvent.Properties.TryAdd("DateTime",
-                                nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
+                            if (message is not SubscribeEvent subscribeEvent)
+                            {
+                                await outputQueue.DeuqueAsync(cancellationToken);
+                                continue;
+                            }
+                            subscribeEvent.Properties.TryAdd("DateTime", nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
                             await responseStream.WriteAsync(subscribeEvent, cancellationToken);
                             _webServerCounter.NodeServiceOutputMessagesCount.Value++;
                         }
@@ -222,7 +226,6 @@ public class NodeServiceImpl : NodeServiceBase
 
         }
     }
-
 
 
     public override async Task<Empty> SendFileSystemListDirectoryResponse(

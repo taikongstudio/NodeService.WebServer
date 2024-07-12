@@ -201,7 +201,6 @@ public class NodeFileSystemController : Controller
     public async Task<ApiResponse<NodeFileSyncRecordModel>> UploadFileAsync()
     {
         var rsp = new ApiResponse<NodeFileSyncRecordModel>();
-        FileStream? fileStream = null;
         try
         {
             if (_nodeFileSyncBatchQueue.AvailableCount > 100)

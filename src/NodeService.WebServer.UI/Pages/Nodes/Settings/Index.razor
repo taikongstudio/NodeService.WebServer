@@ -31,11 +31,19 @@
                               IsTagEditable="true"
                               TagTitle="代码"
                               ItemsSource="@_nodeSettings.IpAddressMappings"/>
+       <StringEntryTable ValueTitle="用途"
+                            NameTitle="进程名称"
+                            ItemsSource="@_nodeSettings.ProcessUsagesMapping"/>
         </TabPane>
         <TabPane Tab="进程用途映射" Key="3">
             <StringEntryTable ValueTitle="用途"
                               NameTitle="进程名称"
                               ItemsSource="@_nodeSettings.ProcessUsagesMapping"/>
+        </TabPane>
+                <TabPane Tab="区域站点映射" Key="4">
+       <StringEntryTable ValueTitle="站点"
+                            NameTitle="区域"
+                            ItemsSource="@_nodeSettings.NodeSiteMapping"/>
         </TabPane>
     </Tabs>
 

@@ -10,11 +10,10 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.MessageHandlers;
-using NodeService.WebServer.Services.NodeSessions;
 using static NodeService.Infrastructure.Services.NodeService;
 
 
-namespace NodeService.WebServer.Services;
+namespace NodeService.WebServer.Services.NodeSessions;
 
 public class NodeServiceImpl : NodeServiceBase
 {
@@ -107,7 +106,7 @@ public class NodeServiceImpl : NodeServiceBase
             _nodeSessionService.UpdateNodeName(nodeSessionId, nodeClientHeaders.HostName);
             _nodeSessionService.SetHttpContext(nodeSessionId, httpContext);
 
-            Task[] tasks = 
+            Task[] tasks =
                 [
                     PostFileSystemWatchConfigurationsAsync(nodeSessionId, context.CancellationToken),
                     ProcessOutputQueueAsync(nodeSessionId, context.CancellationToken),
@@ -161,23 +160,32 @@ public class NodeServiceImpl : NodeServiceBase
             {
                 var outputQueue = _nodeSessionService.GetOutputQueue(nodeSessionId);
 
-                await foreach (var message in outputQueue.ReadAllAsync(cancellationToken))
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    if (message is not INodeMessage nodeMessage || nodeMessage.IsExpired)
+                    if (await outputQueue.WaitToReadAsync(cancellationToken))
                     {
-                        _webServerCounter.NodeServiceExpiredMessagesCount.Value++;
-                        continue;
-                    }
+                        if (!outputQueue.TryPeek(out IMessage message))
+                        {
+                            continue;
+                        }
+                        if (message is not INodeMessage nodeMessage || nodeMessage.IsExpired)
+                        {
+                            _webServerCounter.NodeServiceExpiredMessagesCount.Value++;
+                            continue;
+                        }
 
-                    if (message.Descriptor == SubscribeEvent.Descriptor)
-                    {
-                        if (message is not SubscribeEvent subscribeEvent) continue;
-                        subscribeEvent.Properties.TryAdd("DateTime",
-                            nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
-                        await responseStream.WriteAsync(subscribeEvent);
-                        _webServerCounter.NodeServiceOutputMessagesCount.Value++;
+                        if (message.Descriptor == SubscribeEvent.Descriptor)
+                        {
+                            if (message is not SubscribeEvent subscribeEvent) continue;
+                            subscribeEvent.Properties.TryAdd("DateTime",
+                                nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
+                            await responseStream.WriteAsync(subscribeEvent, cancellationToken);
+                            _webServerCounter.NodeServiceOutputMessagesCount.Value++;
+                        }
+                        await outputQueue.DeuqueAsync(cancellationToken);
                     }
                 }
+
             }
             catch (Exception ex)
             {

@@ -1,33 +1,13 @@
 ﻿using AntDesign.ProLayout;
-using CurrieTechnologies.Razor.Clipboard;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.IdentityModel.Tokens;
 using NodeService.Infrastructure.Concurrent;
-using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.Identity;
 using NodeService.Infrastructure.NodeFileSystem;
-using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataQuality;
 using NodeService.WebServer.Services.DataQueue;
-using NodeService.WebServer.Services.MessageHandlers;
-using NodeService.WebServer.Services.NetworkDevices;
 using NodeService.WebServer.Services.NodeFileSystem;
-using NodeService.WebServer.Services.NodeSessions;
-using NodeService.WebServer.Services.Notifications;
-using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.Services.VirtualFileSystem;
-using NodeService.WebServer.UI.Services;
 using OpenTelemetry.Metrics;
-using Quartz.Spi;
-using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -228,6 +208,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
+            builder.Services.AddSingleton<NodeBatchProcessQueueDictionary>();
             builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
             builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>>(1024, TimeSpan.FromSeconds(5)));
             builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>>(256, TimeSpan.FromSeconds(5)));
@@ -280,6 +261,13 @@ namespace NodeService.WebServer.Servers
                             mySqlOptionBuilder.EnableStringComparisonTranslations();
                         }));
             }
+            builder.Services.AddPooledDbContextFactory<InMemoryDbContext>(options =>
+            {
+                options.UseInMemoryDatabase("default", (inMemoryDbOptions) =>
+                {
+
+                });
+            });
         }
 
         public override async Task RunAsync(CancellationToken cancellationToken = default)

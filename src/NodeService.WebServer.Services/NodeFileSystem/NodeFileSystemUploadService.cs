@@ -348,7 +348,7 @@ public partial class NodeFileSystemUploadService : BackgroundService
                             {
                                 continue;
                             }
-                            if (batchProcessQueue.QueueCount > 10)
+                            if (batchProcessQueue.QueueCount > 100)
                             {
                                 continue;
                             }

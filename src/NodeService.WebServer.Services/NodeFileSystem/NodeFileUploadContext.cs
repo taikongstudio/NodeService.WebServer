@@ -4,26 +4,27 @@ using System.IO.Pipelines;
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
-public class NodeFileUploadContext :  IAsyncDisposable
+public class NodeFileUploadContext
 {
-    public NodeFileUploadContext(
-        NodeFileSyncRecordModel syncRecord,
-        Pipe pipe)
-    {
-        SyncRecord = syncRecord;
-        Pipe = pipe;
-        _tcs = new TaskCompletionSource<NodeFileSyncStatus>();
-        _cts = new CancellationTokenSource();
-    }
     readonly CancellationTokenSource _cts;
 
     readonly TaskCompletionSource<NodeFileSyncStatus> _tcs;
 
+
+    public NodeFileUploadContext(
+    NodeFileSyncRecordModel syncRecord,
+    Stream stream)
+    {
+        SyncRecord = syncRecord;
+        Stream = stream;
+        _tcs = new TaskCompletionSource<NodeFileSyncStatus>();
+        _cts = new CancellationTokenSource();
+    }
+
+
     public NodeFileSyncRecordModel SyncRecord { get; private set; }
 
-    public Pipe Pipe { get; private set; }
-
-    public bool IsCancellationRequested { get; set; }
+    public Stream Stream { get; private set; }
 
     public bool IsStorageNotExists { get; set; }
 
@@ -32,6 +33,11 @@ public class NodeFileUploadContext :  IAsyncDisposable
     public Task<NodeFileSyncStatus> WaitAsync(CancellationToken cancellationToken)
     {
         return _tcs.Task.WaitAsync(cancellationToken);
+    }
+
+    public async ValueTask CancelAsync()
+    {
+        await this._cts.CancelAsync();
     }
 
     public bool TrySetResult(NodeFileSyncStatus status)
@@ -47,15 +53,5 @@ public class NodeFileUploadContext :  IAsyncDisposable
     public bool TrySetCanceled()
     {
         return _tcs.TrySetCanceled();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (!this._cts.IsCancellationRequested)
-        {
-            this._cts.Cancel();
-        }
-        this._cts.Dispose();
-        await ValueTask.CompletedTask;
     }
 }

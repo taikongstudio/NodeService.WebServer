@@ -34,10 +34,10 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 
         public static NodeFileUploadContext CreateNodeFileUploadContext(
                                 this NodeFileSyncRequest nodeFileSyncRequest,
-                                Pipe pipe)
+                                Stream stream)
         {
             var syncRecord = CreateNodeFileSyncRecord(nodeFileSyncRequest);
-            return new NodeFileUploadContext(syncRecord, pipe);
+            return new NodeFileUploadContext(syncRecord, stream);
         }
 
     }

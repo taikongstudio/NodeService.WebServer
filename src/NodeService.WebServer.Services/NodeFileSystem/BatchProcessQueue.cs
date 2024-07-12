@@ -52,7 +52,7 @@ public record class BatchProcessQueue
             nodeFileUploadContext.SyncRecord.FullName);
         if (_uploadQueueFileDictionary.TryRemove(key, out var oldNodeFileUploadContext))
         {
-            oldNodeFileUploadContext.IsCancellationRequested = true;
+            oldNodeFileUploadContext.TrySetCanceled();
         }
         _uploadQueueFileDictionary.TryAdd(key, nodeFileUploadContext);
     }

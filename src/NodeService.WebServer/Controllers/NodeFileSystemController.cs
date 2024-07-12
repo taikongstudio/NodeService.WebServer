@@ -284,8 +284,8 @@ public class NodeFileSystemController : Controller
                     {
 
                         var stopwatch = Stopwatch.StartNew();
-                        var pipe = new Pipe();
-                        var uploadContext = nodeFileSyncRequest.CreateNodeFileUploadContext(pipe);
+                        using var readerStream = new PipeReaderStream(section.Body, nodeFileSyncRequest.FileInfo.Length);
+                        var uploadContext = nodeFileSyncRequest.CreateNodeFileUploadContext(readerStream);
                         var op = new BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>(
                              nodeFileSyncRequest,
                              BatchQueueOperationKind.AddOrUpdate,
@@ -301,12 +301,6 @@ public class NodeFileSystemController : Controller
                             try
                             {
                                 var status = await uploadContext.WaitAsync(default);
-                                if (status == NodeFileSyncStatus.Processing)
-                                {
-                                    using var writerStream = pipe.Writer.AsStream();
-                                    await section.Body.CopyToAsync(writerStream);
-                                }
-
                             }
                             catch (Exception ex)
                             {
@@ -315,7 +309,7 @@ public class NodeFileSystemController : Controller
                             }
                             finally
                             {
-                                await uploadContext.DisposeAsync();
+
                             }
 
                         }

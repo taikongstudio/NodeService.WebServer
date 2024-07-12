@@ -7,23 +7,27 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.NodeFileSystem
 {
-    public class NodeFilePipleReaderStream : Stream
+    public class PipeReaderStream : Stream
     {
         readonly long _length;
-        readonly PipeReader _pipeReader;
+        long _position;
         readonly Stream _stream;
+        bool _isDisposed;
 
-        public NodeFilePipleReaderStream(PipeReader pipeReader, long length)
+        public PipeReaderStream(Stream  stream, long length)
         {
-            _pipeReader = pipeReader;
-            _stream = pipeReader.AsStream();
+            _stream = stream;
             _length = length;
         }
 
-        public override async ValueTask DisposeAsync()
+        protected override void Dispose(bool disposing)
         {
-            await _stream.DisposeAsync();
-            await base.DisposeAsync();
+            if (disposing)
+            {
+                _stream.Dispose();
+            }
+            base.Dispose(disposing);
+            _isDisposed = true;
         }
 
         public override bool CanRead => _stream.CanRead;
@@ -34,16 +38,22 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 
         public override long Length => _length;
 
-        public override long Position { get => _stream.Position; set => _stream.Position = value; }
+        public override long Position
+        {
+            get => _position;
+            set => _stream.Position = value;
+        }
 
         public override void Flush()
         {
             _stream.Flush();
         }
 
-        public override int Read(byte[] buffer, int offset, int count)
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            return _stream.Read(buffer, offset, count);
+            var bytesOfRead = await _stream.ReadAsync(buffer, offset, count, cancellationToken);
+            this._position += bytesOfRead;
+            return bytesOfRead;
         }
 
         public override long Seek(long offset, SeekOrigin origin)
@@ -59,6 +69,11 @@ namespace NodeService.WebServer.Services.NodeFileSystem
         public override void Write(byte[] buffer, int offset, int count)
         {
             _stream.Write(buffer, offset, count);
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotImplementedException();
         }
     }
 }

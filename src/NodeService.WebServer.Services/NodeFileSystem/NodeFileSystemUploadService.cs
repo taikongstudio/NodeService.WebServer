@@ -183,7 +183,9 @@ public partial class NodeFileSystemUploadService : BackgroundService
             await AddOrUpdateSyncRecordToBatchQueueAsync(context.SyncRecord);
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            await ProcessUploadContextAsync(batchProcessContext.ProcessContext, context, context.CancellationToken);
+            await ProcessUploadContextAsync(batchProcessContext.ProcessContext,
+                                            context,
+                                            context.CancellationToken);
 
             batchProcessContext.ProcessedCount++;
             stopwatch.Stop();
@@ -500,7 +502,7 @@ public partial class NodeFileSystemUploadService : BackgroundService
             }
             finally
             {
-                await nodeFileUploadContext.DisposeAsync();
+
             }
         }
         catch (Exception ex)

@@ -213,11 +213,11 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         await Task.WhenAll(
-            ProcessExipredTasksAsync(cancellationToken),
+            ProcessExpiredTasksAsync(cancellationToken),
             ProcessTaskExecutionReportAsync(cancellationToken));
     }
 
-    private async Task ProcessExipredTasksAsync(CancellationToken cancellationToken = default)
+    private async Task ProcessExpiredTasksAsync(CancellationToken cancellationToken = default)
     {
         await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
         while (!cancellationToken.IsCancellationRequested)

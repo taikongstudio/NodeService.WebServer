@@ -46,7 +46,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
         {
             var inMemoryDbContextFactory = serviceProvider.GetService<IDbContextFactory<InMemoryDbContext>>();
             using var inMemoryDbContext = inMemoryDbContextFactory.CreateDbContext();
-            var count = await inMemoryDbContext.NodeFileHittestResultCacheDbSet.ExecuteDeleteAsync(cancellationToken);
+            var count = await inMemoryDbContext.NodeFileHittestResultCacheDbSet.Where(x => true).ExecuteDeleteAsync(cancellationToken);
             return count;
         }
 

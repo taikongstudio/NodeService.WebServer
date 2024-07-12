@@ -152,8 +152,8 @@ public class NodeFileSystemController : Controller
         return rsp;
     }
 
-    [HttpPost("/api/NodeFileSystem/DeleteHittestResultCache")]
-    public async Task<ApiResponse<int>> DeleteHittestResultCacheAsync(NodeFileSyncRequest nodeFileSyncRequest)
+    [HttpGet("/api/NodeFileSystem/DeleteHittestResultCache")]
+    public async Task<ApiResponse<int>> DeleteHittestResultCacheAsync()
     {
         var rsp = new ApiResponse<int>();
         try
@@ -301,7 +301,7 @@ public class NodeFileSystemController : Controller
                         {
                             try
                             {
-                                var status= await uploadContext.WaitAsync(default);
+                                var status = await uploadContext.WaitAsync(default);
                                 if (status == NodeFileSyncStatus.Processing)
                                 {
                                     using var writerStream = pipe.Writer.AsStream();
@@ -313,6 +313,10 @@ public class NodeFileSystemController : Controller
                             {
                                 _exceptionCounter.AddOrUpdate(ex, nodeFileSyncRequest.NodeInfoId);
                                 _logger.LogError(ex.ToString());
+                            }
+                            finally
+                            {
+                                await uploadContext.DisposeAsync();
                             }
 
                         }

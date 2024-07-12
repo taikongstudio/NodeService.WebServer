@@ -61,29 +61,38 @@ public partial class NodeFileSystemUploadService : BackgroundService
 
     async Task ProcessBatchProcessContextAsync(BatchProcessQueue batchProcessContext)
     {
-
-        var dbContextFactory = _serviceProvider.GetService<IDbContextFactory<InMemoryDbContext>>();
-        using var dbContext = dbContextFactory.CreateDbContext();
-        var idleCount = 0;
-        while (idleCount < 600)
+        try
         {
-            if (batchProcessContext.QueueCount > 0)
-            {
-                await foreach (var uploadContext in ProcessBatchContextAsync(batchProcessContext))
-                {
-                    idleCount = 0;
-                    await SaveCacheAsync(dbContext, uploadContext);
-                }
-            }
-
             batchProcessContext.IsConnected = await batchProcessContext.ProcessContext.IdleAsync();
-            await Task.Delay(TimeSpan.FromMilliseconds(500));
-            idleCount++;
+            var dbContextFactory = _serviceProvider.GetService<IDbContextFactory<InMemoryDbContext>>();
+            using var dbContext = dbContextFactory.CreateDbContext();
+            var idleCount = 0;
+            while (idleCount < 600)
+            {
+                if (batchProcessContext.QueueCount > 0)
+                {
+                    await foreach (var uploadContext in ProcessBatchContextAsync(batchProcessContext))
+                    {
+                        idleCount = 0;
+                        await SaveCacheAsync(dbContext, uploadContext);
+                    }
+                }
+
+                batchProcessContext.IsConnected = await batchProcessContext.ProcessContext.IdleAsync();
+                await Task.Delay(TimeSpan.FromMilliseconds(500));
+                idleCount++;
+            }
+            _batchProcessBatchQueueDict.TryRemove(batchProcessContext.QueueId, out _);
+            await batchProcessContext.ProcessContext.DisposeAsync();
+            _webServerCounter.NodeFileSyncServiceBatchProcessContextActiveCount.Value = _batchProcessBatchQueueDict.Count;
+            _webServerCounter.NodeFileSyncServiceBatchProcessContextRemovedCount.Value++;
         }
-        _batchProcessBatchQueueDict.TryRemove(batchProcessContext.QueueId, out _);
-        await batchProcessContext.ProcessContext.DisposeAsync();
-        _webServerCounter.NodeFileSyncServiceBatchProcessContextActiveCount.Value = _batchProcessBatchQueueDict.Count;
-        _webServerCounter.NodeFileSyncServiceBatchProcessContextRemovedCount.Value++;
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+
     }
 
     async ValueTask SaveCacheAsync(
@@ -174,7 +183,7 @@ public partial class NodeFileSystemUploadService : BackgroundService
             await AddOrUpdateSyncRecordToBatchQueueAsync(context.SyncRecord);
             var stopwatch = new Stopwatch();
             stopwatch.Start();
-            await ProcessUploadContextAsync(batchProcessContext.ProcessContext, context);
+            await ProcessUploadContextAsync(batchProcessContext.ProcessContext, context, context.CancellationToken);
 
             batchProcessContext.ProcessedCount++;
             stopwatch.Stop();
@@ -333,7 +342,6 @@ public partial class NodeFileSystemUploadService : BackgroundService
                                 batchProcessQueue = await CreateBatchProcessQueueAsync(
                                     queueId,
                                     ftpConfig.Value!,
-                                    opGroup,
                                     cancellationToken);
                             }
                             if (batchProcessQueue == null)
@@ -381,7 +389,6 @@ public partial class NodeFileSystemUploadService : BackgroundService
     async ValueTask<BatchProcessQueue?> CreateBatchProcessQueueAsync(
         string queueId,
         FtpConfiguration ftpConfig,
-        IEnumerable<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>> opGroup,
         CancellationToken cancellationToken)
     {
         BatchProcessQueue? batchProcessQueue;
@@ -392,7 +399,6 @@ public partial class NodeFileSystemUploadService : BackgroundService
             asyncFtpClient,
             _syncRecordAddOrUpdateActionBlock);
         batchProcessQueue = new BatchProcessQueue(queueId, $"{ftpConfig.Host}:{ftpConfig.Port}", processContext);
-        AddToBatchProcessContext(batchProcessQueue, opGroup);
         _batchProcessBatchQueueDict.TryAdd(queueId, batchProcessQueue);
         _webServerCounter.NodeFileSyncServiceBatchProcessContextAddedCount.Value++;
         await _batchProcessQueueActionBlock.SendAsync(batchProcessQueue, cancellationToken);

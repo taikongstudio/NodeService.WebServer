@@ -13,7 +13,9 @@ public class NodeFileUploadContext :  IAsyncDisposable
         SyncRecord = syncRecord;
         Pipe = pipe;
         _tcs = new TaskCompletionSource<NodeFileSyncStatus>();
+        _cts = new CancellationTokenSource();
     }
+    readonly CancellationTokenSource _cts;
 
     readonly TaskCompletionSource<NodeFileSyncStatus> _tcs;
 
@@ -24,6 +26,8 @@ public class NodeFileUploadContext :  IAsyncDisposable
     public bool IsCancellationRequested { get; set; }
 
     public bool IsStorageNotExists { get; set; }
+
+    public CancellationToken CancellationToken { get { return _cts.Token; } }
 
     public Task<NodeFileSyncStatus> WaitAsync(CancellationToken cancellationToken)
     {
@@ -47,6 +51,11 @@ public class NodeFileUploadContext :  IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (!this._cts.IsCancellationRequested)
+        {
+            this._cts.Cancel();
+        }
+        this._cts.Dispose();
         await ValueTask.CompletedTask;
     }
 }

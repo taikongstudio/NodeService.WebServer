@@ -116,7 +116,7 @@
                 <Text>@FormatSize(context.TransferSpeed)</Text>
             </PropertyColumn>
             <PropertyColumn Title="剩余时间" Ellipsis Property="c => c.EstimatedTimeSpan">
-                <Text>@FormatTime(context.Value.EstimatedTimeSpan.TotalSeconds)</Text>
+                <Text>@FormatTime(context.EstimatedTimeSpan.TotalSeconds)</Text>
             </PropertyColumn>
             <PropertyColumn Title="进度" Ellipsis Property="c => c.Progress">
                 <AntDesign.Progress Percent="@((double)context.Progress)" ShowInfo="false"></AntDesign.Progress>

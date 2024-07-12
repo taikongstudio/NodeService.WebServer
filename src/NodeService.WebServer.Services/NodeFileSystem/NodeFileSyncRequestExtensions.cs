@@ -1,6 +1,7 @@
 ﻿using NodeService.Infrastructure.NodeFileSystem;
 using System;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Text;
@@ -30,73 +31,12 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             };
         }
 
-        public static async ValueTask<NodeFileUploadContext> CreateNodeFileUploadContextAsync(
+        public static NodeFileUploadContext CreateNodeFileUploadContext(
                                 this NodeFileSyncRequest nodeFileSyncRequest,
-                                IHashAlgorithmProvider hashAlgorithmProvider,
-                                ICompressionProvider compressionProvider,
-                                bool validateHash = false,
-                                CancellationToken cancellationToken = default)
+                                Pipe pipe)
         {
-            var stream = nodeFileSyncRequest.Stream;
-            if (nodeFileSyncRequest.FileInfo.CompressionInfo != null)
-            {
-                bool f = false;
-                if (f)
-                {
-                    using var binaryReader = new BinaryReader(stream);
-                    var bytes = binaryReader.ReadBytes((int)stream.Length);
-                }
-                if (stream.Length > 0 && stream.Length != nodeFileSyncRequest.FileInfo.CompressionInfo.Length)
-                {
-                    throw new InvalidDataException();
-                }
-                if (validateHash)
-                {
-                    var compressedStreamHashBytes = await hashAlgorithmProvider.HashAsync(stream, cancellationToken);
-                    var compressedStreamHash = BitConverter.ToString(compressedStreamHashBytes).Replace("-", "").ToLowerInvariant();
-                    if (compressedStreamHash != nodeFileSyncRequest.FileInfo.CompressionInfo.Hash)
-                    {
-                        throw new InvalidDataException();
-                    }
-                }
-                if (!Directory.Exists(NodeFileSystemHelper.TempDirectory))
-                {
-                    Directory.CreateDirectory(NodeFileSystemHelper.TempDirectory);
-                }
-                var tempFilePath = Path.Combine(NodeFileSystemHelper.TempDirectory, Guid.NewGuid().ToString());
-                var decompressedStream = File.Create(tempFilePath);
-                if (stream.CanSeek)
-                {
-                    stream.Seek(0, SeekOrigin.Begin);
-                }
-                using (var decompressor = compressionProvider.CreateDecompressionStream(stream))
-                {
-                    await decompressor.CopyToAsync(decompressedStream, cancellationToken);
-                    decompressedStream.Seek(0, SeekOrigin.Begin);
-                }
-
-                stream = decompressedStream;
-            }
-            if (stream.CanSeek && stream.Length != nodeFileSyncRequest.FileInfo.Length)
-            {
-                throw new InvalidDataException();
-            }
-
-            if (validateHash)
-            {
-                var hashBytes = await hashAlgorithmProvider.HashAsync(stream, cancellationToken);
-                var hash = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
-                if (hash != nodeFileSyncRequest.FileInfo.Hash)
-                {
-                    throw new InvalidDataException();
-                }
-            }
-            if (stream.CanSeek)
-            {
-                stream.Seek(0, SeekOrigin.Begin);
-            }
             var syncRecord = CreateNodeFileSyncRecord(nodeFileSyncRequest);
-            return new NodeFileUploadContext(syncRecord.FileInfo, syncRecord, stream);
+            return new NodeFileUploadContext(syncRecord, pipe);
         }
 
     }

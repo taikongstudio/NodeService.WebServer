@@ -9,7 +9,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 {
     public partial class NodeFileSystemUploadService
     {
-        AsyncFtpClient CreateFtpClient(FtpConfigModel ftpConfig)
+        AsyncFtpClient CreateFtpClient(FtpConfiguration ftpConfig)
         {
             var asyncFtpClient = new AsyncFtpClient(ftpConfig.Host, ftpConfig.Username, ftpConfig.Password, ftpConfig.Port,
                                 new FtpConfig()

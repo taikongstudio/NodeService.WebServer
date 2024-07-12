@@ -236,6 +236,7 @@ namespace NodeService.WebServer.Servers
             TimeSpan.FromMilliseconds(300)));
             builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(64,
                     TimeSpan.FromSeconds(1)));
+            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemWatchEvent, bool>>(1024, TimeSpan.FromSeconds(5)));
         }
 
         void ConfigureDbContext(WebApplicationBuilder builder)

@@ -22,7 +22,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 
         public override async ValueTask DisposeAsync()
         {
-            await _pipeReader.CompleteAsync();
+            await _stream.DisposeAsync();
             await base.DisposeAsync();
         }
 

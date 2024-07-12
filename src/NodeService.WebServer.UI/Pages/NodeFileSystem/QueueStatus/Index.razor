@@ -1,0 +1,186 @@
+﻿@namespace NodeService.WebServer.UI.Pages.NodeFileSystem.QueueStatus
+@page "/NodeFileSystem/QueueStatus/"
+
+@inject ApiService ApiService
+@inject NotificationService _notice
+@inject NavigationManager NavigationManager
+
+<GridContent>
+
+    <Table Size="TableSize.Small"
+           Loading="@false"
+           ScrollX="2000px"
+           Resizable
+           Total="@nodeFileSyncQueueStatus.BatchProcessQueues.Length"
+           EnableVirtualization="false"
+           PageSize="10"
+           PageIndex="1"
+           OnChange="OnTableChange"
+           TItem="BatchProcessQueueInfo"
+           DataSource="@nodeFileSyncQueueStatus.BatchProcessQueues">
+        <TitleTemplate>
+            <GridRow Style="margin-bottom:16px">
+                <GridCol Span="6">
+                    <Title Level="3">队列状态</Title>
+                </GridCol>
+                <GridCol Span="6" Offset="12">
+                    <Search Placeholder="搜索" @bind-Value="@_keywords" OnSearch="@QueryAsync" />
+                </GridCol>
+            </GridRow>
+            <GridRow>
+                <Space Wrap Style="margin-bottom:16px">
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="@QueryAsync"></Button>
+                    </SpaceItem>
+                </Space>
+            </GridRow>
+        </TitleTemplate>
+        <ColumnDefinitions>
+            <Selection Key="@context.QueueId" Width="40" Fixed="left" Type="checkbox" />
+            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.QueueId"></PropertyColumn>
+            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.QueueName"></PropertyColumn>
+            <PropertyColumn Title="创建时间" Ellipsis Sortable Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="长度" Ellipsis Sortable Property="c => c.QueueCount"></PropertyColumn>
+            <PropertyColumn Title="已连接" Ellipsis Sortable Property="c => c.IsConnected"></PropertyColumn>
+            <PropertyColumn Title="处理个数" Ellipsis Sortable Property="c => c.TotalProcessedCount">
+                <Text>@context.TotalProcessedCount</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="已上传文件总长度" Ellipsis Sortable Property="c => c.TotalProcessedLength">
+                <Text>@FormatSize(context.TotalProcessedLength)</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="已上传文件总长度" Ellipsis Sortable Property="c => c.TotalProcessedLength">
+                <Text>@FormatSize(context.TotalProcessedLength)</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="当前文件总长度" Ellipsis Sortable Property="c => c.TotalLengthInQueue">
+                <Text>@FormatSize(context.TotalLengthInQueue)</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="历史最大文件长度" Ellipsis Sortable Property="c => c.MaxFileLength">
+                <Text>@FormatSize(context.MaxFileLength)</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="最大文件长度" Ellipsis Sortable Property="c => c.MaxFileLengthInQueue">
+                <Text>@FormatSize(context.MaxFileLengthInQueue)</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="总处理时间" Ellipsis Sortable Property="c => c.TotalProcessTime">
+                <Text>@context.TotalProcessTime</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="最大处理时间" Ellipsis Sortable Property="c => c.MaxProcessTime">
+                <Text>@context.MaxProcessTime</Text>
+            </PropertyColumn>
+            <PropertyColumn Title="平均处理时间" Ellipsis Sortable Property="c => c.AvgProcessTime">
+                <Text>@context.AvgProcessTime</Text>
+            </PropertyColumn>
+        </ColumnDefinitions>
+    </Table>
+</GridContent>
+
+@code {
+    string _keywords;
+
+    NodeFileSyncQueueStatus nodeFileSyncQueueStatus = new NodeFileSyncQueueStatus();
+
+
+
+    async Task QueryAsync()
+    {
+        try
+        {
+            var rsp = await ApiService.QueryNodeQueueStatusAsync();
+            if (rsp.ErrorCode == 0)
+            {
+                this.nodeFileSyncQueueStatus = rsp.Result;
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = rsp.Message
+                    });
+            }
+
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+
+    }
+
+    string FormatSize(double length)
+    {
+
+        if (length >= 1024 * 1024 * 1024)
+        {
+            return (length / 1024d / 1024 / 1024).ToString("n2") + "GB";
+        }
+        else if (length > 1024 * 1024)
+        {
+            return (length / 1024d / 1024).ToString("n2") + "MB";
+        }
+        else if (length > 1024)
+        {
+            return (length / 1024d).ToString("n2") + "KB";
+        }
+        else
+        {
+            return length.ToString() + "B";
+        }
+    }
+
+    string FormatTime(double seconds)
+    {
+
+        if (seconds >= 60 * 60 * 24)
+        {
+            return (seconds / 60d / 60 / 24).ToString("n2") + " Days";
+        }
+        else if (seconds > 60 * 60)
+        {
+            return (seconds / 60d / 60).ToString("n2") + " H";
+        }
+        else if (seconds > 60)
+        {
+            return (seconds / 60d).ToString("n2") + " Min";
+        }
+        else
+        {
+            return seconds.ToString("n2") + " Sec";
+        }
+    }
+
+    protected override async void OnInitialized()
+    {
+        await QueryAsync();
+        base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+            {
+                Message = "加载失败",
+                Description = ex.ToString()
+            });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        await base.OnInitializedAsync();
+    }
+
+
+
+    void OnTableChange(QueryModel<BatchProcessQueueInfo> query)
+    {
+
+    }
+
+
+
+
+}

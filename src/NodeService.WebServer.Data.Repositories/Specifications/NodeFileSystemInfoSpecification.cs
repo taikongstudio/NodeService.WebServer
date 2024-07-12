@@ -6,13 +6,21 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Data.Repositories.Specifications
 {
-    public class NodeFileSystemInfoSpecification : Specification<NodeFileSystemInfoModel>
+    public class NodeFileSystemInfoSpecification : SelectSpecification<NodeFileSystemInfoModel,string>
     {
-        public NodeFileSystemInfoSpecification(DataFilterCollection<string> idFilters)
+        public NodeFileSystemInfoSpecification(string nodeInfoId, DataFilterCollection<string> idFilters)
         {
+            Query.Where(x => x.NodeInfoId == nodeInfoId);
             if (idFilters.HasValue)
             {
-                Query.Where(x => idFilters.Items.Contains(x.Id));
+                if (idFilters.FilterType == DataFilterTypes.Include)
+                {
+                    Query.Where(x => idFilters.Items.Contains(x.Id));
+                }
+                else if (idFilters.FilterType == DataFilterTypes.Exclude)
+                {
+                    Query.Where(x => !idFilters.Items.Contains(x.Id));
+                }
             }
         }
 
@@ -20,7 +28,7 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
         {
             if (nodeName != null)
             {
-                Query.Where(x => x.NodeName.Contains(nodeName));
+                Query.Where(x => x.NodeInfoId.Contains(nodeName));
             }
             if (!string.IsNullOrEmpty(keywords))
             {

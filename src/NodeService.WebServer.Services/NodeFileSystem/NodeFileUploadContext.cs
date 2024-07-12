@@ -1,34 +1,52 @@
-﻿using NodeService.Infrastructure.NodeFileSystem;
+﻿using Microsoft.EntityFrameworkCore.InMemory.Storage.Internal;
+using NodeService.Infrastructure.NodeFileSystem;
+using System.IO.Pipelines;
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
-public class NodeFileUploadContext :  IDisposable
+public class NodeFileUploadContext :  IAsyncDisposable
 {
     public NodeFileUploadContext(
-        NodeFileInfo fileInfo,
         NodeFileSyncRecordModel syncRecord,
-        Stream stream)
+        Pipe pipe)
     {
-        FileInfo = fileInfo;
         SyncRecord = syncRecord;
-        Stream = stream;
+        Pipe = pipe;
+        _tcs = new TaskCompletionSource<NodeFileSyncStatus>();
     }
 
-    public NodeFileInfo FileInfo { get; private set; }
+    readonly TaskCompletionSource<NodeFileSyncStatus> _tcs;
 
     public NodeFileSyncRecordModel SyncRecord { get; private set; }
 
-    public Stream Stream { get; private set; }
+    public Pipe Pipe { get; private set; }
 
     public bool IsCancellationRequested { get; set; }
 
-    public void Dispose()
+    public bool IsStorageNotExists { get; set; }
+
+    public Task<NodeFileSyncStatus> WaitAsync(CancellationToken cancellationToken)
     {
-        this.Stream.Dispose();
-        if (this.Stream is FileStream fileStream)
-        {
-            File.Delete(fileStream.Name);
-        }
+        return _tcs.Task.WaitAsync(cancellationToken);
     }
 
+    public bool TrySetResult(NodeFileSyncStatus status)
+    {
+        return _tcs.TrySetResult(status);
+    }
+
+    public bool TrySetException(Exception exception)
+    {
+        return _tcs.TrySetException(exception);
+    }
+
+    public bool TrySetCanceled()
+    {
+        return _tcs.TrySetCanceled();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await ValueTask.CompletedTask;
+    }
 }

@@ -1,14 +1,11 @@
 ﻿using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using OneOf;
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -16,86 +13,6 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.NodeFileSystem
 {
-    public record struct NodeFileSystemAddOrUpdateSyncRecordParameters
-    {
-        public NodeFileSystemAddOrUpdateSyncRecordParameters(NodeFileSyncRecordModel syncRecord)
-        {
-            SyncRecords = [syncRecord];
-        }
-
-        public NodeFileSystemAddOrUpdateSyncRecordParameters(IEnumerable<NodeFileSyncRecordModel> syncRecords)
-        {
-            SyncRecords = [.. syncRecords];
-        }
-
-        public NodeFileSystemAddOrUpdateSyncRecordParameters(ImmutableArray<NodeFileSyncRecordModel> syncRecords)
-        {
-            SyncRecords = syncRecords;
-        }
-
-        public IEnumerable<NodeFileSyncRecordModel> SyncRecords { get; private set; }
-    }
-
-    public record struct NodeFileSystemSyncRecordQueryParameters
-    {
-        public NodeFileSystemSyncRecordQueryParameters(QueryNodeFileSystemSyncRecordParameters parameters)
-        {
-            this.QueryParameters = parameters;
-        }
-
-        public QueryNodeFileSystemSyncRecordParameters QueryParameters { get; private set; }
-    }
-
-    public record struct NodeFileSystemSyncRecordServiceParameters
-    {
-        public NodeFileSystemSyncRecordServiceParameters(NodeFileSystemAddOrUpdateSyncRecordParameters parameters)
-        {
-            Parameters = parameters;
-        }
-
-        public NodeFileSystemSyncRecordServiceParameters(NodeFileSystemSyncRecordQueryParameters parameters)
-        {
-            Parameters = parameters;
-        }
-
-        public OneOf<
-            NodeFileSystemAddOrUpdateSyncRecordParameters,
-            NodeFileSystemSyncRecordQueryParameters
-            > Parameters
-        { get; private set; }
-    }
-
-    public record struct NodeFileSystemSyncRecordServiceAddOrUpdateResult
-    {
-        public int AddedCount { get; init; }
-
-        public int ModifiedCount { get; init; }
-    }
-
-    public record struct NodeFileSystemSyncRecordServiceQueryResult
-    {
-        public NodeFileSystemSyncRecordServiceQueryResult(ListQueryResult<NodeFileSyncRecordModel> result)
-        {
-            Result = result;
-        }
-
-        public ListQueryResult<NodeFileSyncRecordModel> Result { get; private set; }
-    }
-
-    public record struct NodeFileSystemSyncRecordServiceResult
-    {
-        public NodeFileSystemSyncRecordServiceResult(NodeFileSystemSyncRecordServiceAddOrUpdateResult result)
-        {
-            Result = result;
-        }
-
-        public NodeFileSystemSyncRecordServiceResult(NodeFileSystemSyncRecordServiceQueryResult result)
-        {
-            Result = result;
-        }
-
-        public OneOf<NodeFileSystemSyncRecordServiceAddOrUpdateResult, NodeFileSystemSyncRecordServiceQueryResult> Result { get; private set; }
-    }
 
     public class NodeFileSystemSyncRecordService : BackgroundService
     {

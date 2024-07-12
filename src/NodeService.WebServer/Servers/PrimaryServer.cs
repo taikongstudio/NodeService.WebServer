@@ -383,6 +383,8 @@ namespace NodeService.WebServer.Servers
         void ConfigureSingleton(WebApplicationBuilder builder)
         {
             //builder.Services.AddSingleton<MyDynamicRouteValueTransformer>();
+            builder.Services.AddSingleton<NodeBatchProcessQueueDictionary>();
+
             builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
@@ -428,8 +430,8 @@ namespace NodeService.WebServer.Servers
 
             builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>>(1024, TimeSpan.FromSeconds(5)));
 
-            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>>(256, TimeSpan.FromSeconds(5)));
-            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>>(1024, TimeSpan.FromSeconds(5)));
+            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>>(256, TimeSpan.FromSeconds(1)));
+            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemWatchEvent, bool>>(1024, TimeSpan.FromSeconds(5)));
             builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>>(1024, TimeSpan.FromSeconds(3)));
             builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>>(128, TimeSpan.FromSeconds(3)));
             builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
@@ -460,22 +462,33 @@ namespace NodeService.WebServer.Servers
             else
             {
                 builder.Services.AddPooledDbContextFactory<ApplicationDbContext>(options =>
+                {
                     options.UseMySql(builder.Configuration.GetConnectionString("NodeServiceDbMySQL"),
                         MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
                         {
                             mySqlOptionBuilder.EnableRetryOnFailure();
                             mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                             mySqlOptionBuilder.EnableStringComparisonTranslations();
-                        }), 2048);
+                        });
+                }, 2048);
                 builder.Services.AddDbContext<ApplicationUserDbContext>(options =>
+                {
                     options.UseMySql(builder.Configuration.GetConnectionString("NodeServiceUserDbMySQL"),
-                        MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
-                        {
-                            mySqlOptionBuilder.EnableRetryOnFailure();
-                            mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                            mySqlOptionBuilder.EnableStringComparisonTranslations();
-                        }));
+                          MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
+                          {
+                              mySqlOptionBuilder.EnableRetryOnFailure();
+                              mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                              mySqlOptionBuilder.EnableStringComparisonTranslations();
+                          });
+                });
             }
+            builder.Services.AddPooledDbContextFactory<InMemoryDbContext>(options =>
+            {
+                options.UseInMemoryDatabase("default", (inMemoryDbOptions) =>
+                {
+                   
+                });
+            });
         }
 
         public override async Task RunAsync(CancellationToken cancellationToken = default)

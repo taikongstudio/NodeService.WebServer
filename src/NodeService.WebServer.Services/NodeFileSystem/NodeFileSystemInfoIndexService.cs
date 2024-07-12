@@ -1,78 +1,25 @@
-﻿using Google.Protobuf.WellKnownTypes;
-using Microsoft.Extensions.Caching.Distributed;
+﻿using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using OneOf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.NodeFileSystem
 {
-    public record struct NodeFileSystemInfoIndexServiceParameters
+    public class NodeFileSystemInfoIndexService : BackgroundService
     {
-        public NodeFileSystemInfoIndexServiceParameters(QueryNodeFileSystemInfoParameters parameters)
-        {
-            this.Parameters = parameters;
-        }
-
-       public OneOf< QueryNodeFileSystemInfoParameters> Parameters { get; init; }
-    }
-
-    public record struct NodeFileSystemInfoIndexServiceResult
-    {
-        public NodeFileSystemInfoIndexServiceResult(ListQueryResult<NodeFileSystemInfoModel> result)
-        {
-            Result = result;
-        }
-
-        public ListQueryResult<NodeFileSystemInfoModel> Result { get; init; }
-    }
-
-    public record struct QueryNodeFileSystemInfoParameters
-    {
-        public QueryNodeFileSystemInfoParameters(List<string> value)
-        {
-            Value = value;
-        }
-
-        public OneOf<List<string>> Value { get; init; }
-    }
-
-    public class NodeFileSystemInfoEvent
-    {
-        public NodeFileSystemInfoEvent()
-        {
-
-        }
-
-        public required string NodeFilePath { get; init; }
-
-        public required string NodeFilePathHash { get; init; }
-
-        public NodeFileInfo? ObjectInfo { get; init; }
-    }
-    public class NodeFileSystemObjectInfoIndexService : BackgroundService
-    {
-        readonly ILogger<NodeFileSystemObjectInfoIndexService> _logger;
+        readonly ILogger<NodeFileSystemInfoIndexService> _logger;
         readonly ExceptionCounter _exceptionCounter;
-        readonly BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>> _nodeFileSystemEventQueue;
+        readonly BatchQueue<BatchQueueOperation<NodeFileSystemWatchEvent, bool>> _nodeFileSystemEventQueue;
         readonly BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>> _nodeFileSystemInfoQueryQueue;
         readonly ApplicationRepositoryFactory<NodeFileSystemInfoModel> _nodeFileSystemInfoRepoFactory;
         readonly IDistributedCache _distributedCache;
 
-        public NodeFileSystemObjectInfoIndexService(
-            ILogger<NodeFileSystemObjectInfoIndexService> logger,
+        public NodeFileSystemInfoIndexService(
+            ILogger<NodeFileSystemInfoIndexService> logger,
             ExceptionCounter exceptionCounter,
-            BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>> nodeFileSystemEventQueue,
+            BatchQueue<BatchQueueOperation<NodeFileSystemWatchEvent, bool>> nodeFileSystemEventQueue,
             BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>> queryQueue,
             ApplicationRepositoryFactory<NodeFileSystemInfoModel> nodeFileSystemWatchRecordModelRepoFactory,
             IDistributedCache distributedCache)
@@ -97,51 +44,68 @@ namespace NodeService.WebServer.Services.NodeFileSystem
         {
             await foreach (var array in _nodeFileSystemInfoQueryQueue.ReceiveAllAsync(cancellationToken))
             {
-                if (Debugger.IsAttached)
+                if (array == null || array.Length == 0)
+                {
+                    continue;
+                }
+                try
+                {
+                    using var nodeFileSystemInfoRepo = _nodeFileSystemInfoRepoFactory.CreateRepository();
+                    foreach (var op in array)
+                    {
+                        switch (op.Kind)
+                        {
+                            case BatchQueueOperationKind.None:
+                                break;
+                            case BatchQueueOperationKind.AddOrUpdate:
+
+                                break;
+                            case BatchQueueOperationKind.Delete:
+                                break;
+                            case BatchQueueOperationKind.Query:
+                                await ProcessQueryOperationAsync(
+                                                nodeFileSystemInfoRepo,
+                                                op,
+                                                cancellationToken);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
                 {
                     foreach (var op in array)
                     {
-                        await ProcessOperationAsync(op, cancellationToken);
+                        op.SetException(ex);
                     }
                 }
-                else
-                {
-                    await Parallel.ForEachAsync(array, new ParallelOptions()
-                    {
-                        MaxDegreeOfParallelism = 4,
-                        CancellationToken = cancellationToken,
-                    }, ProcessOperationAsync);
-                }
+
             }
         }
 
-        private async ValueTask ProcessOperationAsync(BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult> op, CancellationToken cancellationToken = default)
+        async ValueTask ProcessQueryOperationAsync(
+            IRepository<NodeFileSystemInfoModel> repository,
+            BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult> op, CancellationToken cancellationToken = default)
         {
             try
             {
-                using var nodeFileSystemInfoRepo = _nodeFileSystemInfoRepoFactory.CreateRepository();
-                switch (op.Kind)
+
+                var queryParameters = op.Argument.Parameters.AsT0.Value.AsT0;
+                var idList = new List<string>();
+                foreach (var item in queryParameters.FilePathList)
                 {
-                    case BatchQueueOperationKind.None:
-                        break;
-                    case BatchQueueOperationKind.AddOrUpdate:
-                        break;
-                    case BatchQueueOperationKind.Delete:
-                        break;
-                    case BatchQueueOperationKind.Query:
-                        var queryParameters = op.Argument.Parameters.AsT0;
-                        var list = await nodeFileSystemInfoRepo.ListAsync(
-                            new NodeFileSystemInfoSpecification(
-                                DataFilterCollection<string>.Includes(queryParameters.Value.AsT0)),
-                            cancellationToken);
-                        op.SetResult(new NodeFileSystemInfoIndexServiceResult(new ListQueryResult<NodeFileSystemInfoModel>(list.Count,
-                            1,
-                            list.Count,
-                            list)));
-                        break;
-                    default:
-                        break;
+                    var nodeFilePath = NodeFileSystemHelper.GetNodeFilePath(queryParameters.NodeInfoId, item);
+                    var nodeFilePathHash = NodeFileSystemHelper.GetNodeFilePathHash(nodeFilePath);
+                    idList.Add(nodeFilePathHash);
                 }
+                var list = await repository.PaginationQueryAsync(
+                                                        new NodeFileSystemInfoSpecification(
+                                                            queryParameters.NodeInfoId,
+                                                            DataFilterCollection<string>.Includes(idList)),
+                                                            new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
+                                                        cancellationToken);
+                op.SetResult(new NodeFileSystemInfoIndexServiceResult(list));
             }
             catch (Exception ex)
             {
@@ -158,7 +122,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             {
                 try
                 {
-                    using var nodeFileSystemWatchRecordRepo = _nodeFileSystemInfoRepoFactory.CreateRepository();
+                    using var fileSystemInfoRepo = _nodeFileSystemInfoRepoFactory.CreateRepository();
                     foreach (var opGroup in array.GroupBy(x => x.Argument.NodeFilePathHash))
                     {
                         if (opGroup.Key == null)
@@ -172,7 +136,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                         }
                         var nodeFilePath = lastOp.Argument.NodeFilePath;
                         var nodeFilePathHash = lastOp.Argument.NodeFilePathHash;
-                        var record = await nodeFileSystemWatchRecordRepo.GetByIdAsync(nodeFilePathHash, cancellationToken);
+                        var record = await fileSystemInfoRepo.GetByIdAsync(nodeFilePathHash, cancellationToken);
                         switch (lastOp.Kind)
                         {
                             case BatchQueueOperationKind.None:
@@ -183,21 +147,22 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                                     record = new NodeFileSystemInfoModel()
                                     {
                                         Id = lastOp.Argument.NodeFilePathHash,
-                                        CreationDateTime = DateTime.UtcNow,
                                         Value = lastOp.Argument.ObjectInfo,
+                                        Path = lastOp.Argument.NodeFilePath,
+                                        Name = lastOp.Argument.ObjectInfo.FullName,
                                     };
                                     _distributedCache.SetString(nodeFilePath, JsonSerializer.Serialize(record.Value));
-                                    await nodeFileSystemWatchRecordRepo.AddAsync(record, cancellationToken);
+                                    await fileSystemInfoRepo.AddAsync(record, cancellationToken);
                                 }
                                 else
                                 {
                                     record.Value = lastOp.Argument.ObjectInfo;
                                     _distributedCache.SetString(nodeFilePath, JsonSerializer.Serialize(record.Value));
-                                    await nodeFileSystemWatchRecordRepo.UpdateAsync(record, cancellationToken);
+                                    await fileSystemInfoRepo.UpdateAsync(record, cancellationToken);
                                 }
                                 break;
                             case BatchQueueOperationKind.Delete:
-                                await nodeFileSystemWatchRecordRepo.DeleteAsync(record, cancellationToken);
+                                await fileSystemInfoRepo.DeleteAsync(record, cancellationToken);
                                 _distributedCache.Remove(nodeFilePath);
                                 break;
                             case BatchQueueOperationKind.Query:

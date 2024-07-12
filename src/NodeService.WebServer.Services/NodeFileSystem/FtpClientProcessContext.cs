@@ -1,4 +1,6 @@
-﻿using NodeService.Infrastructure.NodeFileSystem;
+﻿using FluentFTP.Helpers;
+using NodeService.Infrastructure.NodeFileSystem;
+using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
@@ -7,9 +9,17 @@ public class FtpClientProcessContext : ProcessContext
 
     readonly AsyncFtpClient _asyncFtpClient;
     readonly BatchQueue<NodeFileSyncRecordModel> _actionBlock;
+    readonly ILogger<FtpClientProcessContext> _logger;
+    readonly ExceptionCounter _exceptionCounter;
 
-    public FtpClientProcessContext(AsyncFtpClient asyncFtpClient, BatchQueue<NodeFileSyncRecordModel> actionBlock)
+    public FtpClientProcessContext(
+        ILogger<FtpClientProcessContext> logger,
+        ExceptionCounter exceptionCounter,
+        AsyncFtpClient asyncFtpClient,
+        BatchQueue<NodeFileSyncRecordModel> actionBlock)
     {
+        _logger = logger;
+        _exceptionCounter = exceptionCounter;
         _asyncFtpClient = asyncFtpClient;
         _actionBlock = actionBlock;
     }
@@ -29,58 +39,129 @@ public class FtpClientProcessContext : ProcessContext
         await DisposeFtpClientAsync();
     }
 
-    public override async ValueTask ProcessAsync(NodeFileUploadContext nodeFileUploadContext, CancellationToken cancellationToken = default)
+    public override async ValueTask ProcessAsync(NodeFileUploadContext uploadContext, CancellationToken cancellationToken = default)
     {
         try
         {
-            ArgumentNullException.ThrowIfNull(nodeFileUploadContext);
-            await _asyncFtpClient.AutoConnect(cancellationToken);
-            nodeFileUploadContext.SyncRecord.UtcBeginTime = DateTime.UtcNow;
-            nodeFileUploadContext.SyncRecord.Status = NodeFileSyncStatus.Processing;
-            var lambdaProgress = new LambdaProgress<FtpProgress>((ftpProgress) =>
+            if (uploadContext.IsCancellationRequested)
             {
-                nodeFileUploadContext.SyncRecord.Progress = ftpProgress.Progress;
-                if (ftpProgress.Progress < 100)
-                {
-                    nodeFileUploadContext.SyncRecord.TransferSpeed = ftpProgress.TransferSpeed;
-                }
-                nodeFileUploadContext.SyncRecord.EstimatedTimeSpan = ftpProgress.ETA;
-                nodeFileUploadContext.SyncRecord.TransferredBytes = ftpProgress.TransferredBytes;
-                _actionBlock.Post(nodeFileUploadContext.SyncRecord);
-            });
-            var ftpStatus = await this._asyncFtpClient.UploadStream(
-                nodeFileUploadContext.Stream,
-                nodeFileUploadContext.SyncRecord.StoragePath,
-                FtpRemoteExists.Overwrite,
+                uploadContext.SyncRecord.Status = NodeFileSyncStatus.Canceled;
+                uploadContext.TrySetResult(NodeFileSyncStatus.Canceled);
+                return;
+            }
+            ArgumentNullException.ThrowIfNull(uploadContext);
+            if (!await _asyncFtpClient.IsStillConnected(10000, cancellationToken))
+            {
+                await _asyncFtpClient.AutoConnect(cancellationToken);
+            }
+            var ftpObjectInfo = await _asyncFtpClient.GetObjectInfo(
+                uploadContext.SyncRecord.StoragePath,
                 true,
-                lambdaProgress,
                 cancellationToken);
-           await _asyncFtpClient.SetModifiedTime(nodeFileUploadContext.SyncRecord.StoragePath,
-               nodeFileUploadContext.FileInfo.LastWriteTime,
-               cancellationToken);
-            nodeFileUploadContext.SyncRecord.Status = NodeFileSyncStatus.Processed;
+            NodeFileInfo? ftpNodeFileInfo = null;
+            if (ftpObjectInfo == null)
+            {
+                uploadContext.IsStorageNotExists = true;
+            }
+            else
+            {
+                ftpNodeFileInfo = new NodeFileInfo()
+                {
+                    LastWriteTime = ftpObjectInfo.Modified,
+                    Length = ftpObjectInfo.Size
+                };
+            }
+
+            if (CompareFileInfo(uploadContext.SyncRecord.FileInfo, ftpNodeFileInfo))
+            {
+                uploadContext.SyncRecord.Status = NodeFileSyncStatus.Skipped;
+                uploadContext.TrySetResult(NodeFileSyncStatus.Skipped);
+            }
+            else
+            {
+                uploadContext.SyncRecord.UtcBeginTime = DateTime.UtcNow;
+                uploadContext.SyncRecord.Status = NodeFileSyncStatus.Processing;
+                var lambdaProgress = new LambdaProgress<FtpProgress>((ftpProgress) =>
+                {
+                    uploadContext.SyncRecord.Progress = ftpProgress.Progress;
+                    if (ftpProgress.Progress < 100)
+                    {
+                        uploadContext.SyncRecord.TransferSpeed = ftpProgress.TransferSpeed;
+                    }
+                    uploadContext.SyncRecord.EstimatedTimeSpan = ftpProgress.ETA;
+                    uploadContext.SyncRecord.TransferredBytes = ftpProgress.TransferredBytes;
+
+                    _actionBlock.Post(uploadContext.SyncRecord);
+                });
+                using var pipeReaderStream = new NodeFilePipleReaderStream(
+                    uploadContext.Pipe.Reader,
+                    uploadContext.SyncRecord.FileInfo.Length);
+                uploadContext.TrySetResult(NodeFileSyncStatus.Processing);
+                var ftpStatus = await _asyncFtpClient.UploadStream(
+                    pipeReaderStream,
+                    uploadContext.SyncRecord.StoragePath,
+                    FtpRemoteExists.Overwrite,
+                    true,
+                    lambdaProgress,
+                    cancellationToken);
+                await _asyncFtpClient.SetModifiedTime(uploadContext.SyncRecord.StoragePath,
+                    uploadContext.SyncRecord.FileInfo.LastWriteTime,
+                    cancellationToken);
+                uploadContext.SyncRecord.Status = NodeFileSyncStatus.Processed;
+            }
         }
         catch (Exception ex)
         {
-            nodeFileUploadContext.SyncRecord.Status = NodeFileSyncStatus.Faulted;
-            nodeFileUploadContext.SyncRecord.ErrorCode = ex.HResult;
-            nodeFileUploadContext.SyncRecord.Message = ex.ToString();
+            uploadContext.SyncRecord.Status = NodeFileSyncStatus.Faulted;
+            uploadContext.SyncRecord.ErrorCode = ex.HResult;
+            uploadContext.SyncRecord.Message = ex.ToString();
+            uploadContext.TrySetException(ex);
+            _logger.LogError(ex.ToString());
+            _exceptionCounter.AddOrUpdate(ex, uploadContext.SyncRecord.NodeInfoId);
         }
         finally
         {
-            nodeFileUploadContext.SyncRecord.UtcEndTime = DateTime.UtcNow;
+            uploadContext.SyncRecord.UtcEndTime = DateTime.UtcNow;
         }
     }
 
-    public override async ValueTask IdleAsync(CancellationToken cancellationToken = default)
+    static bool CompareFileInfo(NodeFileInfo? oldFileInfo, NodeFileInfo? newFileInfo)
+    {
+        if (oldFileInfo == null || newFileInfo == null)
+        {
+            return false;
+        }
+        return oldFileInfo.Length == newFileInfo.Length &&
+                        CompareDateTime(oldFileInfo.LastWriteTime, newFileInfo.LastWriteTime);
+        static bool CompareDateTime(DateTime dateTime1, DateTime dateTime2)
+        {
+            if (dateTime1 == dateTime2)
+            {
+                return true;
+            }
+            var dateTimeOffset1 = new DateTimeOffset(dateTime1);
+            var dateTimeOffset2 = new DateTimeOffset(dateTime2);
+            var diff = dateTimeOffset1.ToUnixTimeSeconds() - dateTimeOffset2.ToUnixTimeSeconds();
+            return diff == 0;
+        }
+    }
+
+    public override async ValueTask<bool> IdleAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            await _asyncFtpClient.IsStillConnected(token: cancellationToken);
+            if (await _asyncFtpClient.IsStillConnected(token: cancellationToken))
+            {
+                var workingDirectory = await _asyncFtpClient.GetWorkingDirectory(cancellationToken);
+                await _asyncFtpClient.DirectoryExists(workingDirectory, cancellationToken);
+                return true;
+            }
         }
         catch (Exception ex)
         {
-
+            _exceptionCounter.AddOrUpdate(ex, _asyncFtpClient.Host);
+            _logger.LogError(ex.ToString());
         }
+        return false;
     }
 }

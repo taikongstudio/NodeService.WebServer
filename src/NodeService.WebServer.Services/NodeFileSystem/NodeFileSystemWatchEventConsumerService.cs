@@ -1,16 +1,10 @@
-﻿using Google.Protobuf.WellKnownTypes;
-using Microsoft.Extensions.Caching.Distributed;
+﻿using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.NodeFileSystem;
-using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.Tasks;
-using Org.BouncyCastle.Utilities;
-using System.Security.Cryptography;
-using System.Text.Json.Nodes;
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
@@ -20,7 +14,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
     readonly ILogger<NodeFileSystemWatchEventConsumerService> _logger;
     readonly ExceptionCounter _exceptionCounter;
     readonly BatchQueue<FileSystemWatchEventReportMessage> _reportMessageEventQueue;
-    readonly BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>> _nodeFileSystemEventQueue;
+    readonly BatchQueue<BatchQueueOperation<NodeFileSystemWatchEvent, bool>> _nodeFileSystemEventQueue;
     readonly BatchQueue<TaskActivateServiceParameters> _fireTaskParametersBatchQueue;
     readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepoFactory;
     readonly ApplicationRepositoryFactory<FileSystemWatchConfigModel> _fileSystemWatchRepoFactory;
@@ -35,7 +29,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepoFactory,
         ApplicationRepositoryFactory<FileSystemWatchConfigModel> fileSystemWatchRepoFactory,
-        BatchQueue<BatchQueueOperation<NodeFileSystemInfoEvent, bool>> nodeFileSystemEventQueue)
+        BatchQueue<BatchQueueOperation<NodeFileSystemWatchEvent, bool>> nodeFileSystemEventQueue)
     {
         _logger = logger;
         _exceptionCounter = exceptionCounter;
@@ -121,7 +115,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
                                 case FileSystemWatchEventReport.EventOneofCase.Created:
                                     {
                                         var jsonValue = lastReport.Created.Properties["FileInfo"];
-                                        await AddOrUpdateFileSystemWatchRecordAsync(
+                                        await SendFileSystemWatchEventAsync(
                                             nodeFilePath,
                                             nodeFilePathHash,
                                             jsonValue,
@@ -131,7 +125,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
                                 case FileSystemWatchEventReport.EventOneofCase.Changed:
                                     {
                                         var jsonValue = lastReport.Changed.Properties["FileInfo"];
-                                        await AddOrUpdateFileSystemWatchRecordAsync(
+                                        await SendFileSystemWatchEventAsync(
                                             nodeFilePath,
                                             nodeFilePathHash,
                                             jsonValue,
@@ -159,7 +153,7 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
                                             cancellationToken);
 
                                         var newNodeFilePathHash = NodeFileSystemHelper.GetNodeFilePathHash(newNodeFilePath);
-                                        await AddOrUpdateFileSystemWatchRecordAsync(
+                                        await SendFileSystemWatchEventAsync(
                                                 newNodeFilePath,
                                                 newNodeFilePathHash,
                                                 jsonValue,
@@ -189,33 +183,33 @@ public class NodeFileSystemWatchEventConsumerService : BackgroundService
         }
     }
 
-    async Task AddOrUpdateFileSystemWatchRecordAsync(
+    async Task SendFileSystemWatchEventAsync(
         string nodeFilePath,
         string nodeFilePathHash,
         string jsonValue,
         CancellationToken cancellationToken = default)
     {
-        var wapper = new NodeFileSystemInfoEvent()
+        var wapper = new NodeFileSystemWatchEvent()
         {
             NodeFilePath= nodeFilePath,
             NodeFilePathHash = nodeFilePathHash,
             ObjectInfo = JsonSerializer.Deserialize<NodeFileInfo>(jsonValue)
         };
-        var op = new BatchQueueOperation<NodeFileSystemInfoEvent, bool>(wapper, BatchQueueOperationKind.AddOrUpdate);
+        var op = new BatchQueueOperation<NodeFileSystemWatchEvent, bool>(wapper, BatchQueueOperationKind.AddOrUpdate);
         await _nodeFileSystemEventQueue.SendAsync(op, cancellationToken);
     }
 
     async Task RemoveFileSystemWatchRecordAsync(
-                string nodeFilePath,
+        string nodeFilePath,
         string nodeFilePathHash,
         CancellationToken cancellationToken = default)
     {
-        var wapper = new NodeFileSystemInfoEvent()
+        var wapper = new NodeFileSystemWatchEvent()
         {
             NodeFilePath = nodeFilePath,
             NodeFilePathHash = nodeFilePathHash,
         };
-        var op = new BatchQueueOperation<NodeFileSystemInfoEvent, bool>(wapper, BatchQueueOperationKind.Delete);
+        var op = new BatchQueueOperation<NodeFileSystemWatchEvent, bool>(wapper, BatchQueueOperationKind.Delete);
         await _nodeFileSystemEventQueue.SendAsync(op, cancellationToken);
     }
 

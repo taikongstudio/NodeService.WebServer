@@ -7,6 +7,7 @@ using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeFileSystem;
 using System.IO.Pipelines;
+using System.Security.Cryptography;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -16,6 +17,8 @@ public class NodeFileSystemController : Controller
 {
     readonly ILogger<NodeFileSystemController> _logger;
     readonly ExceptionCounter _exceptionCounter;
+    readonly IServiceProvider _serviceProvider;
+    readonly NodeBatchProcessQueueDictionary _batchProcessQueueDictionary;
     readonly IDistributedCache _distributedCache;
     readonly BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>> _nodeFileSyncBatchQueue;
     readonly BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>> _queryQueue;
@@ -23,8 +26,9 @@ public class NodeFileSystemController : Controller
 
     public NodeFileSystemController(
         ILogger<NodeFileSystemController> logger,
+        IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter,
-        IDistributedCache distributedCache,
+        NodeBatchProcessQueueDictionary batchProcessQueueDictionary,
         BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>> nodeFileSyncBatchQueue,
         BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>> queryQueue,
         BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> syncRecordQueryQueue
@@ -32,7 +36,8 @@ public class NodeFileSystemController : Controller
     {
         _logger = logger;
         _exceptionCounter = exceptionCounter;
-        _distributedCache = distributedCache;
+        _serviceProvider = serviceProvider;
+        _batchProcessQueueDictionary = batchProcessQueueDictionary;
         _nodeFileSyncBatchQueue = nodeFileSyncBatchQueue;
         _queryQueue = queryQueue;
         _syncRecordQueryQueue = syncRecordQueryQueue;
@@ -44,7 +49,24 @@ public class NodeFileSystemController : Controller
         var rsp = new ApiResponse<NodeFileSyncQueueStatus>();
         rsp.SetResult(new NodeFileSyncQueueStatus()
         {
-            QueuedCount = _nodeFileSyncBatchQueue.AvailableCount
+            SyncRequestAvaibleCount = _nodeFileSyncBatchQueue.AvailableCount,
+            BatchProcessQueueCount = _batchProcessQueueDictionary.Count,
+            BatchProcessQueues = _batchProcessQueueDictionary.Select(x => new BatchProcessQueueInfo()
+            {
+                QueueId = x.Key,
+                QueueName = x.Value.QueueName,
+                CreationDateTime = x.Value.CreationDateTime,
+                TotalProcessedCount = x.Value.ProcessedCount,
+                QueueCount = x.Value.QueueCount,
+                IsConnected = x.Value.IsConnected,
+                TotalLengthInQueue = x.Value.GetCurrentTotalLength(),
+                AvgProcessTime = x.Value.AvgProcessTime,
+                TotalProcessedLength = x.Value.TotalProcessedLength,
+                MaxFileLength = x.Value.MaxFileLength,
+                MaxFileLengthInQueue = x.Value.MaxFileLengthInQueue,
+                MaxProcessTime = x.Value.MaxProcessTime,
+                TotalProcessTime = x.Value.TotalProcessTime,
+            }).ToArray()
         });
         return Task.FromResult(rsp);
     }
@@ -77,11 +99,11 @@ public class NodeFileSystemController : Controller
     }
 
     [HttpGet("/api/NodeFileSystem/GetObjectInfo")]
-    public async Task<PaginationResponse<NodeFileInfo>> GetObjectInfoAsync(
-        [FromQuery] QueryNodeFileSystemObjectInfoParameters queryParameters,
+    public async Task<PaginationResponse<NodeFileSystemInfoModel>> GetObjectInfoAsync(
+        [FromQuery] QueryNodeFileSystemInfoParameters queryParameters,
         CancellationToken cancellationToken = default)
     {
-        var rsp = new PaginationResponse<NodeFileInfo>();
+        var rsp = new PaginationResponse<NodeFileSystemInfoModel>();
         try
         {
             if (queryParameters.NodeInfoId == null)
@@ -91,7 +113,7 @@ public class NodeFileSystemController : Controller
             }
             if (queryParameters.FilePathList != null && queryParameters.FilePathList.Count > 0)
             {
-                List<NodeFileInfo> list = [];
+                List<NodeFileSystemInfoModel> list = [];
                 List<string> notFoundFilePathList = [];
                 foreach (var filePath in queryParameters.FilePathList)
                 {
@@ -100,24 +122,25 @@ public class NodeFileSystemController : Controller
                     if (jsonString == null)
                     {
                         var nodeFilePathHash = NodeFileSystemHelper.GetNodeFilePathHash(nodeFilePath);
-                        notFoundFilePathList.Add(nodeFilePathHash);
+                        notFoundFilePathList.Add(filePath);
                     }
                     else
                     {
-                        list.Add(JsonSerializer.Deserialize<NodeFileInfo>(jsonString));
+                        list.Add(JsonSerializer.Deserialize<NodeFileSystemInfoModel>(jsonString));
                     }
                 }
+                var notFoundFileParameters = queryParameters with
+                {
+                    FilePathList = notFoundFilePathList,
+                };
                 var op = new BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>(
-                    new NodeFileSystemInfoIndexServiceParameters(new QueryNodeFileSystemInfoParameters(notFoundFilePathList))
-                    , BatchQueueOperationKind.Query
-                    );
+                    new NodeFileSystemInfoIndexServiceParameters(new NodeFileSystemInfoQueryParameters(notFoundFileParameters)),
+                    BatchQueueOperationKind.Query);
                 await _queryQueue.SendAsync(op, cancellationToken);
                 var serviceResult = await op.WaitAsync(cancellationToken);
-                if (serviceResult.Result.HasValue)
-                {
-                    list.AddRange(serviceResult.Result.Items.Select(x => x.Value));
-                }
-                rsp.SetResult(new ListQueryResult<NodeFileInfo>(list.Count, 1, list.Count, list));
+                var listQueryResult = serviceResult.Result.AsT0;
+                list.AddRange(listQueryResult.Items);
+                rsp.SetResult(new ListQueryResult<NodeFileSystemInfoModel>(list.Count, 1, list.Count, list));
             }
         }
         catch (Exception ex)
@@ -126,6 +149,50 @@ public class NodeFileSystemController : Controller
             _logger.LogError(ex.ToString());
         }
 
+        return rsp;
+    }
+
+    [HttpPost("/api/NodeFileSystem/DeleteHittestResultCache")]
+    public async Task<ApiResponse<int>> DeleteHittestResultCacheAsync(NodeFileSyncRequest nodeFileSyncRequest)
+    {
+        var rsp = new ApiResponse<int>();
+        try
+        {
+            var count = await NodeFileSystemHelper.DeleteHittestResultCacheAsync(_serviceProvider);
+            rsp.SetResult(count);
+        }
+        catch (Exception ex)
+        {
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.ToString();
+        }
+        return rsp;
+    }
+
+    [HttpPost("/api/NodeFileSystem/Hittest")]
+    public async Task<ApiResponse<NodeFileHittestResult>> HittestAsync(NodeFileSyncRequest nodeFileSyncRequest)
+    {
+        var rsp = new ApiResponse<NodeFileHittestResult>();
+        try
+        {
+            var hittestResult = await NodeFileSystemHelper.HittestAsync(
+                _serviceProvider,
+                nodeFileSyncRequest.NodeInfoId,
+                nodeFileSyncRequest.FileInfo);
+            if (hittestResult)
+            {
+                rsp.SetResult(NodeFileHittestResult.Hittested);
+            }
+            else
+            {
+                rsp.SetResult(NodeFileHittestResult.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.ToString();
+        }
         return rsp;
     }
 
@@ -142,6 +209,7 @@ public class NodeFileSystemController : Controller
                 rsp.SetError(-1, "reach queue limit");
                 return rsp;
             }
+
             var request = HttpContext.Request;
 
             // validation of Content-Type
@@ -158,7 +226,7 @@ public class NodeFileSystemController : Controller
             var boundary = HeaderUtilities.RemoveQuotes(mediaTypeHeader.Boundary.Value).Value;
             var reader = new MultipartReader(boundary, request.Body);
             var section = await reader.ReadNextSectionAsync();
-
+            
             // This sample try to get the first file from request and save it
             // Make changes according to your needs in actual use
             if (section == null)
@@ -205,48 +273,53 @@ public class NodeFileSystemController : Controller
                         return rsp;
                     }
 
-                    //var queryParameters = new QueryNodeFileSystemSyncRecordParameters()
-                    //{
-                    //    NodeIdList = [nodeFileSyncRequest.NodeInfoId],
-                    //    Status = NodeFileSyncStatus.Unknown,
-                    //    SortDescriptions = [new SortDescription(nameof(NodeFileSyncRecordModel.Status), "desc")]
-                    //};
-                    //var result = await GetSyncRecordListAsync(queryParameters);
-
-                    //if (result.TotalCount > 0)
-                    //{
-
-                    //}
-
-                     var stopwatch = Stopwatch.StartNew();
-                    var pipe = new Pipe();
-
-                    nodeFileSyncRequest = nodeFileSyncRequest with
+                    var hittestResult = await NodeFileSystemHelper.HittestAsync(
+                        _serviceProvider,
+                        nodeFileSyncRequest.NodeInfoId,
+                        nodeFileSyncRequest.FileInfo);
+                    if (hittestResult)
                     {
-                        Stream = new NodeFilePipleReaderStream(pipe.Reader, nodeFileSyncRequest.FileInfo.Length)
-                    };
-                    var nodeFileUploadContext = await nodeFileSyncRequest.CreateNodeFileUploadContextAsync(
-                        new DefaultSHA256HashAlgorithmProvider(),
-                        new DefaultGzipCompressionProvider());
-                    nodeFileSyncRequest = nodeFileSyncRequest with { Stream = nodeFileUploadContext.Stream };
-                    var op = new BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>(
-                         nodeFileSyncRequest,
-                         BatchQueueOperationKind.AddOrUpdate,
-                         BatchQueueOperationPriority.Normal);
-                    op.Context = nodeFileUploadContext;
-                    await _nodeFileSyncBatchQueue.SendAsync(op);
-                    var syncRecord = await op.WaitAsync();
-                    rsp.SetResult(syncRecord);
-
-                    if (syncRecord.Status == NodeFileSyncStatus.Queued)
+                        rsp.SetError(-1, "found");
+                    }
+                    else
                     {
-                        using var writerStream = pipe.Writer.AsStream();
 
-                        await section.Body.CopyToAsync(writerStream);
+                        var stopwatch = Stopwatch.StartNew();
+                        var pipe = new Pipe();
+                        var uploadContext = nodeFileSyncRequest.CreateNodeFileUploadContext(pipe);
+                        var op = new BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>(
+                             nodeFileSyncRequest,
+                             BatchQueueOperationKind.AddOrUpdate,
+                             BatchQueueOperationPriority.Normal)
+                        {
+                            Context = uploadContext
+                        };
+                        await _nodeFileSyncBatchQueue.SendAsync(op);
+                        var syncRecord = await op.WaitAsync();
+                        rsp.SetResult(uploadContext.SyncRecord);
+                        if (syncRecord.Status == NodeFileSyncStatus.Queued)
+                        {
+                            try
+                            {
+                                var status= await uploadContext.WaitAsync(default);
+                                if (status == NodeFileSyncStatus.Processing)
+                                {
+                                    using var writerStream = pipe.Writer.AsStream();
+                                    await section.Body.CopyToAsync(writerStream);
+                                }
+
+                            }
+                            catch (Exception ex)
+                            {
+                                _exceptionCounter.AddOrUpdate(ex, nodeFileSyncRequest.NodeInfoId);
+                                _logger.LogError(ex.ToString());
+                            }
+
+                        }
                         stopwatch.Stop();
                     }
+
                 }
-                return rsp;
             }
 
             // If the code runs to this location, it means that no files have been saved

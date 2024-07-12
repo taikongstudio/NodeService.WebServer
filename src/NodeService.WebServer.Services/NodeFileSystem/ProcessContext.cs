@@ -7,6 +7,6 @@ public abstract class ProcessContext : IAsyncDisposable
         return ValueTask.CompletedTask;
     }
 
-    public abstract ValueTask IdleAsync(CancellationToken cancellationToken = default);
+    public abstract ValueTask<bool> IdleAsync(CancellationToken cancellationToken = default);
     public abstract ValueTask ProcessAsync(NodeFileUploadContext nodeFileUploadContext, CancellationToken cancellationToken = default);
 }

@@ -50,7 +50,7 @@ public class FtpClientProcessContext : ProcessContext
                 return;
             }
             ArgumentNullException.ThrowIfNull(uploadContext);
-            if (!await _asyncFtpClient.IsStillConnected(10000, cancellationToken))
+            if (!_asyncFtpClient.IsConnected)
             {
                 await _asyncFtpClient.AutoConnect(cancellationToken);
             }
@@ -150,11 +150,15 @@ public class FtpClientProcessContext : ProcessContext
     {
         try
         {
-            if (await _asyncFtpClient.IsStillConnected(token: cancellationToken))
+            if (_asyncFtpClient.IsConnected)
             {
                 var workingDirectory = await _asyncFtpClient.GetWorkingDirectory(cancellationToken);
                 await _asyncFtpClient.DirectoryExists(workingDirectory, cancellationToken);
                 return true;
+            }
+            else
+            {
+                await _asyncFtpClient.AutoConnect(cancellationToken);
             }
         }
         catch (Exception ex)

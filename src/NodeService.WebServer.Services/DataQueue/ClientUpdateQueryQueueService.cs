@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Data;
+using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
@@ -135,32 +136,28 @@ public class ClientUpdateQueryQueueService : BackgroundService
                                 clientUpdateConfig = await QueryAsync(name, key, ipAddress);
                             clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
                             op.TrySetResult(clientUpdateConfig);
-                            continue;
-                            //if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
-                            //{
-                            //    if (clientUpdateConfig == null)
-                            //        clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                            //    clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
-                            //    op.TrySetResult(clientUpdateConfig);
-                            //}
-                            //else
-                            //{
-                            //    var hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
-                            //            null,
-                            //            op.Argument.IpAddress,
-                            //            NodeDeviceType.Computer),
-                            //        cancellationToken);
-                            //    if (!hasNodeInfo)
-                            //    {
-                            //        if (clientUpdateConfig == null)
-                            //            clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                            //        op.TrySetResult(clientUpdateConfig);
-                            //    }
-                            //    else
-                            //    {
-                            //        op.TrySetResult(null);
-                            //    }
-                            //}
+                            if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
+                            {
+                                if (clientUpdateConfig == null)
+                                    clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                                clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
+                                op.TrySetResult(clientUpdateConfig);
+                            }
+                            else
+                            {
+                                IRepository<NodeInfoModel> nodeInfoRepo;
+                                bool hasNodeInfo = await HasNodeAsync(op.Argument.IpAddress, cancellationToken);
+                                if (!hasNodeInfo)
+                                {
+                                    if (clientUpdateConfig == null)
+                                        clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                                    op.TrySetResult(clientUpdateConfig);
+                                }
+                                else
+                                {
+                                    op.TrySetResult(null);
+                                }
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -181,6 +178,17 @@ public class ClientUpdateQueryQueueService : BackgroundService
                 _logger.LogInformation($"{array.Length} requests,Ellapsed:{stopwatch.Elapsed}");
             }
         }
+    }
+
+    async ValueTask<bool> HasNodeAsync(string ipAddress, CancellationToken cancellationToken)
+    {
+        await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
+        bool hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
+                 null,
+                 ipAddress,
+                 NodeDeviceType.Computer),
+             cancellationToken);
+        return hasNodeInfo;
     }
 
     private async Task<ClientUpdateConfigModel?> IsFiltered(ClientUpdateConfigModel? clientUpdateConfig,

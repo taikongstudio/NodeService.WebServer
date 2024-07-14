@@ -14,6 +14,7 @@ using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
 using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.Dianostics;
 using NodeService.WebServer.Services.MessageHandlers;
 using NodeService.WebServer.Services.NetworkDevices;
 using NodeService.WebServer.Services.NodeFileSystem;
@@ -246,6 +247,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
             builder.Services.AddHostedService<NetworkDeviceScanService>();
             builder.Services.AddHostedService<PackageQueryQueueService>();
+            builder.Services.AddHostedService<GCService>();
 
         }
 

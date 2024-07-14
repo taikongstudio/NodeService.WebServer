@@ -68,13 +68,6 @@ internal class Program
                     mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
                     mySqlOptionBuilder.EnableStringComparisonTranslations();
                 }));
-        builder.Services.AddDbContext<ApplicationProfileDbContext>(options =>
-            options.UseMySql(builder.Configuration.GetConnectionString("MyProfileSQL"),
-                MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
-                {
-                    mySqlOptionBuilder.EnableRetryOnFailure();
-                    mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
-                    mySqlOptionBuilder.EnableStringComparisonTranslations();
-                }));
+
     }
 }

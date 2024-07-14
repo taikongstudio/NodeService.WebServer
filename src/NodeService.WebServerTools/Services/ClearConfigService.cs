@@ -28,6 +28,9 @@ internal class ClearConfigService : BackgroundService
         foreach (var item in ftpUploadConfigs)
         {
             item.Value.PenddingLimitTimeSeconds = 3000;
+            item.Value.RetryDuration = 300;
+            item.Value.MaxRetryCount = 10;
+
             dbContext.Update(item);
         }
 

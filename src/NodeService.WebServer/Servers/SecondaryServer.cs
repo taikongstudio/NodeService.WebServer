@@ -4,6 +4,7 @@ using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.Dianostics;
 using NodeService.WebServer.Services.NodeFileSystem;
 using NodeService.WebServer.Services.VirtualFileSystem;
 using OpenTelemetry.Metrics;
@@ -159,6 +160,7 @@ namespace NodeService.WebServer.Servers
         {
             builder.Services.AddHostedService<PackageQueryQueueService>();
             builder.Services.AddHostedService<ClientUpdateQueryQueueService>();
+            builder.Services.AddHostedService<GCService>();
         }
 
         void ConfigureScoped(WebApplicationBuilder builder)

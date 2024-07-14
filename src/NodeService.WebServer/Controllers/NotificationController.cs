@@ -29,7 +29,7 @@ public class NotificationController : Controller
         var apiResponse = new PaginationResponse<NotificationRecordModel>();
         try
         {
-            using var repo = _notificationRecordsRepositoryFactory.CreateRepository();
+            await using var repo = await _notificationRecordsRepositoryFactory.CreateRepositoryAsync();
             var queryResult = await repo.PaginationQueryAsync(
                 new NotificationRecordSpecification(
                     queryParameters.Keywords,

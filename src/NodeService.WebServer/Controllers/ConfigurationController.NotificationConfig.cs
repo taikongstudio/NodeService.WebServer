@@ -81,7 +81,7 @@ public partial class ConfigurationController
         {
             NodeHealthyCheckConfiguration? result = null;
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            using var repo = repoFactory.CreateRepository();
+            await using var repo = await repoFactory.CreateRepositoryAsync();
             var propertyBag =
                 await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
             if (propertyBag == null)
@@ -117,7 +117,7 @@ public partial class ConfigurationController
         try
         {
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            using var repo = repoFactory.CreateRepository();
+            await using var repo = await repoFactory.CreateRepositoryAsync();
             var propertyBag =
                 await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
             propertyBag["Value"] = JsonSerializer.Serialize(model);
@@ -140,7 +140,7 @@ public partial class ConfigurationController
         {
             DataQualityCheckConfiguration? result = null;
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            using var repo = repoFactory.CreateRepository();
+            await using var repo = await repoFactory.CreateRepositoryAsync();
             var propertyBag =
                 await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.DataQualityCheck));
             if (propertyBag == null)
@@ -176,7 +176,7 @@ public partial class ConfigurationController
         try
         {
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            using var repo = repoFactory.CreateRepository();
+            await using var repo = await repoFactory.CreateRepositoryAsync();
             var propertyBag =
                 await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.DataQualityCheck));
             propertyBag["Value"] = JsonSerializer.Serialize(model);

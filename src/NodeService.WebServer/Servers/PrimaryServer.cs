@@ -4,12 +4,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
 using NodeService.Infrastructure.Concurrent;
-using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.Identity;
-using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Data.Repositories;
@@ -109,7 +106,7 @@ namespace NodeService.WebServer.Servers
         void MapGrpcServices(WebApplication app)
         {
             //app.MapGrpcService<FileSystemServiceImpl>().EnableGrpcWeb().RequireCors("AllowAll");
-            app.MapGrpcService<NodeServiceImpl>().EnableGrpcWeb().RequireCors("AllowAll");
+            app.MapGrpcService<NodeServerImpl>().EnableGrpcWeb().RequireCors("AllowAll");
         }
 
         void Configure(WebApplicationBuilder builder)
@@ -222,8 +219,6 @@ namespace NodeService.WebServer.Servers
 
         void ConfigureHostedServices(WebApplicationBuilder builder)
         {
-            builder.Services.AddHostedService<DataQueueService<NodeInfoModel>>();
-            builder.Services.AddHostedService<DataQueueService<FileRecordModel>>();
             builder.Services.AddHostedService<TaskScheduleService>();
             builder.Services.AddHostedService<TaskExecutionReportConsumerService>();
             builder.Services.AddHostedService<HeartBeatResponseConsumerService>();
@@ -236,12 +231,9 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddHostedService<DataQualityStatisticsService>();
             builder.Services.AddHostedService<DataQualityAlarmService>();
             builder.Services.AddHostedService<ClientUpdateQueryQueueService>();
-            builder.Services.AddHostedService<ConfigurationQueryQueueService>();
             builder.Services.AddHostedService<TaskCancellationQueueService>();
             builder.Services.AddHostedService<NodeConfigurationChangedNotifyService>();
-            builder.Services.AddHostedService<NodeFileSystemSyncRecordService>();
             builder.Services.AddHostedService<NetworkDeviceScanService>();
-            builder.Services.AddHostedService<TaskLogQueryService>();
             builder.Services.AddHostedService<PackageQueryQueueService>();
 
         }
@@ -384,9 +376,13 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
-            builder.Services.AddSingleton<ConfigurationDatabase>();
             builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
-            //builder.Services.AddSingleton(typeof(InMemoryRepositoryFactory<>));
+
+            builder.Services.AddSingleton<TaskLogQueryService>();
+            builder.Services.AddSingleton<ConfigurationQueryService>();
+            builder.Services.AddSingleton<SyncRecordQueryService>();
+            builder.Services.AddSingleton<FileRecordQueryService>();
+            builder.Services.AddSingleton<NodeInfoQueryService>();
 
             builder.Services.AddSingleton<IJobFactory, JobFactory>();
             builder.Services.AddSingleton<TaskSchedulerDictionary>();
@@ -406,7 +402,6 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
             builder.Services.AddSingleton<IAsyncQueue<ConfigurationChangedEvent>, AsyncQueue<ConfigurationChangedEvent>>();
 
-
             builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
             builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(TimeSpan.FromSeconds(10), 1024 * 2));
             builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(TimeSpan.FromSeconds(3), 1024));
@@ -414,24 +409,13 @@ namespace NodeService.WebServer.Servers
 
             builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(TimeSpan.FromMinutes(30), 1024));
             builder.Services.AddSingleton(
-                new BatchQueue<AsyncOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>(
-                    TimeSpan.FromSeconds(3), 1024 * 2));
-            builder.Services.AddSingleton(
                 new BatchQueue<AsyncOperation<FileRecordModel, bool>>(TimeSpan.FromSeconds(1), 1024 * 2));
-            builder.Services.AddSingleton(
-                new BatchQueue<AsyncOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>>(TimeSpan.FromMilliseconds(300),
-                    64));
             builder.Services.AddSingleton(
                 new BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(TimeSpan.FromSeconds(1),
                     64));
 
-
             builder.Services.AddSingleton(new BatchQueue<AsyncOperation<PackageDownloadParameters, PackageDownloadResult>>(TimeSpan.FromSeconds(5), 1024));
 
-            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileSyncContext>>(TimeSpan.FromSeconds(1), 256));
-            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>>(TimeSpan.FromSeconds(3), 2048));
-            builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(TimeSpan.FromSeconds(5), 1024));
-            builder.Services.AddSingleton(new BatchQueue<NodeInfoModel>(TimeSpan.FromSeconds(3), 1024));
         }
 
         void ConfigureDbContext(WebApplicationBuilder builder)

@@ -31,7 +31,7 @@ public record struct TaskLogQueryServiceParameters
 
 }
 
-public record class TaskLogQueryServiceResult
+public record struct TaskLogQueryServiceResult
 {
 
     public TaskLogQueryServiceResult(string logFileName, Pipe pipe)
@@ -51,11 +51,10 @@ public record class TaskLogQueryServiceResult
     public int PageSize { get; set; }
 }
 
-public class TaskLogQueryService : BackgroundService
+public class TaskLogQueryService 
 {
     readonly ExceptionCounter _exceptionCounter;
     readonly ILogger<TaskLogQueryService> _logger;
-    readonly BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _queryBatchQueue;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
     readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepoFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
@@ -65,8 +64,7 @@ public class TaskLogQueryService : BackgroundService
         ILogger<TaskLogQueryService> logger,
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepoFactory,
-        ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepoFactory,
-        BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> queryBatchQueue
+        ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepoFactory
     )
     {
         _exceptionCounter = exceptionCounter;
@@ -74,103 +72,50 @@ public class TaskLogQueryService : BackgroundService
         _taskLogRepoFactory = taskLogRepoFactory;
         _taskDefinitionRepoFactory = taskDefinitionRepoFactory;
         _taskExecutionInstanceRepoFactory = taskExecutionInstanceRepoFactory;
-        _queryBatchQueue = queryBatchQueue;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
-    {
-        await ProcessTaskLogQueryAsync(cancellationToken);
 
-    }
-
-    private async Task ProcessTaskLogQueryAsync(CancellationToken cancellationToken = default)
-    {
-        await foreach (var array in _queryBatchQueue.ReceiveAllAsync(cancellationToken))
-        {
-            try
-            {
-                if (array == null)
-                {
-                    continue;
-                }
-                using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
-                using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
-                using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-                foreach (var op in array.Where(static x => x.Kind == AsyncOperationKind.Query).OrderByDescending(static x => x.Priority))
-                {
-                    try
-                    {
-                        await QueryTaskLogAsync(
-                            taskDefinitionRepo,
-                            taskLogRepo,
-                            taskExecutionInstanceRepo,
-                            op,
-                            cancellationToken);
-
-                    }
-                    catch (Exception ex)
-                    {
-                        op.TrySetException(ex);
-                        _exceptionCounter.AddOrUpdate(ex);
-                        _logger.LogError(ex.ToString());
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _exceptionCounter.AddOrUpdate(ex);
-                _logger.LogError(ex.ToString());
-            }
-            finally
-            {
-            }
-        }
-    }
-
-    async ValueTask QueryTaskLogAsync(
-        IRepository<TaskDefinitionModel> taskDefinitionRepo,
-        IRepository<TaskLogModel> taskLogRepo,
-        IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo,
-        AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult> op,
+    public async ValueTask<TaskLogQueryServiceResult> QueryAsync(
+      TaskLogQueryServiceParameters serviceParameters,
         CancellationToken cancellationToken = default)
     {
-
-        try
+        await using var taskDefinitionRepo = await _taskDefinitionRepoFactory.CreateRepositoryAsync();
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
+        await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
+        var queryParameters = serviceParameters.QueryParameters;
+        string taskId = serviceParameters.TaskExecutionInstanceId;
+        var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
+        if (taskExecutionInstance == null)
         {
+            throw new Exception("Could not found task execution instance");
+        }
+        var logFileName = $"{taskExecutionInstance.Name}.log";
 
-            var serviceParameters = op.Argument;
-            var queryParameters = serviceParameters.QueryParameters;
-            string taskId = serviceParameters.TaskExecutionInstanceId;
-            var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
-            if (taskExecutionInstance == null)
-            {
-                op.TrySetException(new Exception("Could not found task execution instance"));
-                return;
-            }
-            var logFileName = $"{taskExecutionInstance.Name}.log";
+        var taskInfoLog = await taskLogRepo.GetByIdAsync(serviceParameters.TaskExecutionInstanceId, cancellationToken);
+        if (taskInfoLog == null)
+        {
+            throw new Exception("Could not found task log");
+        }
+        var pipe = new Pipe();
+        using var streamWriter = new StreamWriter(pipe.Writer.AsStream());
+        var serviceResult = new TaskLogQueryServiceResult(logFileName, pipe);
+        var totalLogCount = taskInfoLog.ActualSize;
+        if (serviceParameters.QueryParameters.PageIndex == 0)
+        {
+            serviceResult.TotalCount = taskInfoLog.ActualSize;
+            serviceResult.PageIndex = taskInfoLog.PageIndex;
+            serviceResult.PageSize = taskInfoLog.PageSize;
 
-            var taskInfoLog = await taskLogRepo.GetByIdAsync(serviceParameters.TaskExecutionInstanceId, cancellationToken);
-            if (taskInfoLog == null)
+            _ = Task.Run(async () =>
             {
-                op.TrySetException(new Exception("Could not found task log"));
-                return;
-            }
-            else
-            {
-                var pipe = new Pipe();
-                using var streamWriter = new StreamWriter(pipe.Writer.AsStream());
-                var serviceResult = new TaskLogQueryServiceResult(logFileName, pipe);
-                var totalLogCount = taskInfoLog.ActualSize;
-                if (serviceParameters.QueryParameters.PageIndex == 0)
+                try
                 {
-                    serviceResult.TotalCount = taskInfoLog.ActualSize;
-                    serviceResult.PageIndex = taskInfoLog.PageIndex;
-                    serviceResult.PageSize = taskInfoLog.PageSize;
-                    op.TrySetResult(serviceResult);
                     var pageIndex = 1;
-                    while (!op.CancellationToken.IsCancellationRequested)
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        var result = await taskLogRepo.ListAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, pageIndex, 10), cancellationToken);
+                        var result = await taskLogRepo.ListAsync(
+                            new TaskLogSelectSpecification<TaskLogModel>(taskId, pageIndex, 10),
+                            cancellationToken);
                         if (result.Count == 0) break;
                         pageIndex += 10;
                         foreach (var taskLog in result)
@@ -179,53 +124,44 @@ public class TaskLogQueryService : BackgroundService
                             {
                                 continue;
                             }
-                            foreach (var taskLogEntry in taskLog.Value.LogEntries)
+                            foreach (var taskLogEntry in taskLog.LogEntries)
                             {
                                 streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
                             }
                         }
                         if (result.Count < 10) break;
                     }
-
                 }
-                else
+                catch (Exception ex)
                 {
-                    var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, serviceParameters.QueryParameters.PageIndex), cancellationToken);
-
-
-                    if (taskLog == null)
-                    {
-                        op.TrySetResult(serviceResult);
-                    }
-                    else
-                    {
-                        serviceResult.TotalCount = taskInfoLog.ActualSize;
-                        serviceResult.PageIndex = taskLog.PageIndex;
-                        serviceResult.PageSize = taskLog.ActualSize;
-                        op.TrySetResult(serviceResult);
-                        if (taskLog != null)
-                        {
-                            foreach (var taskLogEntry in taskLog.Value.LogEntries)
-                            {
-                                streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
-                            }
-                        }
-                    }
-
-
+                    _exceptionCounter.AddOrUpdate(ex);
+                    _logger.LogError(ex.ToString());
                 }
 
+            }, cancellationToken);
+
+        }
+        else
+        {
+            var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, serviceParameters.QueryParameters.PageIndex), cancellationToken);
+
+
+            if (taskLog != null)
+            {
+                serviceResult.TotalCount = taskInfoLog.ActualSize;
+                serviceResult.PageIndex = taskLog.PageIndex;
+                serviceResult.PageSize = taskLog.ActualSize;
+
+                if (taskLog != null)
+                {
+                    foreach (var taskLogEntry in taskLog.Value.LogEntries)
+                    {
+                        streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
+                    }
+                }
             }
 
         }
-        catch (Exception ex)
-        {
-            op.TrySetException(ex);
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
-        }
-        finally
-        {
-        }
+        return serviceResult;
     }
 }

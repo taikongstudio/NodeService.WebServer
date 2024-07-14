@@ -15,7 +15,7 @@ public partial class ConfigurationController
             if (!_memoryCache.TryGetValue<NodeSettings>(nameof(NodeSettings), out result))
             {
                 var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-                using var propertyBagRepo = repoFactory.CreateRepository();
+               await using var propertyBagRepo = await repoFactory.CreateRepositoryAsync();
                 var propertyBag =
                     await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
                 if (propertyBag == null)
@@ -53,7 +53,7 @@ public partial class ConfigurationController
         try
         {
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            using var repo = repoFactory.CreateRepository();
+           await using var repo = await repoFactory.CreateRepositoryAsync();
             var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
 
             var value = JsonSerializer.Serialize(model);

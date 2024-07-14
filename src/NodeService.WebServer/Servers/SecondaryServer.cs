@@ -160,8 +160,6 @@ namespace NodeService.WebServer.Servers
         {
             builder.Services.AddHostedService<PackageQueryQueueService>();
             builder.Services.AddHostedService<ClientUpdateQueryQueueService>();
-            builder.Services.AddHostedService<ConfigurationQueryQueueService>();
-            builder.Services.AddHostedService<NodeFileSystemSyncRecordService>();
         }
 
         void ConfigureScoped(WebApplicationBuilder builder)
@@ -208,17 +206,11 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
-            builder.Services.AddSingleton<ConfigurationDatabase>();
             builder.Services.AddSingleton<NodeFileSyncQueueDictionary>();
+            builder.Services.AddSingleton<SyncRecordQueryService>();
             builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
             builder.Services.AddSingleton(new BatchQueue<AsyncOperation<PackageDownloadParameters, PackageDownloadResult>>(TimeSpan.FromSeconds(5), 1024));
 
-            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileSyncContext>>(TimeSpan.FromSeconds(1), 256));
-            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>>(TimeSpan.FromSeconds(3), 2048));
-            builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(TimeSpan.FromSeconds(5), 1024));
-
-            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>>(TimeSpan.FromMilliseconds(300),
-            64));
             builder.Services.AddSingleton(new BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(TimeSpan.FromSeconds(1),
                     64));
 

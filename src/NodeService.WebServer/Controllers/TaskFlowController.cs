@@ -31,7 +31,7 @@ namespace NodeService.WebServer.Controllers
             var apiResponse = new PaginationResponse<TaskFlowExecutionInstanceModel>();
             try
             {
-                using var repo = _taskFlowExecutionInstanceRepoFactory.CreateRepository();
+                await using var repo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync();
                 var queryResult = await repo.PaginationQueryAsync(new TaskFlowExecutionInstanceSpecification(
                         queryParameters.Keywords,
                         queryParameters.SortDescriptions),
@@ -59,7 +59,7 @@ namespace NodeService.WebServer.Controllers
             var apiResponse = new ApiResponse<TaskFlowExecutionInstanceModel>();
             try
             {
-                using var repo = _taskFlowExecutionInstanceRepoFactory.CreateRepository();
+                await using var repo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync();
                 var queryResult = await repo.GetByIdAsync(taskFlowExecutionInstanceId);
                 apiResponse.SetResult(queryResult);
             }

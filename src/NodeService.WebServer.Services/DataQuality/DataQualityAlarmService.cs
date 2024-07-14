@@ -41,9 +41,10 @@ public class DataQualityAlarmService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         await foreach (var arrayPoolCollection in _alarmMessageBatchQueue.ReceiveAllAsync(cancellationToken))
+        {
             try
             {
-                using var propertyBagRepo = _propertyBagRepoFactory.CreateRepository();
+                await using var propertyBagRepo = await _propertyBagRepoFactory.CreateRepositoryAsync();
                 var propertyBag = await propertyBagRepo.FirstOrDefaultAsync(
                     new PropertyBagSpecification(NotificationSources.DataQualityCheck));
                 DataQualityCheckConfiguration? configuration;
@@ -61,7 +62,7 @@ public class DataQualityAlarmService : BackgroundService
                 if (_alarmMessageBatchQueue.TriggerBatchPeriod.TotalMinutes != configuration.NotificationDuration)
                     _alarmMessageBatchQueue.SetTriggerBatchPeriod(
                         TimeSpan.FromMinutes(configuration.NotificationDuration));
-                using var notificationConfigRepo = _notificationRepositoryFactory.CreateRepository();
+                await using var notificationConfigRepo = await _notificationRepositoryFactory.CreateRepositoryAsync();
 
                 var stringBuilder = new StringBuilder();
                 foreach (var item in arrayPoolCollection.Where(static x => x != null).OrderBy(static x => x.DateTime))
@@ -95,6 +96,8 @@ public class DataQualityAlarmService : BackgroundService
             finally
             {
             }
+        }
+
     }
 
     private bool TryReadConfiguration(

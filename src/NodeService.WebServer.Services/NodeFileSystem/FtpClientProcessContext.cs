@@ -11,30 +11,32 @@ namespace NodeService.WebServer.Services.NodeFileSystem;
 
 public class FtpClientProcessContext : ProcessContext
 {
-
-    readonly BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>> _syncRecordQueryQueue;
     readonly IDbContextFactory<InMemoryDbContext> _dbContextFactory;
+    readonly NodeInfoQueryService _nodeQueryService;
     readonly ILogger<FtpClientProcessContext> _logger;
+    readonly SyncRecordQueryService _syncRecordQueryService;
     readonly ExceptionCounter _exceptionCounter;
     readonly IServiceProvider _serviceProvider;
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
-    readonly ConfigurationDatabase _configurationDatabase;
+    readonly ConfigurationQueryService _configurationQueryService;
 
     [ActivatorUtilitiesConstructor]
     public FtpClientProcessContext(
         ILogger<FtpClientProcessContext> logger,
+        NodeInfoQueryService nodeQueryService,
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
-        ConfigurationDatabase configurationDatabase,
+        ConfigurationQueryService configurationQueryService,
         IDbContextFactory<InMemoryDbContext> dbContextFactory,
-        BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>> syncRecordQueryQueue)
+       SyncRecordQueryService syncRecordQueryService)
     {
         _nodeInfoRepoFactory = nodeInfoRepoFactory;
-        _configurationDatabase = configurationDatabase;
+        _configurationQueryService = configurationQueryService;
         _exceptionCounter = exceptionCounter;
         _logger = logger;
-        _syncRecordQueryQueue = syncRecordQueryQueue;
+        _syncRecordQueryService = syncRecordQueryService;
         _dbContextFactory = dbContextFactory;
+        _nodeQueryService = nodeQueryService;
     }
 
     AsyncFtpClient CreateFtpClient(FtpConfiguration ftpConfig)
@@ -55,8 +57,9 @@ public class FtpClientProcessContext : ProcessContext
     {
         try
         {
-            using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-            var nodeInfo = await nodeInfoRepo.GetByIdAsync(syncContext.Request.NodeInfoId);
+            var nodeInfo = await _nodeQueryService.QueryNodeInfoByIdAsync(
+                syncContext.Request.NodeInfoId,
+                cancellationToken);
             if (nodeInfo == null)
             {
                 syncContext.Record.ErrorCode = -1;
@@ -65,19 +68,19 @@ public class FtpClientProcessContext : ProcessContext
                 return;
             }
 
-            var rsp = await _configurationDatabase.QueryConfigurationAsync<FtpConfigModel>(
-                syncContext.Request.ConfigurationId,
+            var rsp = await _configurationQueryService.QueryConfigurationByIdListAsync<FtpConfigModel>(
+                [syncContext.Request.ConfigurationId],
                 cancellationToken: cancellationToken);
 
+            var ftpConfig = rsp.Items?.FirstOrDefault();
 
-            if (rsp.ErrorCode != 0)
+            if (!rsp.HasValue || ftpConfig == null)
             {
                 syncContext.Record.ErrorCode = -1;
                 syncContext.Record.Message = "ftp configuration not found";
                 syncContext.Record.Status = NodeFileSyncStatus.Faulted;
                 return;
             }
-            var ftpConfig = rsp.Result;
 
             if (cancellationToken.IsCancellationRequested)
             {
@@ -88,11 +91,9 @@ public class FtpClientProcessContext : ProcessContext
             using var ftpClient = CreateFtpClient(ftpConfig.Value);
             if (!ftpClient.IsConnected)
             {
-                await ftpClient.AutoConnect();
+                await ftpClient.AutoConnect(cancellationToken);
             }
-            var ftpObjectInfo = await ftpClient.GetObjectInfo(
-                syncContext.Record.StoragePath,
-                true);
+            var ftpObjectInfo = await ftpClient.GetObjectInfo(syncContext.Record.StoragePath, true, cancellationToken);
             NodeFileInfo? ftpNodeFileInfo = null;
             if (ftpObjectInfo == null)
             {
@@ -116,13 +117,15 @@ public class FtpClientProcessContext : ProcessContext
             {
                 syncContext.Record.UtcBeginTime = DateTime.UtcNow;
                 syncContext.Record.Status = NodeFileSyncStatus.Processing;
-                await using var progressBlock = new ProgressBlock<FtpProgress>(async (ftpProgress, token) =>
+                await using var progressBlock = new ProgressBlock<FtpProgress>(async (ftpProgresses, token) =>
                   {
-                      syncContext.Record.Progress = ftpProgress.Progress;
-                      if (ftpProgress.Progress < 100)
+                      var ftpProgress = ftpProgresses.LastOrDefault();
+                      if (ftpProgress == null)
                       {
-                          syncContext.Record.TransferSpeed = ftpProgress.TransferSpeed;
+                          return;
                       }
+                      syncContext.Record.Progress = ftpProgress.Progress;
+                      syncContext.Record.TransferSpeed = ftpProgress.TransferSpeed;
                       syncContext.Record.EstimatedTimeSpan = ftpProgress.ETA;
                       syncContext.Record.TransferredBytes = ftpProgress.TransferredBytes;
 
@@ -179,9 +182,7 @@ public class FtpClientProcessContext : ProcessContext
         NodeFileSyncContext uploadContext,
         CancellationToken cancellationToken)
     {
-        var serviceParameters = new SyncRecordServiceParameters(new AddOrUpdateSyncRecordParameters(uploadContext.Record));
-        var op = new AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>(serviceParameters, AsyncOperationKind.AddOrUpdate, AsyncOperationPriority.Normal, cancellationToken);
-        await _syncRecordQueryQueue.SendAsync(op, cancellationToken);
+        await _syncRecordQueryService.AddOrUpdateAsync(uploadContext.Record, cancellationToken);
     }
 
     static bool CompareFileInfo(NodeFileInfo? oldFileInfo, NodeFileInfo? newFileInfo)

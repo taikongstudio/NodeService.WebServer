@@ -38,7 +38,7 @@ namespace NodeService.WebServer.Services.DataQueue
                     {
                         continue;
                     }
-                    using var nodeRepo = _repoFactory.CreateRepository();
+                    await using var nodeRepo = await _repoFactory.CreateRepositoryAsync();
                     foreach (var op in ops)
                     {
                         try

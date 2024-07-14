@@ -37,7 +37,7 @@ namespace NodeService.WebServer.Services.Tasks
             CancellationToken cancellationToken = default)
         {
             if (taskScheduleParameters.TaskDefinitionId == null) return;
-            using var repository = _taskDefinitionRepositoryFactory.CreateRepository();
+            await using var repository = await _taskDefinitionRepositoryFactory.CreateRepositoryAsync();
             var taskDefinition = await repository.GetByIdAsync(taskScheduleParameters.TaskDefinitionId, cancellationToken);
             if (taskDefinition == null || !taskDefinition.Value.IsEnabled || taskDefinition.Value.TriggerType != TaskTriggerType.Schedule)
             {
@@ -91,7 +91,7 @@ namespace NodeService.WebServer.Services.Tasks
         {
             try
             {
-                using var repository = _taskDefinitionRepositoryFactory.CreateRepository();
+                await using var repository = await _taskDefinitionRepositoryFactory.CreateRepositoryAsync();
                 var taskDefinitions = await repository.ListAsync(new ListSpecification<TaskDefinitionModel>(), cancellationToken);
                 taskDefinitions = taskDefinitions.Where(x => x.IsEnabled && x.TriggerType == TaskTriggerType.Schedule)
                     .ToList();

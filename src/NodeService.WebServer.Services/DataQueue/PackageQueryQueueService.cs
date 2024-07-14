@@ -83,7 +83,7 @@ namespace NodeService.WebServer.Services.DataQueue
                 var packageCacheKey = $"Package:{packageId}";
                 var fileContents = await _memoryCache.GetOrCreateAsync(packageCacheKey, async () =>
                 {
-                    using var repo = _packageRepoFactory.CreateRepository();
+                    await using var repo = await _packageRepoFactory.CreateRepositoryAsync();
                     var model = await repo.GetByIdAsync(packageId);
                     if (model == null || model.DownloadUrl == null)
                     {

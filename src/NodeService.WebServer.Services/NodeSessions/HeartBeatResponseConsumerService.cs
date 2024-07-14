@@ -96,7 +96,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
     {
         try
         {
-            using var nodeRepo = _nodeInfoRepositoryFactory.CreateRepository();
+            await using var nodeRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
             var nodeList = await nodeRepo.ListAsync(
                 new NodeInfoSpecification(
                     AreaTags.Any,
@@ -132,8 +132,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
         var stopwatch = new Stopwatch();
         try
         {
-            using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
-            using var nodePropsRepo = _nodePropertyRepositoryFactory.CreateRepository();
+            await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
+            await using var nodePropsRepo = await _nodePropertyRepositoryFactory.CreateRepositoryAsync();
             await RefreshNodeSettingsAsync(cancellationToken);
             var nodeIdList = array.Select(GetNodeId);
             var nodeList = await nodeInfoRepo.ListAsync(
@@ -192,7 +192,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
-        using var repo = _propertyBagRepositoryFactory.CreateRepository();
+       await using var repo =await _propertyBagRepositoryFactory.CreateRepositoryAsync();
         var propertyBag =
             await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
         if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value))

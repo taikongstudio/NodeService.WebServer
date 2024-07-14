@@ -15,7 +15,7 @@ public partial class DataQualityController
             if (!_memoryCache.TryGetValue<DataQualitySettings>(nameof(DataQualitySettings), out result))
             {
                 var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-                using var propertyBagRepo = repoFactory.CreateRepository();
+                await using var propertyBagRepo = await repoFactory.CreateRepositoryAsync();
                 var propertyBag =
                     await propertyBagRepo.FirstOrDefaultAsync(
                         new PropertyBagSpecification(nameof(DataQualitySettings)));
@@ -57,7 +57,7 @@ public partial class DataQualityController
         try
         {
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            using var propertyBagRepo = repoFactory.CreateRepository();
+           await using var propertyBagRepo =await repoFactory.CreateRepositoryAsync();
             var propertyBag =
                 await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(DataQualitySettings)));
 

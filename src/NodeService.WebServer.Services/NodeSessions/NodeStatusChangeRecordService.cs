@@ -42,8 +42,8 @@ public class NodeStatusChangeRecordService : BackgroundService
         await foreach (var arrayPoolCollection in _recordBatchQueue.ReceiveAllAsync(cancellationToken))
             try
             {
-                using var recordRepo = _recordRepoFactory.CreateRepository();
-                using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+                await using var recordRepo = await _recordRepoFactory.CreateRepositoryAsync();
+                await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
                 recordRepo.DbContext.ChangeTracker.AutoDetectChangesEnabled = false;
                 foreach (var recordGroup in arrayPoolCollection.GroupBy(static x => x.NodeId))
                 {

@@ -57,7 +57,7 @@ public class TaskCancellationQueueService : BackgroundService
                 {
                     continue;
                 }
-                using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
+                await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
                 foreach (var taskCancellationParameters in array)
                 {
                     if (taskCancellationParameters == null)

@@ -72,7 +72,7 @@ public class NodeHealthyCheckService : BackgroundService
             await RefreshNodeSettingsAsync(cancellationToken);
 
             List<NodeHealthyCheckItem> nodeHealthyCheckItemList = [];
-            using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
+            await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
             var nodeInfoList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.All,
@@ -140,7 +140,7 @@ public class NodeHealthyCheckService : BackgroundService
         List<NodeHealthyCheckItem> nodeHealthyCheckItemList,
         CancellationToken cancellationToken = default)
     {
-        using var repo = _notificationRepositoryFactory.CreateRepository();
+      await  using var repo =await _notificationRepositoryFactory.CreateRepositoryAsync();
 
         var stringBuilder = new StringBuilder();
         foreach (var nodeHealthyCheckItemGroups in nodeHealthyCheckItemList.GroupBy(static x => x.Node))
@@ -174,7 +174,7 @@ public class NodeHealthyCheckService : BackgroundService
 
     private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
-        using var repo = _propertyBagRepositoryFactory.CreateRepository();
+        await using var repo = await _propertyBagRepositoryFactory.CreateRepositoryAsync();
         var propertyBag =
             await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
         if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value))
@@ -189,8 +189,8 @@ public class NodeHealthyCheckService : BackgroundService
 
     private async Task RefreshNodeConfigurationAsync(CancellationToken cancellationToken = default)
     {
-        using var propertyBagRepo = _propertyBagRepositoryFactory.CreateRepository();
-        using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
+        await using var propertyBagRepo = await _propertyBagRepositoryFactory.CreateRepositoryAsync();
+        await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
         var propertyBag =
             await propertyBagRepo.FirstOrDefaultAsync(
                 new PropertyBagSpecification(NotificationSources.NodeHealthyCheck), cancellationToken);

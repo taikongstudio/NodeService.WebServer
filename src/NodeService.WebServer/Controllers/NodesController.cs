@@ -60,7 +60,7 @@ public partial class NodesController : Controller
         var apiResponse = new PaginationResponse<NodeInfoModel>();
         try
         {
-            using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+            await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
 
             ListQueryResult<NodeInfoModel> queryResult = default;
             if (queryParameters.IdList == null || queryParameters.IdList.Count == 0)
@@ -85,7 +85,7 @@ public partial class NodesController : Controller
                     cancellationToken);
             if (queryParameters.IncludeProperties)
             {
-                using var propertyBagRepo = _propertyBagRepositoryFactory.CreateRepository();
+                await using var propertyBagRepo = await _propertyBagRepositoryFactory.CreateRepositoryAsync();
                 foreach (var nodeInfo in queryResult.Items)
                 {
                     var propertyBag = await propertyBagRepo.GetByIdAsync(nodeInfo.GetPropertyBagId());
@@ -121,7 +121,7 @@ public partial class NodesController : Controller
         var apiResponse = new ApiResponse<NodeInfoModel>();
         try
         {
-            using var repo = _nodeInfoRepoFactory.CreateRepository();
+            await using var repo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
             var nodeInfo = await repo.GetByIdAsync(id);
             apiResponse.SetResult(nodeInfo);
         }
@@ -142,7 +142,7 @@ public partial class NodesController : Controller
         var apiResponse = new ApiResponse<NodeInfoModel>();
         try
         {
-            using var repo = _nodeInfoRepoFactory.CreateRepository();
+            await using var repo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
             var nodeInfo = await repo.GetByIdAsync(id);
             if (nodeInfo != null)
             {
@@ -167,8 +167,8 @@ public partial class NodesController : Controller
         var apiResponse = new ApiResponse<NodeInfoModel>();
         try
         {
-            using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-            using var propertyBagRepo = _propertyBagRepositoryFactory.CreateRepository();
+            await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
+            await using var propertyBagRepo = await _propertyBagRepositoryFactory.CreateRepositoryAsync();
             var nodeInfoFromDb = await nodeInfoRepo.GetByIdAsync(nodeInfo.Id);
             if (nodeInfo.Properties != null)
             {

@@ -271,8 +271,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     async ValueTask ProcessTaskExecutionReportsAsync(TaskExecutionReport[] array, CancellationToken cancellationToken = default)
     {
-        using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
-        using var taskActivationRecordRepo = _taskActivationRecordRepoFactory.CreateRepository();
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
+        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
         var messageGroups = array.GroupBy(GetTaskId).ToArray();
         var taskExecutionInstanceIdList = Filter(messageGroups.Select(x => x.Key).Distinct()).ToArray();
         var taskExecutionInstanceIdFilters = DataFilterCollection<string>.Includes(taskExecutionInstanceIdList);
@@ -539,14 +539,14 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         try
         {
             if (taskExecutionInstances == null || !taskExecutionInstances.Any()) return;
-            using var taskDefinitionRepo = _taskActivationRecordRepoFactory.CreateRepository();
+            await using var taskDefinitionRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
             foreach (var taskExecutionInstanceGroup in taskExecutionInstances.GroupBy(static x => x.FireInstanceId))
             {
                 var fireInstanceId = taskExecutionInstanceGroup.Key;
                 if (fireInstanceId == null) continue;
                 var taskActiveRecord = await taskDefinitionRepo.GetByIdAsync(fireInstanceId, cancellationToken);
                 if (taskActiveRecord == null) continue;
-                var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActiveRecord.Value.TaskDefinitionJson);
+                var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActiveRecord.TaskDefinitionJson);
                 if (taskDefinition == null)
                 {
                     continue;
@@ -596,14 +596,14 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         try
         {
             if (taskExecutionInstances == null || !taskExecutionInstances.Any()) return;
-            using var taskActivateRecordRepo = _taskActivationRecordRepoFactory.CreateRepository();
+            await using var taskActivateRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
             foreach (var taskExecutionInstanceGroup in taskExecutionInstances.GroupBy(static x => x.FireInstanceId))
             {
                 var fireInstanceId = taskExecutionInstanceGroup.Key;
                 if (fireInstanceId == null) continue;
                 var taskActiveRecord = await taskActivateRecordRepo.GetByIdAsync(fireInstanceId, cancellationToken);
                 if (taskActiveRecord == null) continue;
-                var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActiveRecord.Value.TaskDefinitionJson);
+                var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActiveRecord.TaskDefinitionJson);
                 if (taskDefinition == null)
                 {
                     continue;
@@ -828,7 +828,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             return;
         }
 
-        using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
+        await using var taskDefinitionRepo = await _taskDefinitionRepoFactory.CreateRepositoryAsync();
         var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActivationRecord.TaskDefinitionJson);
         if (taskDefinition == null) return;
         foreach (var childTaskDefinition in taskDefinition.ChildTaskDefinitions)
@@ -857,7 +857,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         {
             return;
         }
-        using var taskActivationRecordRepo = _taskActivationRecordRepoFactory.CreateRepository();
+       await using var taskActivationRecordRepo =await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
         var taskActivationRecord =
             await taskActivationRecordRepo.GetByIdAsync(parentTaskInstance.FireInstanceId, cancellationToken);
 
@@ -867,8 +867,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             return;
         }
 
-        using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
-        using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
+        await using var taskDefinitionRepo = await _taskDefinitionRepoFactory.CreateRepositoryAsync();
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
         var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActivationRecord.TaskDefinitionJson);
         if (taskDefinition == null) return;
 
@@ -909,8 +909,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         try
         {
-            using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
-            using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
+            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
+            await using var taskDefinitionRepo = await _taskDefinitionRepoFactory.CreateRepositoryAsync();
             var pageIndex = 1;
             var pageSize = 100;
             while (true)

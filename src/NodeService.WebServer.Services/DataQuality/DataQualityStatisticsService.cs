@@ -87,7 +87,7 @@ public class DataQualityStatisticsService : BackgroundService
 
     private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
-        using var propertyBagRepo = _propertyBagRepoFactory.CreateRepository();
+        await using var propertyBagRepo = await _propertyBagRepoFactory.CreateRepositoryAsync();
         var propertyBag = await propertyBagRepo.FirstOrDefaultAsync(
             new PropertyBagSpecification(nameof(DataQualitySettings)),
             cancellationToken);
@@ -105,10 +105,10 @@ public class DataQualityStatisticsService : BackgroundService
         try
         {
             _logger.LogInformation($"{dateTime}");
-            using var statisticsDefinitionRepo = _statisticsDefinitionRepoFactory.CreateRepository();
-            using var databaseConfigRepo = _databaseConfigRepoFactory.CreateRepository();
-            using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-            using var statisticsRecordRepo = _statisticsRecordRepoFactory.CreateRepository();
+            await using var statisticsDefinitionRepo = await _statisticsDefinitionRepoFactory.CreateRepositoryAsync();
+            await using var databaseConfigRepo = await _databaseConfigRepoFactory.CreateRepositoryAsync();
+            await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
+            await using var statisticsRecordRepo = await _statisticsRecordRepoFactory.CreateRepositoryAsync();
             var statisticsDefinitions = await statisticsDefinitionRepo.ListAsync(cancellationToken);
             foreach (var statisticsDefinition in statisticsDefinitions.Where(static x => x.IsEnabled))
                 try
@@ -206,16 +206,16 @@ public class DataQualityStatisticsService : BackgroundService
                     if (updateRecordList.Count > 0)
                         await statisticsRecordRepo.UpdateRangeAsync(updateRecordList, cancellationToken);
                     foreach (var record in addRecordList.Union(updateRecordList).Distinct())
-                    foreach (var entry in record.Entries)
-                        if (entry.Value == null || entry.Value != 1)
-                        {
-                            var dataQualityAlarmMessage = new DataQualityAlarmMessage();
-                            dataQualityAlarmMessage.MachineName = record.Name;
-                            dataQualityAlarmMessage.DataSource = entry.Name;
-                            dataQualityAlarmMessage.Message = entry.Message;
-                            dataQualityAlarmMessage.DateTime = dateTime;
-                            await _alarmMessageBatchQueue.SendAsync(dataQualityAlarmMessage);
-                        }
+                        foreach (var entry in record.Entries)
+                            if (entry.Value == null || entry.Value != 1)
+                            {
+                                var dataQualityAlarmMessage = new DataQualityAlarmMessage();
+                                dataQualityAlarmMessage.MachineName = record.Name;
+                                dataQualityAlarmMessage.DataSource = entry.Name;
+                                dataQualityAlarmMessage.Message = entry.Message;
+                                dataQualityAlarmMessage.DateTime = dateTime;
+                                await _alarmMessageBatchQueue.SendAsync(dataQualityAlarmMessage);
+                            }
                 }
                 catch (Exception ex)
                 {

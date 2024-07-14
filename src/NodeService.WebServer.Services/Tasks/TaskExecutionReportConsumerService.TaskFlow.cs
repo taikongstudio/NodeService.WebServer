@@ -27,7 +27,7 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 return;
             }
-            using var taskFlowExecutionInstanceRepo = _taskFlowExecutionInstanceRepoFactory.CreateRepository();
+            await using var taskFlowExecutionInstanceRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync();
             List<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceList = [];
             foreach (var taskActiveRecordGroup in taskActivationRecordList.GroupBy(GetTaskFlowInstanceId))
             {

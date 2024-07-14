@@ -16,7 +16,7 @@ public partial class DataQualityController
         var apiResponse = new PaginationResponse<DataQualityNodeStatisticsRecordModel>();
         try
         {
-            using var recordRepo = _nodeStatisticsRecordRepoFactory.CreateRepository();
+            await using var recordRepo = await _nodeStatisticsRecordRepoFactory.CreateRepositoryAsync();
             var queryResult = await recordRepo.PaginationQueryAsync(
                 new DataQualityStatisticsSelectSpecification<DataQualityNodeStatisticsRecordModel>(
                     queryParameters.BeginDateTime,
@@ -45,8 +45,8 @@ public partial class DataQualityController
         var apiResponse = new PaginationResponse<DataQualityCalendarEntry>();
         try
         {
-            using var recordRepo = _nodeStatisticsRecordRepoFactory.CreateRepository();
-            using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+            await using var recordRepo = await _nodeStatisticsRecordRepoFactory.CreateRepositoryAsync();
+            await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
 
             var queryResult = await recordRepo.PaginationQueryAsync(
                 new DataQualityStatisticsSelectSpecification<DataQualityNodeStatisticsRecordModel>(

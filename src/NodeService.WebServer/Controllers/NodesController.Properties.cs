@@ -3,12 +3,14 @@
 public partial class NodesController
 {
     [HttpGet("/api/Nodes/~/{nodeId}/props")]
-    public async Task<ApiResponse<NodePropertySnapshotModel>> QueryNodePropsAsync(string nodeId)
+    public async Task<ApiResponse<NodePropertySnapshotModel>> QueryNodePropsAsync(
+        string nodeId,
+        CancellationToken cancellationToken = default)
     {
         var apiResponse = new ApiResponse<NodePropertySnapshotModel>();
         try
         {
-            using var nodeRepo = _nodeInfoRepoFactory.CreateRepository();
+            await using var nodeRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
             var nodeInfo = await nodeRepo.GetByIdAsync(nodeId);
             if (nodeInfo == null)
             {
@@ -29,8 +31,8 @@ public partial class NodesController
                 if ((model.NodeProperties == null || !model.NodeProperties.Any()) &&
                     nodeInfo.LastNodePropertySnapshotId != null)
                 {
-                    using var nodePropRepo = _nodePropertySnapshotRepoFactory.CreateRepository();
-                    model = await nodePropRepo.GetByIdAsync(nodeInfo.LastNodePropertySnapshotId);
+                    await using var nodePropRepo = await _nodePropertySnapshotRepoFactory.CreateRepositoryAsync(cancellationToken);
+                    model = await nodePropRepo.GetByIdAsync(nodeInfo.LastNodePropertySnapshotId, cancellationToken);
                 }
 
                 apiResponse.SetResult(model);

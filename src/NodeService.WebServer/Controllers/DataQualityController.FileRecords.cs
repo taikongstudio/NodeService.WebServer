@@ -15,14 +15,8 @@ public partial class DataQualityController
         var apiResponse = new PaginationResponse<FileRecordModel>();
         try
         {
-            var fileRecordQueryOperation =
-                new AsyncOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>(
-                    new FileRecordBatchQueryParameters(queryParameters,
-                        new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize)
-                    ),
-                    AsyncOperationKind.Query);
-            await _queryOpBatchQueue.SendAsync(fileRecordQueryOperation, cancellationToken);
-            var queryResult = await fileRecordQueryOperation.WaitAsync(cancellationToken);
+ 
+            var queryResult = await _fileRecordQueryService.QueryAsync(queryParameters, cancellationToken);
             apiResponse.SetResult(queryResult);
         }
         catch (Exception ex)
@@ -44,6 +38,7 @@ public partial class DataQualityController
         var apiResponse = new PaginationResponse<string>();
         try
         {
+            var _dbContextFactory = _serviceProvider.GetService<IDbContextFactory<ApplicationDbContext>>();
             using var dbContext = _dbContextFactory.CreateDbContext();
             var startIndex = (queryParameters.PageIndex - 1) * queryParameters.PageSize;
             ArgumentOutOfRangeException.ThrowIfLessThan(startIndex, 0, nameof(queryParameters.PageIndex));
@@ -77,10 +72,7 @@ public partial class DataQualityController
         var apiResponse = new ApiResponse();
         try
         {
-            var fileRecordOperation =
-                new AsyncOperation<FileRecordModel, bool>(model, AsyncOperationKind.AddOrUpdate);
-            await _insertUpdateDeleteOpBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
-            await fileRecordOperation.WaitAsync(cancellationToken);
+            await _fileRecordQueryService.AddOrUpdateAsync(model, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -102,10 +94,7 @@ public partial class DataQualityController
 
         try
         {
-            var fileRecordOperation =
-                new AsyncOperation<FileRecordModel, bool>(model, AsyncOperationKind.Delete);
-            await _insertUpdateDeleteOpBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
-            await fileRecordOperation.WaitAsync(cancellationToken);
+            await _fileRecordQueryService.DeleteAsync(model, cancellationToken);
         }
         catch (Exception ex)
         {

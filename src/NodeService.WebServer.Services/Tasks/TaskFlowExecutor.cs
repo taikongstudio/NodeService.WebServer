@@ -39,7 +39,7 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 return;
             }
-            using var taskFlowTemplateRepo = _taskFlowTemplateRepoFactory.CreateRepository();
+            await using var taskFlowTemplateRepo = await _taskFlowTemplateRepoFactory.CreateRepositoryAsync();
             var taskFlowTemplate = await taskFlowTemplateRepo.GetByIdAsync(taskFlowExecutionInstance.Value.TaskFlowTemplateId, cancellationToken);
             if (taskFlowTemplate == null)
             {

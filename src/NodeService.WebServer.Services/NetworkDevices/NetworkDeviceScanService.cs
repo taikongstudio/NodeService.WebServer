@@ -60,7 +60,7 @@ public class NetworkDeviceScanService : BackgroundService
         try
         {
             await RefreshNodeSettingsAsync(cancellationToken);
-            using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+            await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
             var networkDeviceList = await QueryNetworkDeviceListAsync(nodeInfoRepo, cancellationToken);
 
             if (networkDeviceList.Count > 0)
@@ -87,7 +87,7 @@ public class NetworkDeviceScanService : BackgroundService
     {
         try
         {
-            using var propertyBagRepo = _propertyBagRepoFactory.CreateRepository();
+            await using var propertyBagRepo = await _propertyBagRepoFactory.CreateRepositoryAsync();
             switch (nodeInfo.DeviceType)
             {
                 case NodeDeviceType.NetworkDevice:
@@ -173,7 +173,7 @@ public class NetworkDeviceScanService : BackgroundService
 
     async ValueTask RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
-        using var repo = _propertyBagRepoFactory.CreateRepository();
+        await using var repo = await _propertyBagRepoFactory.CreateRepositoryAsync();
         var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
         if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value))
             _nodeSettings = new NodeSettings();

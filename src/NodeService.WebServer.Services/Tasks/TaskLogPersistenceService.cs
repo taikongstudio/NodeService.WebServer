@@ -67,7 +67,7 @@ public class TaskLogPersistenceService : BackgroundService
         {
             try
             {
-                using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+                await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
                 var applicationDbContext = taskLogRepo.DbContext as ApplicationDbContext;
                 await foreach (var taskExecutionInstance in QueryExpiredTaskExecutionInstanceAsync(cancellationToken))
                 {
@@ -88,7 +88,7 @@ public class TaskLogPersistenceService : BackgroundService
 
         async IAsyncEnumerable<TaskExecutionInstanceModel> QueryExpiredTaskExecutionInstanceAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            using var repoFactory = _taskExecutionInstanceFactory.CreateRepository();
+            await using var repoFactory = await _taskExecutionInstanceFactory.CreateRepositoryAsync();
             int pageIndex = 1;
             int pageSize = 100;
             while (!cancellationToken.IsCancellationRequested)

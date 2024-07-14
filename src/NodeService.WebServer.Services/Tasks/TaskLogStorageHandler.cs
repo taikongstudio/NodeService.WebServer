@@ -113,7 +113,7 @@ public class TaskLogStorageHandler
         {
             return;
         }
-        using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+        await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
         Stopwatch stopwatch = Stopwatch.StartNew();
         var updateCount = 0;
         var addedCount = 0;
@@ -274,7 +274,7 @@ public class TaskLogStorageHandler
         var taskLogInfoKey = TaskLogModelExtensions.CreateTaskLogInfoPageKey(taskExecutionInstanceId);
         if (!_updatedTaskLogPageDictionary.TryGetValue(taskLogInfoKey, out var taskLogInfoPage) || taskLogInfoPage == null)
         {
-            using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+            await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
             taskLogRepo.DbContext.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
             taskLogInfoPage = await taskLogRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
 
@@ -318,7 +318,7 @@ public class TaskLogStorageHandler
         var currentLogPageKey = TaskLogModelExtensions.CreateTaskLogPageKey(taskExecutionInstanceId, taskInfoLog.PageSize);
         if (!_updatedTaskLogPageDictionary.TryGetValue(currentLogPageKey, out var currentLogPage) || currentLogPage == null)
         {
-            using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
+            await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
             taskLogRepo.DbContext.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
             currentLogPage = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(taskExecutionInstanceId, taskInfoLog.PageSize), cancellationToken);
             if (currentLogPage != null)

@@ -1,10 +1,4 @@
-﻿using System.IO.Pipelines;
-using System.Text;
-using System.Threading.Channels;
-using Microsoft.AspNetCore.WebUtilities;
-using NodeService.Infrastructure.Concurrent;
-using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.DataModels;
+﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
@@ -73,7 +67,7 @@ public class TasksController : Controller
         var apiResponse = new PaginationResponse<TaskExecutionInstanceModel>();
         try
         {
-            using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
+            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync();
             var queryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(new TaskExecutionInstanceListSpecification(
                     queryParameters.Keywords,
                     queryParameters.Status,
@@ -90,7 +84,7 @@ public class TasksController : Controller
             );
             if (queryParameters.IncludeNodeInfo)
             {
-                using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+                await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
                 var idFilterList = queryResult.Items.Select(static x => x.NodeInfoId);
                 var nodeInfoList = await nodeInfoRepo.ListAsync(
                     new NodeInfoSpecification(DataFilterCollection<string>.Includes(idFilterList)),
@@ -129,7 +123,7 @@ public class TasksController : Controller
         var apiResponse = new PaginationResponse<TaskActivationRecordModel>();
         try
         {
-            using var repo = _taskActivationRepositoryFactory.CreateRepository();
+            await using var repo = await _taskActivationRepositoryFactory.CreateRepositoryAsync();
             var queryResult = await repo.PaginationQueryAsync(new TaskActivationRecordSelectSpecification(
                     queryParameters.Keywords,
                     queryParameters.Status,
@@ -210,18 +204,11 @@ public class TasksController : Controller
         var apiResponse = new PaginationResponse<LogEntry>();
         try
         {
+            var taskLogQueryService = _serviceProvider.GetService<TaskLogQueryService>();
             var serviceParameters = new TaskLogQueryServiceParameters(
-                                        taskId,
-                                        queryParameters);
-            var op = new AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>(
-                serviceParameters,
-                AsyncOperationKind.Query,
-                AsyncOperationPriority.Lowest,
-                cancellationToken);
-
-            await _logQueryBatchQueue.SendAsync(op, cancellationToken);
-
-            var result = await op.WaitAsync(cancellationToken);
+                            taskId,
+                            queryParameters);
+            var result = await taskLogQueryService.QueryAsync(serviceParameters);
             HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.TotalCount), result.TotalCount.ToString());
             HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.PageIndex), result.PageIndex.ToString());
             HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.PageSize), result.PageSize.ToString());

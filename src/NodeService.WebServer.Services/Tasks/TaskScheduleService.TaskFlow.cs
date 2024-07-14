@@ -36,7 +36,7 @@ namespace NodeService.WebServer.Services.Tasks
     CancellationToken cancellationToken = default)
         {
             if (taskFlowScheduleParameters.TaskFlowTemplateId == null) return;
-            using var repository = _taskFlowTemplateRepoFactory.CreateRepository();
+            await using var repository = await _taskFlowTemplateRepoFactory.CreateRepositoryAsync();
             var taskFlowTemplate = await repository.GetByIdAsync(taskFlowScheduleParameters.TaskFlowTemplateId, cancellationToken);
 
             if (taskFlowTemplate == null)
@@ -98,7 +98,7 @@ namespace NodeService.WebServer.Services.Tasks
         {
             try
             {
-                using var taskFlowTemplateRepo = _taskFlowTemplateRepoFactory.CreateRepository();
+                await using var taskFlowTemplateRepo = await _taskFlowTemplateRepoFactory.CreateRepositoryAsync();
                 var taskFlowTemplates = await taskFlowTemplateRepo.ListAsync(cancellationToken);
                 foreach (var taskFlowTemplate in taskFlowTemplates)
                 {

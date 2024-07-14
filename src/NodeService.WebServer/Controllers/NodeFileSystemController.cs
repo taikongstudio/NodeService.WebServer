@@ -16,25 +16,22 @@ public class NodeFileSystemController : Controller
     readonly ExceptionCounter _exceptionCounter;
     readonly IServiceProvider _serviceProvider;
     readonly NodeFileSyncQueueDictionary _batchProcessQueueDictionary;
+    readonly SyncRecordQueryService _syncRecordQueryService;
     readonly IDistributedCache _distributedCache;
-    readonly BatchQueue<AsyncOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileSyncContext>> _nodeFileSyncBatchQueue;
-    readonly BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>> _syncRecordQueryQueue;
 
     public NodeFileSystemController(
         ILogger<NodeFileSystemController> logger,
         IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter,
         NodeFileSyncQueueDictionary batchProcessQueueDictionary,
-        BatchQueue<AsyncOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileSyncContext>> nodeFileSyncBatchQueue,
-        BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>> syncRecordQueryQueue
+        SyncRecordQueryService syncRecordQueryService
     )
     {
         _logger = logger;
         _exceptionCounter = exceptionCounter;
         _serviceProvider = serviceProvider;
         _batchProcessQueueDictionary = batchProcessQueueDictionary;
-        _nodeFileSyncBatchQueue = nodeFileSyncBatchQueue;
-        _syncRecordQueryQueue = syncRecordQueryQueue;
+        _syncRecordQueryService = syncRecordQueryService;
     }
 
     [HttpGet("/api/NodeFileSystem/QueueStatus")]
@@ -43,7 +40,7 @@ public class NodeFileSystemController : Controller
         var rsp = new ApiResponse<NodeFileSyncQueueStatus>();
         rsp.SetResult(new NodeFileSyncQueueStatus()
         {
-            SyncRequestAvaibleCount = _nodeFileSyncBatchQueue.AvailableCount,
+            SyncRequestAvaibleCount = 0,
             BatchProcessQueueCount = _batchProcessQueueDictionary.Count,
             BatchProcessQueues = _batchProcessQueueDictionary.Select(x => new BatchProcessQueueInfo()
             {
@@ -66,21 +63,15 @@ public class NodeFileSystemController : Controller
     }
 
     [HttpGet("/api/NodeFileSystem/SyncRecord/List")]
-    public async Task<PaginationResponse<NodeFileSyncRecordModel>> GetSyncRecordListAsync(
+    public async Task<PaginationResponse<NodeFileSyncRecordModel>> QuerySyncRecordListAsync(
         [FromQuery] QueryNodeFileSystemSyncRecordParameters parameters,
         CancellationToken cancellationToken = default)
     {
         var rsp = new PaginationResponse<NodeFileSyncRecordModel>();
         try
         {
-            var queryParameter = new QuerySyncRecordParameters(parameters);
-            var serviceParameter = new SyncRecordServiceParameters(queryParameter);
-            var op = new AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>
-                (serviceParameter, AsyncOperationKind.Query);
-            await _syncRecordQueryQueue.SendAsync(op, cancellationToken);
-            var result = await op.WaitAsync(cancellationToken);
-            var listQueryResult = result.Result.AsT1.Result;
-            rsp.SetResult(listQueryResult);
+            var list = await _syncRecordQueryService.QueryAsync(parameters, cancellationToken);
+            rsp.SetResult(list);
         }
         catch (Exception ex)
         {
@@ -143,11 +134,6 @@ public class NodeFileSystemController : Controller
         var rsp = new ApiResponse<NodeFileSyncRecordModel>();
         try
         {
-            if (_nodeFileSyncBatchQueue.AvailableCount > 100)
-            {
-                rsp.SetError(-1, "reach queue limit");
-                return rsp;
-            }
 
             var request = HttpContext.Request;
 

@@ -1,46 +1,40 @@
-using Azure;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.Messages;
 using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.MessageHandlers;
 using static NodeService.Infrastructure.Services.NodeService;
 
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
-public class NodeServiceImpl : NodeServiceBase
+public class NodeServerImpl : NodeServiceBase
 {
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly ILogger<NodeServiceImpl> _logger;
-    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
-    private readonly ApplicationRepositoryFactory<NodeProfileModel> _nodeProfileRepoFactory;
-    private readonly ApplicationRepositoryFactory<FileSystemWatchConfigModel> _fileSystemWatchConfigRepoFactory;
-    private readonly IAsyncQueue<ConfigurationChangedEvent> _notificationConfigChangedQueue;
-    private readonly BatchQueue<FileSystemWatchEventReportMessage> _fileSystemWatchEventBatchQueue;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly IOptionsMonitor<WebServerOptions> _optionMonitor;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly WebServerCounter _webServerCounter;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly ILogger<NodeServerImpl> _logger;
+    readonly IAsyncQueue<ConfigurationChangedEvent> _notificationConfigChangedQueue;
+    readonly NodeInfoQueryService _nodeQueryService;
+    readonly INodeSessionService _nodeSessionService;
+    readonly IOptionsMonitor<WebServerOptions> _optionMonitor;
+    readonly IServiceProvider _serviceProvider;
+    readonly WebServerCounter _webServerCounter;
 
-    public NodeServiceImpl(
-        ILogger<NodeServiceImpl> logger,
-        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
-        ApplicationRepositoryFactory<NodeProfileModel> nodeProfileRepositoryFactory,
+    public NodeServerImpl(
+        ILogger<NodeServerImpl> logger,
+        NodeInfoQueryService nodeQueryService,
         ApplicationRepositoryFactory<FileSystemWatchConfigModel> fileSystemWatchConfigRepoFactory,
         IServiceProvider serviceProvider,
         INodeSessionService nodeService,
         IOptionsMonitor<WebServerOptions> optionsMonitor,
         ExceptionCounter exceptionCounter,
         WebServerCounter webServerCounter,
-        IAsyncQueue<ConfigurationChangedEvent> notificationConfigChangedQueue,
-        BatchQueue<FileSystemWatchEventReportMessage> fileSystemWatchEventBatchQueue
+        IAsyncQueue<ConfigurationChangedEvent> notificationConfigChangedQueue
     )
     {
         _logger = logger;
@@ -49,43 +43,12 @@ public class NodeServiceImpl : NodeServiceBase
         _nodeSessionService = nodeService;
         _exceptionCounter = exceptionCounter;
         _webServerCounter = webServerCounter;
-        _nodeInfoRepoFactory = nodeInfoRepositoryFactory;
-        _nodeProfileRepoFactory = nodeProfileRepositoryFactory;
-        _fileSystemWatchConfigRepoFactory = fileSystemWatchConfigRepoFactory;
         _notificationConfigChangedQueue = notificationConfigChangedQueue;
-        _fileSystemWatchEventBatchQueue = fileSystemWatchEventBatchQueue;
+        _nodeQueryService = nodeQueryService;
     }
 
 
-    public async Task<NodeId> EnsureNodeInfoAsync(
-        NodeSessionId nodeSessionId,
-        string nodeName,
-        CancellationToken cancellationToken = default)
-    {
-        using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
-        using var nodeProfileRepo = _nodeProfileRepoFactory.CreateRepository();
-        var nodeId = nodeSessionId.NodeId.Value;
-        var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
 
-        if (nodeInfo == null)
-        {
-            nodeInfo = NodeInfoModel.Create(nodeId, nodeName, NodeDeviceType.Computer);
-            var nodeProfile =
-                await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileListSpecification(nodeName), cancellationToken);
-            if (nodeProfile != null)
-            {
-                var oldNodeInfo = await nodeInfoRepo.GetByIdAsync(nodeProfile.NodeInfoId, cancellationToken);
-                if (oldNodeInfo != null) await nodeInfoRepo.DeleteAsync(oldNodeInfo, cancellationToken);
-                nodeProfile.NodeInfoId = nodeId;
-                nodeInfo.ProfileId = nodeProfile.Id;
-            }
-
-            nodeInfo.Status = NodeStatus.Online;
-            await nodeInfoRepo.AddAsync(nodeInfo, cancellationToken);
-        }
-
-        return new NodeId(nodeInfo.Id);
-    }
 
 
     public override async Task Subscribe(
@@ -101,14 +64,13 @@ public class NodeServiceImpl : NodeServiceBase
             var nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
             if (nodeSessionId.NodeId.IsNullOrEmpty) return;
 
-            await EnsureNodeInfoAsync(nodeSessionId, nodeClientHeaders.HostName);
+            await _nodeQueryService.EnsureNodeInfoAsync(nodeSessionId.NodeId.Value, nodeClientHeaders.HostName);
             _nodeSessionService.UpdateNodeStatus(nodeSessionId, NodeStatus.Online);
             _nodeSessionService.UpdateNodeName(nodeSessionId, nodeClientHeaders.HostName);
             _nodeSessionService.SetHttpContext(nodeSessionId, httpContext);
 
             Task[] tasks =
                 [
-                    PostFileSystemWatchConfigurationsAsync(nodeSessionId, context.CancellationToken),
                     ProcessOutputQueueAsync(nodeSessionId, context.CancellationToken),
                     ProcessInputQueueAsync(nodeSessionId, context.CancellationToken),
                 ];
@@ -199,36 +161,10 @@ public class NodeServiceImpl : NodeServiceBase
 
 
         }
-
-        async Task PostFileSystemWatchConfigurationsAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                using var fileSystemWatchConfigRepo = _fileSystemWatchConfigRepoFactory.CreateRepository();
-                var fileSystemWatchCOnfigList = await fileSystemWatchConfigRepo.ListAsync(cancellationToken);
-                foreach (var configuration in fileSystemWatchCOnfigList.Where(x =>
-                             x.EnableRaisingEvents && x.NodeList != null &&
-                             x.NodeList.Any(x => x.Value == nodeSessionId.NodeId.Value)))
-                    await _notificationConfigChangedQueue.EnqueueAsync(new ConfigurationChangedEvent()
-                    {
-                        NodeIdList = [nodeSessionId.NodeId.Value],
-                        ChangedType = ConfigurationChangedType.Update,
-                        TypeName = typeof(FileSystemWatchConfigModel).FullName,
-                        Id = configuration.Id,
-                        Json = configuration.ToJson<FileSystemWatchConfigModel>()
-                    });
-            }
-            catch (Exception ex)
-            {
-                _exceptionCounter.AddOrUpdate(ex);
-                _logger.LogError(ex.ToString());
-            }
-
-        }
-    }
+  }
 
 
-    public override async Task<Google.Protobuf.WellKnownTypes.Empty> SendFileSystemListDirectoryResponse(
+    public override async Task<Empty> SendFileSystemListDirectoryResponse(
         FileSystemListDirectoryResponse response,
         ServerCallContext context)
     {
@@ -307,11 +243,7 @@ public class NodeServiceImpl : NodeServiceBase
             nodeSessionId = new NodeSessionId(nodeClientHeaders.NodeId);
             await foreach (var report in requestStream.ReadAllAsync(context.CancellationToken))
             {
-                await _fileSystemWatchEventBatchQueue.SendAsync(new FileSystemWatchEventReportMessage()
-                {
-                    NodeSessionId = nodeSessionId,
-                    Message = report
-                }, context.CancellationToken);
+
             }
         }
         catch (Exception ex)

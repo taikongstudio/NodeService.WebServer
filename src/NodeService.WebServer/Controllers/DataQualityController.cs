@@ -12,39 +12,30 @@ namespace NodeService.WebServer.Controllers;
 [Route("api/[controller]/[action]")]
 public partial class DataQualityController : Controller
 {
-    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<AsyncOperation<FileRecordModel, bool>> _insertUpdateDeleteOpBatchQueue;
-
-    private readonly ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel>
+    readonly ExceptionCounter _exceptionCounter;
+    readonly ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel>
         _nodeStatisticsRecordRepoFactory;
 
-    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<DataQualityController> _logger;
-    private readonly IMemoryCache _memoryCache;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    readonly IServiceProvider _serviceProvider;
+    readonly ILogger<DataQualityController> _logger;
+    readonly FileRecordQueryService _fileRecordQueryService;
+    readonly IMemoryCache _memoryCache;
 
-    private readonly BatchQueue<AsyncOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>
-        _queryOpBatchQueue;
 
     public DataQualityController(
         ILogger<DataQualityController> logger,
         ExceptionCounter exceptionCounter,
         IServiceProvider serviceProvider,
-        BatchQueue<AsyncOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>
-            queryOpBatchQueue,
-        BatchQueue<AsyncOperation<FileRecordModel, bool>> insertUpdateDeleteOpBatchQueue,
+        FileRecordQueryService fileRecordQueryService,
         ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel> nodeStatisticsRecordRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
-        IDbContextFactory<ApplicationDbContext> dbContextFactory,
         IMemoryCache memoryCache)
     {
-        _dbContextFactory = dbContextFactory;
         _exceptionCounter = exceptionCounter;
         _memoryCache = memoryCache;
         _logger = logger;
-        _queryOpBatchQueue = queryOpBatchQueue;
-        _insertUpdateDeleteOpBatchQueue = insertUpdateDeleteOpBatchQueue;
+        _fileRecordQueryService = fileRecordQueryService;
         _nodeStatisticsRecordRepoFactory = nodeStatisticsRecordRepoFactory;
         _nodeInfoRepoFactory = nodeInfoRepoFactory;
         _serviceProvider = serviceProvider;

@@ -115,7 +115,7 @@ public class TaskActivateService : BackgroundService
     readonly BatchQueue<TaskActivateServiceParameters> _serviceParametersBatchQueue;
     readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
-    readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
     readonly ApplicationRepositoryFactory<TaskTypeDescConfigModel> _taskTypeDescConfigRepositoryFactory;
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
@@ -144,7 +144,7 @@ public class TaskActivateService : BackgroundService
         _nodeSessionService = nodeSessionService;
         _taskDefinitionRepositoryFactory = taskDefinitionRepositoryFactory;
         _taskExecutionInstanceRepositoryFactory = taskExecutionInstanceRepositoryFactory;
-        _taskActivationRecordRepositoryFactory = taskActivationRepositoryFactory;
+        _taskActivationRecordRepoFactory = taskActivationRepositoryFactory;
         _taskTypeDescConfigRepositoryFactory = taskTypeDescConfigRepositoryFactory;
         _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
         _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
@@ -202,7 +202,7 @@ public class TaskActivateService : BackgroundService
         var readyToRun = false;
         try
         {
-            using var repo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
+            await using var repo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync();
             _logger.LogInformation($"{context.Id}:Start init");
             context.EnsureInit();
             switch (context.TaskDefinition.ExecutionStrategy)
@@ -285,9 +285,6 @@ public class TaskActivateService : BackgroundService
     }
 
     async ValueTask ActivateRemoteNodeTasksAsync(
-        IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo,
-        IRepository<NodeInfoModel> nodeInfoRepo,
-        IRepository<TaskActivationRecordModel> taskActivationRecordRepo,
         FireTaskParameters fireTaskParameters,
         TaskDefinitionModel taskDefinition,
         TaskFlowTaskKey taskFlowTaskKey = default,
@@ -299,13 +296,8 @@ public class TaskActivateService : BackgroundService
             {
                 taskDefinition.NodeList = fireTaskParameters.NodeList;
             }
-            var nodeInfoList = await nodeInfoRepo.ListAsync(
-                new NodeInfoSpecification(
-                    AreaTags.Any,
-                    NodeStatus.All,
-                    NodeDeviceType.Computer,
-                    DataFilterCollection<string>.Includes(taskDefinition.NodeList.Select(x => x.Value))),
-                cancellationToken);
+
+            var nodeInfoList = await QueryNodeListAsync(taskDefinition, cancellationToken);
 
             var taskExecutionInstanceList = new List<KeyValuePair<NodeSessionId, TaskExecutionInstanceModel>>();
 
@@ -344,7 +336,9 @@ public class TaskActivateService : BackgroundService
                 }
             }
 
-            await taskExecutionInstanceRepo.AddRangeAsync(taskExecutionInstanceList.Select(static x => x.Value), cancellationToken);
+            await AddTaskExecutionInstanceListAsync(
+                taskExecutionInstanceList.Select(static x => x.Value),
+                cancellationToken);
 
             if (fireTaskParameters.TaskActiveRecordId == null)
             {
@@ -391,6 +385,7 @@ public class TaskActivateService : BackgroundService
                     TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId,
                     NodeList = [.. taskDefinition.NodeList]
                 };
+                await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
                 await taskActivationRecordRepo.AddAsync(taskActivationRecord, cancellationToken);
             }
 
@@ -421,6 +416,28 @@ public class TaskActivateService : BackgroundService
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
+    }
+
+    async ValueTask AddTaskExecutionInstanceListAsync(
+        IEnumerable<TaskExecutionInstanceModel> taskExecutionInstanceList,
+        CancellationToken cancellationToken = default)
+    {
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync(cancellationToken);
+        await taskExecutionInstanceRepo.AddRangeAsync(taskExecutionInstanceList, cancellationToken);
+    }
+
+    async ValueTask<List<NodeInfoModel>> QueryNodeListAsync(TaskDefinitionModel taskDefinition, CancellationToken cancellationToken = default)
+    {
+        await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync(cancellationToken);
+        var nodeInfoList = await nodeInfoRepo.ListAsync(
+             new NodeInfoSpecification(
+                 AreaTags.Any,
+                 NodeStatus.All,
+                 NodeDeviceType.Computer,
+                 DataFilterCollection<string>.Includes(taskDefinition.NodeList.Select(x => x.Value))),
+             cancellationToken);
+
+        return nodeInfoList;
     }
 
     static (NodeId NodeId, NodeInfoModel NodeInfo) FindNodeInfo(List<NodeInfoModel> nodeInfoList, string id)
@@ -555,8 +572,8 @@ public class TaskActivateService : BackgroundService
         IEnumerable<RetryTaskParameters> retryTaskParameterList,
         CancellationToken cancellationToken = default)
     {
-        using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
-        using var taskActivationRecordRepo = _taskActivationRecordRepositoryFactory.CreateRepository();
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync();
+        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
 
         foreach (var retryTaskFlowParametersGroup in retryTaskParameterList.GroupBy(static x => x.TaskExecutionInstanceId))
         {
@@ -603,8 +620,8 @@ public class TaskActivateService : BackgroundService
         IEnumerable<FireTaskFlowParameters> fireTaskFlowParameterList,
         CancellationToken cancellationToken = default)
     {
-        using var taskFlowTemplateRepo = _taskFlowTemplateRepoFactory.CreateRepository();
-        using var taskFlowExeuctionInstanceRepo = _taskFlowExecutionInstanceRepoFactory.CreateRepository();
+        await using var taskFlowTemplateRepo = await _taskFlowTemplateRepoFactory.CreateRepositoryAsync();
+        await using var taskFlowExeuctionInstanceRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync();
         foreach (var fireTaskFlowParametersGroup in fireTaskFlowParameterList.GroupBy(static x => x.TaskFlowTemplateId))
         {
             var taskFlowTemplateId = fireTaskFlowParametersGroup.Key;
@@ -684,15 +701,14 @@ public class TaskActivateService : BackgroundService
         IEnumerable<FireTaskParameters> fireTaskParameterList, 
         CancellationToken cancellationToken)
     {
-        using var taskExecutionInstanceRepo = _taskExecutionInstanceRepositoryFactory.CreateRepository();
-        using var taskActivationRecordRepo = _taskActivationRecordRepositoryFactory.CreateRepository();
-        using var taskTypeDescRepo = _taskTypeDescConfigRepositoryFactory.CreateRepository();
-        using var taskDefinitionRepo = _taskDefinitionRepositoryFactory.CreateRepository();
-        using var nodeInfoRepo = _nodeInfoRepositoryFactory.CreateRepository();
+      await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync();
+
+
+
         foreach (var fireTaskParameterGroup in fireTaskParameterList.GroupBy(static x => x.TaskDefinitionId))
         {
             var taskDefinitionId = fireTaskParameterGroup.Key;
-            var taskDefinition = await taskDefinitionRepo.GetByIdAsync(
+            var taskDefinition = await GetTaskDefinitionAsync(
                 taskDefinitionId,
                 cancellationToken);
             if (taskDefinition == null)
@@ -705,18 +721,13 @@ public class TaskActivateService : BackgroundService
                 if (taskDefinition == null || string.IsNullOrEmpty(taskDefinition.TaskTypeDescId))
                     continue;
 
-                taskDefinition.TaskTypeDesc = await taskTypeDescRepo.GetByIdAsync(
-                                                                                taskDefinition.TaskTypeDescId,
-                                                                                cancellationToken);
+                taskDefinition.TaskTypeDesc = await GetTaskTypeDescAsync(taskDefinition.TaskTypeDescId, cancellationToken);
                 if (taskDefinition.TaskTypeDesc == null)
                 {
                     continue;
                 }
 
                 await ActivateRemoteNodeTasksAsync(
-                     taskExecutionInstanceRepo,
-                     nodeInfoRepo,
-                     taskActivationRecordRepo,
                      fireTaskParameters,
                      taskDefinition,
                      fireTaskParameters.TaskFlowTaskKey,
@@ -726,5 +737,27 @@ public class TaskActivateService : BackgroundService
         }
 
 
+    }
+
+    async ValueTask<TaskTypeDescConfigModel?> GetTaskTypeDescAsync(
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        await using var taskTypeDescRepo = await _taskTypeDescConfigRepositoryFactory.CreateRepositoryAsync();
+        var taskTypeDesc = await taskTypeDescRepo.GetByIdAsync(
+                                                                         id,
+                                                                         cancellationToken);
+        return taskTypeDesc;
+    }
+
+    async ValueTask<TaskDefinitionModel?> GetTaskDefinitionAsync(
+        string taskDefinitionId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var taskDefinitionRepo = await _taskDefinitionRepositoryFactory.CreateRepositoryAsync(cancellationToken);
+        var taskDefinition = await taskDefinitionRepo.GetByIdAsync(
+              taskDefinitionId,
+              cancellationToken);
+        return taskDefinition;
     }
 }

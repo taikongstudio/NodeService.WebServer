@@ -74,7 +74,7 @@ public partial class ClientUpdateController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            using var repo = _clientUpdateRepoFactory.CreateRepository();
+            await using var repo = await _clientUpdateRepoFactory.CreateRepositoryAsync();
             var modelFromRepo = await repo.GetByIdAsync(model.Id);
             model.PackageConfig = null;
             if (modelFromRepo == null)
@@ -116,7 +116,7 @@ public partial class ClientUpdateController : Controller
         var apiResponse = new PaginationResponse<ClientUpdateConfigModel>();
         try
         {
-            using var repo = _clientUpdateRepoFactory.CreateRepository();
+            await using var repo = await _clientUpdateRepoFactory.CreateRepositoryAsync();
             var queryResult = await repo.PaginationQueryAsync(
                 new ClientUpdateConfigSpecification(
                     queryParameters.Keywords,
@@ -143,7 +143,7 @@ public partial class ClientUpdateController : Controller
         var apiResponse = new ApiResponse();
         try
         {
-            using var repo = _clientUpdateRepoFactory.CreateRepository();
+            await using var repo = await _clientUpdateRepoFactory.CreateRepositoryAsync();
             await repo.DeleteAsync(model);
             var key = $"ClientUpdateConfig:{model.Name}";
             _memoryCache.Remove(key);

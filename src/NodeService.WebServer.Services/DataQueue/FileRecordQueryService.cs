@@ -9,95 +9,66 @@ using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.DataQueue;
 
-public class FileRecordQueryService : BackgroundService
+public class FileRecordQueryService
 {
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly ILogger<FileRecordQueryService> _logger;
-
-    private readonly BatchQueue<
-            AsyncOperation<FileRecordBatchQueryParameters,
-                ListQueryResult<FileRecordModel>>>
-        _queryBatchQueue;
-
-    private readonly ApplicationRepositoryFactory<FileRecordModel> _repositoryFactory;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly ILogger<FileRecordQueryService> _logger;
+    readonly ApplicationRepositoryFactory<FileRecordModel> _applicationRepoFactory;
 
     public FileRecordQueryService(
         ExceptionCounter exceptionCounter,
         ILogger<FileRecordQueryService> logger,
-        ApplicationRepositoryFactory<FileRecordModel> repositoryFactory,
-        BatchQueue<AsyncOperation<FileRecordBatchQueryParameters,
-            ListQueryResult<FileRecordModel>>> queryBatchQueue
+        ApplicationRepositoryFactory<FileRecordModel> appicationRepoFactory
     )
     {
         _exceptionCounter = exceptionCounter;
         _logger = logger;
-        _repositoryFactory = repositoryFactory;
-        _queryBatchQueue = queryBatchQueue;
+        _applicationRepoFactory = appicationRepoFactory;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken cancellationToken)
-    {
-        await foreach (var arrayPoolCollection in _queryBatchQueue.ReceiveAllAsync(cancellationToken))
-            try
-            {
-                using var repo = _repositoryFactory.CreateRepository();
-                foreach (var argumentGroup in arrayPoolCollection
-                             .Where(static x => x.Kind == AsyncOperationKind.Query)
-                             .GroupBy(static x => x.Argument))
-                {
-                    var argument = argumentGroup.Key;
-                    try
-                    {
-                        var queryResult = await QueryAsync(repo, argument);
-
-                        foreach (var op in argumentGroup) op.TrySetResult(queryResult);
-                    }
-                    catch (Exception ex)
-                    {
-                        foreach (var op in argumentGroup) op.TrySetException(ex);
-                        _exceptionCounter.AddOrUpdate(ex);
-                        _logger.LogError(ex.ToString());
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _exceptionCounter.AddOrUpdate(ex);
-                _logger.LogError(ex.ToString());
-            }
-            finally
-            {
-            }
-    }
-
-    private async Task<ListQueryResult<FileRecordModel>> QueryAsync(
-        IRepository<FileRecordModel> repo,
-        FileRecordBatchQueryParameters argument)
+    public async ValueTask<ListQueryResult<FileRecordModel>> QueryAsync(
+        QueryFileRecordListParameters queryParameters,
+        CancellationToken cancellationToken = default)
     {
         ListQueryResult<FileRecordModel> queryResult = default;
-        try
-        {
-            var queryParameters = argument.QueryParameters;
-            queryResult = await repo.PaginationQueryAsync(
-                new FileRecordListSpecification(
-                    queryParameters.Category,
-                    queryParameters.State,
-                    DataFilterCollection<string>.Includes(queryParameters.NodeIdList),
-                    DataFilterCollection<string>.Includes(string.IsNullOrEmpty(queryParameters.Keywords)
-                        ? []
-                        : [queryParameters.Keywords]),
-                    queryParameters.SortDescriptions),
-                argument.PaginationInfo);
-        }
-        catch (Exception ex)
-        {
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
-        }
-        finally
-        {
-        }
-
+        await using var repo = await _applicationRepoFactory.CreateRepositoryAsync(cancellationToken);
+        queryResult = await repo.PaginationQueryAsync(
+            new FileRecordListSpecification(
+                queryParameters.Category,
+                queryParameters.State,
+                DataFilterCollection<string>.Includes(queryParameters.NodeIdList),
+                DataFilterCollection<string>.Includes(string.IsNullOrEmpty(queryParameters.Keywords)
+                    ? []
+                    : [queryParameters.Keywords]),
+                queryParameters.SortDescriptions),
+            new PaginationInfo(
+                queryParameters.PageIndex,
+                queryParameters.PageSize), cancellationToken);
         return queryResult;
+    }
+
+    public async ValueTask DeleteAsync(
+        FileRecordModel fileRecord,
+        CancellationToken cancellationToken = default)
+    {
+        await using var repo = await _applicationRepoFactory.CreateRepositoryAsync(cancellationToken);
+        await repo.DeleteAsync(fileRecord);
+    }
+
+    public async ValueTask AddOrUpdateAsync(
+        FileRecordModel fileRecord,
+        CancellationToken cancellationToken = default)
+    {
+        await using var repo = await _applicationRepoFactory.CreateRepositoryAsync(cancellationToken);
+        var modelFromRepo = await repo.GetByIdAsync(fileRecord.Id, cancellationToken);
+        if (modelFromRepo == null)
+        {
+            await repo.AddAsync(fileRecord);
+        }
+        else
+        {
+            modelFromRepo.With(fileRecord);
+            await repo.SaveChangesAsync(cancellationToken);
+        }
     }
 }

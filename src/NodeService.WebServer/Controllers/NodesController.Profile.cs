@@ -3,19 +3,21 @@
 public partial class NodesController
 {
     [HttpPost("/api/Nodes/~/{nodeId}/Profile/Update")]
-    public async Task<ApiResponse<bool>> UpdateNodeInfoAsync(string nodeId, [FromBody] UpdateNodeProfileModel value)
+    public async Task<ApiResponse> UpdateNodeInfoAsync(
+        string nodeId,
+        [FromBody] UpdateNodeProfileModel value,
+        CancellationToken cancellationToken = default)
     {
-        var apiResponse = new ApiResponse<bool>();
+        var apiResponse = new ApiResponse();
         try
         {
             ArgumentNullException.ThrowIfNull(value, nameof(value));
-            using var repo = _nodeInfoRepoFactory.CreateRepository();
-            var nodeInfo = await repo.GetByIdAsync(nodeId);
+            await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
+            var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
             if (nodeInfo == null)
             {
                 apiResponse.ErrorCode = -1;
                 apiResponse.Message = "invalid node id";
-                apiResponse.SetResult(false);
             }
             else
             {
@@ -24,8 +26,7 @@ public partial class NodesController
                 nodeInfo.Profile.LabName = value.LabName;
                 nodeInfo.Profile.Usages = value.Usages;
                 nodeInfo.Profile.Remarks = value.Remarks;
-                await repo.SaveChangesAsync();
-                apiResponse.SetResult(true);
+                await nodeInfoRepo.SaveChangesAsync(cancellationToken);
             }
         }
         catch (Exception ex)

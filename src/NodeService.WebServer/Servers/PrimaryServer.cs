@@ -86,6 +86,7 @@ namespace NodeService.WebServer.Servers
             app.UseAuthorization();
             app.MapRazorPages();
             app.MapControllers();
+            app.UseRateLimiter();
             app.MapBlazorHub(options =>
             {
                 options.CloseOnAuthenticationExpiration = true;
@@ -113,6 +114,15 @@ namespace NodeService.WebServer.Servers
         {
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddDirectoryBrowser();
+
+            builder.Services.AddRateLimiter(_ => _
+                .AddConcurrencyLimiter("UploadFile", options =>
+                {
+                    options.PermitLimit = 30;
+                    options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                    options.QueueLimit = 10000;
+                }));
+
             builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
             builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
             builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));

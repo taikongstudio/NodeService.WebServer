@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.WebUtilities;
+﻿using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Net.Http.Headers;
 using NodeService.Infrastructure.Concurrent;
@@ -128,6 +129,7 @@ public class NodeFileSystemController : Controller
     }
 
     [HttpPost("/api/NodeFileSystem/UploadFile")]
+    [EnableRateLimiting("UploadFile")]
     [DisableRequestSizeLimit]
     public async Task<ApiResponse<NodeFileSyncRecordModel>> UploadFileAsync()
     {

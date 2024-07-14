@@ -16,7 +16,7 @@ public class ApplicationRepositoryFactory<TEntity> :
         dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
-        _semaphoreSlim = new SemaphoreSlim(5, 10);
+        _semaphoreSlim = new SemaphoreSlim(10, 20);
     }
 
     public new IRepository<TEntity> CreateRepository()
@@ -38,7 +38,8 @@ public class ApplicationRepositoryFactory<TEntity> :
     {
         if (!await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken))
         {
-            throw new Exception("time out ");
+            var entityTypeName = typeof(TEntity).FullName;
+            throw new Exception($"{entityTypeName}:time out ");
         }
         return this.CreateRepositoryCore(false);
     }

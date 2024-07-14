@@ -212,7 +212,7 @@ public class TasksController : Controller
             HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.TotalCount), result.TotalCount.ToString());
             HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.PageIndex), result.PageIndex.ToString());
             HttpContext.Response.Headers.Append(nameof(PaginationResponse<int>.PageSize), result.PageSize.ToString());
-            return File(result.Pipe.Reader.AsStream(), "text/plain", result.LogFileName);
+            return File(result.Pipe.Reader.AsStream(true), "text/plain", result.LogFileName);
         }
         catch (Exception ex)
         {

@@ -97,7 +97,7 @@ public class TaskLogQueryService
             throw new Exception("Could not found task log");
         }
         var pipe = new Pipe();
-        using var streamWriter = new StreamWriter(pipe.Writer.AsStream());
+        var streamWriter = new StreamWriter(pipe.Writer.AsStream());
         var serviceResult = new TaskLogQueryServiceResult(logFileName, pipe);
         var totalLogCount = taskInfoLog.ActualSize;
         if (serviceParameters.QueryParameters.PageIndex == 0)
@@ -137,6 +137,10 @@ public class TaskLogQueryService
                     _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
                 }
+                finally
+                {
+                    await streamWriter.DisposeAsync();
+                }
 
             }, cancellationToken);
 
@@ -144,22 +148,34 @@ public class TaskLogQueryService
         else
         {
             var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, serviceParameters.QueryParameters.PageIndex), cancellationToken);
-
-
             if (taskLog != null)
             {
                 serviceResult.TotalCount = taskInfoLog.ActualSize;
                 serviceResult.PageIndex = taskLog.PageIndex;
                 serviceResult.PageSize = taskLog.ActualSize;
-
-                if (taskLog != null)
+                _ = Task.Run(async () =>
                 {
-                    foreach (var taskLogEntry in taskLog.Value.LogEntries)
+                    try
                     {
-                        streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
+                        foreach (var taskLogEntry in taskLog.Value.LogEntries)
+                        {
+                            streamWriter.WriteLine($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
+                        }
+
                     }
-                }
-            }
+                    catch (Exception ex)
+                    {
+                        _exceptionCounter.AddOrUpdate(ex);
+                        _logger.LogError(ex.ToString());
+                    }
+                    finally
+                    {
+                        await streamWriter.DisposeAsync();
+                    }
+                });
+        }
+
+
 
         }
         return serviceResult;

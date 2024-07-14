@@ -20,7 +20,8 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             _timer = new Timer(OnTick, null, 500, 1000);
             _batchBlock = new BatchBlock<T>(2048, new GroupingDataflowBlockOptions()
             {
-                EnsureOrdered = true
+                EnsureOrdered = true,
+                MaxMessagesPerTask = 1
             });
 
             _actionBlock = new ActionBlock<T[]>(InvokeAsync, new ExecutionDataflowBlockOptions()

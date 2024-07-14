@@ -46,6 +46,7 @@ public class FtpClientProcessContext : ProcessContext
                             {
                                 ConnectTimeout = ftpConfig.ConnectTimeout,
                                 ReadTimeout = ftpConfig.ReadTimeout,
+                                SslProtocols = System.Security.Authentication.SslProtocols.None,
                                 DataConnectionReadTimeout = ftpConfig.DataConnectionReadTimeout,
                                 DataConnectionConnectTimeout = ftpConfig.DataConnectionConnectTimeout,
                                 DataConnectionType = (FtpDataConnectionType)ftpConfig.DataConnectionType

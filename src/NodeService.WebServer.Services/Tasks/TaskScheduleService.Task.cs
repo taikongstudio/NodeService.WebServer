@@ -12,20 +12,20 @@ namespace NodeService.WebServer.Services.Tasks
     public partial class TaskScheduleService
     {
         async Task ProcessTaskScheduleParametersAsync(
-        BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult> op,
+        AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult> op,
         CancellationToken cancellationToken = default)
         {
             switch (op.Kind)
             {
-                case BatchQueueOperationKind.None:
+                case AsyncOperationKind.None:
                     break;
-                case BatchQueueOperationKind.AddOrUpdate:
+                case AsyncOperationKind.AddOrUpdate:
                     await ScheduleTaskAsync(op.Argument.Parameters.AsT0, cancellationToken);
                     break;
-                case BatchQueueOperationKind.Delete:
+                case AsyncOperationKind.Delete:
                     await DeleteAllTaskScheduleAsync(op.Argument.Parameters.AsT0.TaskDefinitionId);
                     break;
-                case BatchQueueOperationKind.Query:
+                case AsyncOperationKind.Query:
                     break;
                 default:
                     break;
@@ -99,9 +99,9 @@ namespace NodeService.WebServer.Services.Tasks
                 {
                     var taskScheduleParameters = new TaskScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
                     var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
-                    var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
+                    var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
                         taskScheduleServiceParameters,
-                        BatchQueueOperationKind.AddOrUpdate);
+                        AsyncOperationKind.AddOrUpdate);
                     await _taskScheduleServiceParametersQueue.EnqueueAsync(op, cancellationToken);
                 }
 

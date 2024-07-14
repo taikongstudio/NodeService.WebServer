@@ -4,7 +4,7 @@ namespace NodeService.WebServer.Data.Repositories;
 
 public class ApplicationRepositoryFactory<TEntity> :
     EFRepositoryFactory<IRepository<TEntity>,
-        EfRepository<TEntity, ApplicationDbContext>,
+        EFRepository<TEntity, ApplicationDbContext>,
         ApplicationDbContext>
     where TEntity : class, IAggregateRoot
 {
@@ -12,6 +12,8 @@ public class ApplicationRepositoryFactory<TEntity> :
         dbContextFactory)
     {
     }
+
+  
 
 
 

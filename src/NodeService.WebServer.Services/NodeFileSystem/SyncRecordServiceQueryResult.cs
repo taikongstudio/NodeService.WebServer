@@ -2,9 +2,9 @@
 
 namespace NodeService.WebServer.Services.NodeFileSystem
 {
-    public record struct NodeFileSystemSyncRecordServiceQueryResult
+    public record struct SyncRecordServiceQueryResult
     {
-        public NodeFileSystemSyncRecordServiceQueryResult(ListQueryResult<NodeFileSyncRecordModel> result)
+        public SyncRecordServiceQueryResult(ListQueryResult<NodeFileSyncRecordModel> result)
         {
             Result = result;
         }

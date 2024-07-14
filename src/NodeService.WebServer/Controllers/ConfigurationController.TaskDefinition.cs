@@ -83,12 +83,12 @@ public partial class ConfigurationController
         TaskDefinitionModel taskDefinition,
         CancellationToken cancellationToken = default)
     {
-        var messageQueue = _serviceProvider.GetService<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
+        var messageQueue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
         var taskScheduleParameters = new TaskScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
         var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
-        var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
+        var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
             taskScheduleServiceParameters,
-            BatchQueueOperationKind.Delete);
+            AsyncOperationKind.Delete);
         await messageQueue.EnqueueAsync(op, cancellationToken);
     }
 
@@ -138,10 +138,10 @@ public partial class ConfigurationController
         {
             var taskScheduleParameters = new TaskScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
             var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
-            var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
+            var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
             taskScheduleServiceParameters,
-              taskDefinition.Value.TriggerType == TaskTriggerType.Manual || !taskDefinition.Value.IsEnabled ? BatchQueueOperationKind.Delete : BatchQueueOperationKind.AddOrUpdate);
-            var queue = _serviceProvider.GetService<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
+              taskDefinition.Value.TriggerType == TaskTriggerType.Manual || !taskDefinition.Value.IsEnabled ? AsyncOperationKind.Delete : AsyncOperationKind.AddOrUpdate);
+            var queue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             await queue.EnqueueAsync(op, cancellationToken);
         }
     }

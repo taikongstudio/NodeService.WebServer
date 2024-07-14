@@ -14,7 +14,7 @@ public partial class ClientUpdateController : Controller
     private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
     private readonly ExceptionCounter _exceptionCounter;
 
-    private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>
+    private readonly BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>
         _batchQueue;
 
     private readonly ILogger<ClientUpdateController> _logger;
@@ -27,7 +27,7 @@ public partial class ClientUpdateController : Controller
         ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<ClientUpdateCounterModel> clientUpdateCounterRepoFactory,
-        BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> batchQueue,
+        BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> batchQueue,
         IMemoryCache memoryCache)
     {
         _logger = logger;
@@ -51,8 +51,8 @@ public partial class ClientUpdateController : Controller
             var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
             var paramters = new ClientUpdateBatchQueryParameters(name, ipAddress);
             var batchQueueOperation =
-                new BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>(paramters,
-                    BatchQueueOperationKind.Query);
+                new AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>(paramters,
+                    AsyncOperationKind.Query);
             await _batchQueue.SendAsync(batchQueueOperation, cancellationToken);
             var clientUpdateConfig = await batchQueueOperation.WaitAsync(cancellationToken);
             apiResponse.SetResult(clientUpdateConfig);

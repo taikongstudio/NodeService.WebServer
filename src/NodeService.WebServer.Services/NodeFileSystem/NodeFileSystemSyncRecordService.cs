@@ -16,16 +16,16 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 
     public class NodeFileSystemSyncRecordService : BackgroundService
     {
-        private readonly ILogger<NodeFileSystemSyncRecordService> _logger;
-        private readonly ExceptionCounter _exceptionCounter;
-        readonly BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> _syncRecordQueue;
+        readonly ILogger<NodeFileSystemSyncRecordService> _logger;
+        readonly ExceptionCounter _exceptionCounter;
+        readonly BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>> _syncRecordQueue;
         readonly ApplicationRepositoryFactory<NodeFileSyncRecordModel> _syncRecordRepoFactory;
 
         public NodeFileSystemSyncRecordService(
             ILogger<NodeFileSystemSyncRecordService> logger,
             ExceptionCounter exceptionCounter,
-            BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>> nodeFileSyncRecordQueue,
-                    ApplicationRepositoryFactory<NodeFileSyncRecordModel> nodeFileSyncRecordRepoFactory)
+            BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>> nodeFileSyncRecordQueue,
+            ApplicationRepositoryFactory<NodeFileSyncRecordModel> nodeFileSyncRecordRepoFactory)
         {
             _logger = logger;
             _exceptionCounter = exceptionCounter;
@@ -64,7 +64,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                         {
                             _exceptionCounter.AddOrUpdate(ex);
                             _logger.LogError(ex.ToString());
-                            op.SetException(ex);
+                            op.TrySetException(ex);
                         }
 
 
@@ -76,7 +76,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                     _logger.LogError(ex.ToString());
                     foreach (var op in array)
                     {
-                        op.SetException(ex);
+                        op.TrySetException(ex);
                     }
                 }
 
@@ -84,7 +84,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             }
         }
 
-        static async ValueTask ProcessQueryAsync(IRepository<NodeFileSyncRecordModel> syncRecordRepo, BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult> op, CancellationToken cancellationToken)
+        static async ValueTask ProcessQueryAsync(IRepository<NodeFileSyncRecordModel> syncRecordRepo, AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult> op, CancellationToken cancellationToken)
         {
             var queryParameters = op.Argument.Parameters.AsT1.QueryParameters;
             var nodeInfoIdFilters = DataFilterCollection<string>.Includes(queryParameters.NodeIdList);
@@ -100,42 +100,52 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                 specification,
                 new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
                 cancellationToken);
-            var result = new NodeFileSystemSyncRecordServiceQueryResult(list);
-            op.SetResult(new NodeFileSystemSyncRecordServiceResult(result));
+            var result = new SyncRecordServiceQueryResult(list);
+            op.TrySetResult(new SyncRecordServiceResult(result));
         }
 
-        static async ValueTask ProcessAddOrUpdateParametersAsync(IRepository<NodeFileSyncRecordModel> nodeFileSyncRecordRepo, BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult> op, CancellationToken cancellationToken)
+        static async ValueTask ProcessAddOrUpdateParametersAsync(IRepository<NodeFileSyncRecordModel> nodeFileSyncRecordRepo, AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult> op, CancellationToken cancellationToken)
         {
             var syncRecords = op.Argument.Parameters.AsT0.SyncRecords;
             var addedCount = 0;
             var modifiedCount = 0;
             foreach (var syncRecordGroups in syncRecords.GroupBy(static x => x.Id))
             {
-                var lastSyncRecord = syncRecordGroups.OrderBy(x => x.Status).ThenBy(x => x.Value.Progress).LastOrDefault();
-                if (lastSyncRecord == null)
+                var id = syncRecordGroups.Key;
+                var syncRecordFromDb = await nodeFileSyncRecordRepo.GetByIdAsync(id, cancellationToken);
+                foreach (var record in syncRecordGroups)
                 {
-                    continue;
+                    if (syncRecordFromDb == null)
+                    {
+                        syncRecordFromDb = record;
+                        addedCount++;
+                    }
+                    else
+                    {
+                        syncRecordFromDb.With(record);
+                        modifiedCount++;
+                    }
                 }
-                var syncRecordFromDb = await nodeFileSyncRecordRepo.GetByIdAsync(lastSyncRecord.Id, cancellationToken);
-                if (syncRecordFromDb == null)
+
+                if (syncRecordFromDb != null)
                 {
-                    await nodeFileSyncRecordRepo.AddAsync(lastSyncRecord, cancellationToken);
-                    addedCount++;
-                }
-                else
-                {
-                    syncRecordFromDb.With(lastSyncRecord);
-                    await nodeFileSyncRecordRepo.UpdateAsync(syncRecordFromDb, cancellationToken);
-                    modifiedCount++;
+                    if (addedCount > 0)
+                    {
+                        await nodeFileSyncRecordRepo.AddAsync(syncRecordFromDb, cancellationToken);
+                    }
+                    if (modifiedCount > 0)
+                    {
+                        await nodeFileSyncRecordRepo.UpdateAsync(syncRecordFromDb, cancellationToken);
+                    }
                 }
 
             }
-            var result = new NodeFileSystemSyncRecordServiceAddOrUpdateResult()
+            var result = new SyncRecordServiceAddOrUpdateResult()
             {
                 AddedCount = addedCount,
                 ModifiedCount = modifiedCount
             };
-            op.SetResult(new NodeFileSystemSyncRecordServiceResult(result));
+            op.TrySetResult(new SyncRecordServiceResult(result));
         }
     }
 }

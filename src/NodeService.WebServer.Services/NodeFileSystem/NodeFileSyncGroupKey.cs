@@ -2,7 +2,7 @@
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
-public record struct NodeFileUploadGroupKey
+public record struct NodeFileSyncGroupKey
 {
     public string NodeInfoId { get; init; }
     public NodeFileSyncConfigurationProtocol ConfigurationProtocol { get; init; }

@@ -14,7 +14,7 @@ public partial class DataQualityController : Controller
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _insertUpdateDeleteOpBatchQueue;
+    private readonly BatchQueue<AsyncOperation<FileRecordModel, bool>> _insertUpdateDeleteOpBatchQueue;
 
     private readonly ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel>
         _nodeStatisticsRecordRepoFactory;
@@ -24,16 +24,16 @@ public partial class DataQualityController : Controller
     private readonly ILogger<DataQualityController> _logger;
     private readonly IMemoryCache _memoryCache;
 
-    private readonly BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>
+    private readonly BatchQueue<AsyncOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>
         _queryOpBatchQueue;
 
     public DataQualityController(
         ILogger<DataQualityController> logger,
         ExceptionCounter exceptionCounter,
         IServiceProvider serviceProvider,
-        BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>
+        BatchQueue<AsyncOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>>
             queryOpBatchQueue,
-        BatchQueue<BatchQueueOperation<FileRecordModel, bool>> insertUpdateDeleteOpBatchQueue,
+        BatchQueue<AsyncOperation<FileRecordModel, bool>> insertUpdateDeleteOpBatchQueue,
         ApplicationRepositoryFactory<DataQualityNodeStatisticsRecordModel> nodeStatisticsRecordRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,

@@ -34,7 +34,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
     private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
     private readonly ExceptionCounter _exceptionCounter;
 
-    private readonly BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>
+    private readonly BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>
         _batchQueue;
 
     public ClientUpdateQueryQueueService(
@@ -42,7 +42,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
-        BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> batchQueue,
+        BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> batchQueue,
         IMemoryCache memoryCache
     )
     {
@@ -131,14 +131,14 @@ public class ClientUpdateQueryQueueService : BackgroundService
                             if (clientUpdateConfig == null)
                                 clientUpdateConfig = await QueryAsync(name, key, ipAddress);
                             clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
-                            op.SetResult(clientUpdateConfig);
+                            op.TrySetResult(clientUpdateConfig);
                             continue;
                             if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
                             {
                                 if (clientUpdateConfig == null)
                                     clientUpdateConfig = await QueryAsync(name, key, ipAddress);
                                 clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
-                                op.SetResult(clientUpdateConfig);
+                                op.TrySetResult(clientUpdateConfig);
                             }
                             else
                             {
@@ -151,17 +151,17 @@ public class ClientUpdateQueryQueueService : BackgroundService
                                 {
                                     if (clientUpdateConfig == null)
                                         clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                                    op.SetResult(clientUpdateConfig);
+                                    op.TrySetResult(clientUpdateConfig);
                                 }
                                 else
                                 {
-                                    op.SetResult(null);
+                                    op.TrySetResult(null);
                                 }
                             }
                         }
                         catch (Exception ex)
                         {
-                            op.SetException(ex);
+                            op.TrySetException(ex);
                             _exceptionCounter.AddOrUpdate(ex);
                             _logger.LogError(ex.ToString());
                         }

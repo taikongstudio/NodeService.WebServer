@@ -51,10 +51,10 @@ namespace NodeService.WebServer.Controllers
             var triggerTask = taskFlowTemplate.GetTriggerTask();
             var taskScheduleParameters = new TaskFlowScheduleParameters(TriggerSource.Schedule, taskFlowTemplate.Id);
             var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
-            var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
+            var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
             taskScheduleServiceParameters,
-              triggerTask.TriggerType == TaskTriggerType.Manual ? BatchQueueOperationKind.Delete : BatchQueueOperationKind.AddOrUpdate);
-            var queue = _serviceProvider.GetService<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
+              triggerTask.TriggerType == TaskTriggerType.Manual ? AsyncOperationKind.Delete : AsyncOperationKind.AddOrUpdate);
+            var queue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             await queue.EnqueueAsync(op, cancellationToken);
 
         }
@@ -63,12 +63,12 @@ namespace NodeService.WebServer.Controllers
             TaskFlowTemplateModel taskFlowTemplate,
             CancellationToken cancellationToken = default)
         {
-            var messageQueue = _serviceProvider.GetService<IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
+            var messageQueue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             var taskScheduleParameters = new TaskFlowScheduleParameters(TriggerSource.Schedule, taskFlowTemplate.Id);
             var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
-            var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
+            var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
                 taskScheduleServiceParameters,
-                BatchQueueOperationKind.Delete);
+                AsyncOperationKind.Delete);
             await messageQueue.EnqueueAsync(op, cancellationToken);
         }
 

@@ -14,8 +14,6 @@ namespace NodeService.WebServer.Services.NodeFileSystem
 {
     public static class NodeFileSystemHelper
     {
-       public   const string TempDirectory = "../NodeFileSystem/DecompressionTemp";
-
         public static string GetNodeFilePath(string host, string filePath)
         {
             return $"NodeFileSystem://{host}/{filePath}";
@@ -38,7 +36,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             var nodeFileName = nodeFileInfo.FullName;
             var length = nodeFileInfo.Length;
             var lastWriteTime = nodeFileInfo.LastWriteTime;
-            var exists = await inMemoryDbContext.NodeFileHittestResultCacheDbSet.Where(x => x.NodeInfoId == nodeInfoId && x.FullName == nodeFileName && x.Length == length && x.DateTime == lastWriteTime).AnyAsync();
+            var exists = await inMemoryDbContext.FileHittestResultCacheDbSet.Where(x => x.NodeInfoId == nodeInfoId && x.FullName == nodeFileName && x.Length == length && x.DateTime == lastWriteTime).AnyAsync();
             return exists;
         }
 
@@ -47,9 +45,9 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             var inMemoryDbContextFactory = serviceProvider.GetService<IDbContextFactory<InMemoryDbContext>>();
             using var inMemoryDbContext = inMemoryDbContextFactory.CreateDbContext();
             var count = 0;
-            await foreach (var item in inMemoryDbContext.NodeFileHittestResultCacheDbSet.AsAsyncEnumerable())
+            await foreach (var item in inMemoryDbContext.FileHittestResultCacheDbSet.AsAsyncEnumerable())
             {
-                inMemoryDbContext.NodeFileHittestResultCacheDbSet.Remove(item);
+                inMemoryDbContext.FileHittestResultCacheDbSet.Remove(item);
                 count++;
             }
             await inMemoryDbContext.SaveChangesAsync(cancellationToken);

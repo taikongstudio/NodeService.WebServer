@@ -161,7 +161,6 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddHostedService<PackageQueryQueueService>();
             builder.Services.AddHostedService<ClientUpdateQueryQueueService>();
             builder.Services.AddHostedService<ConfigurationQueryQueueService>();
-            builder.Services.AddHostedService<NodeFileSystemUploadService>();
             builder.Services.AddHostedService<NodeFileSystemSyncRecordService>();
         }
 
@@ -209,20 +208,19 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
-            builder.Services.AddSingleton<NodeBatchProcessQueueDictionary>();
+            builder.Services.AddSingleton<ConfigurationDatabase>();
+            builder.Services.AddSingleton<NodeFileSyncQueueDictionary>();
             builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
-            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>>(1024, TimeSpan.FromSeconds(5)));
+            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<PackageDownloadParameters, PackageDownloadResult>>(TimeSpan.FromSeconds(5), 1024));
 
-            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileUploadContext>>(256, TimeSpan.FromSeconds(1)));
-            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemWatchEvent, bool>>(1024, TimeSpan.FromSeconds(5)));
-            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemInfoIndexServiceParameters, NodeFileSystemInfoIndexServiceResult>>(1024, TimeSpan.FromSeconds(3)));
-            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<NodeFileSystemSyncRecordServiceParameters, NodeFileSystemSyncRecordServiceResult>>(128, TimeSpan.FromSeconds(3)));
-            builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(1024, TimeSpan.FromSeconds(5)));
+            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<NodeFileSyncRequest, NodeFileSyncRecordModel, NodeFileSyncContext>>(TimeSpan.FromSeconds(1), 256));
+            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>>(TimeSpan.FromSeconds(3), 2048));
+            builder.Services.AddSingleton(new BatchQueue<FileSystemWatchEventReportMessage>(TimeSpan.FromSeconds(5), 1024));
 
-            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>>(64,
-            TimeSpan.FromMilliseconds(300)));
-            builder.Services.AddSingleton(new BatchQueue<BatchQueueOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(64,
-                    TimeSpan.FromSeconds(1)));
+            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<ConfigurationQueryQueueServiceParameters, ConfigurationQueryQueueServiceResult>>(TimeSpan.FromMilliseconds(300),
+            64));
+            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(TimeSpan.FromSeconds(1),
+                    64));
 
         }
 

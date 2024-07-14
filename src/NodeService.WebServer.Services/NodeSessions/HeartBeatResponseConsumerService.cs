@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.NodeSessions;
@@ -12,55 +13,58 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public class HeartBeatResponseConsumerService : BackgroundService
 {
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatMessageBatchQueue;
-    private readonly ILogger<HeartBeatResponseConsumerService> _logger;
-    private readonly IMemoryCache _memoryCache;
-    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertyRepositoryFactory;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
-    private readonly WebServerCounter _webServerCounter;
-    private readonly IAsyncQueue<NotificationMessage> _notificationQueue;
-    private readonly WebServerOptions _webServerOptions;
-    private NodeSettings _nodeSettings;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatSessionMessageBatchQueue;
+    readonly BatchQueue<DataQueueService<NodeInfoModel>.AsyncOperation> _nodeInfoBatchQueue;
+    readonly ILogger<HeartBeatResponseConsumerService> _logger;
+    readonly IMemoryCache _memoryCache;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropertyRepositoryFactory;
+    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
+    readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
+    readonly INodeSessionService _nodeSessionService;
+    readonly WebServerCounter _webServerCounter;
+    readonly IAsyncQueue<NotificationMessage> _notificationQueue;
+
+    readonly WebServerOptions _webServerOptions;
+    NodeSettings _nodeSettings;
 
     public HeartBeatResponseConsumerService(
-        ExceptionCounter exceptionCounter,
         ILogger<HeartBeatResponseConsumerService> logger,
+        ExceptionCounter exceptionCounter,
+        IMemoryCache memoryCache,
+        WebServerCounter webServerCounter,
+        IOptionsMonitor<WebServerOptions> optionsMonitor,
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationQueue,
-        ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
+        ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
         ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertyRepositoryFactory,
-        BatchQueue<NodeHeartBeatSessionMessage> heartBeatMessageBatchBlock,
-        IMemoryCache memoryCache,
-        IOptionsMonitor<WebServerOptions> optionsMonitor,
-        WebServerCounter webServerCounter
-    )
+        BatchQueue<NodeHeartBeatSessionMessage> heartBeatSessionMessageBatchBlock,
+        BatchQueue<DataQueueService<NodeInfoModel>.AsyncOperation> nodeInfoBatchQueue)
     {
         _logger = logger;
         _nodeSessionService = nodeSessionService;
         _taskDefinitionRepositoryFactory = taskDefinitionRepositoryFactory;
-        _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
-        _hearBeatMessageBatchQueue = heartBeatMessageBatchBlock;
+        _hearBeatSessionMessageBatchQueue = heartBeatSessionMessageBatchBlock;
         _propertyBagRepositoryFactory = propertyBagRepositoryFactory;
         _nodePropertyRepositoryFactory = nodePropertyRepositoryFactory;
+        _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
         _memoryCache = memoryCache;
         _webServerOptions = optionsMonitor.CurrentValue;
         _nodeSettings = new NodeSettings();
         _exceptionCounter = exceptionCounter;
         _webServerCounter = webServerCounter;
         _notificationQueue = notificationQueue;
+        _nodeInfoBatchQueue = nodeInfoBatchQueue;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         if (!_webServerOptions.DebugProductionMode) await InvalidateAllNodeStatusAsync(cancellationToken);
 
-        await foreach (var array in _hearBeatMessageBatchQueue.ReceiveAllAsync(cancellationToken))
+        await foreach (var array in _hearBeatSessionMessageBatchQueue.ReceiveAllAsync(cancellationToken))
         {
             var stopwatch = new Stopwatch();
             var count = array.Length;
@@ -69,8 +73,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 stopwatch.Start();
                 await ProcessHeartBeatMessagesAsync(array, cancellationToken);
                 _logger.LogInformation(
-                    $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
-                _webServerCounter.HeartBeatAvailableCount.Value = _hearBeatMessageBatchQueue.AvailableCount;
+                    $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatSessionMessageBatchQueue.AvailableCount}");
+                _webServerCounter.HeartBeatAvailableCount.Value = _hearBeatSessionMessageBatchQueue.AvailableCount;
                 _webServerCounter.HeartBeatTotalProcessTimeSpan.Value += stopwatch.Elapsed;
                 _webServerCounter.HeartBeatConsumeCount.Value += (uint)count;
             }
@@ -82,7 +86,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             finally
             {
                 _logger.LogInformation(
-                    $"process {count} messages, spent:{stopwatch.Elapsed}, AvailableCount:{_hearBeatMessageBatchQueue.AvailableCount}");
+                    $"process {count} messages, spent:{stopwatch.Elapsed}, AvailableCount:{_hearBeatSessionMessageBatchQueue.AvailableCount}");
                 stopwatch.Reset();
             }
         }
@@ -104,7 +108,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             {
                 node.Status = NodeStatus.Offline;
             }
-            foreach (var array in nodeList.Chunk(50))
+            foreach (var array in nodeList.Chunk(40))
             {
                 await nodeRepo.UpdateRangeAsync(array, cancellationToken);
             }
@@ -132,7 +136,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             using var nodePropsRepo = _nodePropertyRepositoryFactory.CreateRepository();
             await RefreshNodeSettingsAsync(cancellationToken);
             var nodeIdList = array.Select(GetNodeId);
-            var nodesList = await nodeInfoRepo.ListAsync(
+            var nodeList = await nodeInfoRepo.ListAsync(
                 new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.All,
@@ -142,7 +146,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             foreach (var hearBeatSessionMessage in array)
             {
                 NodeInfoModel? nodeInfo = null;
-                foreach (var item in nodesList)
+                foreach (var item in nodeList)
                 {
                     if (item.Id == hearBeatSessionMessage.NodeSessionId.NodeId.Value)
                     {
@@ -168,10 +172,9 @@ public class HeartBeatResponseConsumerService : BackgroundService
             }
 
             stopwatch.Start();
-            foreach (var nodeChangedArray in nodesList.Chunk(10))
-            {
-                await nodeInfoRepo.UpdateRangeAsync(nodeChangedArray, cancellationToken);
-            }
+            var op = new DataQueueService<NodeInfoModel>.AsyncOperation(nodeList.ToImmutableArray(), AsyncOperationKind.AddOrUpdate);
+            await _nodeInfoBatchQueue.SendAsync(op, cancellationToken);
+            await op.WaitAsync(cancellationToken);
             stopwatch.Stop();
         }
         catch (Exception ex)
@@ -270,8 +273,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     }
 
                 }
-
-                AnalysisNodeInfo(nodeInfo);
             }
 
 
@@ -299,10 +300,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError($"{ex}");
         }
-    }
-
-    private void AnalysisNodeInfo(NodeInfoModel nodeInfo)
-    {
     }
 
     private void AnalysisNodeProcessInfoList(NodeInfoModel nodeInfo, ProcessInfo[] processInfoList)

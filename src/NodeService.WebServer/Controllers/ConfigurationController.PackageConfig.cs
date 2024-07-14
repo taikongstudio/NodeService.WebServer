@@ -34,11 +34,11 @@ public partial class ConfigurationController
     {
         ArgumentException.ThrowIfNullOrEmpty(packageId);
         var paramters = new PackageDownloadParameters(packageId);
-        var op = new BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>(
+        var op = new AsyncOperation<PackageDownloadParameters, PackageDownloadResult>(
             paramters,
-            BatchQueueOperationKind.Query,
-             BatchQueueOperationPriority.Normal);
-        var queue = _serviceProvider.GetService<BatchQueue<BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>>>();
+            AsyncOperationKind.Query,
+             AsyncOperationPriority.Normal);
+        var queue = _serviceProvider.GetService<BatchQueue<AsyncOperation<PackageDownloadParameters, PackageDownloadResult>>>();
         await queue.SendAsync(op);
         var serviceResult = await op.WaitAsync(cancellationToken);
         if (serviceResult.Contents == null)

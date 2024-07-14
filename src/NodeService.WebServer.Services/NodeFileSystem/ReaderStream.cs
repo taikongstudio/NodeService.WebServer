@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.NodeFileSystem
 {
-    public class PipeReaderStream : Stream
+    public class ReaderStream : Stream
     {
         readonly long _length;
         long _position;
         readonly Stream _stream;
         bool _isDisposed;
 
-        public PipeReaderStream(Stream  stream, long length)
+        public ReaderStream(Stream  stream, long length)
         {
             _stream = stream;
             _length = length;

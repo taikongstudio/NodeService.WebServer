@@ -1,6 +1,6 @@
 ﻿namespace NodeService.WebServer.Services.NodeFileSystem
 {
-    public record struct NodeFileSystemSyncRecordServiceAddOrUpdateResult
+    public record struct SyncRecordServiceAddOrUpdateResult
     {
         public int AddedCount { get; init; }
 

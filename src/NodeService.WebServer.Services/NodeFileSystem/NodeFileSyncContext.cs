@@ -4,27 +4,31 @@ using System.IO.Pipelines;
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
-public class NodeFileUploadContext
+public class NodeFileSyncContext
 {
     readonly CancellationTokenSource _cts;
 
     readonly TaskCompletionSource<NodeFileSyncStatus> _tcs;
 
 
-    public NodeFileUploadContext(
-    NodeFileSyncRecordModel syncRecord,
-    Stream stream)
+    public NodeFileSyncContext(
+        NodeFileSyncRequest request,
+        NodeFileSyncRecordModel record,
+        Stream stream)
     {
-        SyncRecord = syncRecord;
+        Request = request;
+        Record = record;
         Stream = stream;
         _tcs = new TaskCompletionSource<NodeFileSyncStatus>();
         _cts = new CancellationTokenSource();
     }
 
 
-    public NodeFileSyncRecordModel SyncRecord { get; private set; }
+    public NodeFileSyncRecordModel Record { get; private set; }
 
     public Stream Stream { get; private set; }
+
+    public NodeFileSyncRequest Request { get; private set; }
 
     public bool IsStorageNotExists { get; set; }
 

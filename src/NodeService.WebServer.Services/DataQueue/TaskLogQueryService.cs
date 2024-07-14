@@ -55,7 +55,7 @@ public class TaskLogQueryService : BackgroundService
 {
     readonly ExceptionCounter _exceptionCounter;
     readonly ILogger<TaskLogQueryService> _logger;
-    readonly BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _queryBatchQueue;
+    readonly BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _queryBatchQueue;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
     readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepoFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
@@ -66,7 +66,7 @@ public class TaskLogQueryService : BackgroundService
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepoFactory,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepoFactory,
-        BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> queryBatchQueue
+        BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> queryBatchQueue
     )
     {
         _exceptionCounter = exceptionCounter;
@@ -96,7 +96,7 @@ public class TaskLogQueryService : BackgroundService
                 using var taskDefinitionRepo = _taskDefinitionRepoFactory.CreateRepository();
                 using var taskExecutionInstanceRepo = _taskExecutionInstanceRepoFactory.CreateRepository();
                 using var taskLogRepo = _taskLogRepoFactory.CreateRepository();
-                foreach (var op in array.Where(static x => x.Kind == BatchQueueOperationKind.Query).OrderByDescending(static x => x.Priority))
+                foreach (var op in array.Where(static x => x.Kind == AsyncOperationKind.Query).OrderByDescending(static x => x.Priority))
                 {
                     try
                     {
@@ -110,7 +110,7 @@ public class TaskLogQueryService : BackgroundService
                     }
                     catch (Exception ex)
                     {
-                        op.SetException(ex);
+                        op.TrySetException(ex);
                         _exceptionCounter.AddOrUpdate(ex);
                         _logger.LogError(ex.ToString());
                     }
@@ -131,7 +131,7 @@ public class TaskLogQueryService : BackgroundService
         IRepository<TaskDefinitionModel> taskDefinitionRepo,
         IRepository<TaskLogModel> taskLogRepo,
         IRepository<TaskExecutionInstanceModel> taskExecutionInstanceRepo,
-        BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult> op,
+        AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult> op,
         CancellationToken cancellationToken = default)
     {
 
@@ -144,7 +144,7 @@ public class TaskLogQueryService : BackgroundService
             var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
             if (taskExecutionInstance == null)
             {
-                op.SetException(new Exception("Could not found task execution instance"));
+                op.TrySetException(new Exception("Could not found task execution instance"));
                 return;
             }
             var logFileName = $"{taskExecutionInstance.Name}.log";
@@ -152,7 +152,7 @@ public class TaskLogQueryService : BackgroundService
             var taskInfoLog = await taskLogRepo.GetByIdAsync(serviceParameters.TaskExecutionInstanceId, cancellationToken);
             if (taskInfoLog == null)
             {
-                op.SetException(new Exception("Could not found task log"));
+                op.TrySetException(new Exception("Could not found task log"));
                 return;
             }
             else
@@ -166,7 +166,7 @@ public class TaskLogQueryService : BackgroundService
                     serviceResult.TotalCount = taskInfoLog.ActualSize;
                     serviceResult.PageIndex = taskInfoLog.PageIndex;
                     serviceResult.PageSize = taskInfoLog.PageSize;
-                    op.SetResult(serviceResult);
+                    op.TrySetResult(serviceResult);
                     var pageIndex = 1;
                     while (!op.CancellationToken.IsCancellationRequested)
                     {
@@ -195,14 +195,14 @@ public class TaskLogQueryService : BackgroundService
 
                     if (taskLog == null)
                     {
-                        op.SetResult(serviceResult);
+                        op.TrySetResult(serviceResult);
                     }
                     else
                     {
                         serviceResult.TotalCount = taskInfoLog.ActualSize;
                         serviceResult.PageIndex = taskLog.PageIndex;
                         serviceResult.PageSize = taskLog.ActualSize;
-                        op.SetResult(serviceResult);
+                        op.TrySetResult(serviceResult);
                         if (taskLog != null)
                         {
                             foreach (var taskLogEntry in taskLog.Value.LogEntries)
@@ -220,7 +220,7 @@ public class TaskLogQueryService : BackgroundService
         }
         catch (Exception ex)
         {
-            op.SetException(ex);
+            op.TrySetException(ex);
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }

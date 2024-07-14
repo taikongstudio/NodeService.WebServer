@@ -228,7 +228,7 @@ public class NodeServiceImpl : NodeServiceBase
     }
 
 
-    public override async Task<Empty> SendFileSystemListDirectoryResponse(
+    public override async Task<Google.Protobuf.WellKnownTypes.Empty> SendFileSystemListDirectoryResponse(
         FileSystemListDirectoryResponse response,
         ServerCallContext context)
     {

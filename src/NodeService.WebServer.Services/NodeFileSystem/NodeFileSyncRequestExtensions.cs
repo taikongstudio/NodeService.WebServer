@@ -32,12 +32,15 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             };
         }
 
-        public static NodeFileUploadContext CreateNodeFileUploadContext(
-                                this NodeFileSyncRequest nodeFileSyncRequest,
+        public static NodeFileSyncContext CreateNodeFileUploadContext(
+                                this NodeFileSyncRequest request,
                                 Stream stream)
         {
-            var syncRecord = CreateNodeFileSyncRecord(nodeFileSyncRequest);
-            return new NodeFileUploadContext(syncRecord, stream);
+            var syncRecord = CreateNodeFileSyncRecord(request);
+            return new NodeFileSyncContext(
+                request,
+                syncRecord,
+                stream);
         }
 
     }

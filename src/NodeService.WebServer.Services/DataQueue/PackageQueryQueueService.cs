@@ -38,7 +38,7 @@ namespace NodeService.WebServer.Services.DataQueue
         readonly ILogger<PackageQueryQueueService> _logger;
         private readonly IServiceProvider _serviceProvider;
         readonly ExceptionCounter _exceptionCounter;
-        readonly BatchQueue<BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>> _batchQueue;
+        readonly BatchQueue<AsyncOperation<PackageDownloadParameters, PackageDownloadResult>> _batchQueue;
         readonly ApplicationRepositoryFactory<PackageConfigModel> _packageRepoFactory;
         readonly IMemoryCache _memoryCache;
 
@@ -47,7 +47,7 @@ namespace NodeService.WebServer.Services.DataQueue
             ExceptionCounter exceptionCounter,
             IMemoryCache memoryCache,
             IServiceProvider serviceProvider,
-            BatchQueue<BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>> batchQueue,
+            BatchQueue<AsyncOperation<PackageDownloadParameters, PackageDownloadResult>> batchQueue,
             ApplicationRepositoryFactory<PackageConfigModel> packageRepoFactory)
         {
             _logger = logger;
@@ -74,7 +74,7 @@ namespace NodeService.WebServer.Services.DataQueue
             }
         }
 
-        async ValueTask DownloadPackageAsync(IGrouping<string, BatchQueueOperation<PackageDownloadParameters, PackageDownloadResult>> packageQueryGroup)
+        async ValueTask DownloadPackageAsync(IGrouping<string, AsyncOperation<PackageDownloadParameters, PackageDownloadResult>> packageQueryGroup)
         {
             var packageId = packageQueryGroup.Key;
             try
@@ -89,7 +89,7 @@ namespace NodeService.WebServer.Services.DataQueue
                     {
                         foreach (var op in packageQueryGroup)
                         {
-                            op.SetResult(new PackageDownloadResult(null));
+                            op.TrySetResult(new PackageDownloadResult(null));
                         }
                     }
                     using var stream = new MemoryStream();
@@ -110,7 +110,7 @@ namespace NodeService.WebServer.Services.DataQueue
                 }, TimeSpan.FromMinutes(10));
                 foreach (var op in packageQueryGroup)
                 {
-                    op.SetResult(new PackageDownloadResult(fileContents));
+                    op.TrySetResult(new PackageDownloadResult(fileContents));
                 }
             }
             catch (Exception ex)

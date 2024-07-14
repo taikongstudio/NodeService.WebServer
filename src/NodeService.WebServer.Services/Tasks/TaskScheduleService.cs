@@ -73,13 +73,13 @@ public partial  class TaskScheduleService : BackgroundService
     readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
     readonly TaskSchedulerDictionary _taskSchedulerDictionary;
 
-    readonly IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>> _taskScheduleServiceParametersQueue;
+    readonly IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>> _taskScheduleServiceParametersQueue;
     IScheduler Scheduler;
 
     public TaskScheduleService(
         ILogger<TaskScheduleService> logger,
         IJobFactory  jobFactory,
-        IAsyncQueue<BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>> taskScheduleServiceParametersQueue,
+        IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>> taskScheduleServiceParametersQueue,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepoFactory,
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
         JobScheduler jobScheduler,

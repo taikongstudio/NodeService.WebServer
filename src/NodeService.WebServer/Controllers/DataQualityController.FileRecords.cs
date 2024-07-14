@@ -16,11 +16,11 @@ public partial class DataQualityController
         try
         {
             var fileRecordQueryOperation =
-                new BatchQueueOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>(
+                new AsyncOperation<FileRecordBatchQueryParameters, ListQueryResult<FileRecordModel>>(
                     new FileRecordBatchQueryParameters(queryParameters,
                         new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize)
                     ),
-                    BatchQueueOperationKind.Query);
+                    AsyncOperationKind.Query);
             await _queryOpBatchQueue.SendAsync(fileRecordQueryOperation, cancellationToken);
             var queryResult = await fileRecordQueryOperation.WaitAsync(cancellationToken);
             apiResponse.SetResult(queryResult);
@@ -78,7 +78,7 @@ public partial class DataQualityController
         try
         {
             var fileRecordOperation =
-                new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.AddOrUpdate);
+                new AsyncOperation<FileRecordModel, bool>(model, AsyncOperationKind.AddOrUpdate);
             await _insertUpdateDeleteOpBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
             await fileRecordOperation.WaitAsync(cancellationToken);
         }
@@ -103,7 +103,7 @@ public partial class DataQualityController
         try
         {
             var fileRecordOperation =
-                new BatchQueueOperation<FileRecordModel, bool>(model, BatchQueueOperationKind.Delete);
+                new AsyncOperation<FileRecordModel, bool>(model, AsyncOperationKind.Delete);
             await _insertUpdateDeleteOpBatchQueue.SendAsync(fileRecordOperation, cancellationToken);
             await fileRecordOperation.WaitAsync(cancellationToken);
         }

@@ -6,5 +6,9 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.NodeFileSystem
 {
+    public class NodeFileSyncQueueDictionary : ConcurrentDictionary<string, NodeFileSyncQueue>
+    {
+       
+    }
 
 }

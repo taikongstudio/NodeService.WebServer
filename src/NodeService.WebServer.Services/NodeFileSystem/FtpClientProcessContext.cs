@@ -1,66 +1,102 @@
-﻿using FluentFTP.Helpers;
+﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.Infrastructure.NodeFileSystem;
+using NodeService.WebServer.Data.Entities;
+using NodeService.WebServer.Data;
+using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataQueue;
+using System;
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
 public class FtpClientProcessContext : ProcessContext
 {
 
-    readonly AsyncFtpClient _asyncFtpClient;
-    readonly BatchQueue<NodeFileSyncRecordModel> _actionBlock;
+    readonly BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>> _syncRecordQueryQueue;
+    readonly IDbContextFactory<InMemoryDbContext> _dbContextFactory;
     readonly ILogger<FtpClientProcessContext> _logger;
     readonly ExceptionCounter _exceptionCounter;
+    readonly IServiceProvider _serviceProvider;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
+    readonly ConfigurationDatabase _configurationDatabase;
 
+    [ActivatorUtilitiesConstructor]
     public FtpClientProcessContext(
         ILogger<FtpClientProcessContext> logger,
         ExceptionCounter exceptionCounter,
-        AsyncFtpClient asyncFtpClient,
-        BatchQueue<NodeFileSyncRecordModel> actionBlock)
+        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
+        ConfigurationDatabase configurationDatabase,
+        IDbContextFactory<InMemoryDbContext> dbContextFactory,
+        BatchQueue<AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>> syncRecordQueryQueue)
     {
-        _logger = logger;
+        _nodeInfoRepoFactory = nodeInfoRepoFactory;
+        _configurationDatabase = configurationDatabase;
         _exceptionCounter = exceptionCounter;
-        _asyncFtpClient = asyncFtpClient;
-        _actionBlock = actionBlock;
+        _logger = logger;
+        _syncRecordQueryQueue = syncRecordQueryQueue;
+        _dbContextFactory = dbContextFactory;
     }
 
-    async ValueTask DisposeFtpClientAsync()
+    AsyncFtpClient CreateFtpClient(FtpConfiguration ftpConfig)
     {
-        if (this._asyncFtpClient == null)
-        {
-            return;
-        }
-        await _asyncFtpClient.Disconnect();
-        _asyncFtpClient.Dispose();
+        var asyncFtpClient = new AsyncFtpClient(ftpConfig.Host, ftpConfig.Username, ftpConfig.Password, ftpConfig.Port,
+                            new FtpConfig()
+                            {
+                                ConnectTimeout = ftpConfig.ConnectTimeout,
+                                ReadTimeout = ftpConfig.ReadTimeout,
+                                DataConnectionReadTimeout = ftpConfig.DataConnectionReadTimeout,
+                                DataConnectionConnectTimeout = ftpConfig.DataConnectionConnectTimeout,
+                                DataConnectionType = (FtpDataConnectionType)ftpConfig.DataConnectionType
+                            });
+        return asyncFtpClient;
     }
 
-    public override async ValueTask DisposeAsync()
-    {
-        await DisposeFtpClientAsync();
-    }
-
-    public override async ValueTask ProcessAsync(NodeFileUploadContext uploadContext, CancellationToken cancellationToken = default)
+    public override async ValueTask ProcessAsync(NodeFileSyncContext syncContext, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (cancellationToken.IsCancellationRequested)
+            using var nodeInfoRepo = _nodeInfoRepoFactory.CreateRepository();
+            var nodeInfo = await nodeInfoRepo.GetByIdAsync(syncContext.Request.NodeInfoId);
+            if (nodeInfo == null)
             {
-                uploadContext.SyncRecord.Status = NodeFileSyncStatus.Canceled;
-                uploadContext.TrySetResult(NodeFileSyncStatus.Canceled);
+                syncContext.Record.ErrorCode = -1;
+                syncContext.Record.Message = "node info not found";
+                syncContext.Record.Status = NodeFileSyncStatus.Faulted;
                 return;
             }
-            ArgumentNullException.ThrowIfNull(uploadContext);
-            if (!_asyncFtpClient.IsConnected)
+
+            var rsp = await _configurationDatabase.QueryConfigurationAsync<FtpConfigModel>(
+                syncContext.Request.ConfigurationId,
+                cancellationToken: cancellationToken);
+
+
+            if (rsp.ErrorCode != 0)
             {
-                await _asyncFtpClient.AutoConnect();
+                syncContext.Record.ErrorCode = -1;
+                syncContext.Record.Message = "ftp configuration not found";
+                syncContext.Record.Status = NodeFileSyncStatus.Faulted;
+                return;
             }
-            var ftpObjectInfo = await _asyncFtpClient.GetObjectInfo(
-                uploadContext.SyncRecord.StoragePath,
+            var ftpConfig = rsp.Result;
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                syncContext.Record.Status = NodeFileSyncStatus.Canceled;
+                syncContext.TrySetResult(NodeFileSyncStatus.Canceled);
+                return;
+            }
+            using var ftpClient = CreateFtpClient(ftpConfig.Value);
+            if (!ftpClient.IsConnected)
+            {
+                await ftpClient.AutoConnect();
+            }
+            var ftpObjectInfo = await ftpClient.GetObjectInfo(
+                syncContext.Record.StoragePath,
                 true);
             NodeFileInfo? ftpNodeFileInfo = null;
             if (ftpObjectInfo == null)
             {
-                uploadContext.IsStorageNotExists = true;
+                syncContext.IsStorageNotExists = true;
             }
             else
             {
@@ -71,64 +107,81 @@ public class FtpClientProcessContext : ProcessContext
                 };
             }
 
-            if (CompareFileInfo(uploadContext.SyncRecord.FileInfo, ftpNodeFileInfo))
+            if (CompareFileInfo(syncContext.Record.FileInfo, ftpNodeFileInfo))
             {
-                uploadContext.SyncRecord.Status = NodeFileSyncStatus.Skipped;
-                uploadContext.TrySetResult(NodeFileSyncStatus.Skipped);
+                syncContext.Record.Status = NodeFileSyncStatus.Skipped;
+                syncContext.TrySetResult(NodeFileSyncStatus.Skipped);
             }
             else
             {
-                uploadContext.SyncRecord.UtcBeginTime = DateTime.UtcNow;
-                uploadContext.SyncRecord.Status = NodeFileSyncStatus.Processing;
-                var lambdaProgress = new LambdaProgress<FtpProgress>((ftpProgress) =>
-                {
-                    uploadContext.SyncRecord.Progress = ftpProgress.Progress;
-                    if (ftpProgress.Progress < 100)
-                    {
-                        uploadContext.SyncRecord.TransferSpeed = ftpProgress.TransferSpeed;
-                    }
-                    uploadContext.SyncRecord.EstimatedTimeSpan = ftpProgress.ETA;
-                    uploadContext.SyncRecord.TransferredBytes = ftpProgress.TransferredBytes;
+                syncContext.Record.UtcBeginTime = DateTime.UtcNow;
+                syncContext.Record.Status = NodeFileSyncStatus.Processing;
+                await using var progressBlock = new ProgressBlock<FtpProgress>(async (ftpProgress, token) =>
+                  {
+                      syncContext.Record.Progress = ftpProgress.Progress;
+                      if (ftpProgress.Progress < 100)
+                      {
+                          syncContext.Record.TransferSpeed = ftpProgress.TransferSpeed;
+                      }
+                      syncContext.Record.EstimatedTimeSpan = ftpProgress.ETA;
+                      syncContext.Record.TransferredBytes = ftpProgress.TransferredBytes;
 
-                    _actionBlock.Post(uploadContext.SyncRecord);
-                });
+                      await AddOrUpdateSyncRecordAsync(syncContext, cancellationToken);
 
-                var ftpStatus = await _asyncFtpClient.UploadStream(
-                    uploadContext.Stream,
-                    uploadContext.SyncRecord.StoragePath,
+                  });
+
+                var ftpStatus = await ftpClient.UploadStream(
+                    syncContext.Stream,
+                    syncContext.Record.StoragePath,
                     FtpRemoteExists.Overwrite,
                     true,
-                    lambdaProgress,
+                    progressBlock,
                     cancellationToken);
                 if (ftpStatus == FtpStatus.Success)
                 {
-                    await _asyncFtpClient.SetModifiedTime(
-                        uploadContext.SyncRecord.StoragePath,
-                        uploadContext.SyncRecord.FileInfo.LastWriteTime,
+                    await ftpClient.SetModifiedTime(
+                        syncContext.Record.StoragePath,
+                        syncContext.Record.FileInfo.LastWriteTime,
                         cancellationToken);
-                    uploadContext.SyncRecord.Status = NodeFileSyncStatus.Processed;
-                    uploadContext.TrySetResult(NodeFileSyncStatus.Processed);
+                    syncContext.Record.Status = NodeFileSyncStatus.Processed;
+                    syncContext.TrySetResult(NodeFileSyncStatus.Processed);
                 }
                 else
                 {
-                    uploadContext.SyncRecord.Status = NodeFileSyncStatus.Faulted;
-                    uploadContext.TrySetResult(NodeFileSyncStatus.Faulted);
+                    syncContext.Record.Status = NodeFileSyncStatus.Faulted;
+                    syncContext.TrySetResult(NodeFileSyncStatus.Faulted);
                 }
             }
         }
         catch (Exception ex)
         {
-            uploadContext.SyncRecord.Status = NodeFileSyncStatus.Faulted;
-            uploadContext.SyncRecord.ErrorCode = ex.HResult;
-            uploadContext.SyncRecord.Message = ex.ToString();
-            uploadContext.TrySetException(ex);
+            syncContext.Record.Status = NodeFileSyncStatus.Faulted;
+            syncContext.Record.ErrorCode = ex.HResult;
+            syncContext.Record.Message = ex.ToString();
+            syncContext.TrySetException(ex);
             _logger.LogError(ex.ToString());
-            _exceptionCounter.AddOrUpdate(ex, uploadContext.SyncRecord.NodeInfoId);
+            _exceptionCounter.AddOrUpdate(ex, syncContext.Record.NodeInfoId);
         }
         finally
         {
-            uploadContext.SyncRecord.UtcEndTime = DateTime.UtcNow;
+            syncContext.Record.UtcEndTime = DateTime.UtcNow;
+            await CacheHittestResultAsync(
+                syncContext,
+                cancellationToken);
+
+            await AddOrUpdateSyncRecordAsync(
+                syncContext,
+                cancellationToken);
         }
+    }
+
+    async ValueTask AddOrUpdateSyncRecordAsync(
+        NodeFileSyncContext uploadContext,
+        CancellationToken cancellationToken)
+    {
+        var serviceParameters = new SyncRecordServiceParameters(new AddOrUpdateSyncRecordParameters(uploadContext.Record));
+        var op = new AsyncOperation<SyncRecordServiceParameters, SyncRecordServiceResult>(serviceParameters, AsyncOperationKind.AddOrUpdate, AsyncOperationPriority.Normal, cancellationToken);
+        await _syncRecordQueryQueue.SendAsync(op, cancellationToken);
     }
 
     static bool CompareFileInfo(NodeFileInfo? oldFileInfo, NodeFileInfo? newFileInfo)
@@ -152,26 +205,49 @@ public class FtpClientProcessContext : ProcessContext
         }
     }
 
-    public override async ValueTask<bool> IdleAsync(CancellationToken cancellationToken = default)
+    public override ValueTask DisposeAsync()
     {
-        try
+        return ValueTask.CompletedTask;
+    }
+
+    async ValueTask CacheHittestResultAsync(
+        NodeFileSyncContext syncContext,
+        CancellationToken cancellationToken = default)
+    {
+        using var dbContext = _dbContextFactory.CreateDbContext();
+        var cache = await dbContext.FileHittestResultCacheDbSet.FindAsync(
+            [
+                syncContext.Record.NodeInfoId,
+                syncContext.Record.FileInfo.FullName
+            ], cancellationToken);
+        if (cache == null)
         {
-            if (_asyncFtpClient.IsConnected)
+            cache = new NodeFileHittestResultCache()
             {
-                var workingDirectory = await _asyncFtpClient.GetWorkingDirectory(cancellationToken);
-                await _asyncFtpClient.DirectoryExists(workingDirectory, cancellationToken);
-                return true;
+                NodeInfoId = syncContext.Record.NodeInfoId,
+                FullName = syncContext.Record.FullName,
+                DateTime = syncContext.Record.FileInfo.LastWriteTime,
+                Length = syncContext.Record.FileInfo.Length,
+                CreateDateTime = DateTime.UtcNow,
+                ModifiedDateTime = DateTime.UtcNow
+            };
+            await dbContext.FileHittestResultCacheDbSet.AddAsync(cache, cancellationToken);
+        }
+        else
+        {
+            if (syncContext.IsStorageNotExists && syncContext.Record.Status != NodeFileSyncStatus.Processed)
+            {
+                dbContext.FileHittestResultCacheDbSet.Remove(cache);
             }
             else
             {
-                await _asyncFtpClient.AutoConnect(cancellationToken);
+                cache.DateTime = syncContext.Record.FileInfo.LastWriteTime;
+                cache.Length = syncContext.Record.FileInfo.Length;
+                cache.ModifiedDateTime = DateTime.UtcNow;
+                dbContext.FileHittestResultCacheDbSet.Update(cache);
             }
+
         }
-        catch (Exception ex)
-        {
-            _exceptionCounter.AddOrUpdate(ex, _asyncFtpClient.Host);
-            _logger.LogError(ex.ToString());
-        }
-        return false;
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

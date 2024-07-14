@@ -11,19 +11,19 @@ namespace NodeService.WebServer.Services.Tasks
 {
     public partial class TaskScheduleService
     {
-        async ValueTask ProcessTaskFlowScheduleParametersAsync(BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult> op, CancellationToken cancellationToken)
+        async ValueTask ProcessTaskFlowScheduleParametersAsync(AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult> op, CancellationToken cancellationToken)
         {
             switch (op.Kind)
             {
-                case BatchQueueOperationKind.None:
+                case AsyncOperationKind.None:
                     break;
-                case BatchQueueOperationKind.AddOrUpdate:
+                case AsyncOperationKind.AddOrUpdate:
                     await ScheduleTaskFlowAsync(op.Argument.Parameters.AsT1, cancellationToken);
                     break;
-                case BatchQueueOperationKind.Delete:
+                case AsyncOperationKind.Delete:
                     await DeleteAllTaskScheduleAsync(op.Argument.Parameters.AsT1.TaskFlowTemplateId);
                     break;
-                case BatchQueueOperationKind.Query:
+                case AsyncOperationKind.Query:
                     break;
                 default:
                     break;
@@ -113,9 +113,9 @@ namespace NodeService.WebServer.Services.Tasks
                     }
                     var taskFlowScheduleParameters = new TaskFlowScheduleParameters(TriggerSource.Schedule, taskFlowTemplate.Id);
                     var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskFlowScheduleParameters);
-                    var op = new BatchQueueOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
+                    var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
                         taskScheduleServiceParameters,
-                        BatchQueueOperationKind.AddOrUpdate);
+                        AsyncOperationKind.AddOrUpdate);
                     await _taskScheduleServiceParametersQueue.EnqueueAsync(op, cancellationToken);
                 }
 

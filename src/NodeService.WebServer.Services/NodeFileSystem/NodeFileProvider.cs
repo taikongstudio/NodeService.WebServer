@@ -12,7 +12,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
     {
         public IDirectoryContents GetDirectoryContents(string subpath)
         {
-            return new NodeRootDirectoryContents();
+            throw new NotImplementedException();
         }
 
         public IFileInfo GetFileInfo(string subpath)

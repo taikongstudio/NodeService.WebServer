@@ -1,14 +1,8 @@
-﻿
-
-
-
-using Google.Protobuf.WellKnownTypes;
-using Microsoft.EntityFrameworkCore;
-using NodeService.Infrastructure.DataModels;
+﻿using Ardalis.Specification;
 
 namespace NodeService.WebServer.Data.Repositories;
 
-public class EfRepository<TEntity, TDbContext> :
+public class EFRepository<TEntity, TDbContext> :
     RepositoryBase<TEntity>,
     IReadRepository<TEntity>,
     IRepository<TEntity>,
@@ -16,12 +10,12 @@ public class EfRepository<TEntity, TDbContext> :
     where TEntity : class, IAggregateRoot
     where TDbContext : DbContext
 {
-    readonly DbContext _dbContext;
+    readonly TDbContext _dbContext;
 
     readonly Stopwatch _stopwatch;
 
 
-    public EfRepository(TDbContext dbContext) : base(dbContext)
+    public EFRepository(TDbContext dbContext) : base(dbContext)
     {
         _dbContext = dbContext;
         _stopwatch = new Stopwatch();
@@ -31,9 +25,11 @@ public class EfRepository<TEntity, TDbContext> :
 
     public int LastSaveChangesCount { get; private set; }
 
-    public DbContext DbContext => _dbContext;
+    public TDbContext DbContext => _dbContext;
 
-    public TimeSpan TimeSpan { get; private set; }
+    public TimeSpan LastOperationTimeSpan { get; private set; }
+
+    DbContext IRepository<TEntity>.DbContext => _dbContext;
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -41,6 +37,17 @@ public class EfRepository<TEntity, TDbContext> :
         var entries = this.DbContext.ChangeTracker.Entries<JsonRecordBase>();
         foreach (var entry in entries)
         {
+            switch (entry.State)
+            {
+                case EntityState.Modified:
+                case EntityState.Added:
+                    break;
+                case EntityState.Detached:
+                case EntityState.Unchanged:
+                case EntityState.Deleted:
+                default:
+                    continue;
+            }
             if (entry.Entity is not TEntity value)
             {
                 continue;
@@ -49,13 +56,16 @@ public class EfRepository<TEntity, TDbContext> :
         }
         LastSaveChangesCount = await base.SaveChangesAsync(cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
+        LastOperationTimeSpan = _stopwatch.Elapsed;
         return LastSaveChangesCount;
     }
 
-    public override Task<int> CountAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> CountAsync(CancellationToken cancellationToken = default)
     {
-        return base.CountAsync(cancellationToken);
+        _stopwatch.Restart();
+        var count = await base.CountAsync(cancellationToken);
+        _stopwatch.Stop();
+        return count;
     }
 
     public override Task UpdateAsync(TEntity entity, CancellationToken cancellationToken = default)
@@ -79,7 +89,9 @@ public class EfRepository<TEntity, TDbContext> :
         }
     }
 
-    public override Task UpdateRangeAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    public override Task UpdateRangeAsync(
+        IEnumerable<TEntity> entities,
+        CancellationToken cancellationToken = default)
     {
         foreach (var entity in entities)
         {
@@ -88,13 +100,15 @@ public class EfRepository<TEntity, TDbContext> :
         return base.UpdateRangeAsync(entities, cancellationToken);
     }
 
-    public override async Task<TEntity> AddAsync(TEntity entity, CancellationToken cancellationToken = default)
+    public override async Task<TEntity> AddAsync(
+        TEntity entity,
+        CancellationToken cancellationToken = default)
     {
-        OnEntityAdd(entity);
         _stopwatch.Restart();
+        OnEntityAdd(entity);
         var value = await base.AddAsync(entity, cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
+        LastOperationTimeSpan = _stopwatch.Elapsed;
         return value;
     }
 
@@ -113,7 +127,9 @@ public class EfRepository<TEntity, TDbContext> :
         }
     }
 
-    public override Task<IEnumerable<TEntity>> AddRangeAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    public override Task<IEnumerable<TEntity>> AddRangeAsync(
+        IEnumerable<TEntity> entities,
+        CancellationToken cancellationToken = default)
     {
         foreach (var entity in entities)
         {
@@ -127,88 +143,162 @@ public class EfRepository<TEntity, TDbContext> :
         _stopwatch.Restart();
         var list = await base.ListAsync(cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
+        LastOperationTimeSpan = _stopwatch.Elapsed;
         return list;
     }
 
-    public override async Task<List<TEntity>> ListAsync(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public override async Task<List<TEntity>> ListAsync(
+        ISpecification<TEntity> specification,
+        CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
         var list = await base.ListAsync(specification, cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
+        LastOperationTimeSpan = _stopwatch.Elapsed;
         return list;
     }
 
-    public override async Task<List<TResult>> ListAsync<TResult>(ISpecification<TEntity, TResult> specification, CancellationToken cancellationToken = default)
+    public override async Task<List<TResult>> ListAsync<TResult>(
+        ISpecification<TEntity, TResult> specification,
+        CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
         var list = await base.ListAsync(specification, cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
+        LastOperationTimeSpan = _stopwatch.Elapsed;
         return list;
     }
 
-    public override async Task<TEntity?> GetByIdAsync<TId>(TId id, CancellationToken cancellationToken = default)
+    public override async Task<TEntity?> GetByIdAsync<TId>(
+        TId id,
+        CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
         var entity = await base.GetByIdAsync(id, cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
+        LastOperationTimeSpan = _stopwatch.Elapsed;
         return entity;
     }
 
-    public override async Task<int> CountAsync(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public override async Task<int> CountAsync(
+        ISpecification<TEntity> specification,
+        CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
         var entity = await base.CountAsync(specification, cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
+        LastOperationTimeSpan = _stopwatch.Elapsed;
         return entity;
     }
 
-    public override async Task<TEntity?> FirstOrDefaultAsync(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public override async Task<TEntity?> FirstOrDefaultAsync(
+        ISpecification<TEntity> specification,
+        CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
         var entity = await base.FirstOrDefaultAsync(specification, cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
+        LastOperationTimeSpan = _stopwatch.Elapsed;
         return entity;
     }
 
-    public override async Task<TResult?> FirstOrDefaultAsync<TResult>(ISpecification<TEntity, TResult> specification, CancellationToken cancellationToken = default) where TResult : default
+    public override async Task<bool> AnyAsync(CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
-        var entity = await base.FirstOrDefaultAsync(specification, cancellationToken);
+        var result = await base.AnyAsync(cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
-        return entity;
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return result;
     }
 
-    public override async Task<TEntity?> SingleOrDefaultAsync(ISingleResultSpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public override async Task DeleteAsync(
+        TEntity entity,
+        CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
-        var entity = await base.SingleOrDefaultAsync(specification, cancellationToken);
+        await base.DeleteAsync(entity, cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
-        return entity;
     }
 
-    public override async Task<TResult?> SingleOrDefaultAsync<TResult>(ISingleResultSpecification<TEntity, TResult> specification, CancellationToken cancellationToken = default) where TResult : default
+    public override async Task DeleteRangeAsync(
+        IEnumerable<TEntity> entities,
+        CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
-        var entity = await base.SingleOrDefaultAsync(specification, cancellationToken);
+        await base.DeleteRangeAsync(
+            entities,
+            cancellationToken);
         _stopwatch.Stop();
-        TimeSpan = _stopwatch.Elapsed;
+    }
+
+    public override async Task DeleteRangeAsync(
+        ISpecification<TEntity> specification,
+        CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        await base.DeleteRangeAsync(
+            specification,
+            cancellationToken);
+        _stopwatch.Stop();
+    }
+
+    public override async Task<bool> AnyAsync(
+        ISpecification<TEntity> specification,
+        CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        var value = await base.AnyAsync(
+            specification,
+            cancellationToken);
+        _stopwatch.Stop();
+        return value;
+    }
+
+    public override async Task<TResult?> FirstOrDefaultAsync<TResult>(
+        ISpecification<TEntity, TResult> specification,
+        CancellationToken cancellationToken = default) where TResult : default
+    {
+        _stopwatch.Restart();
+        var entity = await base.FirstOrDefaultAsync(
+            specification,
+            cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
         return entity;
     }
 
-    public void Dispose()
+    public override async Task<TEntity?> SingleOrDefaultAsync(
+        ISingleResultSpecification<TEntity> specification,
+        CancellationToken cancellationToken = default)
+    {
+        _stopwatch.Restart();
+        var entity = await base.SingleOrDefaultAsync(
+            specification,
+            cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return entity;
+    }
+
+    public override async Task<TResult?> SingleOrDefaultAsync<TResult>(
+        ISingleResultSpecification<TEntity, TResult> specification,
+        CancellationToken cancellationToken = default) where TResult : default
+    {
+        _stopwatch.Restart();
+        var entity = await base.SingleOrDefaultAsync(
+            specification,
+            cancellationToken);
+        _stopwatch.Stop();
+        LastOperationTimeSpan = _stopwatch.Elapsed;
+        return entity;
+    }
+
+    public virtual void Dispose()
     {
         _dbContext.Dispose();
     }
 
-    public ValueTask DisposeAsync()
+    public virtual ValueTask DisposeAsync()
     {
         return _dbContext.DisposeAsync();
     }

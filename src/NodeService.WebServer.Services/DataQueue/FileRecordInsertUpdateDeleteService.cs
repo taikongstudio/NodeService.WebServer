@@ -25,7 +25,7 @@ public record class FileRecordBatchQueryParameters
 
 public class FileRecordInsertUpdateDeleteService : BackgroundService
 {
-    private readonly BatchQueue<BatchQueueOperation<FileRecordModel, bool>> _cudBatchQueue;
+    private readonly BatchQueue<AsyncOperation<FileRecordModel, bool>> _cudBatchQueue;
     private readonly ExceptionCounter _exceptionCounter;
     private readonly ILogger<FileRecordQueryService> _logger;
     private readonly ApplicationRepositoryFactory<FileRecordModel> _repositoryFactory;
@@ -34,7 +34,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
         ILogger<FileRecordQueryService> logger,
         ExceptionCounter exceptionCounter,
         ApplicationRepositoryFactory<FileRecordModel> repositoryFactory,
-        BatchQueue<BatchQueueOperation<FileRecordModel, bool>> cudBatchQueue
+        BatchQueue<AsyncOperation<FileRecordModel, bool>> cudBatchQueue
     )
     {
         _logger = logger;
@@ -55,13 +55,13 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
                     var kind = operation.Kind;
                     switch (kind)
                     {
-                        case BatchQueueOperationKind.None:
+                        case AsyncOperationKind.None:
                             break;
-                        case BatchQueueOperationKind.AddOrUpdate:
+                        case AsyncOperationKind.AddOrUpdate:
                             await InsertOrUpdateAsync(repo, operation, cancellationToken);
 
                             break;
-                        case BatchQueueOperationKind.Delete:
+                        case AsyncOperationKind.Delete:
                             await DeleteAsync(repo, operation);
                             break;
                     }
@@ -78,13 +78,13 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
     }
 
     private async Task DeleteAsync(IRepository<FileRecordModel> repo,
-        BatchQueueOperation<FileRecordModel, bool>? operation)
+        AsyncOperation<FileRecordModel, bool>? operation)
     {
         try
         {
             await repo.DeleteAsync(operation.Argument);
-            _logger.LogInformation($"Delete SaveChanges:{repo.LastSaveChangesCount} {repo.TimeSpan}");
-            operation.SetResult(true);
+            _logger.LogInformation($"Delete SaveChanges:{repo.LastSaveChangesCount} {repo.LastOperationTimeSpan}");
+            operation.TrySetResult(true);
         }
         catch (Exception ex)
         {
@@ -98,7 +98,7 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
     }
 
     private async Task InsertOrUpdateAsync(IRepository<FileRecordModel> repo,
-        BatchQueueOperation<FileRecordModel, bool>? operation, CancellationToken cancellationToken)
+        AsyncOperation<FileRecordModel, bool>? operation, CancellationToken cancellationToken)
     {
         try
         {
@@ -114,30 +114,21 @@ public class FileRecordInsertUpdateDeleteService : BackgroundService
             }
             else
             {
-                modelFromRepo.Category = operation.Argument.Category;
-                modelFromRepo.State = operation.Argument.State;
-                modelFromRepo.Size = operation.Argument.Size;
-                modelFromRepo.Properties = operation.Argument.Properties;
-                modelFromRepo.OriginalFileName = operation.Argument.OriginalFileName;
-                modelFromRepo.CompressedSize = operation.Argument.CompressedSize;
-                modelFromRepo.CompressedFileHashValue = operation.Argument.CompressedFileHashValue;
-                modelFromRepo.FileHashValue = operation.Argument.FileHashValue;
-                modelFromRepo.CreationDateTime = operation.Argument.CreationDateTime;
-                modelFromRepo.ModifiedDateTime = operation.Argument.ModifiedDateTime;
+
                 await repo.SaveChangesAsync(cancellationToken);
             }
 
-            operation.SetResult(true);
+            operation.TrySetResult(true);
         }
         catch (Exception ex)
         {
-            operation.SetException(ex);
+            operation.TrySetException(ex);
         }
         finally
         {
             repo.DbContext.ChangeTracker.Clear();
         }
 
-        _logger.LogInformation($"Add or update SaveChanges:{repo.LastSaveChangesCount} {repo.TimeSpan}");
+        _logger.LogInformation($"Add or update SaveChanges:{repo.LastSaveChangesCount} {repo.LastOperationTimeSpan}");
     }
 }

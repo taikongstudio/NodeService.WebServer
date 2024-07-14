@@ -25,7 +25,7 @@ public class TasksController : Controller
     readonly INodeSessionService _nodeSessionService;
     readonly IServiceProvider _serviceProvider;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
-    readonly BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _logQueryBatchQueue;
+    readonly BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _logQueryBatchQueue;
     readonly BatchQueue<TaskActivateServiceParameters> _taskActivateServiceParametersBatchQueue;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRepositoryFactory;
@@ -45,7 +45,7 @@ public class TasksController : Controller
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         BatchQueue<TaskCancellationParameters> taskCancellationAsyncQueue,
-        BatchQueue<BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> logQueryBatchQueue,
+        BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> logQueryBatchQueue,
         BatchQueue<TaskActivateServiceParameters> taskActivateServiceParametersBatchQueue
         )
     {
@@ -213,10 +213,10 @@ public class TasksController : Controller
             var serviceParameters = new TaskLogQueryServiceParameters(
                                         taskId,
                                         queryParameters);
-            var op = new BatchQueueOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>(
+            var op = new AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>(
                 serviceParameters,
-                BatchQueueOperationKind.Query,
-                BatchQueueOperationPriority.Lowest,
+                AsyncOperationKind.Query,
+                AsyncOperationPriority.Lowest,
                 cancellationToken);
 
             await _logQueryBatchQueue.SendAsync(op, cancellationToken);

@@ -4,12 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.NodeFileSystem
+namespace NodeService.WebServer.Data
 {
-    public class NodeFileInfoCache
+    internal class DataQueueService
     {
-
-
-
     }
 }

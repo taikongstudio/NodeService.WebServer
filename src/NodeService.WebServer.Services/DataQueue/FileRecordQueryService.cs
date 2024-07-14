@@ -15,7 +15,7 @@ public class FileRecordQueryService : BackgroundService
     private readonly ILogger<FileRecordQueryService> _logger;
 
     private readonly BatchQueue<
-            BatchQueueOperation<FileRecordBatchQueryParameters,
+            AsyncOperation<FileRecordBatchQueryParameters,
                 ListQueryResult<FileRecordModel>>>
         _queryBatchQueue;
 
@@ -25,7 +25,7 @@ public class FileRecordQueryService : BackgroundService
         ExceptionCounter exceptionCounter,
         ILogger<FileRecordQueryService> logger,
         ApplicationRepositoryFactory<FileRecordModel> repositoryFactory,
-        BatchQueue<BatchQueueOperation<FileRecordBatchQueryParameters,
+        BatchQueue<AsyncOperation<FileRecordBatchQueryParameters,
             ListQueryResult<FileRecordModel>>> queryBatchQueue
     )
     {
@@ -42,7 +42,7 @@ public class FileRecordQueryService : BackgroundService
             {
                 using var repo = _repositoryFactory.CreateRepository();
                 foreach (var argumentGroup in arrayPoolCollection
-                             .Where(static x => x.Kind == BatchQueueOperationKind.Query)
+                             .Where(static x => x.Kind == AsyncOperationKind.Query)
                              .GroupBy(static x => x.Argument))
                 {
                     var argument = argumentGroup.Key;
@@ -50,11 +50,11 @@ public class FileRecordQueryService : BackgroundService
                     {
                         var queryResult = await QueryAsync(repo, argument);
 
-                        foreach (var op in argumentGroup) op.SetResult(queryResult);
+                        foreach (var op in argumentGroup) op.TrySetResult(queryResult);
                     }
                     catch (Exception ex)
                     {
-                        foreach (var op in argumentGroup) op.SetException(ex);
+                        foreach (var op in argumentGroup) op.TrySetException(ex);
                         _exceptionCounter.AddOrUpdate(ex);
                         _logger.LogError(ex.ToString());
                     }

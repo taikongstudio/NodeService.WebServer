@@ -1,8 +1,8 @@
 ﻿namespace NodeService.WebServer.Services.NodeFileSystem
 {
-    public record struct NodeFileSystemSyncRecordQueryParameters
+    public record struct QuerySyncRecordParameters
     {
-        public NodeFileSystemSyncRecordQueryParameters(QueryNodeFileSystemSyncRecordParameters parameters)
+        public QuerySyncRecordParameters(QueryNodeFileSystemSyncRecordParameters parameters)
         {
             this.QueryParameters = parameters;
         }

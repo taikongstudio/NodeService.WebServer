@@ -36,9 +36,8 @@ public class ApplicationRepositoryFactory<TEntity> :
 
     public async ValueTask<IRepository<TEntity>> CreateRepositoryAsync(CancellationToken cancellationToken = default)
     {
-        if (!await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(10), cancellationToken))
+        if (!await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(30), cancellationToken))
         {
-            var entityTypeName = typeof(TEntity).FullName;
             throw new Exception("time out ");
         }
         return this.CreateRepositoryCore(false);

@@ -237,8 +237,8 @@
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
         _dataSource.QueryParameters.SortDescriptions.Clear();
-        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(NodeFileSyncRecordModel.Status), "ascend"));
-        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(NodeFileSyncRecordModel.CreationDateTime), "descend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(NodeFileSyncRecordModel.Status), "asc"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(NodeFileSyncRecordModel.CreationDateTime), "desc"));
         await QueryNodeFileSyncRecordListAsync();
         await base.OnInitializedAsync();
     }

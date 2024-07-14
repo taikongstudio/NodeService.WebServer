@@ -209,6 +209,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<WebServerCounter>();
             builder.Services.AddSingleton<NodeFileSyncQueueDictionary>();
             builder.Services.AddSingleton<SyncRecordQueryService>();
+            builder.Services.AddSingleton<ConfigurationQueryService>();
             builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
             builder.Services.AddSingleton(new BatchQueue<AsyncOperation<PackageDownloadParameters, PackageDownloadResult>>(TimeSpan.FromSeconds(5), 1024));
 

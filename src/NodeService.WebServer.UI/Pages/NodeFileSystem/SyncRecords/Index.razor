@@ -228,6 +228,7 @@
         _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Processed, Name = "处理完成" });
         _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Canceled, Name = "已取消" });
         _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Faulted, Name = "错误" });
+        _nodeFileSyncStatusList.Add(new NodeFileSyncStatusModel { Value = NodeFileSyncStatus.Skipped, Name = "跳过" });
         BeginDateTime = DateTime.Today.Date.AddDays(-7);
         EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
         DateTimes[0] = BeginDateTime;

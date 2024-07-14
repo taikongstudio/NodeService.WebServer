@@ -16,7 +16,7 @@ public class ApplicationRepositoryFactory<TEntity> :
         dbContextFactory)
     {
         _dbContextFactory = dbContextFactory;
-        _semaphoreSlim = new SemaphoreSlim(10, 20);
+        _semaphoreSlim = new SemaphoreSlim(30, 50);
     }
 
     public new IRepository<TEntity> CreateRepository()

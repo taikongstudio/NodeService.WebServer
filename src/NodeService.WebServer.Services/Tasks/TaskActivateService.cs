@@ -197,12 +197,42 @@ public class TaskActivateService : BackgroundService
 
     }
 
+    async ValueTask<bool> HasAnyActiveTaskAsync(TaskPenddingContext context, CancellationToken cancellationToken = default)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync(cancellationToken);
+            if (await context.WaitForRunningTasksAsync(taskExecutionInstanceRepo))
+            {
+                return true;
+            }
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+        }
+        return false;
+    }
+
+    async ValueTask<bool> StopAnyActiveTaskAsync(
+        TaskPenddingContext context,
+        BatchQueue<TaskCancellationParameters> batchQueue,
+        CancellationToken cancellationToken = default)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync(cancellationToken);
+            if (await context.StopRunningTasksAsync(taskExecutionInstanceRepo, batchQueue))
+            {
+                return true;
+            }
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+        }
+        return false;
+    }
+
     private async Task ProcessPenddingContextAsync(TaskPenddingContext context)
     {
         var readyToRun = false;
         try
         {
-            await using var repo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync();
             _logger.LogInformation($"{context.Id}:Start init");
             context.EnsureInit();
             switch (context.TaskDefinition.ExecutionStrategy)
@@ -211,10 +241,10 @@ public class TaskActivateService : BackgroundService
                     readyToRun = true;
                     break;
                 case TaskExecutionStrategy.Queue:
-                    readyToRun = await context.WaitForRunningTasksAsync(repo);
+                    readyToRun = await HasAnyActiveTaskAsync(context, context.CancellationToken);
                     break;
                 case TaskExecutionStrategy.Stop:
-                    readyToRun = await context.StopRunningTasksAsync(repo, _taskCancellationQueue);
+                    readyToRun = await StopAnyActiveTaskAsync(context, _taskCancellationQueue);
                     break;
                 case TaskExecutionStrategy.Skip:
                     return;

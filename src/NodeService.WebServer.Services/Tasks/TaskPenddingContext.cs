@@ -4,6 +4,7 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using System.Net;
+using System.Security.Cryptography;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -93,20 +94,14 @@ public class TaskPenddingContext : IAsyncDisposable
 
     public async Task<bool> WaitForRunningTasksAsync(IRepository<TaskExecutionInstanceModel> repository)
     {
-        while (!CancellationToken.IsCancellationRequested)
-        {
-            var queryResult = await QueryTaskExecutionInstancesAsync(repository,
-                new QueryTaskExecutionInstanceListParameters
-                {
-                    NodeIdList = [NodeSessionId.NodeId.Value],
-                    TaskDefinitionIdList = [TaskDefinition.Id],
-                    Status = TaskExecutionStatus.Running
-                }, CancellationToken);
-            if (!queryResult.HasValue) break;
-            await Task.Delay(TimeSpan.FromSeconds(1), CancellationToken);
-        }
-
-        return true;
+        var queryResult = await QueryTaskExecutionInstancesAsync(repository,
+            new QueryTaskExecutionInstanceListParameters
+            {
+                NodeIdList = [NodeSessionId.NodeId.Value],
+                TaskDefinitionIdList = [TaskDefinition.Id],
+                Status = TaskExecutionStatus.Running
+            }, CancellationToken);
+        return queryResult.HasValue;
     }
 
 

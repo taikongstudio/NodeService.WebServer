@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.Models;
@@ -271,8 +272,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     async ValueTask ProcessTaskExecutionReportsAsync(TaskExecutionReport[] array, CancellationToken cancellationToken = default)
     {
-        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
-        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
+        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
         var messageGroups = array.GroupBy(GetTaskId).ToArray();
         var taskExecutionInstanceIdList = Filter(messageGroups.Select(x => x.Key).Distinct()).ToArray();
         var taskExecutionInstanceIdFilters = DataFilterCollection<string>.Includes(taskExecutionInstanceIdList);
@@ -909,27 +910,26 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         try
         {
-            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
-            await using var taskDefinitionRepo = await _taskDefinitionRepoFactory.CreateRepositoryAsync();
+
             var pageIndex = 1;
             var pageSize = 100;
             while (true)
             {
-                var listQueryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(
-                                            new TaskExecutionInstanceListSpecification(
-                                                DataFilterCollection<TaskExecutionStatus>.Includes(
-                                                [
-                                                    TaskExecutionStatus.Triggered,
-                                                    TaskExecutionStatus.Started,
-                                                    TaskExecutionStatus.Running
-                                                ]),
-                                                false),
-                                            new PaginationInfo(pageIndex, pageSize),
-                                            cancellationToken);
+
+
+                var listQueryResult = await QueryTaskExecutionInstanceListAsync(
+                    pageIndex,
+                    pageSize,
+                    cancellationToken);
 
                 var taskExeuctionInstances = listQueryResult.Items;
 
-                await ProcessTaskExecutionInstanceAsync(taskDefinitionRepo, taskExeuctionInstances, cancellationToken);
+                if (!listQueryResult.HasValue)
+                {
+                    break;
+                }
+
+                await ProcessTaskExecutionInstanceAsync(taskExeuctionInstances, cancellationToken);
                 if (listQueryResult.Items.Count() < pageSize)
                 {
                     break;
@@ -945,19 +945,40 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
+    async ValueTask<ListQueryResult<TaskExecutionInstanceModel>> QueryTaskExecutionInstanceListAsync(
+        int pageIndex,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+       await using var  taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
+       var listQueryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(
+                                    new TaskExecutionInstanceListSpecification(
+                                        DataFilterCollection<TaskExecutionStatus>.Includes(
+                                        [
+                                            TaskExecutionStatus.Triggered,
+                                                    TaskExecutionStatus.Started,
+                                                    TaskExecutionStatus.Running
+                                        ]),
+                                        false),
+                                    new PaginationInfo(pageIndex, pageSize),
+                                    cancellationToken);
+        return listQueryResult;
+    }
+
     private async Task ProcessTaskExecutionInstanceAsync(
-        IRepository<TaskDefinitionModel> taskDefinitionRepo,
         IEnumerable<TaskExecutionInstanceModel> taskExeuctionInstances,
         CancellationToken cancellationToken = default)
     {
         List<TaskExecutionInstanceModel> taskExecutionInstanceList = [];
-        foreach (var taskExecutionInstanceGroup in taskExeuctionInstances.GroupBy(static x => x.TaskDefinitionId))
+        foreach (var taskExecutionInstanceGroup in taskExeuctionInstances.GroupBy(static x => x.FireInstanceId))
         {
-            var taskDefinitionId = taskExecutionInstanceGroup.Key;
-            if (taskDefinitionId == null) continue;
-            var taskDefinition = await taskDefinitionRepo.GetByIdAsync(taskDefinitionId, cancellationToken);
-            if (taskDefinition == null) continue;
+            var taskFireInstanceId = taskExecutionInstanceGroup.Key;
+            if (taskFireInstanceId == null) continue;
+            var taskActiveRecord = await QueryTaskActiveRecordAsync(taskFireInstanceId, cancellationToken);
+            if (taskActiveRecord == null) continue;
             taskExecutionInstanceList.Clear();
+            var taskDefinition = taskActiveRecord.GetTaskDefinition();
+            if (taskDefinition == null) continue;
             foreach (var taskExecutionInstance in taskExecutionInstanceGroup)
             {
                 if (taskExecutionInstance.FireTimeUtc == DateTime.MinValue)
@@ -987,4 +1008,12 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
+    async ValueTask<TaskActivationRecordModel?> QueryTaskActiveRecordAsync(
+        string? taskFireInstanceId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var taskActiveRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
+        var taskActiveRecord = await taskActiveRecordRepo.GetByIdAsync(taskFireInstanceId, cancellationToken);
+        return taskActiveRecord;
+    }
 }

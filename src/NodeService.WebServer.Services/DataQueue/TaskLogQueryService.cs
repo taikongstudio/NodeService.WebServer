@@ -1,17 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.DataModels;
-using NodeService.Infrastructure.Logging;
-using NodeService.Infrastructure.Models;
-using NodeService.WebServer.Data;
-using NodeService.WebServer.Data.Repositories;
+﻿using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using OneOf;
 using System.IO.Pipelines;
-using System.Threading.Channels;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.DataQueue;
 
@@ -79,19 +69,16 @@ public class TaskLogQueryService
       TaskLogQueryServiceParameters serviceParameters,
         CancellationToken cancellationToken = default)
     {
-        await using var taskDefinitionRepo = await _taskDefinitionRepoFactory.CreateRepositoryAsync();
-        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
-        await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
+
         var queryParameters = serviceParameters.QueryParameters;
         string taskId = serviceParameters.TaskExecutionInstanceId;
-        var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
+        var taskExecutionInstance = await GetTaskExecutionInstanceAsync(taskId, cancellationToken);
         if (taskExecutionInstance == null)
         {
             throw new Exception("Could not found task execution instance");
         }
         var logFileName = $"{taskExecutionInstance.Name}.log";
-
-        var taskInfoLog = await taskLogRepo.GetByIdAsync(serviceParameters.TaskExecutionInstanceId, cancellationToken);
+        var taskInfoLog = await GetTaskInfoLogAsync(serviceParameters.TaskExecutionInstanceId, cancellationToken);
         if (taskInfoLog == null)
         {
             throw new Exception("Could not found task log");
@@ -113,6 +100,7 @@ public class TaskLogQueryService
                     var pageIndex = 1;
                     while (!cancellationToken.IsCancellationRequested)
                     {
+                        await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
                         var result = await taskLogRepo.ListAsync(
                             new TaskLogSelectSpecification<TaskLogModel>(taskId, pageIndex, 10),
                             cancellationToken);
@@ -147,6 +135,7 @@ public class TaskLogQueryService
         }
         else
         {
+            await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
             var taskLog = await taskLogRepo.FirstOrDefaultAsync(new TaskLogSelectSpecification<TaskLogModel>(taskId, serviceParameters.QueryParameters.PageIndex), cancellationToken);
             if (taskLog != null)
             {
@@ -173,11 +162,25 @@ public class TaskLogQueryService
                         await streamWriter.DisposeAsync();
                     }
                 });
-        }
+            }
 
 
 
         }
         return serviceResult;
+    }
+
+    async ValueTask<TaskLogModel?> GetTaskInfoLogAsync(string taskExecutionInstanceId, CancellationToken cancellationToken = default)
+    {
+        await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
+        var taskInfoLog = await taskLogRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
+        return taskInfoLog;
+    }
+
+    async ValueTask<TaskExecutionInstanceModel?> GetTaskExecutionInstanceAsync(string taskId, CancellationToken cancellationToken = default)
+    {
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
+        var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
+        return taskExecutionInstance;
     }
 }

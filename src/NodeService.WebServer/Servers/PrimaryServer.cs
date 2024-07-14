@@ -116,9 +116,11 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddDirectoryBrowser();
 
             builder.Services.AddRateLimiter(_ => _
-                .AddConcurrencyLimiter("UploadFile", options =>
+                .AddSlidingWindowLimiter("UploadFile", options =>
                 {
-                    options.PermitLimit = 30;
+                    options.PermitLimit = 100;
+                    options.Window = TimeSpan.FromSeconds(3);
+                    options.SegmentsPerWindow = 10;
                     options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                     options.QueueLimit = 10000;
                 }));

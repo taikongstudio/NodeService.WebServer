@@ -60,6 +60,7 @@ namespace NodeService.WebServer.Servers
             app.MapControllers();
             app.MapPrometheusScrapingEndpoint();
             app.MapRazorPages();
+            app.UseRateLimiter();
 
             var factory = app.Services.GetService<IDbContextFactory<ApplicationDbContext>>();
             await using var dbContext = await factory.CreateDbContextAsync();
@@ -145,12 +146,12 @@ namespace NodeService.WebServer.Servers
 
         void ConfigureRateLimiter(WebApplicationBuilder builder)
         {
-            var concurrencyRateLimitPolicy = "PackageDownloadConcurrency";
-
-            builder.Services.AddRateLimiter(options => options
-                .AddConcurrencyLimiter(concurrencyRateLimitPolicy, options =>
+            builder.Services.AddRateLimiter(_ => _
+                .AddSlidingWindowLimiter("UploadFile", options =>
                 {
-                    options.PermitLimit = 1;
+                    options.PermitLimit = 30;
+                    options.Window = TimeSpan.FromSeconds(3);
+                    options.SegmentsPerWindow = 10;
                     options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                     options.QueueLimit = 10000;
                 }));

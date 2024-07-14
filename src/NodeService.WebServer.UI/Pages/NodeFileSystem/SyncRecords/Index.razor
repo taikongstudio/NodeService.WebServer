@@ -80,7 +80,7 @@
             <PropertyColumn Title="节点标志" Ellipsis Sortable Property="c => c.NodeInfoId"></PropertyColumn>
             <PropertyColumn Title="文件路径" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="存储路径" Ellipsis Sortable="true" Property="c => c.StoragePath"></PropertyColumn>
-            <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
+            <PropertyColumn Title="状态" SorterMultiple="1" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
                 @switch (context.Status)
                 {
                     case NodeFileSyncStatus.Unknown:
@@ -111,7 +111,7 @@
                         break;
                 }
             </PropertyColumn>
-            <PropertyColumn Title="创建时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="创建时间" Ellipsis SorterMultiple="2" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
             <PropertyColumn Title="修改时间" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
             <PropertyColumn Title="开始时间" Ellipsis Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.UtcBeginTime"></PropertyColumn>
             <PropertyColumn Title="结束时间" Ellipsis Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.UtcEndTime"></PropertyColumn>

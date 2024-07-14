@@ -50,7 +50,7 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
                 Query.Where(x => x.CreationDateTime <= endTime);
             else if (beginTime != null && beginTime.HasValue && endTime == null)
                 Query.Where(x => x.CreationDateTime >= beginTime);
-            if (sortDescriptions != null)
+            if (sortDescriptions != null && sortDescriptions.Any())
             {
                 Query.SortBy(sortDescriptions);
             }

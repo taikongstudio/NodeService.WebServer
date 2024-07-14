@@ -272,16 +272,13 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     async ValueTask ProcessTaskExecutionReportsAsync(TaskExecutionReport[] array, CancellationToken cancellationToken = default)
     {
-        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
-        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
+
+
         var messageGroups = array.GroupBy(GetTaskId).ToArray();
         var taskExecutionInstanceIdList = Filter(messageGroups.Select(x => x.Key).Distinct()).ToArray();
         var taskExecutionInstanceIdFilters = DataFilterCollection<string>.Includes(taskExecutionInstanceIdList);
-        var taskExecutionInstanceList = await taskExecutionInstanceRepo.ListAsync(
-                                                                            new TaskExecutionInstanceListSpecification(taskExecutionInstanceIdFilters),
-                                                                            cancellationToken);
+        var taskExecutionInstanceList = await GetTaskExeuctionInstanceListAsync(taskExecutionInstanceIdFilters, cancellationToken);
 
-        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
         if (taskExecutionInstanceList == null)
         {
             return;
@@ -291,10 +288,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                                                                  .Distinct()).ToArray();
 
         var taskActivationRecordIdFilters = DataFilterCollection<string>.Includes(fireInstanceIdList);
-        var taskActivationRecordList = await taskActivationRecordRepo.ListAsync(
-                                                                    new ListSpecification<TaskActivationRecordModel>(taskActivationRecordIdFilters),
-                                                                    cancellationToken);
-        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
+
+        var taskActivationRecordList = await QueryActivationRecordAsync(taskActivationRecordIdFilters, cancellationToken);
 
         foreach (var taskExecutionInstanceGroup in taskExecutionInstanceList.GroupBy(static x => x.FireInstanceId))
         {
@@ -330,15 +325,52 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             await processContext.ProcessAsync(cancellationToken);
         }
 
-        await taskExecutionInstanceRepo.SaveChangesAsync(cancellationToken);
-        var taskExecutionInstanceUpdateCount = taskExecutionInstanceRepo.LastSaveChangesCount;
-        await taskActivationRecordRepo.SaveChangesAsync(cancellationToken);
-        var taskActivationRecordUpdateCount = taskExecutionInstanceRepo.LastSaveChangesCount;
-        _webServerCounter.TaskExecutionReportSaveTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
-        _webServerCounter.TaskExecutionReportSaveChangesCount.Value += (uint)taskExecutionInstanceRepo.LastSaveChangesCount;
+        await SaveTaskExecutionInstanceAsync(taskExecutionInstanceList, cancellationToken);
+        await SaveTaskActivationRecordAsync(taskActivationRecordList, cancellationToken);
 
         await ProcessTaskFlowActiveRecordListAsync(taskActivationRecordList, cancellationToken);
+    }
 
+    async ValueTask SaveTaskActivationRecordAsync(
+        List<TaskActivationRecordModel> taskActivationRecordList,
+        CancellationToken cancellationToken = default)
+    {
+        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
+        await taskActivationRecordRepo.UpdateRangeAsync(taskActivationRecordList, cancellationToken);
+        var taskActivationRecordUpdateCount = taskActivationRecordRepo.LastSaveChangesCount;
+        _webServerCounter.TaskExecutionReportSaveTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
+        _webServerCounter.TaskExecutionReportSaveChangesCount.Value += (uint)taskActivationRecordRepo.LastSaveChangesCount;
+    }
+
+    async ValueTask  SaveTaskExecutionInstanceAsync(List<TaskExecutionInstanceModel> taskExecutionInstanceList, CancellationToken cancellationToken)
+    {
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
+        await taskExecutionInstanceRepo.UpdateRangeAsync(taskExecutionInstanceList, cancellationToken);
+        var taskExecutionInstanceUpdateCount = taskExecutionInstanceRepo.LastSaveChangesCount;
+    }
+
+    async ValueTask<List<TaskActivationRecordModel>> QueryActivationRecordAsync(
+        DataFilterCollection<string> taskActivationRecordIdFilters,
+        CancellationToken cancellationToken = default)
+    {
+        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
+        var taskActivationRecordList = await taskActivationRecordRepo.ListAsync(
+                                                        new ListSpecification<TaskActivationRecordModel>(taskActivationRecordIdFilters),
+                                                        cancellationToken);
+        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
+        return taskActivationRecordList;
+    }
+
+    async ValueTask<List<TaskExecutionInstanceModel>> GetTaskExeuctionInstanceListAsync(
+        DataFilterCollection<string> taskExecutionInstanceIdFilters,
+        CancellationToken cancellationToken = default)
+    {
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
+        var list = await taskExecutionInstanceRepo.ListAsync(
+                                                                    new TaskExecutionInstanceListSpecification(taskExecutionInstanceIdFilters),
+                                                                    cancellationToken);
+        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
+        return list;
     }
 
     async ValueTask<TaskActivationRecordProcessContext> CreateTaskActivationRecordProcessContextAsync(

@@ -155,6 +155,7 @@ public class FtpClientProcessContext : ProcessContext
                     syncContext.Record.Status = NodeFileSyncStatus.Faulted;
                     syncContext.TrySetResult(NodeFileSyncStatus.Faulted);
                 }
+                syncContext.Record.UtcEndTime = DateTime.UtcNow;
             }
         }
         catch (Exception ex)
@@ -168,7 +169,7 @@ public class FtpClientProcessContext : ProcessContext
         }
         finally
         {
-            syncContext.Record.UtcEndTime = DateTime.UtcNow;
+
             await CacheHittestResultAsync(
                 syncContext,
                 cancellationToken);

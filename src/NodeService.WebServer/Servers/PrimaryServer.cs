@@ -27,6 +27,7 @@ using Quartz.Spi;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Threading.RateLimiting;
+using WatchDog;
 
 namespace NodeService.WebServer.Servers
 {
@@ -114,16 +115,6 @@ namespace NodeService.WebServer.Servers
         {
             builder.Services.AddDistributedMemoryCache();
             builder.Services.AddDirectoryBrowser();
-
-            builder.Services.AddRateLimiter(_ => _
-                .AddSlidingWindowLimiter("UploadFile", options =>
-                {
-                    options.PermitLimit = 100;
-                    options.Window = TimeSpan.FromSeconds(3);
-                    options.SegmentsPerWindow = 10;
-                    options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    options.QueueLimit = 10000;
-                }));
 
             builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
             builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
@@ -218,15 +209,23 @@ namespace NodeService.WebServer.Servers
 
         void ConfigureRateLimiter(WebApplicationBuilder builder)
         {
-            var concurrencyRateLimitPolicy = "PackageDownloadConcurrency";
-
             builder.Services.AddRateLimiter(options => options
-                .AddConcurrencyLimiter(concurrencyRateLimitPolicy, options =>
+                .AddConcurrencyLimiter("PackageDownloadConcurrency", options =>
                 {
                     options.PermitLimit = 1;
                     options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                     options.QueueLimit = 10000;
                 }));
+
+            builder.Services.AddRateLimiter(_ => _
+                    .AddSlidingWindowLimiter("UploadFile", options =>
+                    {
+                        options.PermitLimit = 1000;
+                        options.Window = TimeSpan.FromSeconds(10);
+                        options.SegmentsPerWindow = 10;
+                        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                        options.QueueLimit = 10000;
+                    }));
         }
 
         void ConfigureHostedServices(WebApplicationBuilder builder)

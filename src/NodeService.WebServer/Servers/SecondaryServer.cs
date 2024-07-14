@@ -149,8 +149,8 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddRateLimiter(_ => _
                 .AddSlidingWindowLimiter("UploadFile", options =>
                 {
-                    options.PermitLimit = 30;
-                    options.Window = TimeSpan.FromSeconds(3);
+                    options.PermitLimit = 1000;
+                    options.Window = TimeSpan.FromSeconds(10);
                     options.SegmentsPerWindow = 10;
                     options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
                     options.QueueLimit = 10000;

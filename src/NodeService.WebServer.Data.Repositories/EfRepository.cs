@@ -1,4 +1,6 @@
 ﻿using Ardalis.Specification;
+using System.Collections.Generic;
+using static Grpc.Core.Metadata;
 
 namespace NodeService.WebServer.Data.Repositories;
 
@@ -142,9 +144,39 @@ public class EFRepository<TEntity, TDbContext> :
     {
         _stopwatch.Restart();
         var list = await base.ListAsync(cancellationToken);
+        SetEntitySource(list);
+
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return list;
+    }
+
+    void SetEntitySource(params TEntity[] list)
+    {
+        if (list != null)
+        {
+            foreach (var item in list)
+            {
+                if (item is EntityBase entity)
+                {
+                    entity.EntitySource = EntitySource.Database;
+                }
+            }
+        }
+    }
+
+    void SetEntitySource(IEnumerable<TEntity>? list)
+    {
+        if (list != null)
+        {
+            foreach (var item in list)
+            {
+                if (item is EntityBase entity)
+                {
+                    entity.EntitySource = EntitySource.Database;
+                }
+            }
+        }
     }
 
     public override async Task<List<TEntity>> ListAsync(
@@ -153,6 +185,7 @@ public class EFRepository<TEntity, TDbContext> :
     {
         _stopwatch.Restart();
         var list = await base.ListAsync(specification, cancellationToken);
+        SetEntitySource(list);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return list;
@@ -175,6 +208,7 @@ public class EFRepository<TEntity, TDbContext> :
     {
         _stopwatch.Restart();
         var entity = await base.GetByIdAsync(id, cancellationToken);
+        SetEntitySource(entity);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return entity;
@@ -185,10 +219,10 @@ public class EFRepository<TEntity, TDbContext> :
         CancellationToken cancellationToken = default)
     {
         _stopwatch.Restart();
-        var entity = await base.CountAsync(specification, cancellationToken);
+        var count = await base.CountAsync(specification, cancellationToken);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
-        return entity;
+        return count;
     }
 
     public override async Task<TEntity?> FirstOrDefaultAsync(
@@ -197,6 +231,7 @@ public class EFRepository<TEntity, TDbContext> :
     {
         _stopwatch.Restart();
         var entity = await base.FirstOrDefaultAsync(specification, cancellationToken);
+        SetEntitySource(entity);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return entity;
@@ -275,6 +310,7 @@ public class EFRepository<TEntity, TDbContext> :
         var entity = await base.SingleOrDefaultAsync(
             specification,
             cancellationToken);
+        SetEntitySource(entity);
         _stopwatch.Stop();
         LastOperationTimeSpan = _stopwatch.Elapsed;
         return entity;

@@ -14,12 +14,12 @@ public class NodeInfoSpecification : ListSpecification<NodeInfoModel>
         };
     }
 
-    public NodeInfoSpecification(DataFilterCollection<string> keyFilters = default)
+    public NodeInfoSpecification(DataFilterCollection<string> idFilters = default)
         : this(
               AreaTags.Any,
               NodeStatus.All,
-              NodeDeviceType.Computer,
-              keyFilters,
+              NodeDeviceType.All,
+              idFilters,
               default,
               null)
     {

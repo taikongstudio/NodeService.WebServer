@@ -8,6 +8,7 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataQueue;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -15,7 +16,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
 {
     readonly ExceptionCounter _exceptionCounter;
     readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatSessionMessageBatchQueue;
-    readonly BatchQueue<DataQueueService<NodeInfoModel>.AsyncOperation> _nodeInfoBatchQueue;
     readonly ILogger<HeartBeatResponseConsumerService> _logger;
     readonly IMemoryCache _memoryCache;
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
@@ -25,7 +25,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
     readonly INodeSessionService _nodeSessionService;
     readonly WebServerCounter _webServerCounter;
     readonly IAsyncQueue<NotificationMessage> _notificationQueue;
-
+    readonly NodeInfoQueryService _nodeInfoQueryService;
     readonly WebServerOptions _webServerOptions;
     NodeSettings _nodeSettings;
 
@@ -37,12 +37,12 @@ public class HeartBeatResponseConsumerService : BackgroundService
         IOptionsMonitor<WebServerOptions> optionsMonitor,
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationQueue,
+        NodeInfoQueryService nodeInfoQueryService,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
         ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertyRepositoryFactory,
-        BatchQueue<NodeHeartBeatSessionMessage> heartBeatSessionMessageBatchBlock,
-        BatchQueue<DataQueueService<NodeInfoModel>.AsyncOperation> nodeInfoBatchQueue)
+        BatchQueue<NodeHeartBeatSessionMessage> heartBeatSessionMessageBatchBlock)
     {
         _logger = logger;
         _nodeSessionService = nodeSessionService;
@@ -57,7 +57,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         _exceptionCounter = exceptionCounter;
         _webServerCounter = webServerCounter;
         _notificationQueue = notificationQueue;
-        _nodeInfoBatchQueue = nodeInfoBatchQueue;
+        _nodeInfoQueryService = nodeInfoQueryService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -132,17 +132,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
         var stopwatch = new Stopwatch();
         try
         {
-            await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
-            await using var nodePropsRepo = await _nodePropertyRepositoryFactory.CreateRepositoryAsync();
+
             await RefreshNodeSettingsAsync(cancellationToken);
             var nodeIdList = array.Select(GetNodeId);
-            var nodeList = await nodeInfoRepo.ListAsync(
-                new NodeInfoSpecification(
-                    AreaTags.Any,
-                    NodeStatus.All,
-                    NodeDeviceType.All,
-                    DataFilterCollection<string>.Includes(nodeIdList)),
-                cancellationToken);
+            var nodeList = await _nodeInfoQueryService.QueryNodeInfoListAsync(nodeIdList);
             foreach (var hearBeatSessionMessage in array)
             {
                 NodeInfoModel? nodeInfo = null;
@@ -161,7 +154,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 if (hearBeatSessionMessage == null) continue;
                 stopwatch.Start();
                 await ProcessHeartBeatMessageAsync(
-                    nodePropsRepo,
                     hearBeatSessionMessage,
                     nodeInfo,
                     cancellationToken);
@@ -172,10 +164,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
             }
 
             stopwatch.Start();
-            var op = new DataQueueService<NodeInfoModel>.AsyncOperation(nodeList.ToImmutableArray(), AsyncOperationKind.AddOrUpdate);
-            await _nodeInfoBatchQueue.SendAsync(op, cancellationToken);
-            await op.WaitAsync(cancellationToken);
-            stopwatch.Stop();
+            await _nodeInfoQueryService.UpdateNodeInfoListAsync(nodeList, cancellationToken);
+          stopwatch.Stop();
         }
         catch (Exception ex)
         {
@@ -202,15 +192,18 @@ public class HeartBeatResponseConsumerService : BackgroundService
     }
 
     async ValueTask ProcessHeartBeatMessageAsync(
-        IRepository<NodePropertySnapshotModel> nodePropertyRepo,
         NodeHeartBeatSessionMessage hearBeatMessage,
-        NodeInfoModel  nodeInfo,
+        NodeInfoModel nodeInfo,
         CancellationToken cancellationToken = default
     )
     {
         try
         {
             var hearBeatResponse = hearBeatMessage.GetMessage();
+            if (hearBeatResponse == null)
+            {
+                return;
+            }
             if (hearBeatMessage.NodeSessionId.NodeId == NodeId.Null)
             {
                 _logger.LogInformation($"invalid node id: {hearBeatResponse.Properties["RemoteIpAddress"]}");
@@ -222,8 +215,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
             var nodeStatus = _nodeSessionService.GetNodeStatus(hearBeatMessage.NodeSessionId);
             nodeInfo.Status = nodeStatus;
-            var propsDict = _memoryCache.GetOrCreate<ConcurrentDictionary<string, string>>("NodeProps:" + nodeInfo.Id,
-                    TimeSpan.FromHours(1));
+            var nodePropSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfo.Id, cancellationToken);
             if (hearBeatResponse != null)
             {
                 nodeInfo.Profile.UpdateTime = DateTime.ParseExact(
@@ -240,65 +232,50 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 if (!string.IsNullOrEmpty(nodeInfo.Profile.IpAddress))
                     _nodeSettings.MatchAreaTag(nodeInfo);
 
-                foreach (var item in hearBeatResponse.Properties)
-                {
-                    if (item.Key == null) continue;
-                    if (!propsDict.TryGetValue(item.Key, out var oldValue))
-                        propsDict.TryAdd(item.Key, item.Value);
-                    else
-                        propsDict.TryUpdate(item.Key, item.Value, oldValue);
-                }
 
-                if (propsDict != null && !propsDict.IsEmpty)
-                {
-                    if (propsDict.TryGetValue(NodePropertyModel.Process_Processes_Key,
-                            out var processListJsonString)
-                        &&
-                        !string.IsNullOrEmpty(processListJsonString)
-                        &&
-                        processListJsonString.Contains('['))
-                    {
-                        var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processListJsonString);
-                        if (processInfoList != null) AnalysisNodeProcessInfoList(nodeInfo, processInfoList);
-                    }
-                    if (propsDict.TryGetValue(NodePropertyModel.System_Win32Services_Key,
-                            out var win32ServiceListJsonString)
-                        &&
-                        !string.IsNullOrEmpty(win32ServiceListJsonString)
-                        &&
-                        win32ServiceListJsonString.Contains('['))
-                    {
-                        var serviceProcessInfoList = JsonSerializer.Deserialize<ServiceProcessInfo[]>(win32ServiceListJsonString);
-                        if (serviceProcessInfoList != null) AnalysisNodeServiceProcessInfoList(nodeInfo, serviceProcessInfoList);
-                    }
-
-                }
+                ProcessProps(nodeInfo, hearBeatResponse);
             }
 
-
-            if (nodeInfo.Status == NodeStatus.Offline)
+            if (nodePropSnapshot == null || nodeInfo.Status == NodeStatus.Offline)
             {
-
-                var nodeProps = new NodePropertySnapshotModel
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Name = $"{nodeInfo.Name} Snapshot",
-                    CreationDateTime = nodeInfo.Profile.UpdateTime,
-                    ModifiedDateTime = DateTime.UtcNow,
-                    NodeProperties = propsDict?.Select(NodePropertyEntry.From).ToList() ?? [],
-                    NodeInfoId = nodeInfo.Id
-                };
-                await nodePropertyRepo.AddAsync(nodeProps, cancellationToken);
-                var oldId = nodeInfo.LastNodePropertySnapshotId;
-                nodeInfo.LastNodePropertySnapshotId = nodeProps.Id;
-                await nodePropertyRepo.DbContext.Set<NodePropertySnapshotModel>().Where(x => x.Id == oldId)
-                    .ExecuteDeleteAsync(cancellationToken);
+                nodePropSnapshot = await _nodeInfoQueryService.SaveNodePropSnapshotAsync(
+                nodeInfo,
+                hearBeatResponse.Properties.Select(NodePropertyEntry.From).ToList(),
+                cancellationToken);
             }
         }
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError($"{ex}");
+        }
+    }
+
+    private void ProcessProps(NodeInfoModel nodeInfo, HeartBeatResponse hearBeatResponse)
+    {
+        if (hearBeatResponse.Properties.Count > 0)
+        {
+            if (hearBeatResponse.Properties.TryGetValue(NodePropertyModel.Process_Processes_Key,
+                    out var processListJsonString)
+                &&
+                !string.IsNullOrEmpty(processListJsonString)
+                &&
+                processListJsonString.Contains('['))
+            {
+                var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processListJsonString);
+                if (processInfoList != null) AnalysisNodeProcessInfoList(nodeInfo, processInfoList);
+            }
+            if (hearBeatResponse.Properties.TryGetValue(NodePropertyModel.System_Win32Services_Key,
+                    out var win32ServiceListJsonString)
+                &&
+                !string.IsNullOrEmpty(win32ServiceListJsonString)
+                &&
+                win32ServiceListJsonString.Contains('['))
+            {
+                var serviceProcessInfoList = JsonSerializer.Deserialize<ServiceProcessInfo[]>(win32ServiceListJsonString);
+                if (serviceProcessInfoList != null) AnalysisNodeServiceProcessInfoList(nodeInfo, serviceProcessInfoList);
+            }
+
         }
     }
 

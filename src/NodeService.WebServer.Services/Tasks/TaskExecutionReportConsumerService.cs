@@ -17,9 +17,10 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 {
     readonly ExceptionCounter _exceptionCounter;
     readonly TaskFlowExecutor _taskFlowExecutor;
+    readonly ConfigurationQueryService _configurationQueryService;
     readonly ILogger<TaskExecutionReportConsumerService> _logger;
     readonly IMemoryCache _memoryCache;
-    readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepoFactory;
+
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
     readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
@@ -35,7 +36,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     public TaskExecutionReportConsumerService(
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
         ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
-        ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
         BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
@@ -43,6 +43,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
         BatchQueue<TaskActivateServiceParameters> taskScheduleQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
+        ConfigurationQueryService configurationQueryService,
         JobScheduler taskScheduler,
         IMemoryCache memoryCache,
         WebServerCounter webServerCounter,
@@ -52,7 +53,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         _logger = logger;
         _taskExecutionInstanceRepoFactory = taskExecutionInstanceRepositoryFactory;
-        _taskDefinitionRepoFactory = taskDefinitionRepositoryFactory;
         _taskActivationRecordRepoFactory = taskActivationRecordRepoFactory;
         _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
         _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
@@ -66,6 +66,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _webServerCounter = webServerCounter;
         _exceptionCounter = exceptionCounter;
         _taskFlowExecutor = taskFlowExecutor;
+        _configurationQueryService = configurationQueryService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -182,7 +183,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             await processContext.ProcessAsync(cancellationToken);
         }
 
-        await SaveTaskExecutionInstanceAsync(taskExecutionInstanceList, cancellationToken);
+        await SaveTaskExecutionInstanceListAsync(taskExecutionInstanceList, cancellationToken);
         await SaveTaskActivationRecordAsync(taskActivationRecordList, cancellationToken);
 
         await ProcessTaskFlowActiveRecordListAsync(taskActivationRecordList, cancellationToken);
@@ -199,7 +200,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _webServerCounter.TaskExecutionReportSaveChangesCount.Value += (uint)taskActivationRecordRepo.LastSaveChangesCount;
     }
 
-    async ValueTask  SaveTaskExecutionInstanceAsync(List<TaskExecutionInstanceModel> taskExecutionInstanceList, CancellationToken cancellationToken)
+    async ValueTask  SaveTaskExecutionInstanceListAsync(
+        List<TaskExecutionInstanceModel> taskExecutionInstanceList,
+        CancellationToken cancellationToken = default)
     {
         await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
         await taskExecutionInstanceRepo.UpdateRangeAsync(taskExecutionInstanceList, cancellationToken);
@@ -429,14 +432,14 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         try
         {
             if (taskExecutionInstances == null || !taskExecutionInstances.Any()) return;
-            await using var taskDefinitionRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
+            await using var taskActiveRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
             foreach (var taskExecutionInstanceGroup in taskExecutionInstances.GroupBy(static x => x.FireInstanceId))
             {
                 var fireInstanceId = taskExecutionInstanceGroup.Key;
                 if (fireInstanceId == null) continue;
-                var taskActiveRecord = await taskDefinitionRepo.GetByIdAsync(fireInstanceId, cancellationToken);
+                var taskActiveRecord = await taskActiveRecordRepo.GetByIdAsync(fireInstanceId, cancellationToken);
                 if (taskActiveRecord == null) continue;
-                var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActiveRecord.TaskDefinitionJson);
+                var taskDefinition = taskActiveRecord.GetTaskDefinition();
                 if (taskDefinition == null)
                 {
                     continue;
@@ -493,7 +496,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 if (fireInstanceId == null) continue;
                 var taskActiveRecord = await taskActivateRecordRepo.GetByIdAsync(fireInstanceId, cancellationToken);
                 if (taskActiveRecord == null) continue;
-                var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActiveRecord.TaskDefinitionJson);
+                var taskDefinition = taskActiveRecord.GetTaskDefinition();
                 if (taskDefinition == null)
                 {
                     continue;
@@ -580,7 +583,11 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     break;
                 case TaskExecutionStatus.PenddingTimeout:
                 case TaskExecutionStatus.Failed:
-                    await RetryTaskAsync(taskActivationRecord, taskDefinitionSnapshot, taskExecutionInstance);
+                    await RetryTaskAsync(
+                        taskActivationRecord,
+                        taskDefinitionSnapshot,
+                        taskExecutionInstance,
+                        cancellationToken);
                     break;
                 case TaskExecutionStatus.Cancelled:
                     break;
@@ -686,15 +693,15 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             else
             {
                 var dueTime = TimeSpan.FromSeconds(taskDefinitionSnapshot.RetryDuration);
-                IDisposable token = Disposable.Empty;
-                token = Scheduler.Default.ScheduleAsync(
+                IDisposable[] tokens = [Disposable.Empty];
+                tokens[0] = Scheduler.Default.ScheduleAsync(
                     dueTime,
                      async (scheduler, cancellationToken) =>
                      {
                          try
                          {
                              await _taskActivateQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
-                             token.Dispose();
+                             tokens[0].Dispose();
                          }
                          catch (Exception ex)
                          {
@@ -718,12 +725,12 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             return;
         }
 
-        await using var taskDefinitionRepo = await _taskDefinitionRepoFactory.CreateRepositoryAsync(cancellationToken);
+        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
         var taskDefinition = JsonSerializer.Deserialize<TaskDefinition>(taskActivationRecord.TaskDefinitionJson);
         if (taskDefinition == null) return;
         foreach (var childTaskDefinition in taskDefinition.ChildTaskDefinitions)
         {
-            var childTaskScheduleDefinition = await taskDefinitionRepo.GetByIdAsync(childTaskDefinition.Value, cancellationToken);
+            var childTaskScheduleDefinition = await taskActivationRecordRepo.GetByIdAsync(childTaskDefinition.Value, cancellationToken);
             if (childTaskScheduleDefinition == null) continue;
             await _taskActivateQueue.SendAsync(new TaskActivateServiceParameters(new FireTaskParameters
             {
@@ -817,11 +824,14 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         yield break;
     }
 
-    async ValueTask<TaskDefinitionModel?> FindTaskDefinitionAsync(string taskDefinitionId, CancellationToken cancellationToken)
+    async ValueTask<TaskDefinitionModel?> FindTaskDefinitionAsync(
+        string taskDefinitionId,
+        CancellationToken cancellationToken)
     {
-       await using var  taskDefinitionRepo = await _taskDefinitionRepoFactory.CreateRepositoryAsync();
-      var  taskDefinition = await taskDefinitionRepo.GetByIdAsync(taskDefinitionId, cancellationToken);
-        return taskDefinition;
+        var result = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskDefinitionModel>(
+            [taskDefinitionId],
+            cancellationToken);
+        return result.Items?.FirstOrDefault();
     }
 
     async ValueTask ProcessExpiredTaskExecutionInstanceAsync(CancellationToken cancellationToken = default)

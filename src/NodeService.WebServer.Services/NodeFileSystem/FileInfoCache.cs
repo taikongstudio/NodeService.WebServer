@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Data.Entities
 {
-    public class NodeFileHittestResultCache
+    public class FileInfoCache
     {
-        public string NodeInfoId { get; set; }
 
         public string FullName { get; set; }
 

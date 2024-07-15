@@ -30,7 +30,7 @@ public class NodeFileSyncContext
 
     public NodeFileSyncRequest Request { get; private set; }
 
-    public bool IsStorageNotExists { get; set; }
+    public bool IsPhysicialStorageNotExists { get; set; }
 
     public CancellationToken CancellationToken { get { return _cts.Token; } }
 

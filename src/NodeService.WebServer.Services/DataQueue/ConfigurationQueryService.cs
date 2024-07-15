@@ -1,184 +1,29 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using OneOf;
-using System.Collections.Immutable;
-using System.Configuration;
-using System.Linq.Expressions;
 
 namespace NodeService.WebServer.Services.DataQueue;
-
-
-
-public record struct ConfigurationPaginationQueryParameters
-{
-    public ConfigurationPaginationQueryParameters(PaginationQueryParameters parameters)
-    {
-        Parameters = parameters;
-    }
-
-    public PaginationQueryParameters Parameters { get; private set; }
-}
-
-public record struct ConfigurationVersionPaginationQueryParameters
-{
-    public ConfigurationVersionPaginationQueryParameters(PaginationQueryParameters parameters)
-    {
-        Parameters = parameters;
-    }
-
-    public PaginationQueryParameters Parameters { get; private set; }
-}
-
-public record struct ConfigurationAddUpdateDeleteParameters
-{
-    public ConfigurationAddUpdateDeleteParameters(JsonRecordBase value)
-    {
-        Value = value;
-    }
-
-    public JsonRecordBase Value { get; private set; }
-}
-
-public record struct ConfigurationVersionDeleteParameters
-{
-    public ConfigurationVersionDeleteParameters(ConfigurationVersionRecordModel value)
-    {
-        Value = value;
-    }
-
-    public ConfigurationVersionRecordModel Value { get; private set; }
-}
-
-public record struct ConfigurationIdentityListQueryParameters
-{
-    public ConfigurationIdentityListQueryParameters(List<string> idList)
-    {
-        IdList = idList;
-    }
-
-    public List<string> IdList { get; private set; }
-}
-
-public record struct ConfigurationVersionIdentityQueryParameters
-{
-    public ConfigurationVersionIdentityQueryParameters(string id)
-    {
-        Id = id;
-    }
-
-    public string Id { get; private set; }
-}
-
-
-public record struct ConfigurationVersionSwitchParameters
-{
-    public ConfigurationVersionSwitchParameters(string configurationId, int targetVersion)
-    {
-        ConfigurationId = configurationId;
-        TargetVersion = targetVersion;
-    }
-
-    public string ConfigurationId { get; set; }
-    public int TargetVersion { get; set; }
-}
-
-public record struct ConfigurationQueryQueueServiceParameters
-{
-    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationVersionPaginationQueryParameters queryParameters)
-    {
-        Parameters = queryParameters;
-        Type = type;
-    }
-
-    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationPaginationQueryParameters queryParameters)
-    {
-        Parameters = queryParameters;
-        Type = type;
-    }
-
-    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationIdentityListQueryParameters queryParameters)
-    {
-        Parameters = queryParameters;
-        Type = type;
-    }
-
-
-    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationAddUpdateDeleteParameters parameters)
-    {
-        Parameters = parameters;
-        Type = type;
-    }
-
-    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationVersionSwitchParameters parameters)
-    {
-        Parameters = parameters;
-        Type = type;
-    }
-
-    public ConfigurationQueryQueueServiceParameters(Type type, ConfigurationVersionDeleteParameters parameters)
-    {
-        Parameters = parameters;
-        Type = type;
-    }
-
-    public OneOf<
-        ConfigurationPaginationQueryParameters,
-        ConfigurationVersionPaginationQueryParameters,
-        ConfigurationIdentityListQueryParameters,
-        ConfigurationVersionIdentityQueryParameters,
-        ConfigurationAddUpdateDeleteParameters,
-        ConfigurationVersionSwitchParameters,
-        ConfigurationVersionDeleteParameters> Parameters
-    { get; private set; }
-
-    public Type Type { get; private set; }
-}
-
-
-public record struct ConfigurationQueryQueueServiceResult
-{
-    public ConfigurationQueryQueueServiceResult(ListQueryResult<object> result)
-    {
-        Value = result;
-    }
-
-    public ConfigurationQueryQueueServiceResult(ConfigurationSaveChangesResult saveChangesResult)
-    {
-        Value = saveChangesResult;
-    }
-
-    public ConfigurationQueryQueueServiceResult(ConfigurationVersionSaveChangesResult saveChangesResult)
-    {
-        Value = saveChangesResult;
-    }
-
-    public OneOf<ListQueryResult<object>, ConfigurationSaveChangesResult, ConfigurationVersionSaveChangesResult> Value { get; private set; }
-}
-
 
 public class ConfigurationQueryService 
 {
     readonly IServiceProvider _serviceProvider;
     readonly IMemoryCache _memoryCache;
+    readonly ObjectCache _objectCache;
     readonly ApplicationRepositoryFactory<ConfigurationVersionRecordModel> _configVersionRepoFactory;
     readonly ILogger<ConfigurationQueryService> _logger;
     readonly ExceptionCounter _exceptionCounter;
-    readonly ConcurrentDictionary<string, Delegate> _funcDict;
+
 
     public ConfigurationQueryService(
         ILogger<ConfigurationQueryService> logger,
         ExceptionCounter exceptionCounter,
         IServiceProvider serviceProvider,
         IMemoryCache memoryCache,
+        ObjectCache objectCache,
         ApplicationRepositoryFactory<ConfigurationVersionRecordModel> configVersionRepoFactory
     )
     {
@@ -186,8 +31,8 @@ public class ConfigurationQueryService
         _exceptionCounter = exceptionCounter;
         _serviceProvider = serviceProvider;
         _memoryCache = memoryCache;
+        _objectCache = objectCache;
         _configVersionRepoFactory = configVersionRepoFactory;
-        _funcDict = new ConcurrentDictionary<string, Delegate>();
     }
 
     public async ValueTask<ListQueryResult<T>> QueryConfigurationByQueryParametersAsync<T>(
@@ -205,6 +50,13 @@ public class ConfigurationQueryService
                 new ConfigurationSelectSpecification<T, string>(queryParameters.Keywords, queryParameters.SortDescriptions),
                 new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
                 cancellationToken);
+            if (listQueryResult.HasValue)
+            {
+                foreach (var entity in listQueryResult.Items)
+                {
+                    await _objectCache.SetEntityAsync(entity, cancellationToken);
+                }
+            }
         }
         else if (queryParameters.QueryStrategy == QueryStrategy.CachePreferred)
         {
@@ -231,7 +83,8 @@ public class ConfigurationQueryService
     }
 
     public async ValueTask<ListQueryResult<ConfigurationVersionRecordModel>> QueryConfigurationVersionListByQueryParametersAsync(
-    PaginationQueryParameters queryParameters, CancellationToken cancellationToken = default)
+        PaginationQueryParameters queryParameters,
+        CancellationToken cancellationToken = default)
 
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<ConfigurationVersionRecordModel>>();
@@ -244,6 +97,13 @@ public class ConfigurationQueryService
                 new ConfigurationVersionSelectSpecification<string>(queryParameters.Keywords, queryParameters.SortDescriptions),
                 new PaginationInfo(queryParameters.PageIndex, queryParameters.PageSize),
                 cancellationToken);
+            if (listQueryResult.HasValue)
+            {
+                foreach (var entity in listQueryResult.Items)
+                {
+                    await _objectCache.SetEntityAsync(entity, cancellationToken);
+                }
+            }
         }
         else if (queryParameters.QueryStrategy == QueryStrategy.CachePreferred)
         {
@@ -270,22 +130,44 @@ public class ConfigurationQueryService
         CancellationToken cancellationToken = default)
         where T : JsonRecordBase
     {
-        var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
-        await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+
         _logger.LogInformation($"{typeof(T).FullName}:{string.Join(",", idList)}");
-        var result = await repo.ListAsync(
-            new ListSpecification<T>(DataFilterCollection<string>.Includes(idList)),
-            cancellationToken);
-        ListQueryResult<T> queryResult = default;
-        if (result != null)
+        var resultList = new List<T>();
+        foreach (var id in idList)
         {
-            queryResult = new ListQueryResult<T>(
-                result.Count,
-                1,
-                result.Count,
-                result);
+            var entity = await _objectCache.GetEntityAsync<T>(id, cancellationToken);
+            if (entity == null)
+            {
+                continue;
+            }
+            resultList.Add(entity);
+        }
+        idList = idList.Except(resultList.Select(static x => x.Id)).ToArray();
+        if (idList.Any())
+        {
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
+            await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+
+            var list = await repo.ListAsync(
+               new ListSpecification<T>(DataFilterCollection<string>.Includes(idList)),
+               cancellationToken);
+            foreach (var item in list)
+            {
+                await _objectCache.SetEntityAsync(item, cancellationToken);
+            }
+
+            resultList = resultList.Union(list).ToList();
         }
 
+        ListQueryResult<T> queryResult = default;
+        if (resultList != null)
+        {
+            queryResult = new ListQueryResult<T>(
+                resultList.Count,
+                1,
+                resultList.Count,
+                resultList);
+        }
 
         return queryResult;
     }
@@ -327,8 +209,11 @@ public class ConfigurationQueryService
                     entityFromDb,
                     configurationRepo.DbContext,
                     cancellationToken);
+                await _objectCache.SetEntityAsync(entityFromDb, cancellationToken);
             }
         }, cancellationToken);
+
+
 
 
         return new ConfigurationSaveChangesResult()
@@ -386,6 +271,7 @@ public class ConfigurationQueryService
         await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
         await repo.DeleteAsync(entity, cancellationToken);
         var applicationDbContext = repo.DbContext as ApplicationDbContext;
+        await RemoveConfigurationVersionCache(entity, applicationDbContext, cancellationToken);
         await applicationDbContext.ConfigurationVersionRecordDbSet
             .Where(x => x.ConfigurationId == entity.Id)
             .ExecuteDeleteAsync(cancellationToken);
@@ -398,6 +284,21 @@ public class ConfigurationQueryService
             OldValue = entity,
             ChangesCount = changesCount,
         };
+    }
+
+    async ValueTask RemoveConfigurationVersionCache<T>(
+        T entity,
+        ApplicationDbContext applicationDbContext,
+        CancellationToken cancellationToken) where T : JsonRecordBase
+    {
+        var configurationVersionIdList = await applicationDbContext.ConfigurationVersionRecordDbSet.Where(x => x.ConfigurationId == entity.Id)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+        foreach (var configurationVersionId in configurationVersionIdList)
+        {
+            var key = _objectCache.GetEntityKey<ConfigurationVersionRecordModel>(configurationVersionId);
+            await _objectCache.RemoveObjectAsync(key, cancellationToken);
+        }
     }
 
     public async ValueTask<ConfigurationSaveChangesResult> SwitchConfigurationVersionAsync<T>(ConfigurationVersionSwitchParameters parameters, CancellationToken cancellationToken = default)

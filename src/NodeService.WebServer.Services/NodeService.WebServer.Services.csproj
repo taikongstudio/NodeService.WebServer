@@ -11,6 +11,7 @@
         <PackageReference Include="CronExpressionDescriptor" Version="2.34.0" />
         <PackageReference Include="MailKit" Version="4.7.1" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.7" />
         <PackageReference Include="OneOf" Version="3.0.271" />
         <PackageReference Include="Quartz" Version="3.11.0" />
         <PackageReference Include="FluentFTP" Version="50.1.0" />

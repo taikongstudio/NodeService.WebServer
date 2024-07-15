@@ -4,7 +4,9 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Net.Http.Headers;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.NodeFileSystem;
+using NodeService.WebServer.Data.Entities;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.NodeFileSystem;
 
 namespace NodeService.WebServer.Controllers;
@@ -18,14 +20,19 @@ public class NodeFileSystemController : Controller
     readonly IServiceProvider _serviceProvider;
     readonly NodeFileSyncQueueDictionary _batchProcessQueueDictionary;
     readonly SyncRecordQueryService _syncRecordQueryService;
-    readonly IDistributedCache _distributedCache;
+    readonly ObjectCache _objectCache;
+    readonly ConfigurationQueryService _configurationQueryService;
+    readonly FileInfoCacheService _fileInfoCacheService;
 
     public NodeFileSystemController(
         ILogger<NodeFileSystemController> logger,
         IServiceProvider serviceProvider,
+        ObjectCache distributedCache,
         ExceptionCounter exceptionCounter,
+        ConfigurationQueryService configurationQueryService,
         NodeFileSyncQueueDictionary batchProcessQueueDictionary,
-        SyncRecordQueryService syncRecordQueryService
+        SyncRecordQueryService syncRecordQueryService,
+        FileInfoCacheService fileInfoCacheService
     )
     {
         _logger = logger;
@@ -33,6 +40,9 @@ public class NodeFileSystemController : Controller
         _serviceProvider = serviceProvider;
         _batchProcessQueueDictionary = batchProcessQueueDictionary;
         _syncRecordQueryService = syncRecordQueryService;
+        _objectCache = distributedCache;
+        _configurationQueryService = configurationQueryService;
+        _fileInfoCacheService = fileInfoCacheService;
     }
 
     [HttpGet("/api/NodeFileSystem/QueueStatus")]
@@ -84,14 +94,29 @@ public class NodeFileSystemController : Controller
         return rsp;
     }
 
-    [HttpGet("/api/NodeFileSystem/DeleteHittestResultCache")]
-    public async Task<ApiResponse<int>> DeleteHittestResultCacheAsync()
+    [HttpPost("/api/NodeFileSystem/Hittest")]
+    public async Task<ApiResponse<FileInfoCacheResult>> HittestAsync(
+        NodeFileSyncRequest nodeFileSyncRequest,
+        CancellationToken cancellationToken = default)
     {
-        var rsp = new ApiResponse<int>();
+        var rsp = new ApiResponse<FileInfoCacheResult>();
         try
         {
-            var count = await NodeFileSystemHelper.DeleteHittestResultCacheAsync(_serviceProvider);
-            rsp.SetResult(count);
+            var fileInfoCache = await _fileInfoCacheService.GetFileInfoCache(
+                nodeFileSyncRequest.ConfigurationId,
+                nodeFileSyncRequest.StoragePath,
+                cancellationToken);
+            if (
+                nodeFileSyncRequest.FileInfo.FullName == fileInfoCache.FullName
+                &&
+                nodeFileSyncRequest.FileInfo.Length == fileInfoCache.Length
+                &&
+                nodeFileSyncRequest.FileInfo.LastWriteTime == fileInfoCache.DateTime
+                )
+            {
+                rsp.SetResult(FileInfoCacheResult.Cached);
+            }
+
         }
         catch (Exception ex)
         {
@@ -101,32 +126,7 @@ public class NodeFileSystemController : Controller
         return rsp;
     }
 
-    [HttpPost("/api/NodeFileSystem/Hittest")]
-    public async Task<ApiResponse<NodeFileHittestResult>> HittestAsync(NodeFileSyncRequest nodeFileSyncRequest)
-    {
-        var rsp = new ApiResponse<NodeFileHittestResult>();
-        try
-        {
-            var hittestResult = await NodeFileSystemHelper.HittestAsync(
-                _serviceProvider,
-                nodeFileSyncRequest.NodeInfoId,
-                nodeFileSyncRequest.FileInfo);
-            if (hittestResult)
-            {
-                rsp.SetResult(NodeFileHittestResult.Hittested);
-            }
-            else
-            {
-                rsp.SetResult(NodeFileHittestResult.None);
-            }
-        }
-        catch (Exception ex)
-        {
-            rsp.ErrorCode = ex.HResult;
-            rsp.Message = ex.ToString();
-        }
-        return rsp;
-    }
+
 
     [HttpPost("/api/NodeFileSystem/UploadFile")]
     [EnableRateLimiting("UploadFile")]

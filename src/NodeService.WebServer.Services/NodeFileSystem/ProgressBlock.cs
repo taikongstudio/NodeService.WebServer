@@ -21,7 +21,6 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             _batchBlock = new BatchBlock<T>(2048, new GroupingDataflowBlockOptions()
             {
                 EnsureOrdered = true,
-                MaxMessagesPerTask = 1
             });
 
             _actionBlock = new ActionBlock<T[]>(InvokeAsync, new ExecutionDataflowBlockOptions()

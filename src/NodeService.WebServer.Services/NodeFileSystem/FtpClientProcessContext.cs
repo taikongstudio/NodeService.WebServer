@@ -6,18 +6,20 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQueue;
 using System;
+using Microsoft.Extensions.Caching.Distributed;
+using NodeService.Infrastructure.DataModels;
 
 namespace NodeService.WebServer.Services.NodeFileSystem;
 
 public class FtpClientProcessContext : ProcessContext
 {
-    readonly IDbContextFactory<InMemoryDbContext> _dbContextFactory;
     readonly NodeInfoQueryService _nodeQueryService;
+    readonly FtpClientFactory _ftpClientFactory;
+    readonly ObjectCache _objectCache;
     readonly ILogger<FtpClientProcessContext> _logger;
     readonly SyncRecordQueryService _syncRecordQueryService;
     readonly ExceptionCounter _exceptionCounter;
     readonly IServiceProvider _serviceProvider;
-    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
     readonly ConfigurationQueryService _configurationQueryService;
 
     [ActivatorUtilitiesConstructor]
@@ -25,34 +27,20 @@ public class FtpClientProcessContext : ProcessContext
         ILogger<FtpClientProcessContext> logger,
         NodeInfoQueryService nodeQueryService,
         ExceptionCounter exceptionCounter,
-        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
+        FtpClientFactory ftpClientFactory,
         ConfigurationQueryService configurationQueryService,
-        IDbContextFactory<InMemoryDbContext> dbContextFactory,
-       SyncRecordQueryService syncRecordQueryService)
+        SyncRecordQueryService syncRecordQueryService,
+        ObjectCache  objectCache)
     {
-        _nodeInfoRepoFactory = nodeInfoRepoFactory;
         _configurationQueryService = configurationQueryService;
         _exceptionCounter = exceptionCounter;
         _logger = logger;
         _syncRecordQueryService = syncRecordQueryService;
-        _dbContextFactory = dbContextFactory;
         _nodeQueryService = nodeQueryService;
+        _ftpClientFactory = ftpClientFactory;
+        _objectCache = objectCache;
     }
 
-    AsyncFtpClient CreateFtpClient(FtpConfiguration ftpConfig)
-    {
-        var asyncFtpClient = new AsyncFtpClient(ftpConfig.Host, ftpConfig.Username, ftpConfig.Password, ftpConfig.Port,
-                            new FtpConfig()
-                            {
-                                ConnectTimeout = ftpConfig.ConnectTimeout,
-                                ReadTimeout = ftpConfig.ReadTimeout,
-                                SslProtocols = System.Security.Authentication.SslProtocols.None,
-                                DataConnectionReadTimeout = ftpConfig.DataConnectionReadTimeout,
-                                DataConnectionConnectTimeout = ftpConfig.DataConnectionConnectTimeout,
-                                DataConnectionType = (FtpDataConnectionType)ftpConfig.DataConnectionType
-                            });
-        return asyncFtpClient;
-    }
 
     public override async ValueTask ProcessAsync(NodeFileSyncContext syncContext, CancellationToken cancellationToken = default)
     {
@@ -75,7 +63,7 @@ public class FtpClientProcessContext : ProcessContext
 
             var ftpConfig = rsp.Items?.FirstOrDefault();
 
-            if (!rsp.HasValue || ftpConfig == null)
+            if (!rsp.HasValue || ftpConfig?.Value == null)
             {
                 syncContext.Record.ErrorCode = -1;
                 syncContext.Record.Message = "ftp configuration not found";
@@ -89,7 +77,10 @@ public class FtpClientProcessContext : ProcessContext
                 syncContext.TrySetResult(NodeFileSyncStatus.Canceled);
                 return;
             }
-            using var ftpClient = CreateFtpClient(ftpConfig.Value);
+            await using var ftpClient = await _ftpClientFactory.CreateClientAsync(
+                ftpConfig.Value,
+                TimeSpan.FromSeconds(30),
+                cancellationToken);
             if (!ftpClient.IsConnected)
             {
                 await ftpClient.AutoConnect(cancellationToken);
@@ -98,7 +89,7 @@ public class FtpClientProcessContext : ProcessContext
             NodeFileInfo? ftpNodeFileInfo = null;
             if (ftpObjectInfo == null)
             {
-                syncContext.IsStorageNotExists = true;
+                syncContext.IsPhysicialStorageNotExists = true;
             }
             else
             {
@@ -157,6 +148,20 @@ public class FtpClientProcessContext : ProcessContext
                 }
                 syncContext.Record.UtcEndTime = DateTime.UtcNow;
             }
+            var fileInfoCacheKey = NodeFileSyncHelper.BuiIdCacheKey(ftpConfig.Value.Host,
+                ftpConfig.Value.Port,
+                syncContext.Request.StoragePath);
+            await _objectCache.SetObjectAsync(
+                fileInfoCacheKey,
+                new FileInfoCache()
+                {
+                    CreateDateTime = DateTime.UtcNow,
+                    DateTime = syncContext.Record.FileInfo.LastWriteTime,
+                    FullName = syncContext.Record.FullName,
+                    Length = syncContext.Record.FileInfo.Length,
+                    ModifiedDateTime = DateTime.UtcNow,
+                },
+                cancellationToken);
         }
         catch (Exception ex)
         {
@@ -169,11 +174,6 @@ public class FtpClientProcessContext : ProcessContext
         }
         finally
         {
-
-            await CacheHittestResultAsync(
-                syncContext,
-                cancellationToken);
-
             await AddOrUpdateSyncRecordAsync(
                 syncContext,
                 cancellationToken);
@@ -195,6 +195,7 @@ public class FtpClientProcessContext : ProcessContext
         }
         return oldFileInfo.Length == newFileInfo.Length &&
                         CompareDateTime(oldFileInfo.LastWriteTime, newFileInfo.LastWriteTime);
+
         static bool CompareDateTime(DateTime dateTime1, DateTime dateTime2)
         {
             if (dateTime1 == dateTime2)
@@ -213,44 +214,5 @@ public class FtpClientProcessContext : ProcessContext
         return ValueTask.CompletedTask;
     }
 
-    async ValueTask CacheHittestResultAsync(
-        NodeFileSyncContext syncContext,
-        CancellationToken cancellationToken = default)
-    {
-        using var dbContext = _dbContextFactory.CreateDbContext();
-        var cache = await dbContext.FileHittestResultCacheDbSet.FindAsync(
-            [
-                syncContext.Record.NodeInfoId,
-                syncContext.Record.FileInfo.FullName
-            ], cancellationToken);
-        if (cache == null)
-        {
-            cache = new NodeFileHittestResultCache()
-            {
-                NodeInfoId = syncContext.Record.NodeInfoId,
-                FullName = syncContext.Record.FullName,
-                DateTime = syncContext.Record.FileInfo.LastWriteTime,
-                Length = syncContext.Record.FileInfo.Length,
-                CreateDateTime = DateTime.UtcNow,
-                ModifiedDateTime = DateTime.UtcNow
-            };
-            await dbContext.FileHittestResultCacheDbSet.AddAsync(cache, cancellationToken);
-        }
-        else
-        {
-            if (syncContext.IsStorageNotExists && syncContext.Record.Status != NodeFileSyncStatus.Processed)
-            {
-                dbContext.FileHittestResultCacheDbSet.Remove(cache);
-            }
-            else
-            {
-                cache.DateTime = syncContext.Record.FileInfo.LastWriteTime;
-                cache.Length = syncContext.Record.FileInfo.Length;
-                cache.ModifiedDateTime = DateTime.UtcNow;
-                dbContext.FileHittestResultCacheDbSet.Update(cache);
-            }
 
-        }
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
 }

@@ -1,16 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Sqlite.Infrastructure.Internal;
-using Microsoft.EntityFrameworkCore.SqlServer.Infrastructure.Internal;
 using NodeService.Infrastructure.Logging;
-using NodeService.WebServer.Data.Entities;
-using Pomelo.EntityFrameworkCore.MySql.Infrastructure.Internal;
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Data
 {
@@ -26,9 +17,6 @@ namespace NodeService.WebServer.Data
             : base(contextOptions)
         {
         }
-
-        public DbSet<NodeFileHittestResultCache> FileHittestResultCacheDbSet { get; set; }
-
 
         public DbSet<ClientUpdateConfigModel> ClientUpdateConfigurationDbSet { get; set; }
 
@@ -99,11 +87,6 @@ namespace NodeService.WebServer.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
-            modelBuilder.Entity<NodeFileHittestResultCache>(builder =>
-            {
-                builder.HasKey(x => new { x.NodeInfoId, x.FullName });
-            });
 
             modelBuilder.SharedTypeEntity<PropertyBag>("PropertyBag", builder =>
             {

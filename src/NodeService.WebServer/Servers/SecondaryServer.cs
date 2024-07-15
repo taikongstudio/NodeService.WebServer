@@ -210,6 +210,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<NodeFileSyncQueueDictionary>();
             builder.Services.AddSingleton<SyncRecordQueryService>();
             builder.Services.AddSingleton<ConfigurationQueryService>();
+            builder.Services.AddSingleton<FtpClientFactory>();
 
             builder.Services.AddSingleton<NodeInfoQueryService>();
 

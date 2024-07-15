@@ -12,22 +12,7 @@ public partial class NodesController
         try
         {
             ArgumentNullException.ThrowIfNull(value, nameof(value));
-            await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
-            var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
-            if (nodeInfo == null)
-            {
-                apiResponse.ErrorCode = -1;
-                apiResponse.Message = "invalid node id";
-            }
-            else
-            {
-                nodeInfo.Profile.TestInfo = value.TestInfo;
-                nodeInfo.Profile.LabArea = value.LabArea;
-                nodeInfo.Profile.LabName = value.LabName;
-                nodeInfo.Profile.Usages = value.Usages;
-                nodeInfo.Profile.Remarks = value.Remarks;
-                await nodeInfoRepo.SaveChangesAsync(cancellationToken);
-            }
+            await _nodeInfoQueryService.UpdateNodeProfileAsync(nodeId, value);
         }
         catch (Exception ex)
         {

@@ -5,6 +5,7 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.NodeSessions;
 using OneOf;
 using System.Threading.Channels;
@@ -108,6 +109,8 @@ public class TaskActivateService : BackgroundService
     readonly INodeSessionService _nodeSessionService;
     readonly ITaskPenddingContextManager _taskPenddingContextManager;
     readonly TaskFlowExecutor _taskFlowExecutor;
+    readonly NodeInfoQueryService _nodeInfoQueryService;
+    readonly ConfigurationQueryService _configurationQueryService;
     readonly ExceptionCounter _exceptionCounter;
     readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationQueue;
@@ -136,7 +139,9 @@ public class TaskActivateService : BackgroundService
         BatchQueue<TaskActivateServiceParameters> serviceParametersBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationQueue,
         ITaskPenddingContextManager taskPenddingContextManager,
-        TaskFlowExecutor taskFlowExecutor)
+        TaskFlowExecutor taskFlowExecutor,
+        NodeInfoQueryService nodeInfoQueryService,
+        ConfigurationQueryService configurationQueryService)
     {
         _logger = logger;
         PenddingContextChannel = Channel.CreateUnbounded<TaskPenddingContext>();
@@ -157,6 +162,8 @@ public class TaskActivateService : BackgroundService
         _taskPenddingContextManager = taskPenddingContextManager;
 
         _taskFlowExecutor = taskFlowExecutor;
+        _nodeInfoQueryService = nodeInfoQueryService;
+        _configurationQueryService = configurationQueryService;
 
         PenddingActionBlock = new ActionBlock<TaskPenddingContext>(ProcessPenddingContextAsync,
             new ExecutionDataflowBlockOptions
@@ -456,18 +463,9 @@ public class TaskActivateService : BackgroundService
         await taskExecutionInstanceRepo.AddRangeAsync(taskExecutionInstanceList, cancellationToken);
     }
 
-    async ValueTask<List<NodeInfoModel>> QueryNodeListAsync(TaskDefinitionModel taskDefinition, CancellationToken cancellationToken = default)
+     ValueTask<List<NodeInfoModel>> QueryNodeListAsync(TaskDefinitionModel taskDefinition, CancellationToken cancellationToken = default)
     {
-        await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync(cancellationToken);
-        var nodeInfoList = await nodeInfoRepo.ListAsync(
-             new NodeInfoSpecification(
-                 AreaTags.Any,
-                 NodeStatus.All,
-                 NodeDeviceType.Computer,
-                 DataFilterCollection<string>.Includes(taskDefinition.NodeList.Select(x => x.Value))),
-             cancellationToken);
-
-        return nodeInfoList;
+        return _nodeInfoQueryService.QueryNodeInfoListAsync(taskDefinition.NodeList.Select(static x => x.Value), cancellationToken);
     }
 
     static (NodeId NodeId, NodeInfoModel NodeInfo) FindNodeInfo(List<NodeInfoModel> nodeInfoList, string id)
@@ -604,7 +602,6 @@ public class TaskActivateService : BackgroundService
     {
         await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync();
         await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
-
         foreach (var retryTaskFlowParametersGroup in retryTaskParameterList.GroupBy(static x => x.TaskExecutionInstanceId))
         {
             var taskExecutionInstanceId = retryTaskFlowParametersGroup.Key;
@@ -612,6 +609,7 @@ public class TaskActivateService : BackgroundService
             {
                 continue;
             }
+
             var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
             if (taskExecutionInstance == null)
             {
@@ -621,6 +619,7 @@ public class TaskActivateService : BackgroundService
             {
                 continue;
             }
+
             var taskExecutionRecord = await taskActivationRecordRepo.GetByIdAsync(taskExecutionInstance.FireInstanceId, cancellationToken);
             if (taskExecutionRecord == null)
             {
@@ -650,12 +649,12 @@ public class TaskActivateService : BackgroundService
         IEnumerable<FireTaskFlowParameters> fireTaskFlowParameterList,
         CancellationToken cancellationToken = default)
     {
-        await using var taskFlowTemplateRepo = await _taskFlowTemplateRepoFactory.CreateRepositoryAsync();
-        await using var taskFlowExeuctionInstanceRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync();
+
+
         foreach (var fireTaskFlowParametersGroup in fireTaskFlowParameterList.GroupBy(static x => x.TaskFlowTemplateId))
         {
             var taskFlowTemplateId = fireTaskFlowParametersGroup.Key;
-            var taskFlowTemplate = await taskFlowTemplateRepo.GetByIdAsync(taskFlowTemplateId, cancellationToken);
+            var taskFlowTemplate = await GetTaskFlowTemplateAsync(taskFlowTemplateId);
             if (taskFlowTemplate == null)
             {
                 continue;
@@ -719,10 +718,8 @@ public class TaskActivateService : BackgroundService
             {
                 await _taskFlowExecutor.ExecuteAsync(taskFlowExecutionInstance, cancellationToken);
             }
-            foreach (var array in taskFlowExecutionInstances.Chunk(10))
-            {
-                await taskFlowExeuctionInstanceRepo.AddRangeAsync(array, cancellationToken);
-            }
+            await using var taskFlowExeuctionInstanceRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync();
+            await taskFlowExeuctionInstanceRepo.AddRangeAsync(taskFlowExecutionInstances, cancellationToken);
         }
 
     }
@@ -731,9 +728,6 @@ public class TaskActivateService : BackgroundService
         IEnumerable<FireTaskParameters> fireTaskParameterList, 
         CancellationToken cancellationToken)
     {
-      await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync();
-
-
 
         foreach (var fireTaskParameterGroup in fireTaskParameterList.GroupBy(static x => x.TaskDefinitionId))
         {
@@ -770,24 +764,26 @@ public class TaskActivateService : BackgroundService
     }
 
     async ValueTask<TaskTypeDescConfigModel?> GetTaskTypeDescAsync(
-        string id,
+        string taskTypeDescId,
         CancellationToken cancellationToken = default)
     {
-        await using var taskTypeDescRepo = await _taskTypeDescConfigRepositoryFactory.CreateRepositoryAsync();
-        var taskTypeDesc = await taskTypeDescRepo.GetByIdAsync(
-                                                                         id,
-                                                                         cancellationToken);
-        return taskTypeDesc;
+        var list = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskTypeDescConfigModel>([taskTypeDescId], cancellationToken);
+        return list.Items?.FirstOrDefault();
     }
 
     async ValueTask<TaskDefinitionModel?> GetTaskDefinitionAsync(
         string taskDefinitionId,
         CancellationToken cancellationToken = default)
     {
-        await using var taskDefinitionRepo = await _taskDefinitionRepositoryFactory.CreateRepositoryAsync(cancellationToken);
-        var taskDefinition = await taskDefinitionRepo.GetByIdAsync(
-              taskDefinitionId,
-              cancellationToken);
-        return taskDefinition;
+        var list = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskDefinitionModel>([taskDefinitionId], cancellationToken);
+        return list.Items?.FirstOrDefault();
+    }
+
+    async ValueTask<TaskFlowTemplateModel?> GetTaskFlowTemplateAsync(
+    string taskFlowTemplateId,
+    CancellationToken cancellationToken = default)
+    {
+        var list = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskFlowTemplateModel>([taskFlowTemplateId], cancellationToken);
+        return list.Items?.FirstOrDefault();
     }
 }

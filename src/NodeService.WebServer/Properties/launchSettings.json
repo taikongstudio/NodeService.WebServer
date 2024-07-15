@@ -9,7 +9,7 @@
     },
     "NodeService.WebServer": {
       "commandName": "Project",
-      "commandLineArgs": "--env Development --features Secondary",
+      "commandLineArgs": "--env Development",
       "launchBrowser": true,
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"

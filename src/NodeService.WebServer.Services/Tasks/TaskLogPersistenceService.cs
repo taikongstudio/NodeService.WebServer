@@ -1,14 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.DataModels;
-using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -67,11 +62,9 @@ public class TaskLogPersistenceService : BackgroundService
         {
             try
             {
-                await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
-                var applicationDbContext = taskLogRepo.DbContext as ApplicationDbContext;
                 await foreach (var taskExecutionInstance in QueryExpiredTaskExecutionInstanceAsync(cancellationToken))
                 {
-                    await DeleteTaskLogAsync(taskExecutionInstance, applicationDbContext, cancellationToken);
+                    await DeleteTaskLogAsync(taskExecutionInstance, cancellationToken);
                     await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 }
             }
@@ -101,21 +94,23 @@ public class TaskLogPersistenceService : BackgroundService
                 {
                     break;
                 }
-                if (queryResult.Items.Count() < pageSize)
-                {
-                    break;
-                }
                 foreach (var item in queryResult.Items)
                 {
                     yield return item;
+                }
+                if (queryResult.Items.Count() < pageSize)
+                {
+                    break;
                 }
                 pageIndex++;
             }
             yield break;
         }
 
-        async Task DeleteTaskLogAsync(TaskExecutionInstanceModel taskExecutionInstance, ApplicationDbContext applicationDbContext, CancellationToken cancellationToken = default)
+        async Task DeleteTaskLogAsync(TaskExecutionInstanceModel taskExecutionInstance, CancellationToken cancellationToken = default)
         {
+            await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
+            var applicationDbContext = taskLogRepo.DbContext as ApplicationDbContext;
             int deleteCount = await applicationDbContext.TaskLogStorageDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
             if (deleteCount > 0)
             {

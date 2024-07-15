@@ -113,7 +113,7 @@ public class TaskLogStorageHandler
         {
             return;
         }
-        await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
+        await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
         Stopwatch stopwatch = Stopwatch.StartNew();
         var updateCount = 0;
         var addedCount = 0;

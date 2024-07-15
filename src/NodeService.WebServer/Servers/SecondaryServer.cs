@@ -8,6 +8,7 @@ using NodeService.WebServer.Services.Dianostics;
 using NodeService.WebServer.Services.NodeFileSystem;
 using NodeService.WebServer.Services.VirtualFileSystem;
 using OpenTelemetry.Metrics;
+using StackExchange.Redis;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -211,6 +212,30 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<SyncRecordQueryService>();
             builder.Services.AddSingleton<ConfigurationQueryService>();
             builder.Services.AddSingleton<FtpClientFactory>();
+
+            builder.Services.AddStackExchangeRedisCache(options =>
+            {
+                var endPointsString = builder.Configuration.GetSection("Redis").GetValue<string>("EndPoints");
+                var password = builder.Configuration.GetSection("Redis").GetValue<string>("Password");
+                var endPoints = new EndPointCollection();
+                foreach (var endPointString in endPointsString.Split(','))
+                {
+                    var endPoint = EndPointCollection.TryParse(endPointsString);
+                    if (endPoint == null)
+                    {
+                        throw new InvalidOperationException("");
+                    }
+                    endPoints.Add(endPoint);
+                }
+                options.InstanceName = "NodeService";
+                options.ConfigurationOptions = new ConfigurationOptions()
+                {
+
+                    EndPoints = endPoints,
+                    Password = password,
+                };
+            });
+            builder.Services.AddSingleton<ObjectCache>();
 
             builder.Services.AddSingleton<NodeInfoQueryService>();
 

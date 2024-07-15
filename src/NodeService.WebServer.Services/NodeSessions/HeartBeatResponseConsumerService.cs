@@ -135,7 +135,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             await RefreshNodeSettingsAsync(cancellationToken);
             var nodeIdList = array.Select(GetNodeId);
-            var nodeList = await _nodeInfoQueryService.QueryNodeInfoListAsync(nodeIdList);
+            var nodeList = await _nodeInfoQueryService.QueryNodeInfoListAsync(nodeIdList, false);
             foreach (var hearBeatSessionMessage in array)
             {
                 NodeInfoModel? nodeInfo = null;

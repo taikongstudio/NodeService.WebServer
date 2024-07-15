@@ -44,6 +44,8 @@ namespace NodeService.WebServer.Data
                         where T : EntityBase
         {
             var key = GetEntityKey(value);
+            value.EntityVersion = [];
+            value.EntitySource = EntitySource.Cache;
             var json = JsonSerializer.Serialize(value);
             await _distributedCache.SetStringAsync(
                 key,
@@ -65,6 +67,7 @@ namespace NodeService.WebServer.Data
             if (entity != null)
             {
                 entity.EntitySource = EntitySource.Cache;
+                entity.EntityVersion = [];
             }
             return entity;
         }

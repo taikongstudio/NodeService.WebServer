@@ -75,7 +75,7 @@ namespace NodeService.WebServer.Services.DataQueue
             string nodeId,
             CancellationToken cancellationToken = default)
         {
-            var nodeInfo = await QueryNodeInfoByIdAsync(nodeId, cancellationToken);
+            var nodeInfo = await QueryNodeInfoByIdAsync(nodeId, false, cancellationToken);
             if (nodeInfo == null)
             {
                 return null;
@@ -136,19 +136,23 @@ namespace NodeService.WebServer.Services.DataQueue
 
         public async ValueTask<NodeInfoModel?> QueryNodeInfoByIdAsync(
             string nodeId,
+            bool useCache,
             CancellationToken cancellationToken = default)
         {
-            var nodeInfo = await _objectCache.GetEntityAsync<NodeInfoModel>(nodeId, cancellationToken);
-            if (nodeInfo == null)
+            NodeInfoModel? nodeInfo = null;
+            if (useCache)
             {
-                {
-                    await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
-                    nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
-                }
+                nodeInfo = await _objectCache.GetEntityAsync<NodeInfoModel>(nodeId);
+            }
+            else
+            {
+                await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
+                nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
                 if (nodeInfo != null)
                 {
                     await _objectCache.SetEntityAsync(nodeInfo, cancellationToken);
                 }
+
             }
             return nodeInfo;
         }
@@ -171,20 +175,26 @@ namespace NodeService.WebServer.Services.DataQueue
 
         public async ValueTask<List<NodeInfoModel>> QueryNodeInfoListAsync(
             IEnumerable<string> nodeIdList,
+            bool useCache,
             CancellationToken cancellationToken = default)
         {
             List<NodeInfoModel> resultList = [];
 
-            foreach (var item in nodeIdList)
+            if (useCache)
             {
-                var entity = await _objectCache.GetEntityAsync<NodeInfoModel>(item, cancellationToken);
-                if (entity == null)
+                foreach (var item in nodeIdList)
                 {
-                    continue;
+                    var entity = await _objectCache.GetEntityAsync<NodeInfoModel>(item, cancellationToken);
+                    if (entity == null)
+                    {
+                        continue;
+                    }
+                    resultList.Add(entity);
                 }
-                resultList.Add(entity);
+                nodeIdList = nodeIdList.Except(resultList.Select(static x => x.Id)).ToArray();
             }
-            nodeIdList = nodeIdList.Except(resultList.Select(static x => x.Id)).ToArray();
+
+
             if (nodeIdList.Any())
             {
                 await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
@@ -193,10 +203,14 @@ namespace NodeService.WebServer.Services.DataQueue
                       new NodeInfoSpecification(
                         DataFilterCollection<string>.Includes(nodeIdList)),
                       cancellationToken);
-                foreach (var item in nodeList)
+                if (useCache)
                 {
-                    await _objectCache.SetEntityAsync(item, cancellationToken);
+                    foreach (var item in nodeList)
+                    {
+                        await _objectCache.SetEntityAsync(item, cancellationToken);
+                    }
                 }
+
                 resultList = resultList.Union(nodeList).ToList();
             }
             return resultList;
@@ -278,7 +292,7 @@ namespace NodeService.WebServer.Services.DataQueue
         UpdateNodeProfileModel value,
         CancellationToken cancellationToken = default)
         {
-            var nodeInfo = await QueryNodeInfoByIdAsync(nodeId, cancellationToken);
+            var nodeInfo = await QueryNodeInfoByIdAsync(nodeId, false, cancellationToken);
             if (nodeInfo == null)
             {
                 throw new Exception("invalid node info id");

@@ -48,6 +48,7 @@ public class FtpClientProcessContext : ProcessContext
         {
             var nodeInfo = await _nodeQueryService.QueryNodeInfoByIdAsync(
                 syncContext.Request.NodeInfoId,
+                true,
                 cancellationToken);
             if (nodeInfo == null)
             {

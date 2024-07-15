@@ -82,7 +82,7 @@ public partial class NodesController : Controller
         var apiResponse = new ApiResponse<NodeInfoModel>();
         try
         {
-            var nodeInfo = await _nodeInfoQueryService.QueryNodeInfoByIdAsync(id, cancellationToken);
+            var nodeInfo = await _nodeInfoQueryService.QueryNodeInfoByIdAsync(id, false, cancellationToken);
             apiResponse.SetResult(nodeInfo);
         }
         catch (Exception ex)
@@ -102,7 +102,7 @@ public partial class NodesController : Controller
         var apiResponse = new ApiResponse<NodeInfoModel>();
         try
         {
-            var nodeInfo = await _nodeInfoQueryService.QueryNodeInfoByIdAsync(id, cancellationToken);
+            var nodeInfo = await _nodeInfoQueryService.QueryNodeInfoByIdAsync(id, false,cancellationToken);
             if (nodeInfo != null)
             {
                 nodeInfo.Deleted = true;

@@ -80,6 +80,10 @@ public class EFRepository<TEntity, TDbContext> :
     {
         if (entity is RecordBase record)
         {
+            if (record.EntitySource== EntitySource.Cache)
+            {
+                throw new InvalidOperationException("Could not save changes from cached entity");
+            }
             if (record.CreationDateTime == default)
             {
                 record.CreationDateTime = DateTime.UtcNow;

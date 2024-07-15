@@ -106,17 +106,20 @@ public class NodeFileSystemController : Controller
                 nodeFileSyncRequest.ConfigurationId,
                 nodeFileSyncRequest.StoragePath,
                 cancellationToken);
-            if (
-                nodeFileSyncRequest.FileInfo.FullName == fileInfoCache.FullName
-                &&
-                nodeFileSyncRequest.FileInfo.Length == fileInfoCache.Length
-                &&
-                nodeFileSyncRequest.FileInfo.LastWriteTime == fileInfoCache.DateTime
-                )
+            if (fileInfoCache == null)
+            {
+                rsp.SetResult(FileInfoCacheResult.None);
+            }
+            else if (
+                    nodeFileSyncRequest.FileInfo.FullName == fileInfoCache.FullName
+                    &&
+                    nodeFileSyncRequest.FileInfo.Length == fileInfoCache.Length
+                    &&
+                    nodeFileSyncRequest.FileInfo.LastWriteTime == fileInfoCache.DateTime
+                    )
             {
                 rsp.SetResult(FileInfoCacheResult.Cached);
             }
-
         }
         catch (Exception ex)
         {

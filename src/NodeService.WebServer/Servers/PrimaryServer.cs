@@ -422,6 +422,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<SyncRecordQueryService>();
             builder.Services.AddSingleton<FileRecordQueryService>();
             builder.Services.AddSingleton<NodeInfoQueryService>();
+            builder.Services.AddSingleton<FileInfoCacheService>();
 
             builder.Services.AddSingleton<IJobFactory, JobFactory>();
             builder.Services.AddSingleton<TaskSchedulerDictionary>();

@@ -58,7 +58,9 @@ public class TaskPenddingContext : IAsyncDisposable
         return false;
     }
 
-    public async Task<bool> StopRunningTasksAsync(IRepository<TaskExecutionInstanceModel> repository, BatchQueue<TaskCancellationParameters> taskCancellationQueue)
+    public async Task<bool> StopRunningTasksAsync(
+        IRepository<TaskExecutionInstanceModel> repository,
+        BatchQueue<TaskCancellationParameters> taskCancellationQueue)
     {
         while (!CancellationToken.IsCancellationRequested)
         {

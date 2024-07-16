@@ -189,7 +189,7 @@ public class TaskActivateService : BackgroundService
                            _priorityQueue.TryDequeue(out var penddingContext, out var _))
                     {
                         var nodeStatus = _nodeSessionService.GetNodeStatus(penddingContext.NodeSessionId);
-                        if (nodeStatus == NodeStatus.Online)
+                        if (nodeStatus == NodeStatus.Online || penddingContext.CancellationToken.IsCancellationRequested)
                         {
                             PenddingActionBlock.Post(penddingContext);
                         }
@@ -247,48 +247,51 @@ public class TaskActivateService : BackgroundService
         var readyToRun = false;
         try
         {
-            _logger.LogInformation($"{context.Id}:Start init");
-            context.EnsureInit();
-            switch (context.TaskDefinition.ExecutionStrategy)
+            if (!context.CancellationToken.IsCancellationRequested)
             {
-                case TaskExecutionStrategy.Concurrent:
-                    readyToRun = true;
-                    break;
-                case TaskExecutionStrategy.Queue:
-                    readyToRun = await HasAnyActiveTaskAsync(context, context.CancellationToken);
-                    break;
-                case TaskExecutionStrategy.Stop:
-                    readyToRun = await StopAnyActiveTaskAsync(context, _taskCancellationQueue);
-                    break;
-                case TaskExecutionStrategy.Skip:
-                    return;
-            }
-
-            if (readyToRun)
-            {
-                while (!context.CancellationToken.IsCancellationRequested)
+                _logger.LogInformation($"{context.Id}:Start init");
+                switch (context.TaskDefinition.ExecutionStrategy)
                 {
-                    if (context.NodeSessionService.GetNodeStatus(context.NodeSessionId) == NodeStatus.Online) break;
-                    await Task.Delay(TimeSpan.FromSeconds(5), context.CancellationToken);
+                    case TaskExecutionStrategy.Concurrent:
+                        readyToRun = true;
+                        break;
+                    case TaskExecutionStrategy.Queue:
+                        readyToRun = await HasAnyActiveTaskAsync(context, context.CancellationToken);
+                        break;
+                    case TaskExecutionStrategy.Stop:
+                        readyToRun = await StopAnyActiveTaskAsync(context, _taskCancellationQueue);
+                        break;
+                    case TaskExecutionStrategy.Skip:
+                        return;
                 }
 
-                var rsp = await _nodeSessionService.SendTaskExecutionEventAsync(
-                    context.NodeSessionId,
-                    context.TriggerEvent,
-                    context.CancellationToken);
-                _logger.LogInformation($"{context.Id}:SendTaskExecutionEventAsync");
-                await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
+                if (readyToRun)
                 {
-                    Message = new TaskExecutionReport
+                    while (!context.CancellationToken.IsCancellationRequested)
                     {
-                        Id = context.Id,
-                        Status = TaskExecutionStatus.Triggered,
-                        Message = rsp.Message
+                        if (context.NodeSessionService.GetNodeStatus(context.NodeSessionId) == NodeStatus.Online) break;
+                        await Task.Delay(TimeSpan.FromSeconds(5), context.CancellationToken);
                     }
-                });
-                _logger.LogInformation($"{context.Id}:SendAsync Triggered");
-                return;
+
+                    var rsp = await _nodeSessionService.SendTaskExecutionEventAsync(
+                        context.NodeSessionId,
+                        context.TriggerEvent,
+                        context.CancellationToken);
+                    _logger.LogInformation($"{context.Id}:SendTaskExecutionEventAsync");
+                    await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
+                    {
+                        Message = new TaskExecutionReport
+                        {
+                            Id = context.Id,
+                            Status = TaskExecutionStatus.Triggered,
+                            Message = rsp.Message
+                        }
+                    });
+                    _logger.LogInformation($"{context.Id}:SendAsync Triggered");
+                    return;
+                }
             }
+
         }
         catch (TaskCanceledException ex)
         {
@@ -306,8 +309,13 @@ public class TaskActivateService : BackgroundService
         }
         catch (Exception ex)
         {
+            var exString = ex.ToString();
             _exceptionCounter.AddOrUpdate(ex, context.Id);
-            _logger.LogError(ex.ToString());
+            _logger.LogError(exString);
+            await SendTaskExecutionReportReportAsync(
+                context.Id,
+                TaskExecutionStatus.Failed,
+                exString);
         }
         finally
         {
@@ -315,17 +323,25 @@ public class TaskActivateService : BackgroundService
         }
         if (context.CancellationToken.IsCancellationRequested)
         {
-            await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
-            {
-                Message = new TaskExecutionReport
-                {
-                    Id = context.Id,
-                    Status = TaskExecutionStatus.PenddingTimeout,
-                    Message = "Timeout"
-                }
-            });
+            await SendTaskExecutionReportReportAsync(
+                context.Id,
+                TaskExecutionStatus.Pendding,
+                $"Time out after waiting {context.TaskDefinition.PenddingLimitTimeSeconds} seconds");
             _logger.LogInformation($"{context.Id}:SendAsync PenddingTimeout");
         }
+    }
+
+    async Task SendTaskExecutionReportReportAsync(string taskExecutionInstanceId, TaskExecutionStatus status, string message)
+    {
+        await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
+        {
+            Message = new TaskExecutionReport
+            {
+                Id = taskExecutionInstanceId,
+                Status = status,
+                Message = message
+            }
+        });
     }
 
     async ValueTask ActivateRemoteNodeTasksAsync(
@@ -447,6 +463,7 @@ public class TaskActivateService : BackgroundService
 
                 if (_taskPenddingContextManager.AddContext(context))
                 {
+                    context.EnsureInit();
                     await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
                 }
 

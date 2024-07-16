@@ -8,7 +8,7 @@ using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Services.VirtualFileSystem;
 
 
-namespace NodeService.WebServer.Services;
+namespace NodeService.WebServer.Services.NodeFileSystem;
 
 public class FileSystemServiceImpl : NodeFileSystemService.NodeFileSystemServiceBase
 {

@@ -1,7 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
-using MimeKit.Encodings;
 using NodeService.Infrastructure.Data;
-using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
@@ -18,6 +16,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly ExceptionCounter _exceptionCounter;
     readonly TaskFlowExecutor _taskFlowExecutor;
     readonly ConfigurationQueryService _configurationQueryService;
+    readonly ITaskPenddingContextManager _taskPenddingContextManager;
     readonly ILogger<TaskExecutionReportConsumerService> _logger;
     readonly IMemoryCache _memoryCache;
 
@@ -48,7 +47,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         IMemoryCache memoryCache,
         WebServerCounter webServerCounter,
         ExceptionCounter exceptionCounter,
-        TaskFlowExecutor taskFlowExecutor
+        TaskFlowExecutor taskFlowExecutor,
+        ITaskPenddingContextManager taskPenddingContextManager
     )
     {
         _logger = logger;
@@ -67,6 +67,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _exceptionCounter = exceptionCounter;
         _taskFlowExecutor = taskFlowExecutor;
         _configurationQueryService = configurationQueryService;
+        _taskPenddingContextManager = taskPenddingContextManager;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -797,6 +798,10 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     instance.Id,
                     nameof(CancelChildTasksAsync),
                     Dns.GetHostName()), cancellationToken);
+                if (instance.ChildTaskScheduleCount == 0)
+                {
+                    continue;
+                }
                 _ = Task.Run(async () =>
                  {
                      await CancelChildTasksAsync(instance, cancellationToken);
@@ -894,11 +899,11 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     }
 
     async ValueTask ProcessTaskExecutionInstanceAsync(
-        IEnumerable<TaskExecutionInstanceModel> taskExeuctionInstances,
+        IEnumerable<TaskExecutionInstanceModel> taskExecutionInstances,
         CancellationToken cancellationToken = default)
     {
         List<TaskExecutionInstanceModel> taskExecutionInstanceList = [];
-        foreach (var taskExecutionInstanceGroup in taskExeuctionInstances.GroupBy(static x => x.FireInstanceId))
+        foreach (var taskExecutionInstanceGroup in taskExecutionInstances.GroupBy(static x => x.FireInstanceId))
         {
             var taskFireInstanceId = taskExecutionInstanceGroup.Key;
             if (taskFireInstanceId == null) continue;
@@ -914,19 +919,26 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     continue;
                 }
 
-                if (DateTime.UtcNow - taskExecutionInstance.FireTimeUtc < TimeSpan.FromDays(7)) continue;
-                if (taskExecutionInstance.FireTimeUtc + TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds) < DateTime.UtcNow)
+                if (DateTime.UtcNow - taskExecutionInstance.FireTimeUtc < TimeSpan.FromDays(7))
                 {
-                    await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
-                        taskExecutionInstance.Id,
-                        nameof(TaskExecutionReportConsumerService),
-                        Dns.GetHostName()), cancellationToken);
-                    await CancelChildTasksAsync(taskExecutionInstance, cancellationToken);
+                    continue;
                 }
                 else
                 {
-                    taskExecutionInstanceList.Add(taskExecutionInstance);
+                    if (taskExecutionInstance.FireTimeUtc + TimeSpan.FromSeconds(taskDefinition.ExecutionLimitTimeSeconds) < DateTime.UtcNow)
+                    {
+                        await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
+                            taskExecutionInstance.Id,
+                            nameof(TaskExecutionReportConsumerService),
+                            Dns.GetHostName()), cancellationToken);
+                        await CancelChildTasksAsync(taskExecutionInstance, cancellationToken);
+                    }
+                    else
+                    {
+                        taskExecutionInstanceList.Add(taskExecutionInstance);
+                    }
                 }
+
             }
 
             if (taskExecutionInstanceList.Count > 0)
@@ -937,11 +949,11 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     }
 
     async ValueTask<TaskActivationRecordModel?> QueryTaskActiveRecordAsync(
-        string? taskFireInstanceId,
+        string fireInstanceId,
         CancellationToken cancellationToken = default)
     {
         await using var taskActiveRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
-        var taskActiveRecord = await taskActiveRecordRepo.GetByIdAsync(taskFireInstanceId, cancellationToken);
+        var taskActiveRecord = await taskActiveRecordRepo.GetByIdAsync(fireInstanceId, cancellationToken);
         return taskActiveRecord;
     }
 }

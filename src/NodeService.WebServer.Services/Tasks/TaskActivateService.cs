@@ -449,26 +449,11 @@ public class TaskActivateService : BackgroundService
                 await taskActivationRecordRepo.AddAsync(taskActivationRecord, cancellationToken);
             }
 
-            foreach (var kv in taskExecutionInstanceList)
-            {
-                var taskExecutionInstance = kv.Value;
-                var context = new TaskPenddingContext(taskExecutionInstance.Id)
-                {
-                    NodeSessionService = _nodeSessionService,
-                    NodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId),
-                    TriggerEvent = taskExecutionInstance.ToTriggerEvent(taskDefinition, fireTaskParameters.EnvironmentVariables),
-                    FireParameters = fireTaskParameters,
-                    TaskDefinition = taskDefinition
-                };
-
-                if (_taskPenddingContextManager.AddContext(context))
-                {
-                    context.EnsureInit();
-                    await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
-                }
-
-            }
-
+            await ProcessTaskExecutionInstanceListAsync(
+                fireTaskParameters,
+                taskDefinition,
+                taskExecutionInstanceList,
+                cancellationToken);
 
             _logger.LogInformation($"Task initialized {fireTaskParameters.FireInstanceId}");
         }
@@ -476,6 +461,33 @@ public class TaskActivateService : BackgroundService
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
+        }
+    }
+
+    async ValueTask ProcessTaskExecutionInstanceListAsync(
+        FireTaskParameters fireTaskParameters,
+        TaskDefinitionModel taskDefinition,
+        List<KeyValuePair<NodeSessionId, TaskExecutionInstanceModel>> taskExecutionInstanceList,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var kv in taskExecutionInstanceList)
+        {
+            var taskExecutionInstance = kv.Value;
+            var context = new TaskPenddingContext(taskExecutionInstance.Id)
+            {
+                NodeSessionService = _nodeSessionService,
+                NodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId),
+                TriggerEvent = taskExecutionInstance.ToTriggerEvent(taskDefinition, fireTaskParameters.EnvironmentVariables),
+                FireParameters = fireTaskParameters,
+                TaskDefinition = taskDefinition
+            };
+
+            if (_taskPenddingContextManager.AddContext(context))
+            {
+                context.EnsureInit();
+                await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
+            }
+
         }
     }
 

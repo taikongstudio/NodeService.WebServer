@@ -1,14 +1,11 @@
-﻿using System.Collections.Immutable;
-using System.Globalization;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataQueue;
+using System.Globalization;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -101,8 +98,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.Online,
-                    NodeDeviceType.Computer,
-                    []),
+                    NodeDeviceType.All),
                 cancellationToken);
             foreach (var node in nodeList)
             {

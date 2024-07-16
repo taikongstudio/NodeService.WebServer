@@ -35,6 +35,12 @@ internal class ClearConfigService : BackgroundService
             dbContext.Update(item);
         }
 
+        await foreach (var item in dbContext.NodeFileSyncRecordDbSet.AsAsyncEnumerable())
+        {
+
+            item.Value.FileInfo.Length;
+        }
+
         var count = await dbContext.SaveChangesAsync();
     }
 }

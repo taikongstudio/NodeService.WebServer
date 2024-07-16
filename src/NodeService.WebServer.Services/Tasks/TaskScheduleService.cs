@@ -1,13 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using Quartz.Spi;
 using OneOf;
-using NodeService.Infrastructure.DataModels;
-using System.Threading;
-using System;
+using Quartz.Spi;
 
 namespace NodeService.WebServer.Services.Tasks;
 

@@ -4,7 +4,6 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using System.Net;
-using System.Security.Cryptography;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -89,7 +88,8 @@ public class TaskPenddingContext : IAsyncDisposable
         if (_cancelTokenSource == null)
         {
             _cancelTokenSource = new CancellationTokenSource();
-            _cancelTokenSource.CancelAfter(TimeSpan.FromSeconds(TaskDefinition.PenddingLimitTimeSeconds));
+            var penddingTimeLimitSeconds = TimeSpan.FromSeconds(TaskDefinition.PenddingLimitTimeSeconds);
+            _cancelTokenSource.CancelAfter(penddingTimeLimitSeconds);
             CancellationToken = _cancelTokenSource.Token;
         }
     }

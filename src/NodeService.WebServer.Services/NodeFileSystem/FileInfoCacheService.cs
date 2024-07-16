@@ -1,6 +1,5 @@
 ﻿using NodeService.Infrastructure.NodeFileSystem;
 using NodeService.WebServer.Data;
-using NodeService.WebServer.Data.Entities;
 using NodeService.WebServer.Services.DataQueue;
 using System;
 using System.Collections.Generic;

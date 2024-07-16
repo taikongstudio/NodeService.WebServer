@@ -5,7 +5,7 @@ using NodeService.WebServer.Services.NodeSessions;
 using System.Net.Http;
 using System.Net.NetworkInformation;
 
-namespace NodeService.WebServer.Services.MessageHandlers;
+namespace NodeService.WebServer.Services.NodeSessions.MessageHandlers;
 
 public class HeartBeatResponseHandler : IMessageHandler
 {

@@ -3,7 +3,7 @@ using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 
-namespace NodeService.WebServer.Services.MessageHandlers;
+namespace NodeService.WebServer.Services.NodeSessions.MessageHandlers;
 
 public class TaskExecutionReportHandler : IMessageHandler
 {
@@ -43,7 +43,7 @@ public class TaskExecutionReportHandler : IMessageHandler
 
     public ValueTask InitAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)
     {
-        this.NodeSessionId = nodeSessionId; 
+        NodeSessionId = nodeSessionId;
         return ValueTask.CompletedTask;
     }
 }

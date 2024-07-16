@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using NodeService.Infrastructure.NodeSessions;
 
-namespace NodeService.WebServer.Services.MessageHandlers;
+namespace NodeService.WebServer.Services.NodeSessions.MessageHandlers;
 
 public interface IMessageHandler : IAsyncDisposable
 {

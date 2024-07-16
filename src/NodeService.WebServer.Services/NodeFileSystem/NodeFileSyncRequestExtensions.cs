@@ -29,6 +29,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
                 Value = record,
                 Status = NodeFileSyncStatus.Pendding,
                 FullName = nodeFileSyncRequest.FileInfo.FullName,
+                Length = nodeFileSyncRequest.FileInfo.Length,
             };
         }
 

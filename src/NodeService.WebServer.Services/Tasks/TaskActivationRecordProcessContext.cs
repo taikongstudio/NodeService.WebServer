@@ -31,7 +31,7 @@ public partial class TaskExecutionReportConsumerService
                 TaskExecutionInstanceModel? newValue = null;
                 foreach (var processContext in TaskExecutionInstanceProcessContexts)
                 {
-                    if (processContext.TaskExecutionInstance==null)
+                    if (processContext.TaskExecutionInstance == null)
                     {
                         continue;
                     }
@@ -107,6 +107,10 @@ public partial class TaskExecutionReportConsumerService
                 TaskActivationRecord.Status = TaskExecutionStatus.Running;
             }
             else if (TaskActivationRecord.RunningCount + TaskActivationRecord.FinishedCount == TaskActivationRecord.TotalCount)
+            {
+                TaskActivationRecord.Status = TaskExecutionStatus.Running;
+            }
+            else if (TaskActivationRecord.FinishedCount <= TaskActivationRecord.TotalCount)
             {
                 TaskActivationRecord.Status = TaskExecutionStatus.Running;
             }

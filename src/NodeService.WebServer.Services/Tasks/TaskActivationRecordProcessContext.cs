@@ -52,27 +52,28 @@ public partial class TaskExecutionReportConsumerService
                     case TaskExecutionStatus.Unknown:
                         break;
                     case TaskExecutionStatus.Triggered:
-                        TaskActivationRecord.Value.TriggeredCount++;
+                        TaskActivationRecord.TriggeredCount++;
                         break;
                     case TaskExecutionStatus.Pendding:
+                        TaskActivationRecord.PenddingCount++;
                         break;
                     case TaskExecutionStatus.Started:
-
+                        TaskActivationRecord.StartedCount++;
                         break;
                     case TaskExecutionStatus.Running:
-                        TaskActivationRecord.Value.RunningCount++;
+                        TaskActivationRecord.RunningCount++;
                         break;
                     case TaskExecutionStatus.Failed:
-                        TaskActivationRecord.Value.FailedCount++;
+                        TaskActivationRecord.FailedCount++;
                         break;
                     case TaskExecutionStatus.Finished:
-                        TaskActivationRecord.Value.FinishedCount++;
+                        TaskActivationRecord.FinishedCount++;
                         break;
                     case TaskExecutionStatus.Cancelled:
-                        TaskActivationRecord.Value.CancelledCount++;
+                        TaskActivationRecord.CancelledCount++;
                         break;
                     case TaskExecutionStatus.PenddingTimeout:
-                        TaskActivationRecord.Value.PenddingTimeoutCount++;
+                        TaskActivationRecord.PenddingTimeoutCount++;
                         break;
                     case TaskExecutionStatus.MaxCount:
                         break;
@@ -81,29 +82,33 @@ public partial class TaskExecutionReportConsumerService
                 }
             }
 
-            if (TaskActivationRecord.FinishedCount + TaskActivationRecord.TriggeredCount == TaskActivationRecord.TotalCount)
+            if (TaskActivationRecord.FinishedCount == TaskActivationRecord.TotalCount)
             {
-                TaskActivationRecord.Status = TaskExecutionStatus.Triggered;
+                TaskActivationRecord.Status = TaskExecutionStatus.Finished;
             }
-            else if (TaskActivationRecord.FinishedCount + TaskActivationRecord.RunningCount == TaskActivationRecord.TotalCount)
-            {
-                TaskActivationRecord.Status = TaskExecutionStatus.Running;
-            }
-            else if (TaskActivationRecord.FinishedCount + TaskActivationRecord.PenddingTimeoutCount == TaskActivationRecord.TotalCount)
-            {
-                TaskActivationRecord.Status = TaskExecutionStatus.PenddingTimeout;
-            }
-            else if (TaskActivationRecord.FinishedCount + TaskActivationRecord.FailedCount == TaskActivationRecord.TotalCount)
-            {
-                TaskActivationRecord.Status = TaskExecutionStatus.Failed;
-            }
-            else if (TaskActivationRecord.FinishedCount + TaskActivationRecord.CancelledCount == TaskActivationRecord.TotalCount)
+            else if (TaskActivationRecord.CancelledCount > 0)
             {
                 TaskActivationRecord.Status = TaskExecutionStatus.Cancelled;
             }
-            else if (TaskActivationRecord.FinishedCount == TaskActivationRecord.TotalCount)
+            else if (TaskActivationRecord.FailedCount > 0)
             {
-                TaskActivationRecord.Status = TaskExecutionStatus.Finished;
+                TaskActivationRecord.Status = TaskExecutionStatus.Failed;
+            }
+            else if (TaskActivationRecord.PenddingTimeoutCount > 0)
+            {
+                TaskActivationRecord.Status = TaskExecutionStatus.PenddingTimeout;
+            }
+            else if (TaskActivationRecord.RunningCount > 0)
+            {
+                TaskActivationRecord.Status = TaskExecutionStatus.Running;
+            }
+            else if (TaskActivationRecord.PenddingCount == TaskActivationRecord.TotalCount)
+            {
+                TaskActivationRecord.Status = TaskExecutionStatus.Pendding;
+            }
+            else if (TaskActivationRecord.TriggeredCount == TaskActivationRecord.TotalCount)
+            {
+                TaskActivationRecord.Status = TaskExecutionStatus.Triggered;
             }
             TaskActivationRecord.TaskExecutionNodeList = [.. TaskActivationRecord.TaskExecutionNodeList];
             await ValueTask.CompletedTask;

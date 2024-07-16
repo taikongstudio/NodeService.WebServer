@@ -82,38 +82,50 @@ public partial class TaskExecutionReportConsumerService
                 }
             }
 
-            if (TaskActivationRecord.FinishedCount == TaskActivationRecord.TotalCount)
+            var totalCount = TaskActivationRecord.TotalCount;
+            var completedCount = TaskActivationRecord.FinishedCount;
+            var failedCount = TaskActivationRecord.FailedCount;
+            var runningCount = TaskActivationRecord.RunningCount;
+            var canceledCount = TaskActivationRecord.CancelledCount;
+            var triggeredCount = TaskActivationRecord.TriggeredCount;
+            var penddingCount = TaskActivationRecord.PenddingCount;
+            var pennddingTimeoutCount = TaskActivationRecord.PenddingTimeoutCount;
+            var finishedCount = TaskActivationRecord.FinishedCount;
+
+
+            if (finishedCount == totalCount)
             {
                 TaskActivationRecord.Status = TaskExecutionStatus.Finished;
             }
-            else if (TaskActivationRecord.CancelledCount > 0)
-            {
-                TaskActivationRecord.Status = TaskExecutionStatus.Cancelled;
-            }
-            else if (TaskActivationRecord.FailedCount > 0)
+            else if (failedCount == totalCount)
             {
                 TaskActivationRecord.Status = TaskExecutionStatus.Failed;
             }
-            else if (TaskActivationRecord.PenddingTimeoutCount > 0)
+            else if (canceledCount == totalCount)
+            {
+                TaskActivationRecord.Status = TaskExecutionStatus.Cancelled;
+            }
+            else if (pennddingTimeoutCount == totalCount)
             {
                 TaskActivationRecord.Status = TaskExecutionStatus.PenddingTimeout;
             }
-            else if (TaskActivationRecord.RunningCount > 0)
+            else if (runningCount > 0)
             {
                 TaskActivationRecord.Status = TaskExecutionStatus.Running;
             }
-            else if (TaskActivationRecord.PenddingCount == TaskActivationRecord.TotalCount)
+            else if (runningCount == 0 && (failedCount > 0 || canceledCount > 0 || pennddingTimeoutCount > 0))
             {
-                TaskActivationRecord.Status = TaskExecutionStatus.Pendding;
+                TaskActivationRecord.Status = TaskExecutionStatus.Failed;
             }
-            else if (TaskActivationRecord.TriggeredCount == TaskActivationRecord.TotalCount)
+            else if (triggeredCount == totalCount)
             {
                 TaskActivationRecord.Status = TaskExecutionStatus.Triggered;
             }
-            else if (TaskActivationRecord.FinishedCount < TaskActivationRecord.TotalCount)
+            else if (penddingCount == totalCount)
             {
-                TaskActivationRecord.Status = TaskExecutionStatus.Running;
+                TaskActivationRecord.Status = TaskExecutionStatus.Pendding;
             }
+
             TaskActivationRecord.TaskExecutionNodeList = [.. TaskActivationRecord.TaskExecutionNodeList];
             await ValueTask.CompletedTask;
         }

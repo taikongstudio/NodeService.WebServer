@@ -233,7 +233,7 @@ public class TaskLogStorageHandler
                 continue;
             }
             var taskLogPageKey = taskLogPage.GetKey();
-            if (taskLogPage.IsFullTaskLogPage())
+            if (taskLogPage.IsFullTaskLogPage() && taskLogPage.DirtyCount == 0)
             {
                 _taskLogStat.PageSavedCount++;
             }
@@ -425,7 +425,7 @@ public class TaskLogStorageHandler
         if (dict.IsEmpty) return;
         foreach (var taskLogPage in dict.Values)
         {
-            if (taskLogPage.IsFullTaskLogPage())
+            if (taskLogPage.IsFullTaskLogPage() && taskLogPage.DirtyCount == 0)
             {
                 _taskLogStat.PageSavedCount++;
                 dict.TryRemove(taskLogPage.GetKey(), out _);

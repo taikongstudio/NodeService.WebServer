@@ -24,17 +24,26 @@ public class TaskExecutionReportHandler : IMessageHandler
 
     public HttpContext HttpContext { get; set; }
 
+    public NodeSessionId NodeSessionId { get; private set; }
+
     public ValueTask DisposeAsync()
     {
         return ValueTask.CompletedTask;
     }
-    public async ValueTask HandleAsync(NodeSessionId nodeSessionId, IMessage message, CancellationToken cancellationToken)
+
+    public async ValueTask HandleAsync(IMessage message, CancellationToken cancellationToken = default)
     {
         _webServerCounter.TaskExecutionReportRecieveCount.Value++;
         await _batchQueue.SendAsync(new TaskExecutionReportMessage
         {
-            NodeSessionId = nodeSessionId,
+            NodeSessionId = NodeSessionId,
             Message = message as TaskExecutionReport
         }, cancellationToken);
+    }
+
+    public ValueTask InitAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)
+    {
+        this.NodeSessionId = nodeSessionId; 
+        return ValueTask.CompletedTask;
     }
 }

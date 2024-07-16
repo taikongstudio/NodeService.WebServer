@@ -91,6 +91,7 @@ public class NodeServerImpl : NodeServiceBase
                 foreach (var item in messageHandlerDictionary)
                 {
                     item.Value.HttpContext = httpContext;
+                    await item.Value.InitAsync(nodeSessionId, cancellationToken);
                 }
                 await foreach (var message in inputQueue.ReadAllAsync(cancellationToken))
                 {
@@ -98,7 +99,7 @@ public class NodeServerImpl : NodeServiceBase
                     {
                         _webServerCounter.NodeServiceInputMessagesCount.Value++;
                         if (!messageHandlerDictionary.TryGetValue(message.Descriptor, out var messageHandler)) continue;
-                        await messageHandler.HandleAsync(nodeSessionId, message, cancellationToken);
+                        await messageHandler.HandleAsync(message, cancellationToken);
                     }
                     catch (Exception ex)
                     {

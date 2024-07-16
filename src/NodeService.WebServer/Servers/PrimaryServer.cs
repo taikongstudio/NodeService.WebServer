@@ -443,7 +443,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<IAsyncQueue<ConfigurationChangedEvent>, AsyncQueue<ConfigurationChangedEvent>>();
 
             builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
-            builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(TimeSpan.FromSeconds(10), 1024 * 2));
+            builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(TimeSpan.FromSeconds(3), 2048));
             builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(TimeSpan.FromSeconds(3), 1024));
             builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
 

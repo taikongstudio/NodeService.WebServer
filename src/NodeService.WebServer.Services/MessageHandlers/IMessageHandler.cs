@@ -6,5 +6,11 @@ namespace NodeService.WebServer.Services.MessageHandlers;
 public interface IMessageHandler : IAsyncDisposable
 {
     HttpContext HttpContext { get; set; }
-    ValueTask HandleAsync(NodeSessionId nodeSessionId, IMessage message, CancellationToken cancellationToken);
+
+    NodeSessionId NodeSessionId { get; }
+
+    ValueTask InitAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default);
+
+    ValueTask HandleAsync(IMessage message, CancellationToken cancellationToken = default);
+
 }

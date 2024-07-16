@@ -199,25 +199,47 @@ public class HeartBeatResponseConsumerService : BackgroundService
     {
         try
         {
-            var hearBeatResponse = hearBeatMessage.GetMessage();
-            if (hearBeatResponse == null)
-            {
-                return;
-            }
-            if (hearBeatMessage.NodeSessionId.NodeId == NodeId.Null)
-            {
-                _logger.LogInformation($"invalid node id: {hearBeatResponse.Properties["RemoteIpAddress"]}");
-                return;
-            }
 
             if (nodeInfo == null) return;
-
+            var hearBeatResponse = hearBeatMessage.GetMessage();
             var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
             var nodeStatus = _nodeSessionService.GetNodeStatus(hearBeatMessage.NodeSessionId);
             nodeInfo.Status = nodeStatus;
             var nodePropSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfo.Id, cancellationToken);
             if (hearBeatResponse != null)
             {
+                if (hearBeatMessage.NodeSessionId.NodeId == NodeId.Null)
+                {
+                    _logger.LogInformation($"invalid node id: {hearBeatResponse.Properties["RemoteIpAddress"]}");
+                    return;
+                }
+                var propsList = hearBeatResponse.Properties.Select(NodePropertyEntry.From).ToList();
+                if (nodePropSnapshot == null)
+                {
+                    nodePropSnapshot = new NodePropertySnapshotModel
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = $"{nodeInfo.Name}",
+                        CreationDateTime = nodeInfo.Profile.UpdateTime,
+                        ModifiedDateTime = DateTime.UtcNow,
+                        NodeProperties = propsList,
+                        NodeInfoId = nodeInfo.Id
+                    };
+                    await _nodeInfoQueryService.SaveNodePropSnapshotAsync(nodeInfo,
+                                                                          nodePropSnapshot,
+                                                                          true,
+                                                                          cancellationToken);
+                    nodeInfo.LastNodePropertySnapshotId = nodePropSnapshot.Id;
+                }
+                else
+                {
+                    nodePropSnapshot.NodeProperties = propsList;
+                    await _nodeInfoQueryService.SaveNodePropSnapshotAsync(
+                        nodeInfo,
+                        nodePropSnapshot,
+                        false,
+                        cancellationToken);
+                }
                 nodeInfo.Profile.UpdateTime = DateTime.ParseExact(
                     hearBeatResponse.Properties[NodePropertyModel.LastUpdateDateTime_Key],
                     NodePropertyModel.DateTimeFormatString, DateTimeFormatInfo.InvariantInfo);
@@ -235,13 +257,13 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
                 ProcessProps(nodeInfo, hearBeatResponse);
             }
-
-            if (nodePropSnapshot == null || nodeInfo.Status == NodeStatus.Offline)
+            if (nodeStatus == NodeStatus.Offline && nodePropSnapshot != null)
             {
-                nodePropSnapshot = await _nodeInfoQueryService.SaveNodePropSnapshotAsync(
-                nodeInfo,
-                hearBeatResponse.Properties.Select(NodePropertyEntry.From).ToList(),
-                cancellationToken);
+                await _nodeInfoQueryService.SaveNodePropSnapshotAsync(
+                    nodeInfo,
+                    nodePropSnapshot,
+                    true,
+                    cancellationToken);
             }
         }
         catch (Exception ex)

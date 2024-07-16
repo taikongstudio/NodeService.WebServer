@@ -48,37 +48,40 @@ public class HeartBeatResponseHandler : IMessageHandler
                 Message = null,
                 NodeSessionId = NodeSessionId
             });
-            _heartBeatBatchQueue.TriggerBatch();
         }
+
+        _heartBeatBatchQueue.TriggerBatch();
     }
 
-    public async ValueTask HandleAsync(NodeSessionId nodeSessionId, IMessage message, CancellationToken cancellationToken)
+    public async ValueTask HandleAsync(IMessage message, CancellationToken cancellationToken = default)
     {
         if (_remoteIpAddress == null)
         {
             _remoteIpAddress = HttpContext.Connection.RemoteIpAddress.ToString();
         }
-        var heartBeatResponse = message as HeartBeatResponse;
-        heartBeatResponse.Properties.TryAdd("RemoteIpAddress", _remoteIpAddress);
-        if (NodeSessionId.IsNullOrEmpty)
-        {
-            NodeSessionId = nodeSessionId;
-            await _nodeStatusChangeRecordBatchQueue.SendAsync(new NodeStatusChangeRecordModel()
-            {
-                Id = Guid.NewGuid().ToString(),
-                CreationDateTime = DateTime.UtcNow,
-                NodeId = NodeSessionId.NodeId.Value,
-                Message = $"Online"
-            }, cancellationToken);
-        }
-
         _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);
         _nodeSessionService.UpdateNodeIpAddress(NodeSessionId, _remoteIpAddress);
-        await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
+        if (message is HeartBeatResponse heartBeatResponse)
         {
-            Message = heartBeatResponse,
-            NodeSessionId = nodeSessionId
-        });
+            heartBeatResponse.Properties.TryAdd("RemoteIpAddress", _remoteIpAddress);
+            await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
+            {
+                Message = heartBeatResponse,
+                NodeSessionId = NodeSessionId
+            });
+        }
+
     }
 
+    public async ValueTask InitAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)
+    {
+        NodeSessionId = nodeSessionId;
+        await _nodeStatusChangeRecordBatchQueue.SendAsync(new NodeStatusChangeRecordModel()
+        {
+            Id = Guid.NewGuid().ToString(),
+            CreationDateTime = DateTime.UtcNow,
+            NodeId = NodeSessionId.NodeId.Value,
+            Message = $"Online"
+        }, cancellationToken);
+    }
 }

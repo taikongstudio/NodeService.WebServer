@@ -160,7 +160,6 @@ public class TaskActivateService : BackgroundService
         _taskFlowExecutor = taskFlowExecutor;
         _nodeInfoQueryService = nodeInfoQueryService;
         _configurationQueryService = configurationQueryService;
-
         PenddingActionBlock = new ActionBlock<TaskPenddingContext>(ProcessPenddingContextAsync,
             new ExecutionDataflowBlockOptions
             {
@@ -180,15 +179,27 @@ public class TaskActivateService : BackgroundService
             {
                 await PenddingContextChannel.Reader.WaitToReadAsync(cancellationToken);
                 while (PenddingContextChannel.Reader.TryRead(out var penddingContext))
+                {
                     _priorityQueue.Enqueue(penddingContext, penddingContext.TaskDefinition.Priority);
+                }
                 while (_priorityQueue.Count > 0)
                 {
                     while (PenddingActionBlock.InputCount < 128
                            &&
                            _priorityQueue.TryDequeue(out var penddingContext, out var _))
-                        PenddingActionBlock.Post(penddingContext);
+                    {
+                        var nodeStatus = _nodeSessionService.GetNodeStatus(penddingContext.NodeSessionId);
+                        if (nodeStatus == NodeStatus.Online)
+                        {
+                            PenddingActionBlock.Post(penddingContext);
+                        }
+                        else
+                        {
+                            await PenddingContextChannel.Writer.WriteAsync(penddingContext, cancellationToken);
+                        }
+                    }
 
-                    await Task.Delay(TimeSpan.FromMilliseconds(10), cancellationToken);
+                    await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
                 }
             }
         }

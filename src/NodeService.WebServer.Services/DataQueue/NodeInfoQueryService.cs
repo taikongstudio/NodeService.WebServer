@@ -76,7 +76,7 @@ namespace NodeService.WebServer.Services.DataQueue
             CancellationToken cancellationToken = default)
         {
             var nodeInfo = await QueryNodeInfoByIdAsync(nodeId, false, cancellationToken);
-            if (nodeInfo == null)
+            if (nodeInfo == null || nodeInfo.LastNodePropertySnapshotId == null)
             {
                 return null;
             }
@@ -263,28 +263,23 @@ namespace NodeService.WebServer.Services.DataQueue
             return queryResult;
         }
 
-        public async ValueTask<NodePropertySnapshotModel> SaveNodePropSnapshotAsync(
+        public async ValueTask SaveNodePropSnapshotAsync(
             NodeInfoModel nodeInfo,
-            List<NodePropertyEntry> props,
+            NodePropertySnapshotModel nodePropertySnapshot,
+            bool saveToDb,
             CancellationToken cancellationToken = default)
         {
-            var nodePropSnapshot = new NodePropertySnapshotModel
+            await _objectCache.SetEntityAsync(nodePropertySnapshot, cancellationToken);
+            if (saveToDb)
             {
-                Id = Guid.NewGuid().ToString(),
-                Name = $"{nodeInfo.Name}",
-                CreationDateTime = nodeInfo.Profile.UpdateTime,
-                ModifiedDateTime = DateTime.UtcNow,
-                NodeProperties = props,
-                NodeInfoId = nodeInfo.Id
-            };
-            await using var nodePropertyRepo = await _nodePropsRepoFactory.CreateRepositoryAsync(cancellationToken);
-            await nodePropertyRepo.AddAsync(nodePropSnapshot, cancellationToken);
-            var oldId = nodeInfo.LastNodePropertySnapshotId;
-            nodeInfo.LastNodePropertySnapshotId = nodePropSnapshot.Id;
-            await nodePropertyRepo.DbContext.Set<NodePropertySnapshotModel>().Where(x => x.Id == oldId)
-                .ExecuteDeleteAsync(cancellationToken);
-            await _objectCache.SetEntityAsync(nodePropSnapshot, cancellationToken);
-            return nodePropSnapshot;
+                await using var nodePropertyRepo = await _nodePropsRepoFactory.CreateRepositoryAsync(cancellationToken);
+                nodePropertySnapshot = nodePropertySnapshot with { Id = Guid.NewGuid().ToString(), EntitySource = EntitySource.Unknown };
+                await nodePropertyRepo.AddAsync(nodePropertySnapshot, cancellationToken);
+                var oldId = nodeInfo.LastNodePropertySnapshotId;
+                nodeInfo.LastNodePropertySnapshotId = nodePropertySnapshot.Id;
+                await nodePropertyRepo.DbContext.Set<NodePropertySnapshotModel>().Where(x => x.Id == oldId)
+                    .ExecuteDeleteAsync(cancellationToken);
+            }
         }
 
 

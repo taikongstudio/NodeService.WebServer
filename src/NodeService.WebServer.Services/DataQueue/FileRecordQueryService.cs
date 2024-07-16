@@ -1,8 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.Models;
-using NodeService.WebServer.Data;
+﻿using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
@@ -52,7 +48,7 @@ public class FileRecordQueryService
         CancellationToken cancellationToken = default)
     {
         await using var repo = await _applicationRepoFactory.CreateRepositoryAsync(cancellationToken);
-        await repo.DeleteAsync(fileRecord);
+        await repo.DeleteAsync(fileRecord, cancellationToken);
     }
 
     public async ValueTask AddOrUpdateAsync(
@@ -60,10 +56,10 @@ public class FileRecordQueryService
         CancellationToken cancellationToken = default)
     {
         await using var repo = await _applicationRepoFactory.CreateRepositoryAsync(cancellationToken);
-        var modelFromRepo = await repo.GetByIdAsync(fileRecord.Id, cancellationToken);
+        var modelFromRepo = await repo.DbContext.Set<FileRecordModel>().FindAsync(new object?[] { fileRecord.Id, fileRecord.Name, cancellationToken }, cancellationToken: cancellationToken);
         if (modelFromRepo == null)
         {
-            await repo.AddAsync(fileRecord);
+            await repo.AddAsync(fileRecord, cancellationToken);
         }
         else
         {

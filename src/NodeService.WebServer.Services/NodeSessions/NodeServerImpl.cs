@@ -109,7 +109,7 @@ public class NodeServerImpl : NodeServiceBase
             }
             catch (Exception ex)
             {
-                _exceptionCounter.AddOrUpdate(ex);
+                _exceptionCounter.AddOrUpdate(ex, nodeSessionId.NodeId.Value);
                 _logger.LogError(ex.ToString());
             }
         }
@@ -153,7 +153,7 @@ public class NodeServerImpl : NodeServiceBase
             }
             catch (Exception ex)
             {
-                _exceptionCounter.AddOrUpdate(ex);
+                _exceptionCounter.AddOrUpdate(ex, nodeSessionId.NodeId.Value);
                 _logger.LogError(ex.ToString());
             }
 

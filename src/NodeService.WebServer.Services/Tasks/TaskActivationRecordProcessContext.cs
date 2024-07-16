@@ -110,6 +110,10 @@ public partial class TaskExecutionReportConsumerService
             {
                 TaskActivationRecord.Status = TaskExecutionStatus.Triggered;
             }
+            else if (TaskActivationRecord.FinishedCount < TaskActivationRecord.TotalCount)
+            {
+                TaskActivationRecord.Status = TaskExecutionStatus.Running;
+            }
             TaskActivationRecord.TaskExecutionNodeList = [.. TaskActivationRecord.TaskExecutionNodeList];
             await ValueTask.CompletedTask;
         }

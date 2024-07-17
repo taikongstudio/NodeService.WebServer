@@ -65,6 +65,7 @@ namespace NodeService.WebServer.Services.Tasks
                             while (_taskLogUnitQueue.QueueCount > 10)
                             {
                                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                                _logger.LogInformation("Wait");
                             }
                             var consumeResult = _consumer.Consume(cancellationToken);
                             try
@@ -73,6 +74,7 @@ namespace NodeService.WebServer.Services.Tasks
                                 if (taskLogUnit != null)
                                 {
                                     await _taskLogUnitQueue.SendAsync(taskLogUnit, cancellationToken);
+                                    _logger.LogInformation("Send");
                                 }
                             }
                             catch (Exception ex)

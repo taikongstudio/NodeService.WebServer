@@ -65,7 +65,7 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         continue;
                     }
-
+                    _logger.LogInformation($"Process {taskId}");
                     var logEntries = taskLogUnitGroup.SelectMany(x => x.LogEntries).OrderBy(x => x.DateTimeUtc);
                     try
                     {
@@ -106,6 +106,7 @@ namespace NodeService.WebServer.Services.Tasks
                             taskInfoCache.TaskInfoLog.LogEntries = [.. taskInfoCache.TaskInfoLog.LogEntries, lastLogEntry];
                         }
                         streamWriter.BaseStream.Position = lastLogEntry.Type;
+                        int count = 0;
                         foreach (var item in logEntries)
                         {
                             await streamWriter.WriteLineAsync(JsonSerializer.Serialize(item));
@@ -121,6 +122,7 @@ namespace NodeService.WebServer.Services.Tasks
                                 };
                                 taskInfoCache.TaskInfoLog.LogEntries = [.. taskInfoCache.TaskInfoLog.LogEntries, lastLogEntry];
                             }
+                            count++;
                         }
 
                         await streamWriter.FlushAsync(cancellationToken);
@@ -128,6 +130,7 @@ namespace NodeService.WebServer.Services.Tasks
                         await streamWriter.DisposeAsync();
                         await UpdateTaskLogInfoPageAsync(taskInfoCache.TaskInfoLog, cancellationToken);
                         stopwatch.Stop();
+                        _logger.LogInformation($"Process {taskId},spent:{stopwatch.Elapsed},Save {count} logs");
                     }
                     catch (Exception ex)
                     {

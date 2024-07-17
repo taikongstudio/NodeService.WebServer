@@ -1,4 +1,5 @@
-﻿using NodeService.Infrastructure.DataModels;
+﻿using MySqlConnector;
+using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
@@ -157,6 +158,7 @@ public class TaskLogStorageHandler
             }
             foreach (var taskLogPage in taskLogPages)
             {
+                LRetry:
                 try
                 {
                     await updateFunc(taskLogPage, cancellationToken);
@@ -166,6 +168,11 @@ public class TaskLogStorageHandler
                 }
                 catch (DbUpdateException ex)
                 {
+                    if (ex.InnerException is MySqlException mySqlException)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                        goto LRetry;
+                    }
                     _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
                 }
@@ -195,6 +202,7 @@ public class TaskLogStorageHandler
 
             foreach (var taskLogPage in taskLogPages)
             {
+            LRetry:
                 try
                 {
                     await addFunc(taskLogPage, cancellationToken);
@@ -204,7 +212,11 @@ public class TaskLogStorageHandler
                 }
                 catch (DbUpdateException ex)
                 {
-
+                    if (ex.InnerException is MySqlException mySqlException)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                        goto LRetry;
+                    }
                     _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
                 }

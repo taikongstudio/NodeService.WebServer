@@ -325,7 +325,7 @@ public class TaskActivateService : BackgroundService
         {
             await SendTaskExecutionReportReportAsync(
                 context.Id,
-                TaskExecutionStatus.Pendding,
+                TaskExecutionStatus.PenddingTimeout,
                 $"Time out after waiting {context.TaskDefinition.PenddingLimitTimeSeconds} seconds");
             _logger.LogInformation($"{context.Id}:SendAsync PenddingTimeout");
         }

@@ -18,7 +18,7 @@ public class TaskLogPersistenceService : BackgroundService
     readonly IServiceProvider _serviceProvider;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceFactory;
-    readonly ConcurrentDictionary<int, TaskLogStorageHandler> _taskLogHandlers;
+    readonly ConcurrentDictionary<int, TaskLogStorageHandlerBase> _taskLogHandlers;
     readonly Timer _timer;
     IEnumerable<int> _keys = [];
 
@@ -27,7 +27,7 @@ public class TaskLogPersistenceService : BackgroundService
         ILogger<TaskLogPersistenceService> logger,
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceFactory,
-        BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
+        [FromKeyedServices(nameof(TaskLogPersistenceService))]BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
         ExceptionCounter exceptionCounter,
         WebServerCounter webServerCounter,
         IMemoryCache memoryCache)
@@ -39,7 +39,7 @@ public class TaskLogPersistenceService : BackgroundService
         _taskLogUnitBatchQueue = taskLogUnitBatchQueue;
         _webServerCounter = webServerCounter;
         _memoryCache = memoryCache;
-        _taskLogHandlers = new ConcurrentDictionary<int, TaskLogStorageHandler>();
+        _taskLogHandlers = new ConcurrentDictionary<int, TaskLogStorageHandlerBase>();
         _serviceProvider = serviceProvider;
         _timer = new Timer(OnTimer);
         _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
@@ -109,15 +109,16 @@ public class TaskLogPersistenceService : BackgroundService
 
         async Task DeleteTaskLogAsync(TaskExecutionInstanceModel taskExecutionInstance, CancellationToken cancellationToken = default)
         {
-            await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
-            var applicationDbContext = taskLogRepo.DbContext as ApplicationDbContext;
-            int deleteCount = await applicationDbContext.TaskLogStorageDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
-            if (deleteCount > 0)
-            {
-                await applicationDbContext.TaskExecutionInstanceDbSet.Where(x => x.Id == taskExecutionInstance.Id)
-                    .ExecuteUpdateAsync(x => x.SetProperty(x => x.LogEntriesSaveCount, 0),
-                    cancellationToken);
-            }
+            //await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
+            //var applicationDbContext = taskLogRepo.DbContext as ApplicationDbContext;
+            //int deleteCount = await applicationDbContext.TaskLogStorageDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
+            //if (deleteCount > 0)
+            //{
+            //    await applicationDbContext.TaskExecutionInstanceDbSet.Where(x => x.Id == taskExecutionInstance.Id)
+            //        .ExecuteUpdateAsync(x => x.SetProperty(x => x.LogEntriesSaveCount, 0),
+            //        cancellationToken);
+            //}
+            await Task.CompletedTask;
         }
     }
 
@@ -157,7 +158,7 @@ public class TaskLogPersistenceService : BackgroundService
                                 new ParallelOptions()
                                 {
                                     CancellationToken = cancellationToken,
-                                    MaxDegreeOfParallelism = 4,
+                                    MaxDegreeOfParallelism = 2,
                                 },
                                 RunTaskLogHandlerAsync);
                     }
@@ -185,17 +186,17 @@ public class TaskLogPersistenceService : BackgroundService
 
     void Stat()
     {
-        _webServerCounter.TaskLogPageCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
-        _webServerCounter.TaskLogUnitConsumeCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
-        _webServerCounter.TaskLogEntriesSavedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
-        if (_taskLogHandlers.Values.Count > 0)
-        {
-            _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
-            _webServerCounter.TaskLogUnitQueryTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
-            _webServerCounter.TaskLogUnitSaveTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
-        }
-        _webServerCounter.TaskLogUnitAvailableCount.Value = _taskLogUnitBatchQueue.AvailableCount;
-        _webServerCounter.TaskLogPageDetachedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
+        //_webServerCounter.TaskLogPageCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
+        //_webServerCounter.TaskLogUnitConsumeCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
+        //_webServerCounter.TaskLogEntriesSavedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
+        //if (_taskLogHandlers.Values.Count > 0)
+        //{
+        //    _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
+        //    _webServerCounter.TaskLogUnitQueryTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
+        //    _webServerCounter.TaskLogUnitSaveTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
+        //}
+        //_webServerCounter.TaskLogUnitAvailableCount.Value = _taskLogUnitBatchQueue.AvailableCount;
+        //_webServerCounter.TaskLogPageDetachedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
     }
 
     async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogUnit> taskLogUnitGroup,
@@ -206,15 +207,9 @@ public class TaskLogPersistenceService : BackgroundService
         await handler.ProcessAsync(taskLogUnitGroup, cancellationToken);
     }
 
-    TaskLogStorageHandler CreateTaskLogHandlerFactory(int id)
+    TaskLogStorageHandlerBase CreateTaskLogHandlerFactory(int id)
     {
-        var taskLogHandler = new TaskLogStorageHandler(
-            _serviceProvider.GetService<ILogger<TaskLogStorageHandler>>(),
-            _taskLogRepoFactory,
-            _exceptionCounter)
-        {
-            Id = id
-        };
+        var taskLogHandler = ActivatorUtilities.CreateInstance<MongodbLogStorageHandler>(_serviceProvider);
         return taskLogHandler;
     }
 

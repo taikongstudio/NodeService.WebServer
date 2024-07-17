@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
-using NodeService.WebServer.Data.Entities;
 using System.Security.Cryptography;
 
 namespace NodeService.WebServer.Services.NodeFileSystem

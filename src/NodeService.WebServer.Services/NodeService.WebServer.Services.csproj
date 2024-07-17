@@ -12,6 +12,8 @@
         <PackageReference Include="MailKit" Version="4.7.1" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
         <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.7" />
+        <PackageReference Include="mongocsharpdriver" Version="2.27.0" />
+        <PackageReference Include="MongoDB.Driver.GridFS" Version="2.27.0" />
         <PackageReference Include="OneOf" Version="3.0.271" />
         <PackageReference Include="Quartz" Version="3.11.0" />
         <PackageReference Include="FluentFTP" Version="50.1.0" />
@@ -22,6 +24,7 @@
         <PackageReference Include="Grpc.AspNetCore" Version="2.63.0" />
         <PackageReference Include="Grpc.AspNetCore.Web" Version="2.63.0" />
         <PackageReference Include="System.Interactive.Async" Version="6.0.1" />
+		<PackageReference Include="Confluent.Kafka" Version="2.3.0" />
     </ItemGroup>
 
 

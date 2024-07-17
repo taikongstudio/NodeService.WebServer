@@ -1,5 +1,7 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Data;
+using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
@@ -38,7 +40,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
         BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
-        BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
+        [FromKeyedServices(nameof(TaskLogKafkaProducerService))]BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
         BatchQueue<TaskActivateServiceParameters> taskScheduleQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
@@ -293,7 +295,15 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         yield break;
     }
 
-
+    private static LogEntry Convert(TaskExecutionLogEntry taskExecutionLogEntry)
+    {
+        return new LogEntry
+        {
+            DateTimeUtc = taskExecutionLogEntry.DateTime.ToDateTime().ToUniversalTime(),
+            Type = (int)taskExecutionLogEntry.Type,
+            Value = taskExecutionLogEntry.Value
+        };
+    }
 
     async ValueTask<TaskExecutionInstanceProcessContext?> CreateTaskExecutionInstanceProcessContextAsync(
         TaskActivationRecordModel taskActivationRecord,
@@ -329,7 +339,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     var taskLogUnit = new TaskLogUnit
                     {
                         Id = taskId,
-                        LogEntries = report.LogEntries
+                        LogEntries = report.LogEntries.Select(Convert)
                     };
                     taskExecutionInstance.LogEntriesRecieveCount += report.LogEntries.Count;
                     await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);

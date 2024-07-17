@@ -5,11 +5,14 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver;
+using MongoDB.Driver.GridFS;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Identity;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Areas.Identity;
 using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
@@ -120,7 +123,10 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddDirectoryBrowser();
 
             builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
+            builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection(nameof(RedisOptions)));
+            builder.Services.Configure<KafkaOptions>(builder.Configuration.GetSection(nameof(KafkaOptions)));
             builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
+            builder.Services.Configure<MongoDbOptions>(builder.Configuration.GetSection(nameof(MongoDbOptions)));
             builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
             builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 1024 * 1024 * 1024 * 4L; });
 
@@ -249,7 +255,8 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddHostedService<NetworkDeviceScanService>();
             builder.Services.AddHostedService<PackageQueryQueueService>();
             builder.Services.AddHostedService<GCService>();
-
+            builder.Services.AddHostedService<TaskLogKafkaProducerService>();
+            builder.Services.AddHostedService<TaskLogKafkaConsumerService>();
         }
 
         void ConfigureScoped(WebApplicationBuilder builder)
@@ -330,7 +337,6 @@ namespace NodeService.WebServer.Servers
                 return messageHandlerDictionary;
             }
             );
-
         }
 
         void ConfigureAuthentication(WebApplicationBuilder builder)
@@ -389,8 +395,8 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<FtpClientFactory>();
             builder.Services.AddStackExchangeRedisCache(options =>
             {
-                var endPointsString = builder.Configuration.GetSection("Redis").GetValue<string>("EndPoints");
-                var password= builder.Configuration.GetSection("Redis").GetValue<string>("Password");
+                var endPointsString = builder.Configuration.GetValue<string>("RedisOptions:EndPoints");
+                var password = builder.Configuration.GetValue<string>("RedisOptions:Password");
                 var endPoints = new EndPointCollection();
                 foreach (var endPointString in endPointsString.Split(','))
                 {
@@ -410,7 +416,23 @@ namespace NodeService.WebServer.Servers
                 };
             });
             builder.Services.AddSingleton<ObjectCache>();
+            builder.Services.AddSingleton<MongoClient>(sp =>
+            {
+                var connectionString = builder.Configuration.GetValue<string>("MongoDbOptions:ConnectionString");
+                return new MongoClient(connectionString);
+            });
 
+            builder.Services.AddSingleton<MongoGridFS>(sp =>
+            {
+                var dbName = builder.Configuration.GetValue<string>("MongoDbOptions:TaskLogDatabaseName");
+                var client = sp.GetService<MongoClient>();
+                var mongoServer = client.GetServer();
+                var mongoGridFS = new MongoGridFS(mongoServer, dbName, new MongoGridFSSettings()
+                {
+                    UpdateMD5 = true
+                });
+                return mongoGridFS;
+            });
 
             builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
@@ -433,7 +455,8 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>, AsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             builder.Services.AddSingleton(new BatchQueue<TaskActivateServiceParameters>(TimeSpan.FromSeconds(1), 64));
             builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(TimeSpan.FromSeconds(1), 64));
-            builder.Services.AddSingleton(new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(1), 256));
+            builder.Services.AddKeyedSingleton(nameof(TaskLogKafkaProducerService),new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(3), 256));
+            builder.Services.AddKeyedSingleton(nameof(TaskLogPersistenceService), new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(3), 256));
             builder.Services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
             builder.Services.AddSingleton(new BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(TimeSpan.FromMilliseconds(100), 64));
             builder.Services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(TimeSpan.FromSeconds(3), 1024));

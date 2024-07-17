@@ -9,7 +9,7 @@ using System.Linq;
 
 namespace NodeService.WebServer.Services.Tasks;
 
-public class TaskLogStorageHandler
+public class MySqlTaskLogStorageHandler : TaskLogStorageHandlerBase
 {
     private class TaskLogStat
     {
@@ -25,7 +25,7 @@ public class TaskLogStorageHandler
     readonly ConcurrentDictionary<TaskLogPageKey, TaskLogModel> _addedTaskLogPageDictionary;
     readonly ConcurrentDictionary<TaskLogPageKey, TaskLogModel> _updatedTaskLogPageDictionary;
     readonly ExceptionCounter _exceptionCounter;
-    readonly ILogger<TaskLogStorageHandler> _logger;
+    readonly ILogger<MySqlTaskLogStorageHandler> _logger;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
     readonly TaskLogStat _taskLogStat;
 
@@ -47,8 +47,8 @@ public class TaskLogStorageHandler
 
     public int Id { get; set; }
 
-    public TaskLogStorageHandler(
-        ILogger<TaskLogStorageHandler> logger,
+    public MySqlTaskLogStorageHandler(
+        ILogger<MySqlTaskLogStorageHandler> logger,
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
         ExceptionCounter exceptionCounter)
     {
@@ -58,49 +58,6 @@ public class TaskLogStorageHandler
         _updatedTaskLogPageDictionary = new ConcurrentDictionary<TaskLogPageKey, TaskLogModel>();
         _exceptionCounter = exceptionCounter;
         _taskLogStat = new TaskLogStat();
-    }
-
-    public async ValueTask ProcessAsync(
-        IEnumerable<TaskLogUnit> taskLogUnits,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var stopwatch = new Stopwatch();
-
-            stopwatch.Restart();
-            foreach (var taskLogUnitGroups in taskLogUnits.GroupBy(GetTaskLogUnitKey))
-            {
-                if (taskLogUnitGroups.Key == null) continue;
-                await ProcessTaskLogUnitGroupAsync(
-                    taskLogUnitGroups,
-                    cancellationToken);
-            }
-
-            stopwatch.Stop();
-
-            TotalQueryTimeSpan += stopwatch.Elapsed;
-            if (stopwatch.Elapsed > TotalSaveMaxTimeSpan) TotalSaveMaxTimeSpan = stopwatch.Elapsed;
-
-            stopwatch.Restart();
-            await AddOrUpdateTaskLogPagesAsync(cancellationToken);
-            stopwatch.Stop();
-
-            TotalSaveTimeSpan += stopwatch.Elapsed;
-            TotalLogEntriesSavedCount = _taskLogStat.LogEntriesSavedCount;
-            TotalCreatedPageCount = _taskLogStat.PageCreatedCount;
-            TotalDetachedPageCount = _taskLogStat.PageDetachedCount;
-            if (stopwatch.Elapsed > TotalSaveMaxTimeSpan) TotalSaveMaxTimeSpan = stopwatch.Elapsed;
-        }
-        catch (Exception ex)
-        {
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
-        }
-        finally
-        {
-            ActiveTaskLogGroupCount = _updatedTaskLogPageDictionary.Count;
-        }
     }
 
     private static string GetTaskLogUnitKey(TaskLogUnit taskLogUnit)
@@ -308,20 +265,10 @@ public class TaskLogStorageHandler
         return taskLogInfoPage;
     }
 
-    private static LogEntry Convert(TaskExecutionLogEntry taskExecutionLogEntry)
-    {
-        return new LogEntry
-        {
-            DateTimeUtc = taskExecutionLogEntry.DateTime.ToDateTime().ToUniversalTime(),
-            Type = (int)taskExecutionLogEntry.Type,
-            Value = taskExecutionLogEntry.Value
-        };
-    }
-
     async ValueTask ProcessTaskLogPagesAsync(
         string taskExecutionInstanceId,
         TaskLogModel taskInfoLog,
-        IEnumerable<TaskExecutionLogEntry> logEntries,
+        IEnumerable<LogEntry> logEntries,
         int logEntriesCount,
         CancellationToken cancellationToken = default)
     {
@@ -385,7 +332,7 @@ public class TaskLogStorageHandler
         AddOrUpdateTaskLogPage(taskInfoLog);
     }
 
-    bool AppendEntriesToTaskLogPage(TaskLogModel currentLogPage, TaskExecutionLogEntry[] logEntriesChunk)
+    bool AppendEntriesToTaskLogPage(TaskLogModel currentLogPage, LogEntry[] logEntriesChunk)
     {
         if (currentLogPage.ActualSize >= currentLogPage.PageSize)
         {
@@ -393,11 +340,11 @@ public class TaskLogStorageHandler
         }
         if (currentLogPage.ActualSize > 0)
         {
-            currentLogPage.Value.LogEntries = currentLogPage.Value.LogEntries.Union(logEntriesChunk.Select(Convert));
+            currentLogPage.Value.LogEntries = currentLogPage.Value.LogEntries.Union(logEntriesChunk).ToList();
         }
         else
         {
-            currentLogPage.Value.LogEntries = logEntriesChunk.Select(Convert);
+            currentLogPage.Value.LogEntries = [.. logEntriesChunk];
         }
         currentLogPage.ActualSize += logEntriesChunk.Length;
         currentLogPage.DirtyCount++;
@@ -485,5 +432,46 @@ public class TaskLogStorageHandler
             PageIndex = 0,
             PageSize = 1
         };
+    }
+
+    public override async ValueTask ProcessAsync(IEnumerable<TaskLogUnit> taskLogUnits, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var stopwatch = new Stopwatch();
+
+            stopwatch.Restart();
+            foreach (var taskLogUnitGroups in taskLogUnits.GroupBy(GetTaskLogUnitKey))
+            {
+                if (taskLogUnitGroups.Key == null) continue;
+                await ProcessTaskLogUnitGroupAsync(
+                    taskLogUnitGroups,
+                    cancellationToken);
+            }
+
+            stopwatch.Stop();
+
+            TotalQueryTimeSpan += stopwatch.Elapsed;
+            if (stopwatch.Elapsed > TotalSaveMaxTimeSpan) TotalSaveMaxTimeSpan = stopwatch.Elapsed;
+
+            stopwatch.Restart();
+            await AddOrUpdateTaskLogPagesAsync(cancellationToken);
+            stopwatch.Stop();
+
+            TotalSaveTimeSpan += stopwatch.Elapsed;
+            TotalLogEntriesSavedCount = _taskLogStat.LogEntriesSavedCount;
+            TotalCreatedPageCount = _taskLogStat.PageCreatedCount;
+            TotalDetachedPageCount = _taskLogStat.PageDetachedCount;
+            if (stopwatch.Elapsed > TotalSaveMaxTimeSpan) TotalSaveMaxTimeSpan = stopwatch.Elapsed;
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+        finally
+        {
+            ActiveTaskLogGroupCount = _updatedTaskLogPageDictionary.Count;
+        }
     }
 }

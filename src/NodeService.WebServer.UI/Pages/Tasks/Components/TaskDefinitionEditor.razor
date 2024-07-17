@@ -148,130 +148,142 @@
 
     async Task HandleEditFormOk(MouseEventArgs e)
     {
-        _editFormVisible = true;
-        if (TaskDefinition == null)
+        try
         {
-            return;
+            _editFormVisible = true;
+            if (TaskDefinition == null)
+            {
+                return;
+            }
+            if (TaskDefinition.TriggerType == TaskTriggerType.Schedule
+                &&
+                TaskDefinition.CronExpressions.Count == 0)
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = "调度触发模式需要设置至少一个Cron表达式"
+                    });
+                return;
+            }
+
+            TaskDefinition.Options.Clear();
+            await _optionValueEditor.CommitAsync();
+            foreach (var kv in TaskDefinition.OptionValueEditors)
+            {
+                var key = kv.Key;
+                var editorBase = kv.Value;
+                switch (editorBase.EditorType)
+                {
+                    case OptionValueType.TextValue:
+                        var textValueEditor = editorBase as TextValueEditor;
+                        TaskDefinition.Options.TryAdd(key, textValueEditor.Value);
+                        break;
+                    case OptionValueType.NumberValue:
+                        var numberValueEditor = editorBase as NumberValueEditor;
+                        TaskDefinition.Options.TryAdd(key, numberValueEditor.Value);
+                        break;
+                    case OptionValueType.BooleanValue:
+                        var booleanValueEditor = editorBase as BooleanValueEditor;
+                        TaskDefinition.Options.TryAdd(key, booleanValueEditor.Value);
+                        break;
+                    case OptionValueType.TextArrayValue:
+                        var textArrayValueEditor = editorBase as TextArrayValueEditor;
+                        TaskDefinition.Options.TryAdd(key, textArrayValueEditor.DataSource.Select(x => x.Value).ToArray());
+                        break;
+                    case OptionValueType.PythonCodeValue:
+                        var scriptCodeEditor = editorBase as PythonCodeEditor;
+                        TaskDefinition.Options.TryAdd(key, scriptCodeEditor.Value);
+                        break;
+                    case OptionValueType.BatchScriptValue:
+                        var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
+                        TaskDefinition.Options.TryAdd(key, batchScriptCodeEditor.Value);
+                        break;
+                    case OptionValueType.FtpConfigurationListValue:
+                        var ftpConfigurationListEditor = editorBase as FtpConfigurationListEditor;
+                        TaskDefinition.Options.TryAdd(key, ftpConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                        break;
+                    case OptionValueType.MysqlConfigurationListValue:
+                        var mysqlConfigurationListEditor = editorBase as MysqlConfigurationListEditor;
+                        TaskDefinition.Options.TryAdd(key, mysqlConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                        break;
+                    case OptionValueType.KafkaConfigurationListValue:
+                        var kafkaConfigurationListEditor = editorBase as KafkaConfigurationListEditor;
+                        TaskDefinition.Options.TryAdd(key, kafkaConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                        break;
+                    case OptionValueType.FtpConfigurationValue:
+                        var ftpConfigurationEditor = editorBase as FtpConfigurationEditor;
+                        TaskDefinition.Options.TryAdd(key, ftpConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                        break;
+                    case OptionValueType.MysqlConfigurationValue:
+                        var mysqlEditor = editorBase as MysqlConfigurationEditor;
+                        TaskDefinition.Options.TryAdd(key, mysqlEditor.SelectedItems.FirstOrDefault()?.Id);
+                        break;
+                    case OptionValueType.KafkaConfigurationValue:
+                        var kafkaEditor = editorBase as KafkaConfigurationEditor;
+                        TaskDefinition.Options.TryAdd(key, kafkaEditor.SelectedItems.FirstOrDefault()?.Id);
+                        break;
+                    case OptionValueType.PackageConfigurationValue:
+                        var packageConfigurationEditor = editorBase as PackageConfigurationEditor;
+                        TaskDefinition.Options.TryAdd(key, packageConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                        break;
+                    case OptionValueType.PackageConfigurationListValue:
+                        var packageConfigurationListEditor = editorBase as PackageConfigurationListEditor;
+                        TaskDefinition.Options.TryAdd(key, packageConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                        break;
+                    case OptionValueType.NodeEnvVarsConfigurationValue:
+                        var nodeEnvVarsConfigurationEditor = editorBase as NodeEnvVarsConfigurationEditor;
+                        TaskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                        break;
+                    case OptionValueType.NodeEnvVarsConfigurationListValue:
+                        var nodeEnvVarsConfigurationListEditor = editorBase as NodeEnvVarsConfigurationListEditor;
+                        TaskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                        break;
+                    case OptionValueType.LogUploadConfigurationValue:
+
+                        break;
+                    case OptionValueType.LogUploadConfigurationListValue:
+
+                        break;
+                    case OptionValueType.FtpUploadConfigurationValue:
+                        var ftpUploadConfigurationEditor = editorBase as FtpUploadConfigurationEditor;
+                        TaskDefinition.Options.TryAdd(key, ftpUploadConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                        break;
+                    case OptionValueType.FtpUploadConfigurationListValue:
+                        var ftpUploadConfigurationListEditor = editorBase as FtpUploadConfigurationListEditor;
+                        TaskDefinition.Options.TryAdd(key, ftpUploadConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                        break;
+                    case OptionValueType.RestApiConfigurationValue:
+                        var restApiConfigurationEditor = editorBase as RestApiConfigurationEditor;
+                        TaskDefinition.Options.TryAdd(key, restApiConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                        break;
+                    case OptionValueType.RestApiConfigurationListValue:
+                        var restApiConfigurationListEditor = editorBase as RestApiConfigurationListEditor;
+                        TaskDefinition.Options.TryAdd(key, restApiConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                        break;
+                    case OptionValueType.FtpDownloadConfigurationValue:
+                        var ftpDownloadConfigurationEditor = editorBase as FtpDownloadConfigurationEditor;
+                        TaskDefinition.Options.TryAdd(key, ftpDownloadConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
+                        break;
+                    case OptionValueType.FtpDownloadConfigurationListValue:
+                        var ftpDownloadConfigurationListEditor = editorBase as FtpDownloadConfigurationListEditor;
+                        TaskDefinition.Options.TryAdd(key, ftpDownloadConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
+                        break;
+                }
+            }
+
+            _editFormSubmitting = true;
+            _editForm.Submit();
         }
-        if (TaskDefinition.TriggerType == TaskTriggerType.Schedule
-            &&
-            TaskDefinition.CronExpressions.Count == 0)
+        catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = "调度触发模式需要设置至少一个Cron表达式"
-            });
-            return;
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
         }
 
-        TaskDefinition.Options.Clear();
-        await _optionValueEditor.CommitAsync();
-        foreach (var kv in TaskDefinition.OptionValueEditors)
-        {
-            var key = kv.Key;
-            var editorBase = kv.Value;
-            switch (editorBase.EditorType)
-            {
-                case OptionValueType.TextValue:
-                    var textValueEditor = editorBase as TextValueEditor;
-                    TaskDefinition.Options.TryAdd(key, textValueEditor.Value);
-                    break;
-                case OptionValueType.NumberValue:
-                    var numberValueEditor = editorBase as NumberValueEditor;
-                    TaskDefinition.Options.TryAdd(key, numberValueEditor.Value);
-                    break;
-                case OptionValueType.BooleanValue:
-                    var booleanValueEditor = editorBase as BooleanValueEditor;
-                    TaskDefinition.Options.TryAdd(key, booleanValueEditor.Value);
-                    break;
-                case OptionValueType.TextArrayValue:
-                    var textArrayValueEditor = editorBase as TextArrayValueEditor;
-                    TaskDefinition.Options.TryAdd(key, textArrayValueEditor.DataSource.Select(x => x.Value).ToArray());
-                    break;
-                case OptionValueType.PythonCodeValue:
-                    var scriptCodeEditor = editorBase as PythonCodeEditor;
-                    TaskDefinition.Options.TryAdd(key, scriptCodeEditor.Value);
-                    break;
-                case OptionValueType.BatchScriptValue:
-                    var batchScriptCodeEditor = editorBase as BatchScriptCodeEditor;
-                    TaskDefinition.Options.TryAdd(key, batchScriptCodeEditor.Value);
-                    break;
-                case OptionValueType.FtpConfigurationListValue:
-                    var ftpConfigurationListEditor = editorBase as FtpConfigurationListEditor;
-                    TaskDefinition.Options.TryAdd(key, ftpConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
-                    break;
-                case OptionValueType.MysqlConfigurationListValue:
-                    var mysqlConfigurationListEditor = editorBase as MysqlConfigurationListEditor;
-                    TaskDefinition.Options.TryAdd(key, mysqlConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
-                    break;
-                case OptionValueType.KafkaConfigurationListValue:
-                    var kafkaConfigurationListEditor = editorBase as KafkaConfigurationListEditor;
-                    TaskDefinition.Options.TryAdd(key, kafkaConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
-                    break;
-                case OptionValueType.FtpConfigurationValue:
-                    var ftpConfigurationEditor = editorBase as FtpConfigurationEditor;
-                    TaskDefinition.Options.TryAdd(key, ftpConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
-                    break;
-                case OptionValueType.MysqlConfigurationValue:
-                    var mysqlEditor = editorBase as MysqlConfigurationEditor;
-                    TaskDefinition.Options.TryAdd(key, mysqlEditor.SelectedItems.FirstOrDefault()?.Id);
-                    break;
-                case OptionValueType.KafkaConfigurationValue:
-                    var kafkaEditor = editorBase as KafkaConfigurationEditor;
-                    TaskDefinition.Options.TryAdd(key, kafkaEditor.SelectedItems.FirstOrDefault()?.Id);
-                    break;
-                case OptionValueType.PackageConfigurationValue:
-                    var packageConfigurationEditor = editorBase as PackageConfigurationEditor;
-                    TaskDefinition.Options.TryAdd(key, packageConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
-                    break;
-                case OptionValueType.PackageConfigurationListValue:
-                    var packageConfigurationListEditor = editorBase as PackageConfigurationListEditor;
-                    TaskDefinition.Options.TryAdd(key, packageConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
-                    break;
-                case OptionValueType.NodeEnvVarsConfigurationValue:
-                    var nodeEnvVarsConfigurationEditor = editorBase as NodeEnvVarsConfigurationEditor;
-                    TaskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
-                    break;
-                case OptionValueType.NodeEnvVarsConfigurationListValue:
-                    var nodeEnvVarsConfigurationListEditor = editorBase as NodeEnvVarsConfigurationListEditor;
-                    TaskDefinition.Options.TryAdd(key, nodeEnvVarsConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
-                    break;
-                case OptionValueType.LogUploadConfigurationValue:
-
-                    break;
-                case OptionValueType.LogUploadConfigurationListValue:
-
-                    break;
-                case OptionValueType.FtpUploadConfigurationValue:
-                    var ftpUploadConfigurationEditor = editorBase as FtpUploadConfigurationEditor;
-                    TaskDefinition.Options.TryAdd(key, ftpUploadConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
-                    break;
-                case OptionValueType.FtpUploadConfigurationListValue:
-                    var ftpUploadConfigurationListEditor = editorBase as FtpUploadConfigurationListEditor;
-                    TaskDefinition.Options.TryAdd(key, ftpUploadConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
-                    break;
-                case OptionValueType.RestApiConfigurationValue:
-                    var restApiConfigurationEditor = editorBase as RestApiConfigurationEditor;
-                    TaskDefinition.Options.TryAdd(key, restApiConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
-                    break;
-                case OptionValueType.RestApiConfigurationListValue:
-                    var restApiConfigurationListEditor = editorBase as RestApiConfigurationListEditor;
-                    TaskDefinition.Options.TryAdd(key, restApiConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
-                    break;
-                case OptionValueType.FtpDownloadConfigurationValue:
-                    var ftpDownloadConfigurationEditor = editorBase as FtpDownloadConfigurationEditor;
-                    TaskDefinition.Options.TryAdd(key, ftpDownloadConfigurationEditor.SelectedItems.FirstOrDefault()?.Id);
-                    break;
-                case OptionValueType.FtpDownloadConfigurationListValue:
-                    var ftpDownloadConfigurationListEditor = editorBase as FtpDownloadConfigurationListEditor;
-                    TaskDefinition.Options.TryAdd(key, ftpDownloadConfigurationListEditor.SelectedItems.Select(x => x.Id).ToArray());
-                    break;
-            }
-        }
-
-        _editFormSubmitting = true;
-        _editForm.Submit();
     }
 
     void AddCronExpression(AddingNewItemEventArgs<StringEntry> e)

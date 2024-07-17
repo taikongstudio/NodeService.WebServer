@@ -19,12 +19,14 @@ namespace NodeService.WebServer.Services.Tasks
         private readonly ExceptionCounter _exceptionCounter;
         KafkaOptions _kafkaOptions;
         private BatchQueue<TaskLogUnit> _taskLogUnitQueue;
+        private readonly WebServerCounter _webServerCounter;
         private ConsumerConfig _consumerConfig;
         private IConsumer<string, string> _consumer;
 
         public TaskLogKafkaConsumerService(
             ILogger<TaskLogKafkaConsumerService> logger,
             ExceptionCounter exceptionCounter,
+            WebServerCounter webServerCounter,
             IOptionsMonitor<KafkaOptions> kafkaOptionsMonitor,
             [FromKeyedServices(nameof(TaskLogPersistenceService))]BatchQueue<TaskLogUnit> taskLogUnitQueue)
         {
@@ -32,6 +34,7 @@ namespace NodeService.WebServer.Services.Tasks
             _exceptionCounter = exceptionCounter;
             _kafkaOptions = kafkaOptionsMonitor.CurrentValue;
             _taskLogUnitQueue = taskLogUnitQueue;
+            _webServerCounter = webServerCounter;
         }
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
@@ -66,6 +69,7 @@ namespace NodeService.WebServer.Services.Tasks
                             {
                                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                                 _logger.LogInformation("Wait");
+                                _webServerCounter.KafkaConsumeWaitCount.Value += 1;
                             }
                             var consumeResult = _consumer.Consume(cancellationToken);
                             try
@@ -74,6 +78,7 @@ namespace NodeService.WebServer.Services.Tasks
                                 if (taskLogUnit != null)
                                 {
                                     await _taskLogUnitQueue.SendAsync(taskLogUnit, cancellationToken);
+                                    _webServerCounter.KafkaConsumeConsumeCount.Value += 1;
                                     _logger.LogInformation("Send");
                                 }
                             }

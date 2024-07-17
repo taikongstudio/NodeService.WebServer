@@ -19,12 +19,14 @@ namespace NodeService.WebServer.Services.Tasks
         private readonly ExceptionCounter _exceptionCounter;
         KafkaOptions _kafkaOptions;
         private BatchQueue<TaskLogUnit> _taskLogUnitQueue;
+        private WebServerCounter _webServerCounter;
         private ProducerConfig _producerConfig;
         private IProducer<string, string> _producer;
 
         public TaskLogKafkaProducerService(
             ILogger<TaskLogKafkaProducerService> logger,
             ExceptionCounter exceptionCounter,
+            WebServerCounter webServerCounter,
             IOptionsMonitor<KafkaOptions> kafkaOptionsMonitor,
             [FromKeyedServices(nameof(TaskLogKafkaProducerService))]BatchQueue<TaskLogUnit> taskLogUnitQueue)
         {
@@ -32,6 +34,7 @@ namespace NodeService.WebServer.Services.Tasks
             _exceptionCounter = exceptionCounter;
             _kafkaOptions = kafkaOptionsMonitor.CurrentValue;
             _taskLogUnitQueue = taskLogUnitQueue;
+            _webServerCounter = webServerCounter;
         }
 
 
@@ -80,7 +83,12 @@ namespace NodeService.WebServer.Services.Tasks
                                     if (result.Status != PersistenceStatus.Persisted)
                                     {
                                         await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                                        _webServerCounter.KafkaRetryProduceCount.Value++;
                                         goto LRetry;
+                                    }
+                                    else
+                                    {
+                                        _webServerCounter.KafkaProduceCount.Value++;
                                     }
                                 }
                                 catch (ProduceException<string, string> ex)

@@ -130,6 +130,7 @@ public class TaskLogPersistenceService : BackgroundService
             {
                 try
                 {
+                    _webServerCounter.TaskLogUnitAvailableCount.Value = _taskLogUnitBatchQueue.QueueCount;
                     if (array == null)
                     {
                         continue;

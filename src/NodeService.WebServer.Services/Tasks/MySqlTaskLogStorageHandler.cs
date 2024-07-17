@@ -29,22 +29,6 @@ public class MySqlTaskLogStorageHandler : TaskLogStorageHandlerBase
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
     readonly TaskLogStat _taskLogStat;
 
-    public long TotalGroupConsumeCount { get; private set; }
-
-    public TimeSpan TotalQueryTimeSpan { get; private set; }
-
-    public TimeSpan TotalSaveMaxTimeSpan { get; private set; }
-
-    public TimeSpan TotalSaveTimeSpan { get; private set; }
-
-    public long TotalLogEntriesSavedCount { get; private set; }
-
-    public long TotalCreatedPageCount { get; private set; }
-
-    public long TotalDetachedPageCount { get; private set; }
-
-    public int ActiveTaskLogGroupCount { get; private set; }
-
     public int Id { get; set; }
 
     public MySqlTaskLogStorageHandler(

@@ -58,6 +58,10 @@
         yield return (nameof(WebServerCounter.TaskLogUnitAvailableCount), WebServerCounter.TaskLogUnitAvailableCount.ToString());
         yield return (nameof(WebServerCounter.TaskLogUnitConsumeCount), WebServerCounter.TaskLogUnitConsumeCount.ToString());
         yield return (nameof(WebServerCounter.TaskLogPageDetachedCount), WebServerCounter.TaskLogPageDetachedCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaConsumeConsumeCount), WebServerCounter.KafkaConsumeConsumeCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaConsumeWaitCount), WebServerCounter.KafkaConsumeWaitCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaProduceCount), WebServerCounter.KafkaProduceCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaRetryProduceCount), WebServerCounter.KafkaRetryProduceCount.ToString());
     }
 
 }

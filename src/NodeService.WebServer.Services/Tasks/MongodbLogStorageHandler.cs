@@ -36,6 +36,7 @@ namespace NodeService.WebServer.Services.Tasks
             ILogger<MongodbLogStorageHandler> logger,
             ExceptionCounter exceptionCounter,
             MongoGridFS  mongoGridFS,
+            WebServerCounter webServerCounter,
             ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
             IOptionsMonitor<MongoDbOptions> mongoDbOptions,
             IMemoryCache memoryCache)
@@ -131,6 +132,9 @@ namespace NodeService.WebServer.Services.Tasks
                         await UpdateTaskLogInfoPageAsync(taskInfoCache.TaskInfoLog, cancellationToken);
                         stopwatch.Stop();
                         _logger.LogInformation($"Process {taskId},spent:{stopwatch.Elapsed},Save {count} logs");
+                        this.TotalLogEntriesSavedCount += count;
+                        this.TotalSaveTimeSpan += stopwatch.Elapsed;
+                        this.TotalGroupConsumeCount += taskLogUnits.Count();
                     }
                     catch (Exception ex)
                     {

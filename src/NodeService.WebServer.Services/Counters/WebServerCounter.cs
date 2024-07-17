@@ -85,4 +85,12 @@ public class WebServerCounter
     public CounterTimeSpanValue NodeFileSyncServiceBatchProcessContext_MaxTimeSpan { get; set; } = new();
 
     public CounterLongValue NodeFileSyncServiceBatchProcessContext_MaxFileLength { get; set; } = new();
+
+    public CounterLongValue KafkaConsumeWaitCount { get; set; } = new();
+
+    public CounterLongValue KafkaConsumeConsumeCount { get; set; } = new();
+
+    public CounterLongValue KafkaProduceCount { get; set; } = new();
+
+    public CounterLongValue KafkaRetryProduceCount { get; set; } = new();
 }

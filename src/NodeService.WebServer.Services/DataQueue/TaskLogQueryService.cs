@@ -144,16 +144,24 @@ public class TaskLogQueryService
             }
             else
             {
-                foreach (var item in taskInfoLog.Value.LogEntries)
+                if (queryParameters.PageIndex == 1)
                 {
-                    if (queryParameters.PageIndex == item.Index + 1)
+                    fs.Position = 0;
+                }
+                else
+                {
+                    foreach (var item in taskInfoLog.Value.LogEntries)
                     {
-                        serviceResult.PageIndex = item.Index + 1;
-                        serviceResult.PageSize = item.Status;
-                        fs.Position = item.Type;
-                        break;
+                        if (queryParameters.PageIndex == item.Index + 1)
+                        {
+                            serviceResult.PageIndex = item.Index + 1;
+                            serviceResult.PageSize = item.Status;
+                            fs.Position = item.Type;
+                            break;
+                        }
                     }
                 }
+
                 _ = Task.Run(async () =>
                 {
 

@@ -68,7 +68,6 @@ namespace NodeService.WebServer.Services.Tasks
                             while (_taskLogUnitQueue.QueueCount > 10)
                             {
                                 await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
-                                _logger.LogInformation("Wait");
                                 _webServerCounter.KafkaConsumeWaitCount.Value += 1;
                             }
                             var consumeResult = _consumer.Consume(cancellationToken);

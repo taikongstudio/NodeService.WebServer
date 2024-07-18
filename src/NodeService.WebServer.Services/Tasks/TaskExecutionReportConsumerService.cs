@@ -93,7 +93,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         await foreach (var array in _taskExecutionReportBatchQueue.ReceiveAllAsync(cancellationToken))
         {
-            _webServerCounter.TaskExecutionReportQueueCount.Value = (uint)_taskExecutionReportBatchQueue.QueueCount;
+            _webServerCounter.TaskExecutionReportQueueCount.Value = _taskExecutionReportBatchQueue.QueueCount;
             if (array == null)
             {
                 continue;

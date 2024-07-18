@@ -4,12 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Confluent.Kafka.ConfigPropertyNames;
+using System.Threading;
 
 namespace NodeService.WebServer.Services.Tasks
 {
@@ -28,7 +23,7 @@ namespace NodeService.WebServer.Services.Tasks
             ExceptionCounter exceptionCounter,
             WebServerCounter webServerCounter,
             IOptionsMonitor<KafkaOptions> kafkaOptionsMonitor,
-            [FromKeyedServices(nameof(TaskLogKafkaProducerService))]BatchQueue<TaskLogUnit> taskLogUnitQueue)
+            [FromKeyedServices(nameof(TaskLogKafkaProducerService))] BatchQueue<TaskLogUnit> taskLogUnitQueue)
         {
             _logger = logger;
             _exceptionCounter = exceptionCounter;
@@ -39,7 +34,7 @@ namespace NodeService.WebServer.Services.Tasks
 
 
 
-        protected override async Task ExecuteAsync(CancellationToken  cancellationToken=default)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
         {
             _producerConfig = new ProducerConfig
             {
@@ -75,21 +70,11 @@ namespace NodeService.WebServer.Services.Tasks
                                         logString = JsonSerializer.Serialize(taskLogUnit);
                                     }
                                     var length = logString.Length;
-                                    var result = await _producer.ProduceAsync(_kafkaOptions.TaskLogTopic, new Message<string, string>()
+                                    _producer.Produce(_kafkaOptions.TaskLogTopic, new Message<string, string>()
                                     {
                                         Key = taskLogUnit.Id,
                                         Value = logString
-                                    });
-                                    if (result.Status != PersistenceStatus.Persisted)
-                                    {
-                                        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-                                        _webServerCounter.KafkaRetryProduceCount.Value++;
-                                        goto LRetry;
-                                    }
-                                    else
-                                    {
-                                        _webServerCounter.KafkaProduceCount.Value++;
-                                    }
+                                    }, DeliveryHandler);
                                 }
                                 catch (ProduceException<string, string> ex)
                                 {
@@ -124,6 +109,18 @@ namespace NodeService.WebServer.Services.Tasks
                 _logger.LogError(ex.ToString());
             }
 
+        }
+
+        void DeliveryHandler(DeliveryReport<string, string> report)
+        {
+            if (report.Status != PersistenceStatus.Persisted)
+            {
+                _webServerCounter.KafkaRetryProduceCount.Value++;
+            }
+            else
+            {
+                _webServerCounter.KafkaProduceCount.Value++;
+            }
         }
     }
 }

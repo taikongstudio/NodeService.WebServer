@@ -455,8 +455,8 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>, AsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             builder.Services.AddSingleton(new BatchQueue<TaskActivateServiceParameters>(TimeSpan.FromSeconds(1), 64));
             builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(TimeSpan.FromSeconds(1), 64));
-            builder.Services.AddKeyedSingleton(nameof(TaskLogKafkaProducerService),new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(3), 256));
-            builder.Services.AddKeyedSingleton(nameof(TaskLogPersistenceService), new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(3), 256));
+            builder.Services.AddKeyedSingleton(nameof(TaskLogKafkaProducerService),new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(1), 2048));
+            builder.Services.AddKeyedSingleton(nameof(TaskLogPersistenceService), new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(1), 2048));
             builder.Services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
             builder.Services.AddSingleton(new BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(TimeSpan.FromMilliseconds(100), 64));
             builder.Services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(TimeSpan.FromSeconds(3), 1024));

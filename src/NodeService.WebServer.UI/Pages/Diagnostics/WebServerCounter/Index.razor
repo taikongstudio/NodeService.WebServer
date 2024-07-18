@@ -34,15 +34,19 @@
 
     IEnumerable<(string Desc, string Value)> GetStatistics()
     {
-        yield return (nameof(WebServerCounter.TaskExecutionReportAvailableCount), WebServerCounter.TaskExecutionReportAvailableCount.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportQueueCount), WebServerCounter.TaskExecutionReportQueueCount.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportProcessTimeSpan), WebServerCounter.TaskExecutionReportProcessTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportQueryTimeSpan), WebServerCounter.TaskExecutionReportQueryTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportSaveTimeSpan), WebServerCounter.TaskExecutionReportSaveTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportTotalTimeSpan), WebServerCounter.TaskExecutionReportTotalTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportSaveChangesCount), WebServerCounter.TaskExecutionReportSaveChangesCount.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportConsumeCount), WebServerCounter.TaskExecutionReportConsumeCount.ToString());
-        yield return (nameof(WebServerCounter.HeartBeatAvailableCount), WebServerCounter.HeartBeatAvailableCount.ToString());
-        yield return (nameof(WebServerCounter.HeartBeatConsumeCount), WebServerCounter.HeartBeatConsumeCount.ToString());
+        yield return (nameof(WebServerCounter.HeartBeatQueueCount), WebServerCounter.HeartBeatQueueCount.ToString());
+        yield return (nameof(WebServerCounter.HeartBeatMessageConsumeCount), WebServerCounter.HeartBeatMessageConsumeCount.ToString());
+        yield return (nameof(WebServerCounter.HeartBeatQueryNodeInfoListTimeSpan), WebServerCounter.HeartBeatQueryNodeInfoListTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.HeartBeatUpdateNodeInfoListTimeSpan), WebServerCounter.HeartBeatUpdateNodeInfoListTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.HeartBeatQueryNodePropsTimeSpan), WebServerCounter.HeartBeatQueryNodePropsTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.HeartBeatSaveNodePropsTimeSpan), WebServerCounter.HeartBeatSaveNodePropsTimeSpan.ToString());
         yield return (nameof(WebServerCounter.HeartBeatTotalProcessTimeSpan), WebServerCounter.HeartBeatTotalProcessTimeSpan.ToString());
         yield return (nameof(WebServerCounter.NodeServiceInputMessagesCount), WebServerCounter.NodeServiceInputMessagesCount.ToString());
         yield return (nameof(WebServerCounter.NodeServiceOutputMessagesCount), WebServerCounter.NodeServiceOutputMessagesCount.ToString());
@@ -50,14 +54,18 @@
         yield return (nameof(WebServerCounter.TaskLogUnitEntriesCount), WebServerCounter.TaskLogUnitEntriesCount.ToString());
         yield return (nameof(WebServerCounter.TaskLogUnitCollectLogEntriesTimeSpan), WebServerCounter.TaskLogUnitCollectLogEntriesTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskLogUnitRecieveCount), WebServerCounter.TaskLogUnitRecieveCount.ToString());
-        yield return (nameof(WebServerCounter.TaskLogEntriesSavedCount), WebServerCounter.TaskLogEntriesSavedCount.ToString());
-        yield return (nameof(WebServerCounter.TaskLogPageCount), WebServerCounter.TaskLogPageCount.ToString());
         yield return (nameof(WebServerCounter.TaskLogUnitSaveTimeSpan), WebServerCounter.TaskLogUnitSaveTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskLogUnitQueryTimeSpan), WebServerCounter.TaskLogUnitQueryTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskLogUnitSaveMaxTimeSpan), WebServerCounter.TaskLogUnitSaveMaxTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskLogUnitAvailableCount), WebServerCounter.TaskLogUnitAvailableCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogUnitQueueCount), WebServerCounter.TaskLogUnitQueueCount.ToString());
         yield return (nameof(WebServerCounter.TaskLogUnitConsumeCount), WebServerCounter.TaskLogUnitConsumeCount.ToString());
         yield return (nameof(WebServerCounter.TaskLogPageDetachedCount), WebServerCounter.TaskLogPageDetachedCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogEntriesSaveCount), WebServerCounter.TaskLogEntriesSaveCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogEntriesSaveTimes), WebServerCounter.TaskLogEntriesSaveTimes.ToString());
+        yield return (nameof(WebServerCounter.TaskLogInfoQueryTimeSpan), WebServerCounter.TaskLogInfoQueryTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskLogInfoSaveTimeSpan), WebServerCounter.TaskLogInfoSaveTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.TaskLogPageCount), WebServerCounter.TaskLogPageCount.ToString());
+        yield return (nameof(WebServerCounter.TaskLogHandlerCount), WebServerCounter.TaskLogHandlerCount.ToString());
         yield return (nameof(WebServerCounter.KafkaConsumeConsumeCount), WebServerCounter.KafkaConsumeConsumeCount.ToString());
         yield return (nameof(WebServerCounter.KafkaConsumeWaitCount), WebServerCounter.KafkaConsumeWaitCount.ToString());
         yield return (nameof(WebServerCounter.KafkaProduceCount), WebServerCounter.KafkaProduceCount.ToString());

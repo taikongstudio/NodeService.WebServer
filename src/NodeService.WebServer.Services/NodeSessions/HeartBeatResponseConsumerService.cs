@@ -71,9 +71,9 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 await ProcessHeartBeatMessagesAsync(array, cancellationToken);
                 _logger.LogInformation(
                     $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatSessionMessageBatchQueue.AvailableCount}");
-                _webServerCounter.HeartBeatAvailableCount.Value = _hearBeatSessionMessageBatchQueue.AvailableCount;
+                _webServerCounter.HeartBeatQueueCount.Value = _hearBeatSessionMessageBatchQueue.QueueCount;
                 _webServerCounter.HeartBeatTotalProcessTimeSpan.Value += stopwatch.Elapsed;
-                _webServerCounter.HeartBeatConsumeCount.Value += (uint)count;
+                _webServerCounter.HeartBeatMessageConsumeCount.Value += (uint)count;
             }
             catch (Exception ex)
             {
@@ -131,7 +131,15 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             await RefreshNodeSettingsAsync(cancellationToken);
             var nodeIdList = array.Select(GetNodeId);
-            var nodeList = await _nodeInfoQueryService.QueryNodeInfoListAsync(nodeIdList, false);
+            stopwatch.Restart();
+            var nodeList = await _nodeInfoQueryService.QueryNodeInfoListAsync(
+                nodeIdList,
+                false,
+                cancellationToken);
+            _webServerCounter.HeartBeatQueryNodeInfoListTimeSpan.Value += stopwatch.Elapsed;
+
+            stopwatch.Stop();
+
             foreach (var hearBeatSessionMessage in array)
             {
                 NodeInfoModel? nodeInfo = null;
@@ -153,6 +161,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     hearBeatSessionMessage,
                     nodeInfo,
                     cancellationToken);
+
                 stopwatch.Stop();
                 _logger.LogInformation(
                     $"process heartbeat {hearBeatSessionMessage.NodeSessionId} spent:{stopwatch.Elapsed}");
@@ -161,6 +170,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             stopwatch.Start();
             await _nodeInfoQueryService.UpdateNodeInfoListAsync(nodeList, cancellationToken);
+            _webServerCounter.HeartBeatUpdateNodeInfoListTimeSpan.Value += stopwatch.Elapsed;
           stopwatch.Stop();
         }
         catch (Exception ex)
@@ -195,13 +205,23 @@ public class HeartBeatResponseConsumerService : BackgroundService
     {
         try
         {
-
+            var stopwatch = new Stopwatch();
             if (nodeInfo == null) return;
             var hearBeatResponse = hearBeatMessage.GetMessage();
             var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
             var nodeStatus = _nodeSessionService.GetNodeStatus(hearBeatMessage.NodeSessionId);
             nodeInfo.Status = nodeStatus;
+
+            stopwatch.Start();
+
             var nodePropSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfo.Id, cancellationToken);
+
+            stopwatch.Stop();
+
+            _webServerCounter.HeartBeatQueryNodePropsTimeSpan.Value += stopwatch.Elapsed;
+
+            stopwatch.Restart();
+
             if (hearBeatResponse != null)
             {
                 if (hearBeatMessage.NodeSessionId.NodeId == NodeId.Null)
@@ -221,6 +241,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                         NodeProperties = propsList,
                         NodeInfoId = nodeInfo.Id
                     };
+
                     await _nodeInfoQueryService.SaveNodePropSnapshotAsync(nodeInfo,
                                                                           nodePropSnapshot,
                                                                           true,

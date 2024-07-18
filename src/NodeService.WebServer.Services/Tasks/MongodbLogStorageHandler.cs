@@ -1,17 +1,11 @@
-﻿using MongoDB.Driver.GridFS;
-using MongoDB.Driver;
-using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Services.Counters;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NodeService.WebServer.Models;
-using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Options;
 using MongoDB.Bson;
-using System.IO;
+using MongoDB.Driver;
+using MongoDB.Driver.GridFS;
 using NodeService.Infrastructure.Logging;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Models;
+using NodeService.WebServer.Services.Counters;
 using System.Data.Common;
 
 namespace NodeService.WebServer.Services.Tasks
@@ -31,6 +25,7 @@ namespace NodeService.WebServer.Services.Tasks
         private readonly MongoClient _mongoClient;
         private readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
         private readonly IMemoryCache _memoryCache;
+        private readonly WebServerCounter _webServerCounter;
 
         public MongodbLogStorageHandler(
             ILogger<MongodbLogStorageHandler> logger,
@@ -47,6 +42,7 @@ namespace NodeService.WebServer.Services.Tasks
             _mongoGridFS = mongoGridFS;
             _taskLogRepoFactory = taskLogRepoFactory;
             _memoryCache = memoryCache;
+            _webServerCounter = webServerCounter;
         }
 
         public override async ValueTask ProcessAsync(
@@ -59,98 +55,153 @@ namespace NodeService.WebServer.Services.Tasks
                 {
                     return;
                 }
-                foreach (var taskLogUnitGroup in taskLogUnits.GroupBy(static x => x.Id))
+                if (Debugger.IsAttached)
                 {
-                    var taskId = taskLogUnitGroup.Key;
-                    if (taskId == null)
+                    foreach (var taskLogUnitGroup in taskLogUnits.GroupBy(static x => x.Id))
                     {
-                        continue;
-                    }
-                    _logger.LogInformation($"Process {taskId}");
-                    var logEntries = taskLogUnitGroup.SelectMany(x => x.LogEntries).OrderBy(x => x.DateTimeUtc);
-                    try
-                    {
-                        Stopwatch stopwatch = Stopwatch.StartNew();
-                        var taskInfoCache = await EnsureTaskInfoCacheAsync(taskId, cancellationToken);
-                        bool delete = false;
-                        if (delete)
-                        {
-                            _mongoGridFS.DeleteById(taskInfoCache.TaskLogId);
-                        }
+                        await ProcessTaskLogUnitGroupAsync(taskLogUnitGroup, cancellationToken);
 
-                        StreamWriter streamWriter = null;
-                        if (!_mongoGridFS.ExistsById(taskInfoCache.TaskLogId))
-                        {
-                            streamWriter = new StreamWriter(_mongoGridFS.Create(taskInfoCache.TaskLogId.ToString(), new MongoGridFSCreateOptions()
-                            {
-                                Id = taskInfoCache.TaskLogId,
-                                UploadDate = DateTime.UtcNow,
-                            }));
-                        }
-                        else
-                        {
-                            streamWriter = _mongoGridFS.AppendText(taskInfoCache.TaskLogId.ToString());
-                        }
-                        var lastLogEntry = taskInfoCache.TaskInfoLog.LogEntries.LastOrDefault();
-                        if (lastLogEntry == null)
-                        {
-                            lastLogEntry = new LogEntry();
-                            taskInfoCache.TaskInfoLog.LogEntries.Add(lastLogEntry);
-                        }
-                        else if (lastLogEntry.Status == 1024)
-                        {
-                            lastLogEntry = new LogEntry()
-                            {
-                                Index = lastLogEntry.Index + 1,
-                                Type = lastLogEntry.Type,
-                            };
-                            taskInfoCache.TaskInfoLog.LogEntries = [.. taskInfoCache.TaskInfoLog.LogEntries, lastLogEntry];
-                        }
-                        streamWriter.BaseStream.Position = lastLogEntry.Type;
-                        int count = 0;
-                        foreach (var item in logEntries)
-                        {
-                            await streamWriter.WriteLineAsync(JsonSerializer.Serialize(item));
-                            taskInfoCache.TaskInfoLog.ActualSize += 1;
-                            lastLogEntry.Status++;
-                            if (lastLogEntry.Status == 1024)
-                            {
-                                await streamWriter.FlushAsync(cancellationToken);
-                                lastLogEntry.Type = streamWriter.BaseStream.Position;
-                                lastLogEntry = new LogEntry()
-                                {
-                                    Index = lastLogEntry.Index + 1,
-                                };
-                                taskInfoCache.TaskInfoLog.LogEntries = [.. taskInfoCache.TaskInfoLog.LogEntries, lastLogEntry];
-                            }
-                            count++;
-                        }
-
-                        await streamWriter.FlushAsync(cancellationToken);
-                        lastLogEntry.Type = streamWriter.BaseStream.Position;
-                        await streamWriter.DisposeAsync();
-                        await UpdateTaskLogInfoPageAsync(taskInfoCache.TaskInfoLog, cancellationToken);
-                        stopwatch.Stop();
-                        _logger.LogInformation($"Process {taskId},spent:{stopwatch.Elapsed},Save {count} logs");
-                        this.TotalLogEntriesSavedCount += count;
-                        this.TotalSaveTimeSpan += stopwatch.Elapsed;
-                        this.TotalGroupConsumeCount += taskLogUnits.Count();
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex.ToString());
-                        _exceptionCounter.AddOrUpdate(ex);
-                    }
-
                 }
+                else
+                {
+                    await Parallel.ForEachAsync(taskLogUnits.GroupBy(static x => x.Id), new ParallelOptions()
+                    {
+                        CancellationToken = cancellationToken,
+                        MaxDegreeOfParallelism = 2,
+                    }, ProcessTaskLogUnitGroupAsync);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+
+            }
+        }
+
+        private async ValueTask ProcessTaskLogUnitGroupAsync(
+            IGrouping<string, TaskLogUnit> taskLogUnitGroup,
+            CancellationToken cancellationToken = default)
+        {
+            var taskExecutionInstanceId = taskLogUnitGroup.Key;
+            if (taskExecutionInstanceId == null)
+            {
+                return;
+            }
+            _logger.LogInformation($"Process {taskExecutionInstanceId}");
+
+            try
+            {
+                var logEntries = taskLogUnitGroup.SelectMany(static x => x.LogEntries).OrderBy(static x => x.DateTimeUtc);
+                var stopwatch = Stopwatch.StartNew();
+                var taskInfoCache = await EnsureTaskInfoCacheAsync(taskExecutionInstanceId, cancellationToken);
+                stopwatch.Stop();
+
+                _webServerCounter.TaskLogInfoQueryTimeSpan.Value += stopwatch.Elapsed;
+                _webServerCounter.TaskLogEntriesSaveTimes.Value++;
+
+                stopwatch.Restart();
+                var entriesCount = await SaveLogEntriesAsync(taskInfoCache, logEntries, cancellationToken);
+                stopwatch.Stop();
+                if (stopwatch.Elapsed > _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value)
+                {
+                    _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value = stopwatch.Elapsed;
+                }
+                _webServerCounter.TaskLogUnitSaveTimeSpan.Value += stopwatch.Elapsed;
+                stopwatch.Restart();
+                await UpdateTaskLogInfoPageAsync(taskInfoCache.TaskInfoLog, cancellationToken);
+                stopwatch.Stop();
+
+                this._webServerCounter.TaskLogInfoSaveTimeSpan.Value += stopwatch.Elapsed;
+
+                _logger.LogInformation($"Process {taskExecutionInstanceId},spent:{stopwatch.Elapsed},Save {entriesCount} logs");
+
+                this._webServerCounter.TaskLogUnitConsumeCount.Value += taskLogUnitGroup.Count();
+                this._webServerCounter.TaskLogEntriesSaveCount.Value += entriesCount;
+
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+
+            }
+        }
+
+        async ValueTask<int> SaveLogEntriesAsync(
+            TaskInfoCache  taskInfoCache,
+            IEnumerable<LogEntry> logEntries,
+            CancellationToken cancellationToken = default)
+        {
+            StreamWriter streamWriter = null;
+            var count = 0;
+            try
+            {
+
+                var delete = false;
+                if (delete)
+                {
+                    _mongoGridFS.DeleteById(taskInfoCache.TaskLogId);
+                }
+                if (!_mongoGridFS.ExistsById(taskInfoCache.TaskLogId))
+                {
+                    streamWriter = new StreamWriter(_mongoGridFS.Create(taskInfoCache.TaskLogId.ToString(), new MongoGridFSCreateOptions()
+                    {
+                        Id = taskInfoCache.TaskLogId,
+                        UploadDate = DateTime.UtcNow,
+                    }));
+                }
+                else
+                {
+                    streamWriter = _mongoGridFS.AppendText(taskInfoCache.TaskLogId.ToString());
+                }
+                var currentLogEntry = taskInfoCache.TaskInfoLog.LogEntries.LastOrDefault();
+                if (currentLogEntry == null)
+                {
+                    currentLogEntry = new LogEntry();
+                    taskInfoCache.TaskInfoLog.LogEntries.Add(currentLogEntry);
+                }
+                streamWriter.BaseStream.Position = currentLogEntry.Type;
+
+                foreach (var item in logEntries)
+                {
+                    await streamWriter.WriteLineAsync(JsonSerializer.Serialize(item));
+                    taskInfoCache.TaskInfoLog.ActualSize += 1;
+                    currentLogEntry.Status++;
+                    count++;
+                    if (currentLogEntry.Status == 1024)
+                    {
+                        await streamWriter.FlushAsync(cancellationToken);
+                        currentLogEntry.Type = streamWriter.BaseStream.Position;
+                        currentLogEntry = new LogEntry()
+                        {
+                            Index = currentLogEntry.Index + 1,
+                        };
+                        taskInfoCache.TaskInfoLog.LogEntries = [.. taskInfoCache.TaskInfoLog.LogEntries, currentLogEntry];
+
+                        _webServerCounter.TaskLogPageCount.Value++;
+                    }
+                }
+
+                await streamWriter.FlushAsync(cancellationToken);
+                currentLogEntry.Type = streamWriter.BaseStream.Position;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
                 _exceptionCounter.AddOrUpdate(ex);
             }
+            finally
+            {
+                if (streamWriter != null)
+                {
+                    await streamWriter.DisposeAsync();
+                }
+            }
 
-
+            return count;
         }
 
 
@@ -180,20 +231,26 @@ namespace NodeService.WebServer.Services.Tasks
             if (!_memoryCache.TryGetValue<TaskInfoCache>(taskLogInfoKey, out taskInfoCache) || taskInfoCache == default)
             {
                 taskInfoCache = new TaskInfoCache();
-                await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
+                await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
                 var taskLogInfoPage = await taskLogRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
-                var id = taskLogInfoPage?.Name?["mongodb://".Length..];
-                taskInfoCache.TaskInfoLog = taskLogInfoPage;
-                if (id != null)
+                if (taskLogInfoPage != null)
                 {
-                    taskInfoCache.TaskLogId = ObjectId.Parse(id);
-                    _memoryCache.Set(taskLogInfoKey, taskInfoCache, TimeSpan.FromDays(14));
+                    taskInfoCache.TaskInfoLog = taskLogInfoPage;
+                    string? id = null;
+                    if (taskLogInfoPage.Name != null)
+                    {
+                        id = taskLogInfoPage.Name?["mongodb://".Length..];
+                    }
+                    if (id != null)
+                    {
+                        taskInfoCache.TaskLogId = ObjectId.Parse(id);
+                        _memoryCache.Set(taskLogInfoKey, taskInfoCache, TimeSpan.FromDays(14));
+                    }
                 }
-
             }
             if (taskInfoCache.TaskLogId == default)
             {
-                await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
+                await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
                 taskInfoCache.TaskLogId = ObjectId.GenerateNewId();
                 taskInfoCache.TaskInfoLog = CreateTaskLogInfoPage(taskExecutionInstanceId, taskInfoCache.TaskLogId);
                 await taskLogRepo.AddAsync(taskInfoCache.TaskInfoLog, cancellationToken);

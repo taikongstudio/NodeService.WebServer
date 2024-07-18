@@ -24,7 +24,7 @@ namespace NodeService.WebServer.Services.NodeFileSystem
             _objectCache = objectCache;
         }
 
-        public async ValueTask<FileInfoCache> GetFileInfoCache(string configurationId, string storagePath, CancellationToken cancellationToken = default)
+        public async ValueTask<FileInfoCache> GetFileInfoCacheAsync(string configurationId, string storagePath, CancellationToken cancellationToken = default)
         {
             var ftpConfigList = await _configurationQueryService.QueryConfigurationByIdListAsync<FtpConfigModel>(
     [configurationId],

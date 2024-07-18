@@ -92,6 +92,7 @@ public class NodeFileSystemController : Controller
     }
 
     [HttpPost("/api/NodeFileSystem/Hittest")]
+    [HttpPost("/api/NodeFileSystem/Hittest/Query")]
     public async Task<ApiResponse<FileInfoCacheResult>> HittestAsync(
         NodeFileSyncRequest nodeFileSyncRequest,
         CancellationToken cancellationToken = default)
@@ -99,7 +100,7 @@ public class NodeFileSystemController : Controller
         var rsp = new ApiResponse<FileInfoCacheResult>();
         try
         {
-            var fileInfoCache = await _fileInfoCacheService.GetFileInfoCache(
+            var fileInfoCache = await _fileInfoCacheService.GetFileInfoCacheAsync(
                 nodeFileSyncRequest.ConfigurationId,
                 nodeFileSyncRequest.StoragePath,
                 cancellationToken);
@@ -117,6 +118,54 @@ public class NodeFileSystemController : Controller
             {
                 rsp.SetResult(FileInfoCacheResult.Cached);
             }
+        }
+        catch (Exception ex)
+        {
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.ToString();
+        }
+        return rsp;
+    }
+
+    [HttpPost("/api/NodeFileSystem/Cache/BulkQuery")]
+    public async Task<ApiResponse<BulkQueryFileInfoCacheResult>> BulkQueryFileInfoCacheResultAsync(
+    NodeFileSyncRequest[] nodeFileSyncRequests,
+    CancellationToken cancellationToken = default)
+    {
+        var rsp = new ApiResponse<BulkQueryFileInfoCacheResult>();
+        try
+        {
+            var bulkQueryFileInfoCacheResult = new BulkQueryFileInfoCacheResult();
+            foreach (var nodeFileSyncRequest in nodeFileSyncRequests)
+            {
+                var fileInfoCache = await _fileInfoCacheService.GetFileInfoCacheAsync(
+    nodeFileSyncRequest.ConfigurationId,
+    nodeFileSyncRequest.StoragePath,
+    cancellationToken);
+                if (fileInfoCache == null)
+                {
+                    bulkQueryFileInfoCacheResult.Items.Add(new QueryFileInfoCacheResult()
+                    {
+                        FullPath = nodeFileSyncRequest.FileInfo.FullName,
+                        Result = FileInfoCacheResult.None
+                    });
+                }
+                else if (
+                        nodeFileSyncRequest.FileInfo.FullName == fileInfoCache.FullName
+                        &&
+                        nodeFileSyncRequest.FileInfo.Length == fileInfoCache.Length
+                        &&
+                        nodeFileSyncRequest.FileInfo.LastWriteTime == fileInfoCache.DateTime
+                        )
+                {
+                    bulkQueryFileInfoCacheResult.Items.Add(new QueryFileInfoCacheResult()
+                    {
+                        FullPath = nodeFileSyncRequest.FileInfo.FullName,
+                        Result = FileInfoCacheResult.Cached
+                    });
+                }
+            }
+            rsp.SetResult(bulkQueryFileInfoCacheResult);
         }
         catch (Exception ex)
         {

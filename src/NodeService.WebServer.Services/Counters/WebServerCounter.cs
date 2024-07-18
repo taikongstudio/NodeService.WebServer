@@ -35,16 +35,22 @@ public class CounterTimeSpanValue
 
 public class WebServerCounter
 {
+    public CounterLongValue HeartBeatRecieveCount { get; set; } = new();
+    public CounterLongValue HeartBeatQueueCount { get; set; } = new();
+    public CounterLongValue HeartBeatMessageConsumeCount { get; set; } = new();
+
+    public CounterTimeSpanValue HeartBeatQueryNodeInfoListTimeSpan { get; set; } = new();
+
+    public CounterTimeSpanValue HeartBeatUpdateNodeInfoListTimeSpan { get; set; } = new();
+
+    public CounterTimeSpanValue HeartBeatQueryNodePropsTimeSpan { get; set; } = new();
+
+    public CounterTimeSpanValue HeartBeatSaveNodePropsTimeSpan { get; set; } = new();
 
     public CounterLongValue TaskExecutionReportRecieveCount { get; set; } = new();
-    public CounterLongValue TaskExecutionReportAvailableCount { get; set; } = new();
-    public CounterLongValue TaskExecutionReportSaveChangesCount { get; set; } = new();
-    public CounterLongValue HeartBeatAvailableCount { get; set; } = new();
-    public CounterLongValue TaskLogUnitEntriesCount { get; set; } = new();
-    public CounterLongValue HeartBeatConsumeCount { get; set; } = new();
+    public CounterLongValue TaskExecutionReportQueueCount { get; set; } = new();
     public CounterLongValue TaskExecutionReportConsumeCount { get; set; } = new();
-
-    public CounterLongValue TaskLogUnitRecieveCount { get; set; } = new();
+    public CounterLongValue TaskExecutionReportSaveChangesCount { get; set; } = new();
 
     public CounterTimeSpanValue TaskExecutionReportTotalTimeSpan { get; set; } = new();
 
@@ -52,21 +58,34 @@ public class WebServerCounter
 
     public CounterTimeSpanValue TaskExecutionReportSaveTimeSpan { get; set; } = new();
 
+
+    public CounterLongValue TaskLogUnitEntriesCount { get; set; } = new();
+
+    public CounterLongValue TaskLogUnitRecieveCount { get; set; } = new();
+
     public CounterTimeSpanValue TaskLogUnitCollectLogEntriesTimeSpan { get; set; } = new();
 
     public CounterTimeSpanValue TaskLogUnitSaveTimeSpan { get; set; } = new();
+
+    public CounterTimeSpanValue TaskLogInfoSaveTimeSpan { get; set; } = new();
+
+    public CounterTimeSpanValue TaskLogInfoQueryTimeSpan { get; set; } = new();
 
     public CounterTimeSpanValue TaskLogUnitQueryTimeSpan { get; set; } = new();
 
     public CounterTimeSpanValue TaskLogUnitSaveMaxTimeSpan { get; set; } = new();
 
-    public CounterLongValue TaskLogEntriesSavedCount { get; set; } = new();
+    public CounterLongValue TaskLogEntriesSaveTimes { get; set; } = new();
+
+    public CounterLongValue TaskLogEntriesSaveCount { get; set; } = new();
 
     public CounterLongValue TaskLogPageCount { get; set; } = new();
 
-    public CounterLongValue TaskLogUnitAvailableCount { get; set; } = new();
+    public CounterLongValue TaskLogUnitQueueCount { get; set; } = new();
 
     public CounterLongValue TaskLogUnitConsumeCount { get; set; } = new();
+
+    public CounterLongValue TaskLogHandlerCount { get; set; } = new();
 
     public CounterTimeSpanValue TaskExecutionReportProcessTimeSpan { get; set; } = new();
     public CounterTimeSpanValue HeartBeatTotalProcessTimeSpan { get; set; } = new();

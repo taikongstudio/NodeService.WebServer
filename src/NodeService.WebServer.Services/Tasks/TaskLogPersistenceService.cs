@@ -130,7 +130,7 @@ public class TaskLogPersistenceService : BackgroundService
             {
                 try
                 {
-                    _webServerCounter.TaskLogUnitAvailableCount.Value = _taskLogUnitBatchQueue.QueueCount;
+                    _webServerCounter.TaskLogUnitQueueCount.Value = _taskLogUnitBatchQueue.QueueCount;
                     if (array == null)
                     {
                         continue;
@@ -167,7 +167,7 @@ public class TaskLogPersistenceService : BackgroundService
 
                     _logger.LogInformation("End");
                     _keys = _taskLogHandlers.Keys;
-                    Stat();
+                    _webServerCounter.TaskLogHandlerCount.Value = _taskLogHandlers.Count;
                 }
                 catch (Exception ex)
                 {
@@ -183,21 +183,6 @@ public class TaskLogPersistenceService : BackgroundService
             _logger.LogError(ex.ToString());
         }
 
-    }
-
-    void Stat()
-    {
-        //_webServerCounter.TaskLogPageCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
-        //_webServerCounter.TaskLogUnitConsumeCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalGroupConsumeCount);
-        //_webServerCounter.TaskLogEntriesSavedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalLogEntriesSavedCount);
-        //if (_taskLogHandlers.Values.Count > 0)
-        //{
-        //    _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveMaxTimeSpan);
-        //    _webServerCounter.TaskLogUnitQueryTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalQueryTimeSpan);
-        //    _webServerCounter.TaskLogUnitSaveTimeSpan.Value = _taskLogHandlers.Values.Max(x => x.TotalSaveTimeSpan);
-        //}
-        //_webServerCounter.TaskLogUnitAvailableCount.Value = _taskLogUnitBatchQueue.AvailableCount;
-        //_webServerCounter.TaskLogPageDetachedCount.Value = _taskLogHandlers.Values.Sum(x => x.TotalCreatedPageCount);
     }
 
     async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogUnit> taskLogUnitGroup,

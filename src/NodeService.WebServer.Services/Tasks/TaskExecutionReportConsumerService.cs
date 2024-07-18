@@ -93,6 +93,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         await foreach (var array in _taskExecutionReportBatchQueue.ReceiveAllAsync(cancellationToken))
         {
+            _webServerCounter.TaskExecutionReportQueueCount.Value = (uint)_taskExecutionReportBatchQueue.QueueCount;
             if (array == null)
             {
                 continue;
@@ -106,9 +107,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 stopwatch.Stop();
                 _logger.LogInformation(
                     $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
-                _webServerCounter.TaskExecutionReportAvailableCount.Value = (uint)_taskExecutionReportBatchQueue.AvailableCount;
-                _webServerCounter.TaskExecutionReportTotalTimeSpan.Value += stopwatch.Elapsed;
                 _webServerCounter.TaskExecutionReportConsumeCount.Value += (uint)array.Length;
+                _webServerCounter.TaskExecutionReportTotalTimeSpan.Value += stopwatch.Elapsed;
                 stopwatch.Reset();
             }
             catch (Exception ex)
@@ -328,8 +328,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
             if (taskExecutionInstance.IsTerminatedStatus()) return null;
 
-            var logEntriesRecieveCount = taskExecutionInstance.LogEntriesRecieveCount;
-            var logEntriesSaveCount = taskExecutionInstance.LogEntriesSaveCount;
             stopwatchCollectLogEntries.Restart();
             foreach (var report in reports)
             {
@@ -341,7 +339,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                         Id = taskId,
                         LogEntries = report.LogEntries.Select(Convert)
                     };
-                    taskExecutionInstance.LogEntriesRecieveCount += report.LogEntries.Count;
                     await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);
                     _logger.LogInformation($"Send task log unit:{taskId},{report.LogEntries.Count} enties");
                 }
@@ -380,11 +377,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             _webServerCounter.TaskExecutionReportProcessTimeSpan.Value += stopwatchProcessMessage.Elapsed;
 
             int diffCount = 0;
-
-            if (logEntriesRecieveCount != taskExecutionInstance.LogEntriesRecieveCount)
-            {
-                diffCount++;
-            }
 
             if (taskExecutionStatus != taskExecutionInstance.Status)
             {

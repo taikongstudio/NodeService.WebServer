@@ -73,12 +73,22 @@ public class NodeInfoSpecification : ListSpecification<NodeInfoModel>
     {
         if (!string.IsNullOrEmpty(keywords))
         {
+            const string Split = "split:";
+            string[] segments = [];
+            if (keywords.StartsWith(Split, StringComparison.OrdinalIgnoreCase))
+            {
+                keywords = keywords[Split.Length..];
+                if (keywords.Contains(','))
+                {
+                    segments = keywords.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                }
+            }
             if (!searchProfileProperties)
                 Query.Where(x =>
-                    x.Name.Contains(keywords));
+                    x.Name.Contains(keywords) || segments.Contains(x.Name) || segments.Any(seg => x.Name.Contains(seg)));
             else
                 Query.Where(x =>
-                    x.Name.Contains(keywords) ||
+                    x.Name.Contains(keywords) || segments.Contains(x.Name) || segments.Any(seg => x.Name.Contains(seg)) ||
                     (x.Profile != null && (
                         (x.Profile.IpAddress != null && x.Profile.IpAddress.Contains(keywords)) ||
                         (x.Profile.ClientVersion != null && x.Profile.ClientVersion.Contains(keywords)) ||

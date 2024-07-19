@@ -132,10 +132,6 @@ public class ClientUpdateQueryQueueService : BackgroundService
                         {
                             var ipAddress = op.Argument.IpAddress;
                             var updateKey = CreateKey(ipAddress);
-                            if (clientUpdateConfig == null)
-                                clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                            clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
-                            op.TrySetResult(clientUpdateConfig);
                             if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
                             {
                                 if (clientUpdateConfig == null)

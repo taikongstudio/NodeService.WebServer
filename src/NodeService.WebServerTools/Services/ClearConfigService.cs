@@ -27,18 +27,9 @@ internal class ClearConfigService : BackgroundService
         var ftpUploadConfigs = await dbContext.TaskDefinitionDbSet.ToListAsync();
         foreach (var item in ftpUploadConfigs)
         {
-            item.Value.PenddingLimitTimeSeconds = 300;
-            item.Value.RetryDuration = 300;
-            item.Value.MaxRetryCount = 10;
-            item.Value.ExecutionStrategy = Infrastructure.DataModels.TaskExecutionStrategy.Concurrent;
+            item.Value.IsEnabled = false;
 
             dbContext.Update(item);
-        }
-
-        await foreach (var item in dbContext.NodeFileSyncRecordDbSet.AsAsyncEnumerable())
-        {
-
-            item.Value.FileInfo.Length;
         }
 
         var count = await dbContext.SaveChangesAsync();

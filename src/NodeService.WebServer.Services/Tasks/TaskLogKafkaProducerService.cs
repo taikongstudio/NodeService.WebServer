@@ -55,7 +55,7 @@ namespace NodeService.WebServer.Services.Tasks
                         }
                         try
                         {
-                            foreach (var taskLogUnit in taskLogUnits)
+                            foreach (var taskLogUnit in taskLogUnits.SelectMany(SplitTaskLogUnit))
                             {
                                 if (taskLogUnit == null)
                                 {
@@ -109,6 +109,20 @@ namespace NodeService.WebServer.Services.Tasks
                 _logger.LogError(ex.ToString());
             }
 
+        }
+
+        IEnumerable<TaskLogUnit> SplitTaskLogUnit(TaskLogUnit taskLogUnit)
+        {
+            foreach (var logEntries in taskLogUnit.LogEntries.Chunk(200))
+            {
+                yield return new TaskLogUnit()
+                {
+                    Id = taskLogUnit.Id,
+                    LogEntries = logEntries,
+                    Status = taskLogUnit.Status
+                };
+            }
+            yield break;
         }
 
         void DeliveryHandler(DeliveryReport<string, string> report)

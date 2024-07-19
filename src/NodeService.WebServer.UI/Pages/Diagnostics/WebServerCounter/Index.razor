@@ -2,6 +2,7 @@
 @page "/Diagnostics/WebServerCounter"
 @using NodeService.WebServer.Services.Counters
 @inject WebServerCounter WebServerCounter
+@implements IDisposable
 
 <Space Style="margin-bottom:16px">
     <SpaceItem>
@@ -9,30 +10,112 @@
     </SpaceItem>
 
 </Space>
-<Table Size="TableSize.Small"
-       DataSource="@Statistics">
+<Table Size="TableSize.Small" Title="任务执行"
+       DataSource="@TaskExecutionStatistics">
     <ColumnDefinitions Context="ctx">
         <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
         <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
     </ColumnDefinitions>
 </Table>
 
+<Table Size="TableSize.Small" Title="心跳"
+       DataSource="@HeartBeatStatistics">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
+        <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="节点服务"
+       DataSource="@NodeServiceStatistics">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
+        <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="任务日志"
+       DataSource="@TaskLogStatistics">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
+        <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="Kafka消费"
+       DataSource="@KafkaConsumeStatistics">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
+        <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="Kafka生产"
+       DataSource="@KafkaProduceStatistics">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
+        <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="Kafka生产分区偏移"
+       DataSource="@ProducePartitionOffsetValues">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
+        <PropertyColumn Property="c => c"  Title="值">@ctx</PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="Kafka消费分区偏移"
+       DataSource="@ConsumePartitionOffsetValues">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
+        <PropertyColumn Property="c => c"  Title="值">@ctx</PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
 
 @code {
-    IEnumerable<(string Desc, string Value)> Statistics = [];
+    IEnumerable<(string Desc, string Value)> TaskExecutionStatistics = [];
+    IEnumerable<(string Desc, string Value)> HeartBeatStatistics = [];
+    IEnumerable<(string Desc, string Value)> NodeServiceStatistics = [];
+    IEnumerable<(string Desc, string Value)> TaskLogStatistics = [];
+    IEnumerable<(string Desc, string Value)> KafkaConsumeStatistics = [];
+    IEnumerable<(string Desc, string Value)> KafkaProduceStatistics = [];
+
+    IEnumerable<PartitionOffsetValue> ConsumePartitionOffsetValues = [];
+
+    IEnumerable<PartitionOffsetValue> ProducePartitionOffsetValues = [];
+
+    Timer _timer;
 
     protected override void OnInitialized()
     {
+        _timer = new Timer(TimeSpan.FromSeconds(1));
+        _timer.Elapsed += OnTick;
+        _timer.Start();
         base.OnInitialized();
+    }
+
+    async void OnTick(object? sender, EventArgs e)
+    {
         Refresh();
+        await InvokeAsync(this.StateHasChanged);
     }
 
     void Refresh()
     {
-        Statistics = GetStatistics();
+        TaskExecutionStatistics = GetTaskExecutionStatistics();
+        HeartBeatStatistics = GetHeartBeatStatistics();
+        NodeServiceStatistics = GetNodeServiceStatistics();
+        TaskLogStatistics = GetTaskLogStatistics();
+        KafkaConsumeStatistics = GetKafkaConsumeStatistics();
+        KafkaProduceStatistics = GetKafkaProduceStatistics();
+        ConsumePartitionOffsetValues = WebServerCounter.ConsumePartitionOffsetDictionary.Values;
+        ProducePartitionOffsetValues = WebServerCounter.ProducePartitionOffsetDictionary.Values;
     }
 
-    IEnumerable<(string Desc, string Value)> GetStatistics()
+    IEnumerable<(string Desc, string Value)> GetTaskExecutionStatistics()
     {
         yield return (nameof(WebServerCounter.TaskExecutionReportQueueCount), WebServerCounter.TaskExecutionReportQueueCount.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportProcessTimeSpan), WebServerCounter.TaskExecutionReportProcessTimeSpan.ToString());
@@ -41,6 +124,36 @@
         yield return (nameof(WebServerCounter.TaskExecutionReportTotalTimeSpan), WebServerCounter.TaskExecutionReportTotalTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportSaveChangesCount), WebServerCounter.TaskExecutionReportSaveChangesCount.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportConsumeCount), WebServerCounter.TaskExecutionReportConsumeCount.ToString());
+
+        yield break;
+    }
+
+
+    IEnumerable<(string Desc, string Value)> GetKafkaConsumeStatistics()
+    {
+        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeCount), WebServerCounter.KafkaTaskLogConsumeCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeWaitCount), WebServerCounter.KafkaTaskLogConsumeWaitCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan), WebServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeContextGroupAvgTimeSpan), WebServerCounter.KafkaTaskLogConsumeContextGroupAvgTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeScaleFactor), WebServerCounter.KafkaTaskLogConsumeScaleFactor.ToString());
+        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeMaxPrefetchCount), WebServerCounter.KafkaTaskLogConsumeMaxPrefetchCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaTaskLogConsumePrefetchCount), WebServerCounter.KafkaTaskLogConsumePrefetchCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeTotalTimeSpan), WebServerCounter.KafkaTaskLogConsumeTotalTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeMaxTimeSpan), WebServerCounter.KafkaTaskLogConsumeMaxTimeSpan.ToString());
+        yield break;
+    }
+
+
+    IEnumerable<(string Desc, string Value)> GetKafkaProduceStatistics()
+    {
+
+        yield return (nameof(WebServerCounter.KafkaTaskLogProduceCount), WebServerCounter.KafkaTaskLogProduceCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaTaskLogProduceRetryCount), WebServerCounter.KafkaTaskLogProduceRetryCount.ToString());
+        yield break;
+    }
+
+    IEnumerable<(string Desc, string Value)> GetHeartBeatStatistics()
+    {
         yield return (nameof(WebServerCounter.HeartBeatQueueCount), WebServerCounter.HeartBeatQueueCount.ToString());
         yield return (nameof(WebServerCounter.HeartBeatMessageConsumeCount), WebServerCounter.HeartBeatMessageConsumeCount.ToString());
         yield return (nameof(WebServerCounter.HeartBeatQueryNodeInfoListTimeSpan), WebServerCounter.HeartBeatQueryNodeInfoListTimeSpan.ToString());
@@ -48,9 +161,19 @@
         yield return (nameof(WebServerCounter.HeartBeatQueryNodePropsTimeSpan), WebServerCounter.HeartBeatQueryNodePropsTimeSpan.ToString());
         yield return (nameof(WebServerCounter.HeartBeatSaveNodePropsTimeSpan), WebServerCounter.HeartBeatSaveNodePropsTimeSpan.ToString());
         yield return (nameof(WebServerCounter.HeartBeatTotalProcessTimeSpan), WebServerCounter.HeartBeatTotalProcessTimeSpan.ToString());
+        yield break;
+    }
+
+    IEnumerable<(string Desc, string Value)> GetNodeServiceStatistics()
+    {
         yield return (nameof(WebServerCounter.NodeServiceInputMessagesCount), WebServerCounter.NodeServiceInputMessagesCount.ToString());
         yield return (nameof(WebServerCounter.NodeServiceOutputMessagesCount), WebServerCounter.NodeServiceOutputMessagesCount.ToString());
         yield return (nameof(WebServerCounter.NodeServiceExpiredMessagesCount), WebServerCounter.NodeServiceExpiredMessagesCount.ToString());
+        yield break;
+    }
+
+    IEnumerable<(string Desc, string Value)> GetTaskLogStatistics()
+    {
         yield return (nameof(WebServerCounter.TaskLogUnitEntriesCount), WebServerCounter.TaskLogUnitEntriesCount.ToString());
         yield return (nameof(WebServerCounter.TaskLogUnitCollectLogEntriesTimeSpan), WebServerCounter.TaskLogUnitCollectLogEntriesTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskLogUnitRecieveCount), WebServerCounter.TaskLogUnitRecieveCount.ToString());
@@ -66,17 +189,13 @@
         yield return (nameof(WebServerCounter.TaskLogInfoSaveTimeSpan), WebServerCounter.TaskLogInfoSaveTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskLogPageCount), WebServerCounter.TaskLogPageCount.ToString());
         yield return (nameof(WebServerCounter.TaskLogHandlerCount), WebServerCounter.TaskLogHandlerCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaConsumeConsumeCount), WebServerCounter.KafkaConsumeConsumeCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaConsumeWaitCount), WebServerCounter.KafkaConsumeWaitCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaProduceCount), WebServerCounter.KafkaProduceCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaRetryProduceCount), WebServerCounter.KafkaRetryProduceCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaConsumeContextGroupMaxTimeSpan), WebServerCounter.KafkaConsumeContextGroupMaxTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.KafkaConsumeContextGroupAvgTimeSpan), WebServerCounter.KafkaConsumeContextGroupAvgTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.KafkaConsumeScaleFactor), WebServerCounter.KafkaConsumeScaleFactor.ToString());
-        yield return (nameof(WebServerCounter.KafkaMaxPrefetchCount), WebServerCounter.KafkaMaxPrefetchCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaPrefetchCount), WebServerCounter.KafkaPrefetchCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaTotalConsumeTimeSpan), WebServerCounter.KafkaTotalConsumeTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.KafkaConsumeMaxTimeSpan), WebServerCounter.KafkaConsumeMaxTimeSpan.ToString());
+        yield break;
     }
 
+    public void Dispose()
+    {
+        _timer.Stop();
+        _timer.Elapsed -= OnTick;
+        _timer.Dispose();
+    }
 }

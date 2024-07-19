@@ -16,6 +16,18 @@ public class CounterLongValue
     }
 }
 
+public class PartitionOffsetValue
+{
+    public CounterLongValue Partition { get; set; } = new CounterLongValue();
+
+    public CounterLongValue Offset { get; set; } = new CounterLongValue();
+
+    public override string ToString()
+    {
+        return $"Partition {Partition.Value} @ {Offset.Value}";
+    }
+}
+
 public class CounterTimeSpanValue
 {
     private long _value;
@@ -105,26 +117,35 @@ public class WebServerCounter
 
     public CounterLongValue NodeFileSyncServiceBatchProcessContext_MaxFileLength { get; set; } = new();
 
-    public CounterLongValue KafkaConsumeWaitCount { get; set; } = new();
+    public CounterLongValue KafkaTaskLogConsumeWaitCount { get; set; } = new();
 
-    public CounterLongValue KafkaConsumeConsumeCount { get; set; } = new();
+    public CounterLongValue KafkaTaskLogConsumeCount { get; set; } = new();
 
-    public CounterLongValue KafkaProduceCount { get; set; } = new();
+    public CounterLongValue KafkaTaskLogProduceCount { get; set; } = new();
 
-    public CounterLongValue KafkaRetryProduceCount { get; set; } = new();
+    public CounterLongValue KafkaTaskLogProduceRetryCount { get; set; } = new();
 
-    public CounterTimeSpanValue KafkaTotalConsumeTimeSpan { get; set; } = new();
+    public CounterTimeSpanValue KafkaTaskLogConsumeTotalTimeSpan { get; set; } = new();
 
-    public CounterTimeSpanValue KafkaConsumeMaxTimeSpan { get; set; } = new();
+    public CounterTimeSpanValue KafkaTaskLogConsumeMaxTimeSpan { get; set; } = new();
 
-    public CounterLongValue KafkaPrefetchCount { get; set; } = new();
+    public CounterLongValue KafkaTaskLogConsumePrefetchCount { get; set; } = new();
 
-    public CounterLongValue KafkaMaxPrefetchCount { get; set; } = new();
+    public CounterLongValue KafkaTaskLogConsumeMaxPrefetchCount { get; set; } = new();
 
-    public CounterTimeSpanValue KafkaConsumeContextGroupMaxTimeSpan { get; set; } = new();
+    public CounterTimeSpanValue KafkaTaskLogConsumeContextGroupMaxTimeSpan { get; set; } = new();
 
-    public CounterTimeSpanValue KafkaConsumeContextGroupAvgTimeSpan { get; set; } = new();
+    public CounterTimeSpanValue KafkaTaskLogConsumeContextGroupAvgTimeSpan { get; set; } = new();
 
-    public CounterTimeSpanValue KafkaConsumeScaleFactor { get; set; } = new();
+    public CounterTimeSpanValue KafkaTaskLogConsumeScaleFactor { get; set; } = new();
 
+
+
+    public CounterLongValue KafkaConsumeOffset { get; set; } = new();
+
+    public CounterLongValue KafkaProduceOffset { get; set; } = new();
+
+    public ConcurrentDictionary<int, PartitionOffsetValue> ProducePartitionOffsetDictionary { get; set; } = new();
+
+    public ConcurrentDictionary<int, PartitionOffsetValue> ConsumePartitionOffsetDictionary { get; set; } = new();
 }

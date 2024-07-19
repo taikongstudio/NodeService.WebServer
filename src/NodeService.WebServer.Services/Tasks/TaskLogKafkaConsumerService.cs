@@ -4,13 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Confluent.Kafka.ConfigPropertyNames;
 
 namespace NodeService.WebServer.Services.Tasks
 {
@@ -126,30 +120,30 @@ namespace NodeService.WebServer.Services.Tasks
 
                             var pefetchTask = ConsumeAsync((int)(100 * _scaleFactor), 500);
 
-                            _webServerCounter.KafkaTotalConsumeTimeSpan.Value += _timeSpanConsume;
-                            if (_timeSpanConsume > _webServerCounter.KafkaConsumeMaxTimeSpan.Value)
+                            _webServerCounter.KafkaTaskLogConsumeTotalTimeSpan.Value += _timeSpanConsume;
+                            if (_timeSpanConsume > _webServerCounter.KafkaTaskLogConsumeMaxTimeSpan.Value)
                             {
-                                _webServerCounter.KafkaConsumeMaxTimeSpan.Value = _timeSpanConsume;
+                                _webServerCounter.KafkaTaskLogConsumeMaxTimeSpan.Value = _timeSpanConsume;
                             }
 
                             await Task.WhenAll(pefetchTask, forEachConsumeTask);
                             prefecthList = pefetchTask.Result;
 
-                            _webServerCounter.KafkaPrefetchCount.Value = prefecthList.Length;
-                            if (prefecthList.Length > _webServerCounter.KafkaMaxPrefetchCount.Value)
+                            _webServerCounter.KafkaTaskLogConsumePrefetchCount.Value = prefecthList.Length;
+                            if (prefecthList.Length > _webServerCounter.KafkaTaskLogConsumeMaxPrefetchCount.Value)
                             {
-                                _webServerCounter.KafkaMaxPrefetchCount.Value = prefecthList.Length;
+                                _webServerCounter.KafkaTaskLogConsumeMaxPrefetchCount.Value = prefecthList.Length;
                             }
 
                             _maxConsumeContextGroupProcessTime = consumeContextGroups.Max(x => x.ProcessTimeSpan);
 
 
 
-                            if (_maxConsumeContextGroupProcessTime > _webServerCounter.KafkaConsumeContextGroupMaxTimeSpan.Value)
+                            if (_maxConsumeContextGroupProcessTime > _webServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan.Value)
                             {
-                                _webServerCounter.KafkaConsumeContextGroupMaxTimeSpan.Value = _maxConsumeContextGroupProcessTime;
+                                _webServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan.Value = _maxConsumeContextGroupProcessTime;
                             }
-                            _webServerCounter.KafkaConsumeContextGroupAvgTimeSpan.Value = TimeSpan.FromMicroseconds(consumeContextGroups.Average(x => x.ProcessTimeSpan.TotalMicroseconds));
+                            _webServerCounter.KafkaTaskLogConsumeContextGroupAvgTimeSpan.Value = TimeSpan.FromMicroseconds(consumeContextGroups.Average(x => x.ProcessTimeSpan.TotalMicroseconds));
 
                            _scaleFactor = Math.Max(_maxConsumeContextGroupProcessTime / _timeSpanConsume, 1);
 
@@ -163,7 +157,7 @@ namespace NodeService.WebServer.Services.Tasks
                                 _scaleFactor = 100;
                             }
 
-                            _webServerCounter.KafkaConsumeScaleFactor.Value = TimeSpan.FromSeconds(_scaleFactor);
+                            _webServerCounter.KafkaTaskLogConsumeScaleFactor.Value = TimeSpan.FromSeconds(_scaleFactor);
 
                             stopwatch.Stop();
 
@@ -172,7 +166,19 @@ namespace NodeService.WebServer.Services.Tasks
                             stopwatch.Restart();
 
                             _consumer.Commit(contexts.Select(static x => x.Result.TopicPartitionOffset));
-                            _webServerCounter.KafkaConsumeConsumeCount.Value += contexts.Length;
+                            _webServerCounter.KafkaTaskLogConsumeCount.Value += contexts.Length;
+
+                            foreach (var item in contexts)
+                            {
+                                var value = _webServerCounter.ConsumePartitionOffsetDictionary.GetOrAdd(item.Result.Partition.Value, new PartitionOffsetValue()
+                                {
+
+                                });
+                                value.Partition.Value = item.Result.Partition.Value;
+                                value.Offset.Value = item.Result.Offset.Value;
+                            }
+
+
 
 
                             stopwatch.Stop();
@@ -285,7 +291,7 @@ namespace NodeService.WebServer.Services.Tasks
             var asyncOperation = new AsyncOperation<TaskLogUnit[]>(taskLogUnits, AsyncOperationKind.AddOrUpdate);
             await _taskLogUnitQueue.SendAsync(asyncOperation, cancellationToken);
             await asyncOperation.WaitAsync();
-            _webServerCounter.KafkaConsumeConsumeCount.Value += taskLogUnits.Length;
+            _webServerCounter.KafkaTaskLogConsumeCount.Value += taskLogUnits.Length;
             consumeContextGroup.ProcessTimeSpan = Stopwatch.GetElapsedTime(timestamp);
         }
 

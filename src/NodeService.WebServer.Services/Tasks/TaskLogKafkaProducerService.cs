@@ -115,11 +115,17 @@ namespace NodeService.WebServer.Services.Tasks
         {
             if (report.Status != PersistenceStatus.Persisted)
             {
-                _webServerCounter.KafkaRetryProduceCount.Value++;
+                _webServerCounter.KafkaTaskLogProduceRetryCount.Value++;
             }
             else
             {
-                _webServerCounter.KafkaProduceCount.Value++;
+                _webServerCounter.KafkaTaskLogProduceCount.Value++;
+                var value = _webServerCounter.ProducePartitionOffsetDictionary.GetOrAdd(report.Partition.Value, new PartitionOffsetValue()
+                {
+
+                });
+                value.Partition.Value = report.Partition.Value;
+                value.Offset.Value = report.Offset.Value;
             }
         }
     }

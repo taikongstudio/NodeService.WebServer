@@ -10,4 +10,5 @@ public record class TaskLogUnit
     public required IEnumerable<LogEntry> LogEntries { get; init; } = [];
 
     public TaskExecutionStatus Status { get; init; }
+
 }

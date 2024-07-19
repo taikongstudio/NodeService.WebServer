@@ -112,4 +112,19 @@ public class WebServerCounter
     public CounterLongValue KafkaProduceCount { get; set; } = new();
 
     public CounterLongValue KafkaRetryProduceCount { get; set; } = new();
+
+    public CounterTimeSpanValue KafkaTotalConsumeTimeSpan { get; set; } = new();
+
+    public CounterTimeSpanValue KafkaConsumeMaxTimeSpan { get; set; } = new();
+
+    public CounterLongValue KafkaPrefetchCount { get; set; } = new();
+
+    public CounterLongValue KafkaMaxPrefetchCount { get; set; } = new();
+
+    public CounterTimeSpanValue KafkaConsumeContextGroupMaxTimeSpan { get; set; } = new();
+
+    public CounterTimeSpanValue KafkaConsumeContextGroupAvgTimeSpan { get; set; } = new();
+
+    public CounterTimeSpanValue KafkaConsumeScaleFactor { get; set; } = new();
+
 }

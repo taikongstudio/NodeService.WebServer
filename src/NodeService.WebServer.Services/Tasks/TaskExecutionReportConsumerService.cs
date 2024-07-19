@@ -7,6 +7,7 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 using System.Buffers;
+using System.Diagnostics;
 using System.Net;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
@@ -93,6 +94,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         await foreach (var array in _taskExecutionReportBatchQueue.ReceiveAllAsync(cancellationToken))
         {
+            var stopwatch = new Stopwatch();
             _webServerCounter.TaskExecutionReportQueueCount.Value = _taskExecutionReportBatchQueue.QueueCount;
             if (array == null)
             {
@@ -100,16 +102,12 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             }
             try
             {
-                var stopwatch = new Stopwatch();
+
                 stopwatch.Start();
                 var reports = array.Select(x => x.GetMessage()).ToArray();
                 await ProcessTaskExecutionReportsAsync(reports, cancellationToken);
                 stopwatch.Stop();
-                _logger.LogInformation(
-                    $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_taskExecutionReportBatchQueue.AvailableCount}");
-                _webServerCounter.TaskExecutionReportConsumeCount.Value += (uint)array.Length;
-                _webServerCounter.TaskExecutionReportTotalTimeSpan.Value += stopwatch.Elapsed;
-                stopwatch.Reset();
+
             }
             catch (Exception ex)
             {
@@ -118,7 +116,10 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             }
             finally
             {
-
+                _logger.LogInformation($"process {array.Length} messages,spent: {stopwatch.Elapsed}, QueueCount:{_taskExecutionReportBatchQueue.QueueCount}");
+                _webServerCounter.TaskExecutionReportConsumeCount.Value += (uint)array.Length;
+                _webServerCounter.TaskExecutionReportTotalTimeSpan.Value += stopwatch.Elapsed;
+                stopwatch.Reset();
             }
         }
     }
@@ -337,7 +338,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     var taskLogUnit = new TaskLogUnit
                     {
                         Id = taskId,
-                        LogEntries = report.LogEntries.Select(Convert)
+                        LogEntries = report.LogEntries.Select(Convert).ToArray()
                     };
                     await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);
                     _logger.LogInformation($"Send task log unit:{taskId},{report.LogEntries.Count} enties");

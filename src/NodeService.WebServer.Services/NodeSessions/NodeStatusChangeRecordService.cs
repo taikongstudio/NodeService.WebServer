@@ -39,13 +39,17 @@ public class NodeStatusChangeRecordService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        await foreach (var arrayPoolCollection in _recordBatchQueue.ReceiveAllAsync(cancellationToken))
+        await foreach (var array in _recordBatchQueue.ReceiveAllAsync(cancellationToken))
             try
             {
+                if (array == null || array.Length == 0)
+                {
+                    continue;
+                }
                 await using var recordRepo = await _recordRepoFactory.CreateRepositoryAsync();
                 await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
                 recordRepo.DbContext.ChangeTracker.AutoDetectChangesEnabled = false;
-                foreach (var recordGroup in arrayPoolCollection.GroupBy(static x => x.NodeId))
+                foreach (var recordGroup in array.GroupBy(static x => x.NodeId))
                 {
                     var nodeId = recordGroup.Key;
                     var nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
@@ -56,7 +60,7 @@ public class NodeStatusChangeRecordService : BackgroundService
                             record.Name = "<Unknown>";
                 }
 
-                await recordRepo.AddRangeAsync(arrayPoolCollection, cancellationToken);
+                await recordRepo.AddRangeAsync(array, cancellationToken);
             }
             catch (Exception ex)
             {

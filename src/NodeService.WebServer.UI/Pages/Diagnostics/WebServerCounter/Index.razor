@@ -70,6 +70,13 @@
         yield return (nameof(WebServerCounter.KafkaConsumeWaitCount), WebServerCounter.KafkaConsumeWaitCount.ToString());
         yield return (nameof(WebServerCounter.KafkaProduceCount), WebServerCounter.KafkaProduceCount.ToString());
         yield return (nameof(WebServerCounter.KafkaRetryProduceCount), WebServerCounter.KafkaRetryProduceCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaConsumeContextGroupMaxTimeSpan), WebServerCounter.KafkaConsumeContextGroupMaxTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.KafkaConsumeContextGroupAvgTimeSpan), WebServerCounter.KafkaConsumeContextGroupAvgTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.KafkaConsumeScaleFactor), WebServerCounter.KafkaConsumeScaleFactor.ToString());
+        yield return (nameof(WebServerCounter.KafkaMaxPrefetchCount), WebServerCounter.KafkaMaxPrefetchCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaPrefetchCount), WebServerCounter.KafkaPrefetchCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaTotalConsumeTimeSpan), WebServerCounter.KafkaTotalConsumeTimeSpan.ToString());
+        yield return (nameof(WebServerCounter.KafkaConsumeMaxTimeSpan), WebServerCounter.KafkaConsumeMaxTimeSpan.ToString());
     }
 
 }

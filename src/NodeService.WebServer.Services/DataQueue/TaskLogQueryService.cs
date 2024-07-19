@@ -120,13 +120,20 @@ public class TaskLogQueryService
                     {
 
                         using var streamReder = new StreamReader(fs);
-                        while (!streamReder.EndOfStream)
+                        while (!cancellationToken.IsCancellationRequested && !streamReder.EndOfStream)
                         {
                             var str = await streamReder.ReadLineAsync(cancellationToken);
+                            if (str == null)
+                            {
+                                continue;
+                            }
                             var taskLogEntry = JsonSerializer.Deserialize<LogEntry>(str);
+                            if (taskLogEntry==null)
+                            {
+                                continue;
+                            }
                             await streamWriter.WriteLineAsync($"{taskLogEntry.DateTimeUtc.ToString(NodePropertyModel.DateTimeFormatString)} {taskLogEntry.Value}");
                         }
-
                         await streamWriter.FlushAsync();
 
                     }
@@ -170,11 +177,11 @@ public class TaskLogQueryService
                     {
 
                         using var streamReder = new StreamReader(fs);
-                        while (!streamReder.EndOfStream)
+                        while (!cancellationToken.IsCancellationRequested && !streamReder.EndOfStream)
                         {
                             for (int i = 0; i < serviceResult.PageSize; i++)
                             {
-                                var str = await streamReder.ReadLineAsync();
+                                var str = await streamReder.ReadLineAsync(cancellationToken);
                                 if (str == null)
                                 {
                                     break;

@@ -10,7 +10,7 @@ namespace NodeService.WebServer.Services.Tasks;
 public class TaskLogPersistenceService : BackgroundService
 {
     readonly ExceptionCounter _exceptionCounter;
-    readonly BatchQueue<TaskLogUnit> _taskLogUnitBatchQueue;
+    readonly BatchQueue<AsyncOperation<TaskLogUnit[]>> _taskLogUnitBatchQueue;
     readonly WebServerCounter _webServerCounter;
 
     readonly IMemoryCache _memoryCache;
@@ -19,7 +19,6 @@ public class TaskLogPersistenceService : BackgroundService
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceFactory;
     readonly ConcurrentDictionary<int, TaskLogStorageHandlerBase> _taskLogHandlers;
-    readonly Timer _timer;
     IEnumerable<int> _keys = [];
 
     public TaskLogPersistenceService(
@@ -27,7 +26,7 @@ public class TaskLogPersistenceService : BackgroundService
         ILogger<TaskLogPersistenceService> logger,
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceFactory,
-        [FromKeyedServices(nameof(TaskLogPersistenceService))]BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
+        [FromKeyedServices(nameof(TaskLogPersistenceService))]BatchQueue<AsyncOperation<TaskLogUnit[]>> taskLogUnitBatchQueue,
         ExceptionCounter exceptionCounter,
         WebServerCounter webServerCounter,
         IMemoryCache memoryCache)
@@ -41,13 +40,6 @@ public class TaskLogPersistenceService : BackgroundService
         _memoryCache = memoryCache;
         _taskLogHandlers = new ConcurrentDictionary<int, TaskLogStorageHandlerBase>();
         _serviceProvider = serviceProvider;
-        _timer = new Timer(OnTimer);
-        _timer.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
-    }
-
-    private async void OnTimer(object? state)
-    {
-        await _taskLogUnitBatchQueue.SendAsync(new TaskLogUnit() { Id = null, LogEntries = [] });
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -135,14 +127,6 @@ public class TaskLogPersistenceService : BackgroundService
                     {
                         continue;
                     }
-                    foreach (var item in array)
-                    {
-                        if (item == null || item.Id == null)
-                        {
-                            continue;
-                        }
-                        _logger.LogInformation($"Recieve task log unit:{item.Id}");
-                    }
                     _logger.LogInformation("Begin");
 
                     if (Debugger.IsAttached)
@@ -151,6 +135,7 @@ public class TaskLogPersistenceService : BackgroundService
                         {
                             await RunTaskLogHandlerAsync(item, cancellationToken);
                         }
+
                     }
                     else
                     {
@@ -174,6 +159,10 @@ public class TaskLogPersistenceService : BackgroundService
                     _exceptionCounter.AddOrUpdate(ex);
                     _logger.LogError(ex.ToString());
                 }
+                finally
+                {
+                    _taskLogUnitBatchQueue.Notify();
+                }
 
             }
         }
@@ -185,12 +174,16 @@ public class TaskLogPersistenceService : BackgroundService
 
     }
 
-    async ValueTask RunTaskLogHandlerAsync(IGrouping<int, TaskLogUnit> taskLogUnitGroup,
+    async ValueTask RunTaskLogHandlerAsync(IGrouping<int, AsyncOperation<TaskLogUnit[]>> group,
         CancellationToken cancellationToken)
     {
-        var key = taskLogUnitGroup.Key;
+        var key = group.Key;
         var handler = _taskLogHandlers.GetOrAdd(key, CreateTaskLogHandlerFactory);
-        await handler.ProcessAsync(taskLogUnitGroup, cancellationToken);
+        foreach (var op in group)
+        {
+            await handler.ProcessAsync(op.Argument, cancellationToken);
+            op.TrySetResult();
+        }
     }
 
     TaskLogStorageHandlerBase CreateTaskLogHandlerFactory(int id)
@@ -199,10 +192,9 @@ public class TaskLogPersistenceService : BackgroundService
         return taskLogHandler;
     }
 
-    int TaskLogUnitGroupFunc(TaskLogUnit unit)
+    int TaskLogUnitGroupFunc(AsyncOperation<TaskLogUnit[]> asyncOperation)
     {
-        if (unit.Id == null) return 0;
-        Math.DivRem(unit.Id[0], 10, out var result);
+        Math.DivRem(asyncOperation.Argument[0].Id[0], 10, out var result);
         return result;
     }
 }

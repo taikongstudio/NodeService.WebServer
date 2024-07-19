@@ -1,13 +1,8 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.Concurrent;
-using NodeService.Infrastructure.DataModels;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
-using System.Configuration;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -56,7 +51,7 @@ public class NodeHealthyCheckService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        if (!Debugger.IsAttached) await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
+        if (Debugger.IsAttached) await Task.CompletedTask;
         while (!cancellationToken.IsCancellationRequested)
         {
             await CheckNodeHealthyAsync(cancellationToken);
@@ -140,7 +135,7 @@ public class NodeHealthyCheckService : BackgroundService
         List<NodeHealthyCheckItem> nodeHealthyCheckItemList,
         CancellationToken cancellationToken = default)
     {
-      await  using var repo =await _notificationRepositoryFactory.CreateRepositoryAsync();
+        await using var repo = await _notificationRepositoryFactory.CreateRepositoryAsync();
 
         var stringBuilder = new StringBuilder();
         foreach (var nodeHealthyCheckItemGroups in nodeHealthyCheckItemList.GroupBy(static x => x.Node))

@@ -69,8 +69,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
             {
                 stopwatch.Start();
                 await ProcessHeartBeatMessagesAsync(array, cancellationToken);
-                _logger.LogInformation(
-                    $"process {array.Length} messages,spent: {stopwatch.Elapsed}, AvailableCount:{_hearBeatSessionMessageBatchQueue.AvailableCount}");
                 _webServerCounter.HeartBeatQueueCount.Value = _hearBeatSessionMessageBatchQueue.QueueCount;
                 _webServerCounter.HeartBeatTotalProcessTimeSpan.Value += stopwatch.Elapsed;
                 _webServerCounter.HeartBeatMessageConsumeCount.Value += (uint)count;
@@ -83,7 +81,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             finally
             {
                 _logger.LogInformation(
-                    $"process {count} messages, spent:{stopwatch.Elapsed}, AvailableCount:{_hearBeatSessionMessageBatchQueue.AvailableCount}");
+                    $"process {count} messages, spent:{stopwatch.Elapsed}, QueueCount:{_hearBeatSessionMessageBatchQueue.QueueCount}");
                 stopwatch.Reset();
             }
         }

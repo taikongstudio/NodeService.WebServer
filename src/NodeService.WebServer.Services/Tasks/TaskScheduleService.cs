@@ -99,8 +99,13 @@ public partial  class TaskScheduleService : BackgroundService
         Scheduler = await _schedulerFactory.GetScheduler(cancellationToken);
         Scheduler.JobFactory = _jobFactory;
         if (!Scheduler.IsStarted) await Scheduler.Start(cancellationToken);
-        await ScheduleTasksAsync(cancellationToken);
-        await ScheduleTaskFlowsAsync(cancellationToken);
+        bool schedule = !Debugger.IsAttached;
+        if (schedule)
+        {
+            await ScheduleTasksAsync(cancellationToken);
+            await ScheduleTaskFlowsAsync(cancellationToken);
+        }
+
         while (!cancellationToken.IsCancellationRequested)
         {
             var op = await _taskScheduleServiceParametersQueue.DeuqueAsync(cancellationToken);

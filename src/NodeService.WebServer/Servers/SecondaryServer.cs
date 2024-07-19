@@ -216,8 +216,8 @@ namespace NodeService.WebServer.Servers
 
             builder.Services.AddStackExchangeRedisCache(options =>
             {
-                var endPointsString = builder.Configuration.GetSection("Redis").GetValue<string>("EndPoints");
-                var password = builder.Configuration.GetSection("Redis").GetValue<string>("Password");
+                var endPointsString = builder.Configuration.GetSection("RedisOptions").GetValue<string>("EndPoints");
+                var password = builder.Configuration.GetSection("RedisOptions").GetValue<string>("Password");
                 var endPoints = new EndPointCollection();
                 foreach (var endPointString in endPointsString.Split(','))
                 {

@@ -42,6 +42,10 @@ public record struct TaskLogQueryServiceResult
     public int PageIndex { get; set; }
 
     public int PageSize { get; set; }
+
+    public long TotalLengthInBytes { get; set; }
+
+    public long CurrentPagePosition { get; set; }
 }
 
 public class TaskLogQueryService 

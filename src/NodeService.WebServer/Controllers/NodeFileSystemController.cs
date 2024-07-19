@@ -92,7 +92,7 @@ public class NodeFileSystemController : Controller
     }
 
     [HttpPost("/api/NodeFileSystem/Hittest")]
-    [HttpPost("/api/NodeFileSystem/Hittest/Query")]
+    [HttpPost("/api/NodeFileSystem/Cache/Query")]
     public async Task<ApiResponse<FileInfoCacheResult>> HittestAsync(
         NodeFileSyncRequest nodeFileSyncRequest,
         CancellationToken cancellationToken = default)

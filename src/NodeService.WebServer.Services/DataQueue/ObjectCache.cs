@@ -71,7 +71,6 @@ namespace NodeService.WebServer.Data
                         where T : EntityBase
         {
             var key = GetEntityKey(value);
-            value.EntitySource = EntitySource.Cache;
             return await SetObjectAsync(
                 key,
                 value,

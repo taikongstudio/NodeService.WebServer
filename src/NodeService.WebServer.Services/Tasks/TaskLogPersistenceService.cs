@@ -161,7 +161,7 @@ public class TaskLogPersistenceService : BackgroundService
                 }
                 finally
                 {
-                    _taskLogUnitBatchQueue.Notify();
+
                 }
 
             }

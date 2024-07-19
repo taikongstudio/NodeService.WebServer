@@ -141,8 +141,6 @@ namespace NodeService.WebServer.Services.Tasks
                                 _webServerCounter.KafkaMaxPrefetchCount.Value = prefecthList.Length;
                             }
 
-                            await _taskLogUnitQueue.WaitAsync();
-
                             _maxConsumeContextGroupProcessTime = consumeContextGroups.Max(x => x.ProcessTimeSpan);
 
 
@@ -174,7 +172,7 @@ namespace NodeService.WebServer.Services.Tasks
                             stopwatch.Restart();
 
                             _consumer.Commit(contexts.Select(static x => x.Result.TopicPartitionOffset));
-                            _webServerCounter.KafkaConsumeConsumeCount.Value = contexts.Length;
+                            _webServerCounter.KafkaConsumeConsumeCount.Value += contexts.Length;
 
 
                             stopwatch.Stop();

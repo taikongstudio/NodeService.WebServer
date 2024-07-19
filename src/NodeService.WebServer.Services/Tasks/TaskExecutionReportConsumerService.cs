@@ -531,23 +531,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
         var dueTime = TimeSpan.FromSeconds(taskDefinitionSnapshot.ExecutionLimitTimeSeconds);
         var token = Scheduler.Default.ScheduleAsync(
+            taskExecutionInstanceId,
             dueTime,
-             async (scheduler, cancellationToken) =>
-             {
-                 try
-                 {
-                     await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
-                                               taskExecutionInstanceId,
-                                                "TaskExecutionTimeLimit",
-                                                Dns.GetHostName()));
-                 }
-                 catch (Exception ex)
-                 {
-                     _exceptionCounter.AddOrUpdate(ex, taskExecutionInstanceId);
-                 }
-
-                 return Disposable.Empty;
-             });
+            ProcessExcutionTimeLimitAsync);
         _taskExecutionLimitDictionary.AddOrUpdate(
             taskExecutionInstanceId,
             token,
@@ -557,6 +543,26 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 return token;
             }
         );
+    }
+
+    async Task<IDisposable> ProcessExcutionTimeLimitAsync(
+        System.Reactive.Concurrency.IScheduler scheduler,
+        string taskExecutionInstanceId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
+                                      taskExecutionInstanceId,
+                                       "TaskExecutionTimeLimit",
+                                       Dns.GetHostName()));
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex, taskExecutionInstanceId);
+        }
+
+        return Disposable.Empty;
     }
 
     async ValueTask ProcessTaskExecutionReportAsync(
@@ -665,7 +671,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         TaskActivationRecordModel taskActivationRecord,
         TaskDefinition taskDefinitionSnapshot,
         TaskExecutionInstanceModel taskExecutionInstance,
-        CancellationToken cancellationToken=default)
+        CancellationToken cancellationToken = default)
     {
         TaskExecutionNodeInfo taskExecutionNodeInfo = default;
         foreach (var item in taskActivationRecord.Value.TaskExecutionNodeList)

@@ -85,10 +85,10 @@ public class NodeInfoSpecification : ListSpecification<NodeInfoModel>
             }
             if (!searchProfileProperties)
                 Query.Where(x =>
-                    x.Name.Contains(keywords) || segments.Contains(x.Name));
+                    x.Name.Contains(keywords) || segments.Contains(x.Name) || segments.Any(seg => seg.Contains(x.Name)));
             else
                 Query.Where(x =>
-                    x.Name.Contains(keywords) || segments.Contains(x.Name) ||
+                    x.Name.Contains(keywords) || segments.Contains(x.Name)|| segments.Any(seg => seg.Contains(x.Name)) ||
                     (x.Profile != null && (
                         (x.Profile.IpAddress != null && x.Profile.IpAddress.Contains(keywords)) ||
                         (x.Profile.ClientVersion != null && x.Profile.ClientVersion.Contains(keywords)) ||

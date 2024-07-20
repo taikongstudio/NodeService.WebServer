@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="8.0.0" />
+		<PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.7" />
+		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.7" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.7">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.7">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		</PackageReference>
+		<PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="8.0.3" />
+
+		<PackageReference Include="AntDesign.Charts" Version="0.5.5" />
+		<PackageReference Include="AntDesign.ProLayout" Version="0.19.4" />
+
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
+		<PackageReference Include="CommandLineParser" Version="2.9.1" />
+
+		<PackageReference Include="Grpc.Net.Client.Web" Version="2.63.0" />
+
+		<PackageReference Include="OneOf" Version="3.0.271" />
+
+		<PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.8.0-rc.1" />
+
+		<PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.9.0" />
+
+
+		<PackageReference Include="System.Net.Http.Json" Version="8.0.0" />
+		<PackageReference Include="Grpc.AspNetCore.Server" Version="2.63.0" />
+		<PackageReference Include="Grpc.AspNetCore" Version="2.63.0" />
+		<PackageReference Include="Grpc.AspNetCore.Web" Version="2.63.0" />
+
+		<PackageReference Include="NSwag.AspNetCore" Version="14.0.8" />
+		<PackageReference Include="NLog" Version="5.3.2" />
+		<PackageReference Include="NLog.Extensions.Logging" Version="5.3.11" />
+		<PackageReference Include="NLog.Web.AspNetCore" Version="5.3.11" />
+		<PackageReference Include="WatchDog.NET" Version="1.4.11" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\NodeService.WebServer.Data.Repositories\NodeService.WebServer.Data.Repositories.csproj" />
+		<ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj" />
+		<ProjectReference Include="..\NodeService.WebServer.Services\NodeService.WebServer.Services.csproj" />
+		<ProjectReference Include="..\NodeService.WebServer.UI\NodeService.WebServer.UI.csproj" />
+	</ItemGroup>
+
+</Project>

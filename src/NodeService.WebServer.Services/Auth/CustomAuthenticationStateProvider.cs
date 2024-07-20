@@ -1,9 +1,8 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
-using NodeService.WebServer.Services.Auth;
 
-namespace NodeService.WebServer.Areas.Identity;
+namespace NodeService.WebServer.Services.Auth;
 
 public class ApiAuthenticationStateProvider : AuthenticationStateProvider
 {

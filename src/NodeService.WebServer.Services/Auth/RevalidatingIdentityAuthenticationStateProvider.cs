@@ -2,8 +2,10 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
-namespace NodeService.WebServer.Areas.Identity;
+namespace NodeService.WebServer.Services.Auth;
 
 public class RevalidatingIdentityAuthenticationStateProvider<TUser>
     : RevalidatingServerAuthenticationStateProvider where TUser : class

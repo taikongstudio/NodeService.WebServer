@@ -2,6 +2,7 @@
 using CurrieTechnologies.Razor.Clipboard;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -32,16 +33,17 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
+using System.Xml.Linq;
 using WatchDog;
 
-namespace NodeService.WebServer.Servers
+namespace NodeService.CoreServer
 {
-    public class PrimaryServer : WebServerBase
+    public class CoreServerImpl
     {
         readonly CommandLineOptions _options;
         readonly string[] _args;
 
-        public PrimaryServer(CommandLineOptions options, [FromKeyedServices(nameof(args))] string[] args)
+        public CoreServerImpl(CommandLineOptions options, [FromKeyedServices(nameof(args))] string[] args)
         {
             _options = options;
             _args = args;
@@ -65,9 +67,6 @@ namespace NodeService.WebServer.Servers
                 // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
                 app.UseHsts();
             }
-
-            app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
-
 
             MapGrpcServices(app);
 
@@ -112,22 +111,14 @@ namespace NodeService.WebServer.Servers
 
         void MapGrpcServices(WebApplication app)
         {
+            app.UseGrpcWeb(new GrpcWebOptions { DefaultEnabled = true });
             //app.MapGrpcService<FileSystemServiceImpl>().EnableGrpcWeb().RequireCors("AllowAll");
             app.MapGrpcService<NodeServerImpl>().EnableGrpcWeb().RequireCors("AllowAll");
         }
 
         void Configure(WebApplicationBuilder builder)
         {
-            builder.Services.AddDistributedMemoryCache();
-            builder.Services.AddDirectoryBrowser();
-
-            builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
-            builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection(nameof(RedisOptions)));
-            builder.Services.Configure<KafkaOptions>(builder.Configuration.GetSection(nameof(KafkaOptions)));
-            builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
-            builder.Services.Configure<MongoDbOptions>(builder.Configuration.GetSection(nameof(MongoDbOptions)));
-            builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
-            builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 1024 * 1024 * 1024 * 4L; });
+            ConfigureOptions(builder);
 
             builder.Services.AddRequestDecompression(options =>
             {
@@ -147,7 +138,6 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddOpenApiDocument();
             builder.Services.AddHttpClient();
             builder.Services.AddMemoryCache(options => { options.TrackStatistics = true; });
-            builder.Services.AddDistributedMemoryCache(options => { });
             builder.Services.AddDatabaseDeveloperPageExceptionFilter();
             builder.Services.AddOpenTelemetry()
                 .WithMetrics(builder =>
@@ -192,6 +182,17 @@ namespace NodeService.WebServer.Servers
             ConfifureCor(builder);
 
             ConfigureRateLimiter(builder);
+        }
+
+        private static void ConfigureOptions(WebApplicationBuilder builder)
+        {
+            builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
+            builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection(nameof(RedisOptions)));
+            builder.Services.Configure<KafkaOptions>(builder.Configuration.GetSection(nameof(KafkaOptions)));
+            builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
+            builder.Services.Configure<MongoDbOptions>(builder.Configuration.GetSection(nameof(MongoDbOptions)));
+            builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
+            builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 1024 * 1024 * 1024 * 4L; });
         }
 
         void ConfigureGrpc(WebApplicationBuilder builder)
@@ -317,7 +318,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddScoped<IProfileService, ProfileService>();
             builder.Services.AddClipboard();
 
-            builder.Services.AddScoped<ApiService>(serviceProvider =>
+            builder.Services.AddScoped(serviceProvider =>
             {
                 var httpClient = serviceProvider.GetService<HttpClient>();
                 return new ApiService(httpClient);
@@ -325,7 +326,7 @@ namespace NodeService.WebServer.Servers
 
             builder.Services.AddScoped<HeartBeatResponseHandler>();
             builder.Services.AddScoped<TaskExecutionReportHandler>();
-            builder.Services.AddScoped<MessageHandlerDictionary>(sp =>
+            builder.Services.AddScoped(sp =>
             {
                 var messageHandlerDictionary = new MessageHandlerDictionary
                 {
@@ -409,31 +410,32 @@ namespace NodeService.WebServer.Servers
                 options.InstanceName = "NodeService";
                 options.ConfigurationOptions = new ConfigurationOptions()
                 {
-                    
+
                     EndPoints = endPoints,
                     Password = password,
                 };
             });
             builder.Services.AddSingleton<ObjectCache>();
-            builder.Services.AddSingleton<MongoClient>(sp =>
+
+            builder.Services.AddSingleton(sp =>
             {
                 var connectionString = builder.Configuration.GetValue<string>("MongoDbOptions:ConnectionString");
-                return new MongoClient(connectionString);
+                return new MongoClient();
             });
 
-            builder.Services.AddSingleton<MongoGridFS>(sp =>
+            builder.Services.AddSingleton(sp =>
             {
                 var dbName = builder.Configuration.GetValue<string>("MongoDbOptions:TaskLogDatabaseName");
                 var client = sp.GetService<MongoClient>();
                 var mongoServer = client.GetServer();
                 var mongoGridFS = new MongoGridFS(mongoServer, dbName, new MongoGridFSSettings()
                 {
-                    UpdateMD5 = true
+                    UpdateMD5 = false
                 });
                 return mongoGridFS;
             });
 
-            builder.Services.AddSingleton<CommandLineOptions>(_options);
+            builder.Services.AddSingleton(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
             builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
@@ -445,20 +447,10 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<NodeInfoQueryService>();
             builder.Services.AddSingleton<FileInfoCacheService>();
 
-            builder.Services.AddSingleton<IJobFactory, JobFactory>();
-            builder.Services.AddSingleton<TaskSchedulerDictionary>();
-            builder.Services.AddSingleton<JobScheduler>();
-            builder.Services.AddSingleton<TaskFlowExecutor>();
-            builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
-            builder.Services.AddSingleton<IAsyncQueue<TaskExecutionEventRequest>, AsyncQueue<TaskExecutionEventRequest>>();
-            builder.Services.AddSingleton<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>, AsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
-            builder.Services.AddSingleton(new BatchQueue<TaskActivateServiceParameters>(TimeSpan.FromSeconds(1), 64));
-            builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(TimeSpan.FromSeconds(1), 64));
-            builder.Services.AddKeyedSingleton(nameof(TaskLogKafkaProducerService),new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(1), 2048));
-            builder.Services.AddKeyedSingleton(nameof(TaskLogPersistenceService), new BatchQueue<AsyncOperation<TaskLogUnit[]>>(TimeSpan.FromSeconds(5), 2048));
-            builder.Services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
-            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(TimeSpan.FromSeconds(15), 2048));
-            builder.Services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(TimeSpan.FromSeconds(3), 1024));
+            builder.Services.AddTaskSchedule(Options =>
+            {
+
+            });
 
 
             builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
@@ -529,12 +521,12 @@ namespace NodeService.WebServer.Servers
             {
                 options.UseInMemoryDatabase("default", (inMemoryDbOptions) =>
                 {
-                   
+
                 });
             }, 2048);
         }
 
-        public override async Task RunAsync(CancellationToken cancellationToken = default)
+        public async Task RunAsync(CancellationToken cancellationToken = default)
         {
             Environment.CurrentDirectory = AppContext.BaseDirectory;
 

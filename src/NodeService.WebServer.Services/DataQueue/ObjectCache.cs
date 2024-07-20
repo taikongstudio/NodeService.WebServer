@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using NodeService.WebServer.Services.Counters;
 using System.Threading;
 
-namespace NodeService.WebServer.Data
+namespace NodeService.WebServer.Services.DataQueue
 {
     public class ObjectCache
     {

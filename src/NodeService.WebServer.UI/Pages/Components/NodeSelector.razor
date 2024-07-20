@@ -41,11 +41,11 @@
 
 <GridRow>
     <Table Size="TableSize.Small"
-           OnChange="(QueryModel<NodeInfoModel> query) => OnTableChanged(query)"
            DataSource="@SelectedItems"
-           Loading="@_dataSource.IsLoading"
+           Loading="@LoadingSelectedItems"
            SelectedRows="@SelectedItems"
            Resizable
+           Title="已选择节点"
            SelectedRowsChanged="(IEnumerable<NodeInfoModel> items) => OnSelectedItemsChanged(items)"
            RowKey="x => x.Id">
         <ColumnDefinitions Context="ctx">
@@ -59,10 +59,6 @@
             <PropertyColumn Property="c => c.Profile.ClientVersion" Ellipsis Sortable Title="客户端版本"></PropertyColumn>
         </ColumnDefinitions>
     </Table>
-        @if (LoadingSelectedItems)
-    {
-        <Icon Type="loading" Theme="outline" Style="font-size: 24px" Spin />
-    }
 </GridRow>
 
 <GridRow>
@@ -82,6 +78,7 @@
                Loading="@_dataSource.IsLoading"
                SelectedRows="@SelectedItems"
                Resizable
+               Title="全部节点"
                SelectedRowsChanged="(IEnumerable<NodeInfoModel> items) => OnSelectedItemsChanged(items)"
                RowKey="x => x.Id">
             <ColumnDefinitions Context="ctx">

@@ -1,5 +1,7 @@
 ﻿using AntDesign.ProLayout;
 using Microsoft.AspNetCore.RateLimiting;
+using MongoDB.Driver.GridFS;
+using MongoDB.Driver;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
@@ -11,6 +13,7 @@ using OpenTelemetry.Metrics;
 using StackExchange.Redis;
 using System.Text;
 using System.Threading.RateLimiting;
+using NodeService.WebServer.Services.ClientUpdate;
 
 namespace NodeService.WebServer.Servers
 {
@@ -76,6 +79,8 @@ namespace NodeService.WebServer.Servers
             builder.Services.Configure<WebServerOptions>(builder.Configuration.GetSection(nameof(WebServerOptions)));
             builder.Services.Configure<FtpOptions>(builder.Configuration.GetSection(nameof(FtpOptions)));
             builder.Services.Configure<ProSettings>(builder.Configuration.GetSection(nameof(ProSettings)));
+            builder.Services.Configure<MongoDbOptions>(builder.Configuration.GetSection(nameof(MongoDbOptions)));
+
             builder.Services.Configure<FormOptions>(options => { options.MultipartBodyLengthLimit = 1024 * 1024 * 1024 * 4L; });
 
             builder.Services.AddRequestDecompression(options =>
@@ -174,6 +179,8 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddHostedService<PackageQueryQueueService>();
             builder.Services.AddHostedService<ClientUpdateQueryQueueService>();
             builder.Services.AddHostedService<GCService>();
+            //builder.Services.AddHostedService<ClientUpdateLogConsumeService>();
+            builder.Services.AddHostedService<ClientUpdateLogProduceService>();
         }
 
         void ConfigureScoped(WebApplicationBuilder builder)
@@ -220,6 +227,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
+            builder.Services.AddSingleton<ClientUpdateCounter>();
             builder.Services.AddSingleton<NodeFileSyncQueueDictionary>();
             builder.Services.AddSingleton<SyncRecordQueryService>();
             builder.Services.AddSingleton<ConfigurationQueryService>();
@@ -257,6 +265,27 @@ namespace NodeService.WebServer.Servers
 
             builder.Services.AddSingleton(new BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>(TimeSpan.FromSeconds(1),
                     64));
+
+            builder.Services.AddSingleton<MongoClient>(sp =>
+            {
+                var connectionString = builder.Configuration.GetValue<string>("MongoDbOptions:ConnectionString");
+                return new MongoClient(connectionString);
+            });
+
+            builder.Services.AddSingleton<MongoGridFS>(sp =>
+            {
+                var dbName = builder.Configuration.GetValue<string>("MongoDbOptions:ClientUpdateDatabaseName");
+                var client = sp.GetService<MongoClient>();
+                var mongoServer = client.GetServer();
+                var mongoGridFS = new MongoGridFS(mongoServer, dbName, new MongoGridFSSettings()
+                {
+                    UpdateMD5 = false
+                });
+                return mongoGridFS;
+            });
+
+            builder.Services.AddKeyedSingleton(nameof(ClientUpdateLogProduceService), new BatchQueue<ClientUpdateLog>(TimeSpan.FromSeconds(3), 1024));
+
 
         }
 

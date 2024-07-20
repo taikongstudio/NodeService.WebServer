@@ -41,6 +41,7 @@ public class HeartBeatResponseHandler : IMessageHandler
                 Id = Guid.NewGuid().ToString(),
                 CreationDateTime = DateTime.UtcNow,
                 NodeId = NodeSessionId.NodeId.Value,
+                Status = NodeStatus.Offline,
                 Message = $"Offline"
             });
             await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
@@ -81,6 +82,7 @@ public class HeartBeatResponseHandler : IMessageHandler
             Id = Guid.NewGuid().ToString(),
             CreationDateTime = DateTime.UtcNow,
             NodeId = NodeSessionId.NodeId.Value,
+            Status = NodeStatus.Online,
             Message = $"Online"
         }, cancellationToken);
     }

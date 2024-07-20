@@ -34,9 +34,14 @@
         "key": "Nodes.List"
       },
       {
-        "path": "/Nodes/StatusChangeRecords",
+        "path": "/Nodes/StatusChange/Records",
         "name": "状态变更记录",
-        "key": "Nodes.StatusChangeRecords"
+        "key": "Nodes.StatusChange/Records"
+      },
+      {
+        "path": "/Nodes/StatusChange/Statistics",
+        "name": "状态变更统计",
+        "key": "Nodes.StatusChange/Statistics"
       },
       {
         "path": "/Nodes/Settings",
@@ -248,6 +253,11 @@
         "path": "/Diagnostics/WebServerCounter",
         "name": "网站计数器",
         "key": "Diagnostics.WebServerCounter"
+      },
+      {
+        "path": "/Diagnostics/ClientUpdateCounter",
+        "name": "客户端更新诊断",
+        "key": "Diagnostics.ClientUpdateCounter"
       }
     ]
   }

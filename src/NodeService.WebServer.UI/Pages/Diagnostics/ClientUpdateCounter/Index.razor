@@ -1,0 +1,90 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Diagnostics.ClientUpdateCounter
+@page "/Diagnostics/ClientUpdateCounter"
+@using NodeService.WebServer.Services.Counters
+@inject ClientUpdateCounter ClientUpdateCounter
+@implements IDisposable
+
+
+<Modal Title="异常信息"
+       Maximizable
+       Width="800"
+       Style="top:0px"
+       MaxBodyHeight="@("80vh")"
+       @bind-Visible="@_visible">
+    @foreach(var log in _logs)
+    {
+        @log
+        <br/>
+    }
+</Modal>
+
+<Space Style="margin-bottom:16px">
+    <SpaceItem>
+        <Button Type="@ButtonType.Primary" OnClick="@Refresh">刷新</Button>
+    </SpaceItem>
+
+</Space>
+<Table Size="TableSize.Small" Title="客户端更新"
+       DataSource="@ClientUpdateCounterEntries">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.ConfigurationId" Width="200" Ellipsis Title="配置ID"></PropertyColumn>
+        <PropertyColumn Property="c => c.ConfigurationId" Width="200" Ellipsis Title="节点"></PropertyColumn>
+        <PropertyColumn Property="c => c.Messages" Title="消息">
+            @foreach (var item in ctx.Messages.Take(5))
+            {
+                <Text>@item</Text>
+                <br/>
+            }
+            @if (ctx.Messages.Count() > 5)
+            {
+                <Button Type="@ButtonType.Link" OnClick="()=>ShowLogs(ctx.Messages)">展开</Button>
+            }
+        </PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+
+
+@code {
+    ITable _table;
+    string _searchText;
+    bool _visible;
+    IEnumerable<string> _logs;
+
+    IEnumerable<ClientUpdateCounterEntry> ClientUpdateCounterEntries = [];
+
+    Timer _timer;
+
+    protected override void OnInitialized()
+    {
+        _timer = new Timer(TimeSpan.FromSeconds(1));
+        _timer.Elapsed += OnTick;
+        _timer.Start();
+        base.OnInitialized();
+    }
+
+    async void OnTick(object? sender, EventArgs e)
+    {
+        Refresh();
+        await InvokeAsync(this.StateHasChanged);
+    }
+
+    void Refresh()
+    {
+        ClientUpdateCounterEntries = ClientUpdateCounter.Dump();
+    }
+
+
+    public void Dispose()
+    {
+        _timer.Stop();
+        _timer.Elapsed -= OnTick;
+        _timer.Dispose();
+    }
+
+    void ShowLogs(IEnumerable<string> logs)
+    {
+        _logs = logs;
+        _visible = true;
+    }
+}

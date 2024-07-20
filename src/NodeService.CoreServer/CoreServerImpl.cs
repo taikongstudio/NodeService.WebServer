@@ -14,6 +14,7 @@ using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Auth;
+using NodeService.WebServer.Services.ClientUpdate;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
 using NodeService.WebServer.Services.DataQueue;

@@ -11,5 +11,7 @@ namespace NodeService.WebServer.Models
         public string BrokerList { get; set; }
 
         public string TaskLogTopic { get; set; }
+
+        public string ClientUpdateLogTopic { get; set; }
     }
 }

@@ -1,8 +1,8 @@
 ﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Services.ClientUpdate;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataQueue;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -13,10 +13,9 @@ public partial class ClientUpdateController : Controller
     private readonly ApplicationRepositoryFactory<ClientUpdateCounterModel> _clientUpdateCounterRepoFactory;
     private readonly ApplicationRepositoryFactory<ClientUpdateConfigModel> _clientUpdateRepoFactory;
     private readonly ExceptionCounter _exceptionCounter;
-
-    private readonly BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>>
-        _batchQueue;
-
+    private readonly ClientUpdateCounter _clientUpdateCounter;
+    private readonly BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> _clientUpdateBatchQueryQueue;
+    private readonly BatchQueue<ClientUpdateLog> _clientUpdateLogProduceQueue;
     private readonly ILogger<ClientUpdateController> _logger;
     private readonly IMemoryCache _memoryCache;
     private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
@@ -24,10 +23,12 @@ public partial class ClientUpdateController : Controller
     public ClientUpdateController(
         ILogger<ClientUpdateController> logger,
         ExceptionCounter exceptionCounter,
+        ClientUpdateCounter clientUpdateCounter,
         ApplicationRepositoryFactory<ClientUpdateConfigModel> clientUpdateRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
         ApplicationRepositoryFactory<ClientUpdateCounterModel> clientUpdateCounterRepoFactory,
-        BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> batchQueue,
+        BatchQueue<AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>> clientUpdateBatchQueryQueue,
+        [FromKeyedServices(nameof(ClientUpdateLogProduceService))] BatchQueue<ClientUpdateLog> clientUpdateLogProduceQueue,
         IMemoryCache memoryCache)
     {
         _logger = logger;
@@ -36,7 +37,9 @@ public partial class ClientUpdateController : Controller
         _clientUpdateCounterRepoFactory = clientUpdateCounterRepoFactory;
         _memoryCache = memoryCache;
         _exceptionCounter = exceptionCounter;
-        _batchQueue = batchQueue;
+        _clientUpdateCounter = clientUpdateCounter;
+        _clientUpdateBatchQueryQueue = clientUpdateBatchQueryQueue;
+        _clientUpdateLogProduceQueue = clientUpdateLogProduceQueue;
     }
 
     [HttpGet("/api/ClientUpdate/GetUpdate")]
@@ -53,7 +56,7 @@ public partial class ClientUpdateController : Controller
             var batchQueueOperation =
                 new AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>(paramters,
                     AsyncOperationKind.Query);
-            await _batchQueue.SendAsync(batchQueueOperation, cancellationToken);
+            await _clientUpdateBatchQueryQueue.SendAsync(batchQueueOperation, cancellationToken);
             var clientUpdateConfig = await batchQueueOperation.WaitAsync(cancellationToken);
             apiResponse.SetResult(clientUpdateConfig);
         }

@@ -13,6 +13,7 @@ using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Auth;
+using NodeService.WebServer.Services.ClientUpdate;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
 using NodeService.WebServer.Services.DataQueue;
@@ -189,7 +190,7 @@ namespace NodeService.WebServer.Servers
 
             ConfigureGrpc(builder);
 
-            ConfifureCor(builder);
+            ConfigureCor(builder);
 
             ConfigureRateLimiter(builder);
         }
@@ -202,7 +203,7 @@ namespace NodeService.WebServer.Servers
             });
         }
 
-        void ConfifureCor(WebApplicationBuilder builder)
+        void ConfigureCor(WebApplicationBuilder builder)
         {
             builder.Services.AddCors(o => o.AddPolicy("AllowAll", corPolicyBuilder =>
             {
@@ -256,13 +257,16 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddHostedService<GCService>();
             builder.Services.AddHostedService<TaskLogKafkaProducerService>();
             builder.Services.AddHostedService<TaskLogKafkaConsumerService>();
+            builder.Services.AddHostedService<ClientUpdateLogConsumeService>();
+            builder.Services.AddHostedService<ClientUpdateLogProduceService>();
         }
 
         void ConfigureScoped(WebApplicationBuilder builder)
         {
             builder.Services.AddScoped(sp => new HttpClient
             {
-                BaseAddress = new Uri(builder.Configuration.GetValue<string>("Kestrel:Endpoints:MyHttpEndpoint:Url"))
+                BaseAddress = new Uri(builder.Configuration.GetValue<string>("Kestrel:Endpoints:MyHttpEndpoint:Url")),
+                Timeout = TimeSpan.FromSeconds(500)
             });
 
             builder.Services.AddScoped<IBackendApiHttpClient, BackendApiHttpClient>();
@@ -409,7 +413,7 @@ namespace NodeService.WebServer.Servers
                 options.InstanceName = "NodeService";
                 options.ConfigurationOptions = new ConfigurationOptions()
                 {
-                    
+
                     EndPoints = endPoints,
                     Password = password,
                 };
@@ -428,7 +432,7 @@ namespace NodeService.WebServer.Servers
                 var mongoServer = client.GetServer();
                 var mongoGridFS = new MongoGridFS(mongoServer, dbName, new MongoGridFSSettings()
                 {
-                    UpdateMD5 = true
+                    UpdateMD5 = false
                 });
                 return mongoGridFS;
             });
@@ -436,6 +440,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<CommandLineOptions>(_options);
             builder.Services.AddSingleton<ExceptionCounter>();
             builder.Services.AddSingleton<WebServerCounter>();
+            builder.Services.AddSingleton<ClientUpdateCounter>();
             builder.Services.AddSingleton(typeof(ApplicationRepositoryFactory<>));
 
             builder.Services.AddSingleton<TaskLogQueryService>();
@@ -444,6 +449,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<FileRecordQueryService>();
             builder.Services.AddSingleton<NodeInfoQueryService>();
             builder.Services.AddSingleton<FileInfoCacheService>();
+            builder.Services.AddSingleton<NodeStatusChangeQueryService>();
 
             builder.Services.AddSingleton<IJobFactory, JobFactory>();
             builder.Services.AddSingleton<TaskSchedulerDictionary>();
@@ -454,7 +460,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>, AsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             builder.Services.AddSingleton(new BatchQueue<TaskActivateServiceParameters>(TimeSpan.FromSeconds(1), 64));
             builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(TimeSpan.FromSeconds(1), 64));
-            builder.Services.AddKeyedSingleton(nameof(TaskLogKafkaProducerService),new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(1), 2048));
+            builder.Services.AddKeyedSingleton(nameof(TaskLogKafkaProducerService), new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(1), 2048));
             builder.Services.AddKeyedSingleton(nameof(TaskLogPersistenceService), new BatchQueue<AsyncOperation<TaskLogUnit[]>>(TimeSpan.FromSeconds(5), 2048));
             builder.Services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
             builder.Services.AddSingleton(new BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(TimeSpan.FromSeconds(15), 2048));
@@ -478,6 +484,7 @@ namespace NodeService.WebServer.Servers
 
             builder.Services.AddSingleton(new BatchQueue<AsyncOperation<PackageDownloadParameters, PackageDownloadResult>>(TimeSpan.FromSeconds(5), 1024));
 
+            builder.Services.AddKeyedSingleton(nameof(ClientUpdateLogProduceService), new BatchQueue<ClientUpdateLog>(TimeSpan.FromSeconds(3), 1024));
         }
 
         void ConfigureDbContext(WebApplicationBuilder builder)

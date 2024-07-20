@@ -5,7 +5,7 @@ namespace NodeService.WebServer.Controllers;
 
 public partial class NodesController
 {
-    [HttpGet("/api/Nodes/StatusChangeRecords/List")]
+    [HttpGet("/api/Nodes/StatusChange/Records/List")]
     public async Task<PaginationResponse<NodeStatusChangeRecordModel>> QueryNodeStatusChangeRecordListAsync(
         [FromQuery] QueryNodeStatusChangeRecordParameters queryParameters, CancellationToken cancellationToken = default)
     {
@@ -26,6 +26,28 @@ public partial class NodesController
                 , cancellationToken
             );
             apiResponse.SetResult(queryResult);
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.ToString();
+        }
+
+        return apiResponse;
+    }
+
+    [HttpGet("/api/Nodes/StatusChange/Statistics/List")]
+    public async Task<PaginationResponse<NodeStatusChangeStatisticItem>> QueryNodeStatusChangeStatisticListAsync(
+        [FromQuery] QueryNodeStatusChangeStatisticsParameters queryParameters,
+        CancellationToken cancellationToken = default)
+    {
+        var apiResponse = new PaginationResponse<NodeStatusChangeStatisticItem>();
+        try
+        {
+            var result = await _nodeStatusChangeQueryService.QueryAsync(queryParameters, cancellationToken);
+            apiResponse.SetResult(result);
         }
         catch (Exception ex)
         {

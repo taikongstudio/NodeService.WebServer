@@ -20,6 +20,7 @@ public partial class NodesController : Controller
     readonly INodeSessionService _nodeSessionService;
     readonly NodeInfoQueryService _nodeInfoQueryService;
     readonly ApplicationRepositoryFactory<NodeStatusChangeRecordModel> _recordRepoFactory;
+    private readonly NodeStatusChangeQueryService _nodeStatusChangeQueryService;
     static readonly JsonSerializerOptions _jsonOptions;
 
     static NodesController()
@@ -34,7 +35,8 @@ public partial class NodesController : Controller
         ExceptionCounter exceptionCounter,
         ILogger<NodesController> logger,
         IMemoryCache memoryCache,
-        NodeInfoQueryService  nodeInfoQueryService,
+        NodeInfoQueryService nodeInfoQueryService,
+        NodeStatusChangeQueryService nodeStatusChangeQueryService,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
         ApplicationRepositoryFactory<NodeStatusChangeRecordModel> nodeStatusChangeRecordRepositoryFactory,
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
@@ -46,6 +48,7 @@ public partial class NodesController : Controller
         _exceptionCounter = exceptionCounter;
         _nodeInfoQueryService = nodeInfoQueryService;
         _recordRepoFactory = nodeStatusChangeRecordRepositoryFactory;
+        _nodeStatusChangeQueryService = nodeStatusChangeQueryService;
     }
 
     [HttpGet("/api/Nodes/List")]

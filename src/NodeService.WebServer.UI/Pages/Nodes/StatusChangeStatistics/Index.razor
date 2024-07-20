@@ -1,5 +1,5 @@
-﻿@namespace NodeService.WebServer.UI.Pages.Nodes.StatusChangeRecords
-@page "/Nodes/StatusChange/Records"
+﻿@namespace NodeService.WebServer.UI.Pages.Nodes.StatusChangeStatistics
+@page "/Nodes/StatusChange/Statistics"
 @inject ApiService ApiService;
 @inject IMessageService _message
 @inject NotificationService _notice
@@ -13,7 +13,7 @@
         Size="TableSize.Small"
         Loading="@_dataSource.IsLoading"
         EnableVirtualization="false"
-        TItem="NodeStatusChangeRecordModel"
+        TItem="NodeStatusChangeStatisticItem"
         Resizable
         OnChange="OnTableChange"
         PageIndex="@_dataSource.PageIndex"
@@ -55,17 +55,26 @@
                         <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged"/>
                     </SpaceItem>
                     <SpaceItem>
+                        <RadioGroup @bind-Value="@_selectedNodeStatus">
+                            @foreach (var item in _nodeStatusList)
+                            {
+                                <Radio RadioButton Value="@(item.Value)">@item.Name</Radio>
+                            }
+                        </RadioGroup>
+                    </SpaceItem>
+                    <SpaceItem>
                         <Button Type="@ButtonType.Primary" OnClick="@QueryAsync">查询</Button>
                     </SpaceItem>
                 </Space>
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
-            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
-            <PropertyColumn Title="节点标志" Ellipsis Sortable Property="c => c.NodeId"></PropertyColumn>
-            <PropertyColumn Title="节点名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="时间" Sortable Property="c => c.CreationDateTime" DefaultSortOrder="SortDirection.Descending"></PropertyColumn>
-            <PropertyColumn Title="消息" Sortable="true" Property="c => c.Message"></PropertyColumn>
+            <PropertyColumn Title="日期" Ellipsis  Property="c => c.DateTime"></PropertyColumn>
+            <PropertyColumn Title="节点标志" Ellipsis  Property="c => c.NodeInfoId"></PropertyColumn>
+            <PropertyColumn Title="节点名称" Ellipsis  Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="状态" Property="c=>c.Status"  ></PropertyColumn>
+            <PropertyColumn Title="次数"  Property="c => c.Count"></PropertyColumn>
+            <PropertyColumn Title="客户端版本" Ellipsis  Property="c => c.ClientVersion"></PropertyColumn>
         </ColumnDefinitions>
     </Table>
 </GridContent>
@@ -73,11 +82,13 @@
 @code {
 
     bool _loading;
-    RoutedPaginationDataSource<NodeStatusChangeRecordModel, QueryNodeStatusChangeRecordParameters> _dataSource;
+    RoutedPaginationDataSource<NodeStatusChangeStatisticItem, QueryNodeStatusChangeStatisticsParameters> _dataSource;
 
     DateTime BeginDateTime;
     DateTime EndDateTime;
     IEnumerable<NodeInfoModel> _selectedNodeList = [];
+    IEnumerable<EnumModel<NodeStatus>> _nodeStatusList;
+    NodeStatus _selectedNodeStatus;
 
     CommonDialog _nodeSelectorDialog;
 
@@ -85,14 +96,22 @@
 
     protected override void OnInitialized()
     {
+        _selectedNodeStatus = NodeStatus.All;
+        _nodeStatusList =
+        [
+            new EnumModel<NodeStatus>("全部状态", NodeStatus.All),
+    new EnumModel<NodeStatus>("在线", NodeStatus.Online),
+    new EnumModel<NodeStatus>("离线", NodeStatus.Offline)
+        ];
         BeginDateTime = DateTime.Today.Date.AddDays(-7);
         EndDateTime = DateTime.Today.Date.AddDays(1).AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
 
-        _dataSource = new RoutedPaginationDataSource<NodeStatusChangeRecordModel, QueryNodeStatusChangeRecordParameters>(NavigationManager.BaseUri, ApiService.QueryNodeStatusChangeRecordListAsync, StateHasChanged);
+        _dataSource = new RoutedPaginationDataSource<NodeStatusChangeStatisticItem, QueryNodeStatusChangeStatisticsParameters>(NavigationManager.BaseUri, ApiService.QueryNodeStatusChangeStatisticsListAsync, StateHasChanged);
         _dataSource.PageIndex = 1;
         _dataSource.PageSize = 10;
+        _dataSource.QueryParameters.NodeStatus = NodeStatus.All;
         _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
         _dataSource.QueryParameters.EndDateTime = EndDateTime;
         _dataSource.ExceptionHandler = OnExepction;
@@ -115,7 +134,7 @@
         await base.OnInitializedAsync();
     }
 
-    async Task OnTableChange(QueryModel<NodeStatusChangeRecordModel> query)
+    async Task OnTableChange(QueryModel<NodeStatusChangeStatisticItem> query)
     {
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
@@ -157,7 +176,7 @@
         {
             _dataSource.QueryParameters.NodeIdList.AddRange(_selectedNodeList.Select(x => x.Id));
         }
-
+        _dataSource.QueryParameters.NodeStatus = _selectedNodeStatus;
         await _dataSource.QueryAsync();
     }
 

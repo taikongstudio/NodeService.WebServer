@@ -28,6 +28,7 @@ public partial class ConfigurationController
     }
 
     [HttpGet("/api/CommonConfig/Package/Download/{packageId}")]
+    [EnableRateLimiting("DownloadPackage")]
     public async Task<IActionResult> DownloadPackageAsync(
         string packageId,
         CancellationToken cancellationToken = default)

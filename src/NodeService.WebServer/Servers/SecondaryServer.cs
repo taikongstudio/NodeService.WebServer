@@ -146,15 +146,27 @@ namespace NodeService.WebServer.Servers
 
         void ConfigureRateLimiter(WebApplicationBuilder builder)
         {
-            builder.Services.AddRateLimiter(_ => _
-                .AddSlidingWindowLimiter("UploadFile", options =>
-                {
-                    options.PermitLimit = 1000;
-                    options.Window = TimeSpan.FromSeconds(10);
-                    options.SegmentsPerWindow = 10;
-                    options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                    options.QueueLimit = 10000;
-                }));
+            builder.Services.AddRateLimiter(rateLimiterOptions =>
+            {
+                rateLimiterOptions
+                                .AddSlidingWindowLimiter("UploadFile", options =>
+                                 {
+                                     options.PermitLimit = 1000;
+                                     options.Window = TimeSpan.FromSeconds(10);
+                                     options.SegmentsPerWindow = 10;
+                                     options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                                     options.QueueLimit = 10000;
+                                 });
+                rateLimiterOptions.AddSlidingWindowLimiter("DownloadPackage", options =>
+                         {
+                             options.PermitLimit = 20;
+                             options.Window = TimeSpan.FromSeconds(10);
+                             options.SegmentsPerWindow = 10;
+                             options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+                             options.QueueLimit = 10000;
+                         });
+            });
+
         }
 
         void ConfigureHostedServices(WebApplicationBuilder builder)

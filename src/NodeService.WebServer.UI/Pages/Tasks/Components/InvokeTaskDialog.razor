@@ -6,7 +6,8 @@
     Title="@($"调用任务:{TaskDefinition?.Name}")"
     Visible="@Visible"
     VisibleChanged="@VisibleChanged"
-    OnOk="OnOkAsync">
+    OnOk="OnOkAsync" 
+    OnCancel="OnCancelAsync">
     <Form Model="@TaskDefinition"
           LabelColSpan="4"
           Layout="@FormLayout.Horizontal"
@@ -25,6 +26,7 @@
             <FormItem Label="节点">
                 <NodeSelector Mode="SelectionMode.Multiple"
                               SelectedItems="@_selectedNodes"
+                              LoadingSelectedItems="@_loading"
                               SelectedItemsChanged="OnSelectedNodesChanged"/>
             </FormItem>
         }
@@ -55,7 +57,9 @@
         {
             if (Visible)
             {
+                _loading = true;
                 _selectedNodes = await TaskDefinition.Value.NodeList.QueryNodeListAsync(ApiService);
+                _loading = false;
             }
         }
         catch (Exception ex)
@@ -96,6 +100,11 @@
     private async Task OnOkAsync()
     {
         await InvokeTaskAsync();
+    }
+
+    private void OnCancelAsync()
+    {
+        _selectedNodes = [];
     }
 
     async Task InvokeTaskAsync()

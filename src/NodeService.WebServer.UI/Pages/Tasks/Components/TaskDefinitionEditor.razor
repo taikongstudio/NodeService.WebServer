@@ -109,6 +109,7 @@
 
                 <NodeSelector Mode="SelectionMode.Multiple"
                               SelectedItems="@_selectedNodes"
+                              LoadingSelectedItems="@_isSelectedNodeLoading"
                               SelectedItemsChanged="OnSelectedNodesChanged" />
 
             </FormItem>
@@ -140,6 +141,7 @@
     Form<TaskDefinitionModel> _editForm;
     TaskTypeDescSelector _taskTypeDescSelector;
     CommonDialog _taskTypeDescSelectorDialog;
+    bool _isSelectedNodeLoading;
 
     [Parameter] public EventCallback Closed { get; set; }
     [Parameter] public bool IsChildTaskSelectorVisible { get; set; } = true;
@@ -362,7 +364,9 @@
             }
             await OnSelectedTaskTypeDescChanged([TaskDefinition.Value.TaskTypeDesc]);
             _selectedTaskDefinitionList = await TaskDefinition.Value.ChildTaskDefinitions.QueryTaskDefinitionListAsync(ApiService);
+            _isSelectedNodeLoading = true;
             _selectedNodes = await TaskDefinition.Value.NodeList.QueryNodeListAsync(ApiService);
+            _isSelectedNodeLoading = false;
         }
 
         _loading = false;
@@ -419,6 +423,7 @@
 
     void OnEditFormFinishFailed(EditContext editContext)
     {
+        _selectedNodes = [];
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
     }

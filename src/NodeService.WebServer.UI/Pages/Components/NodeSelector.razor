@@ -4,7 +4,7 @@
 <GridRow>
     <Button Shape="@ButtonShape.Circle"
             Icon="@IconType.Outline.Reload"
-            OnClick="_dataSource.QueryAsync"
+            OnClick="QueryAsync"
             Type="primary"
             Style="margin-left:8px;margin-right:8px">
     </Button>
@@ -40,28 +40,34 @@
 </GridRow>
 
 <GridRow>
-    <div style="margin:5px 0px;padding:5px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
-        @if (SelectedItems != null)
-        {
-            foreach (var item in SelectedItems)
-            {
-                if (item == null)
-                {
-                    continue;
-                }
-
-                <Tag @key="item.Id" Closable OnClose="() => RemoveSelectedItem(item)">
-                    <Badge Status="@(item.Status.GetBadgeStatus())" Text="@item.Name"></Badge>
-                </Tag>
-            }
-        }
-    </div>
-
+    <Table Size="TableSize.Small"
+           OnChange="(QueryModel<NodeInfoModel> query) => OnTableChanged(query)"
+           DataSource="@SelectedItems"
+           Loading="@_dataSource.IsLoading"
+           SelectedRows="@SelectedItems"
+           Resizable
+           SelectedRowsChanged="(IEnumerable<NodeInfoModel> items) => OnSelectedItemsChanged(items)"
+           RowKey="x => x.Id">
+        <ColumnDefinitions Context="ctx">
+            <Selection Key="@ctx.Id" Type="@GetSelectionMode()" />
+            <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
+            <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="节点名称">
+                <Badge Status="@(ctx.Status.GetBadgeStatus())" Text="@ctx.Name"></Badge>
+            </PropertyColumn>
+            <PropertyColumn Property="c => c.Profile.Usages" Ellipsis Sortable Title="用途"></PropertyColumn>
+            <PropertyColumn Property="c => c.Profile.IpAddress" Ellipsis Sortable Title="Ip地址"></PropertyColumn>
+            <PropertyColumn Property="c => c.Profile.ClientVersion" Ellipsis Sortable Title="客户端版本"></PropertyColumn>
+        </ColumnDefinitions>
+    </Table>
+        @if (LoadingSelectedItems)
+    {
+        <Icon Type="loading" Theme="outline" Style="font-size: 24px" Spin />
+    }
 </GridRow>
 
 <GridRow>
 
-    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.QueryAsync"/>
+    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="QueryAsync" />
 </GridRow>
 <GridRow>
     <GridCol Flex=@("auto")>
@@ -95,6 +101,7 @@
 
 
 @code {
+    [Parameter] public bool LoadingSelectedItems { get; set; }
 
     NodeSettings _nodeSettings = new();
 
@@ -135,8 +142,15 @@
         _dataSource.QueryParameters.Status = NodeStatus.All;
         _dataSource.QueryParameters.Keywords = null;
         _dataSource.QueryParameters.PageIndex = 1;
-        await _dataSource.QueryAsync();
+        await QueryAsync();
         await base.OnInitializedAsync();
+    }
+
+    async Task QueryAsync()
+    {
+        LoadingSelectedItems = true;
+        await _dataSource.QueryAsync();
+        LoadingSelectedItems = false;
     }
 
     async Task QueryNodeSettingsAsync()
@@ -194,7 +208,7 @@
             _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
         }
 
-        await _dataSource.QueryAsync();
+        await QueryAsync();
     }
 
 }

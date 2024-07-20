@@ -49,59 +49,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        await Task.WhenAll(
-            ShuffleNodesAsync(cancellationToken),
-            QueueAsync(cancellationToken));
-    }
-
-
-    async Task ShuffleNodesAsync(CancellationToken cancellationToken = default)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-            try
-            {
-                int itemsCount = await GetNodesCount(cancellationToken);
-                var nodeNumbers = Enumerable.Range(0, itemsCount);
-                if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(10));
-                int pageIndex = 1;
-                foreach (var array in nodeNumbers.Chunk(20))
-                {
-                    var nodeList = await QueryNodesListAsync(pageIndex, cancellationToken);
-                    foreach (var item in nodeList.Items)
-                    {
-                        var key = CreateKey(item.Profile.IpAddress);
-                        _memoryCache.Set(key, true, TimeSpan.FromMinutes(10));
-                    }
-
-                    await Task.Delay(TimeSpan.FromSeconds(60 * 10 - 5), cancellationToken);
-                    pageIndex++;
-                }
-            }
-            catch (Exception ex)
-            {
-                _exceptionCounter.AddOrUpdate(ex);
-                _logger.LogError(ex.ToString());
-            }
-            finally
-            {
-                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
-            }
-    }
-
-    async ValueTask<ListQueryResult<NodeInfoModel>> QueryNodesListAsync(int pageIndex, CancellationToken cancellationToken = default)
-    {
-        await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
-        var listQueryResult = await nodeInfoRepo.PaginationQueryAsync(
-                                        new NodeInfoSpecification(),
-                                        new PaginationInfo(pageIndex, 20),
-                                        cancellationToken);
-        return listQueryResult;
-    }
-
-    async Task<int> GetNodesCount(CancellationToken cancellationToken)
-    {
-        await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
-        return await nodeInfoRepo.CountAsync(cancellationToken);
+        await QueueAsync(cancellationToken);
     }
 
     private static string CreateKey(string ipAddress)
@@ -131,29 +79,9 @@ public class ClientUpdateQueryQueueService : BackgroundService
                         try
                         {
                             var ipAddress = op.Argument.IpAddress;
-                            var updateKey = CreateKey(ipAddress);
-                            if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
-                            {
-                                if (clientUpdateConfig == null)
-                                    clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                                clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
-                                op.TrySetResult(clientUpdateConfig);
-                            }
-                            else
-                            {
-                                IRepository<NodeInfoModel> nodeInfoRepo;
-                                bool hasNodeInfo = await HasNodeAsync(op.Argument.IpAddress, cancellationToken);
-                                if (!hasNodeInfo)
-                                {
-                                    if (clientUpdateConfig == null)
-                                        clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                                    op.TrySetResult(clientUpdateConfig);
-                                }
-                                else
-                                {
-                                    op.TrySetResult(null);
-                                }
-                            }
+                            clientUpdateConfig = await QueryConfigurationAsync(name, key, ipAddress);
+                            clientUpdateConfig = await FilterIpAddress(clientUpdateConfig, ipAddress);
+                            op.TrySetResult(clientUpdateConfig);
                         }
                         catch (Exception ex)
                         {
@@ -187,7 +115,8 @@ public class ClientUpdateQueryQueueService : BackgroundService
         return hasNodeInfo;
     }
 
-    private async Task<ClientUpdateConfigModel?> IsFiltered(ClientUpdateConfigModel? clientUpdateConfig,
+    private async ValueTask<ClientUpdateConfigModel?> FilterIpAddress(
+        ClientUpdateConfigModel? clientUpdateConfig,
         string ipAddress)
     {
         if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null && clientUpdateConfig.DnsFilters.Any())
@@ -231,7 +160,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
         return clientUpdateConfig;
     }
 
-    private async Task<ClientUpdateConfigModel?> QueryAsync(string name, string key, string ipAddress)
+    async Task<ClientUpdateConfigModel?> QueryConfigurationAsync(string name, string key, string ipAddress)
     {
         ClientUpdateConfigModel? clientUpdateConfig = null;
         if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue) || cacheValue == null)

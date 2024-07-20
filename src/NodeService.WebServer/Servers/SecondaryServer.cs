@@ -159,7 +159,7 @@ namespace NodeService.WebServer.Servers
                                  });
                 rateLimiterOptions.AddSlidingWindowLimiter("DownloadPackage", options =>
                          {
-                             options.PermitLimit = 20;
+                             options.PermitLimit = 50;
                              options.Window = TimeSpan.FromSeconds(10);
                              options.SegmentsPerWindow = 10;
                              options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;

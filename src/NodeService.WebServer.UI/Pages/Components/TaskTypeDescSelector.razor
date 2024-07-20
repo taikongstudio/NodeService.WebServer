@@ -1,19 +1,30 @@
-﻿@inject ApiService ApiService
+﻿@using AntDesign.Select
+@inject ApiService ApiService
 @inject NotificationService _notice
 @inherits Selector<TaskTypeDescConfigModel>
 
-<GridRow>
-    <div style="margin:5px 0px;padding:5px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
-        @if (SelectedItems != null)
-        {
-            foreach (var item in SelectedItems)
-            {
-                <Tag @key="item.Id" Closable OnClose="() => RemoveSelectedItem(item)">@item.Name</Tag>
-            }
-        }
-    </div>
+@if (Mode == SelectionMode.Multiple)
+{
+    <GridRow>
+        <Select ItemValue="c=>c"
+                ItemLabel="c=>c.Name"
+                TItem="TaskTypeDescConfigModel"
+                TItemValue="TaskTypeDescConfigModel"
+                @bind-Values="@SelectedItems"
+                DataSource="@SelectedItems"
+                Mode="multiple"
+                AllowClear="false"
+                Placeholder="选择任务类型"
+                Style="margin-bottom:4px;margin-top:4px"
+                MaxTagCount="50"
+                BoundaryAdjustMode="TriggerBoundaryAdjustMode.InView"
+                EnableSearch
+                DropdownMatchSelectWidth="false">
+        </Select>
 
-</GridRow>
+    </GridRow>
+}
+
 
 <GridRow>
 
@@ -37,7 +48,7 @@
             <ColumnDefinitions Context="ctx">
                 <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
                 <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
-                <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="配置名称"></PropertyColumn>
+                <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="名称"></PropertyColumn>
             </ColumnDefinitions>
         </Table>
     </GridCol>

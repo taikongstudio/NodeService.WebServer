@@ -1,24 +1,14 @@
-﻿@inject ApiService ApiService
+﻿@using AntDesign.Select
+@inject ApiService ApiService
 @inject NotificationService _notice
 @inherits Selector<NodeInfoModel>
 <GridRow>
-    <Button Shape="@ButtonShape.Circle"
-            Icon="@IconType.Outline.Reload"
-            OnClick="QueryAsync"
-            Type="primary"
-            Style="margin-left:8px;margin-right:8px">
-    </Button>
-    <Button Shape="@ButtonShape.Circle"
-            Icon="@IconType.Outline.Clear"
-            OnClick="UnSelectAll"
-            Type="primary"
-            Style="margin-left:8px;margin-right:8px">
-    </Button>
     <Select DataSource="@_nodeSettings.IpAddressMappings"
             Value="@_dataSource.QueryParameters.AreaTag"
             OnSelectedItemChanged="OnSelectedAreaTagChanged"
             TItem="StringEntry"
             Style="width:200px"
+
             TItemValue="string"
             Size="middle"
             DefaultActiveFirstOption
@@ -40,70 +30,87 @@
 </GridRow>
 
 <GridRow>
-    <Table Size="TableSize.Small"
-           DataSource="@SelectedItems"
-           Loading="@LoadingSelectedItems"
-           SelectedRows="@SelectedItems"
-           Resizable
-           Title="已选择节点"
-           SelectedRowsChanged="(IEnumerable<NodeInfoModel> items) => OnSelectedItemsChanged(items)"
-           RowKey="x => x.Id">
-        <ColumnDefinitions Context="ctx">
-            <Selection Key="@ctx.Id" Type="@GetSelectionMode()" />
-            <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
-            <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="节点名称">
-                <Badge Status="@(ctx.Status.GetBadgeStatus())" Text="@ctx.Name"></Badge>
-            </PropertyColumn>
-            <PropertyColumn Property="c => c.Profile.Usages" Ellipsis Sortable Title="用途"></PropertyColumn>
-            <PropertyColumn Property="c => c.Profile.IpAddress" Ellipsis Sortable Title="Ip地址"></PropertyColumn>
-            <PropertyColumn Property="c => c.Profile.ClientVersion" Ellipsis Sortable Title="客户端版本"></PropertyColumn>
-        </ColumnDefinitions>
-    </Table>
-</GridRow>
 
-<GridRow>
+    <Select ItemValue="c=>c"
+            ItemLabel="c=>c.Name"
+            TItem="NodeInfoModel"
+            TItemValue="NodeInfoModel"
+            @bind-Values="@SelectedItems"
+            DataSource="@SelectedItems"
+            Mode="multiple"
+            AllowClear
+            AutoFocus
+            Disabled="@LoadingSelectedItems"
+            TokenSeparators="new char[]{','}"
+            Loading="@LoadingSelectedItems"
+            Placeholder="选择节点"
+            Style="margin-bottom:4px;margin-top:4px"
+            MaxTagCount="50"
+            BoundaryAdjustMode="TriggerBoundaryAdjustMode.InView"
+            EnableSearch
+            DropdownMatchSelectWidth="false"
+>
+    <LabelTemplate>
+        <LabelTemplateItem Context="item"
+                           TItem="NodeInfoModel"
+                               TItemValue="NodeInfoModel"
+                            
+                           Style="margin-right: 4px;"
+                           Class="ant-tag"
+                           RemoveIconStyle="margin-top: 1px; display: inline-block;">
+            <LabelTemplateItemContent>
+                    <Badge Status="@(item.Status.GetBadgeStatus())" Text="@item.Name"></Badge>
+            </LabelTemplateItemContent>
+        </LabelTemplateItem>
+    </LabelTemplate>
+    </Select>
 
-    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="QueryAsync" />
-</GridRow>
-<GridRow>
-    <GridCol Flex=@("auto")>
-        <Table Size="TableSize.Small"
-               OnChange="(QueryModel<NodeInfoModel> query) => OnTableChanged(query)"
-               OnPageIndexChange="@_dataSource.OnPaginationEvent"
-               OnPageSizeChange="@_dataSource.OnPaginationEvent"
-               PageSize="@_dataSource.PageSize"
-               PageIndex="@_dataSource.PageIndex"
-               Total="@_dataSource.TotalCount"
-               DataSource="@_dataSource.ItemsSource"
-               Loading="@_dataSource.IsLoading"
-               SelectedRows="@SelectedItems"
-               Resizable
-               Title="全部节点"
-               SelectedRowsChanged="(IEnumerable<NodeInfoModel> items) => OnSelectedItemsChanged(items)"
-               RowKey="x => x.Id">
-            <ColumnDefinitions Context="ctx">
-                <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
-                <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
-                <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="节点名称">
-                    <Badge Status="@(ctx.Status.GetBadgeStatus())" Text="@ctx.Name"></Badge>
-                </PropertyColumn>
-                <PropertyColumn Property="c => c.Profile.Usages" Ellipsis Sortable Title="用途"></PropertyColumn>
-                <PropertyColumn Property="c => c.Profile.IpAddress" Ellipsis Sortable Title="Ip地址"></PropertyColumn>
-                 <PropertyColumn Property="c => c.Profile.ClientVersion" Ellipsis Sortable Title="客户端版本"></PropertyColumn>
-            </ColumnDefinitions>
-        </Table>
+    <GridCol Span="24" >
+        <GridCol Flex=@("auto")>
+            <Table Size="TableSize.Small"
+                   OnChange="(QueryModel<NodeInfoModel> query) => OnTableChanged(query)"
+                   OnPageIndexChange="@_dataSource.OnPaginationEvent"
+                   OnPageSizeChange="@_dataSource.OnPaginationEvent"
+                   PageSize="@_dataSource.PageSize"
+                   PageIndex="@_dataSource.PageIndex"
+                   Total="@_dataSource.TotalCount"
+                   DataSource="@_dataSource.ItemsSource"
+                   Loading="@_dataSource.IsLoading"
+                   SelectedRows="@SelectedItems"
+                   Resizable
+                   SelectedRowsChanged="(IEnumerable<NodeInfoModel> items) => OnSelectedItemsChanged(items)"
+                   RowKey="x => x.Id">
+                <TitleTemplate>
+                    <GridRow Style="margin-bottom:4px">
+                        <GridCol Span="12">
+                            <Text>全部节点</Text>
+                        </GridCol>
+                        <GridCol Span="12" >
+                            <Search Placeholder="搜索全部节点" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="QueryAsync" />
+                        </GridCol>
+                    </GridRow>
+                </TitleTemplate>
+                <ColumnDefinitions Context="ctx">
+                    <Selection Key="@ctx.Id" Type="@GetSelectionMode()" />
+                    <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
+                    <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="节点名称">
+                        <Badge Status="@(ctx.Status.GetBadgeStatus())" Text="@ctx.Name"></Badge>
+                    </PropertyColumn>
+                    <PropertyColumn Property="c => c.Profile.Usages" Ellipsis Sortable Title="用途"></PropertyColumn>
+                    <PropertyColumn Property="c => c.Profile.IpAddress" Ellipsis Sortable Title="Ip地址"></PropertyColumn>
+                    <PropertyColumn Property="c => c.Profile.ClientVersion" Ellipsis Sortable Title="客户端版本"></PropertyColumn>
+                </ColumnDefinitions>
+            </Table>
+        </GridCol>
     </GridCol>
 
 </GridRow>
 
-
 @code {
-    [Parameter] public bool LoadingSelectedItems { get; set; }
-
     NodeSettings _nodeSettings = new();
-
-
     PaginationDataSource<NodeInfoModel, QueryNodeListParameters> _dataSource;
+
+    [Parameter] public bool LoadingSelectedItems { get; set; }
 
     protected override IEnumerable<NodeInfoModel> ItemsSource => _dataSource.ItemsSource;
 
@@ -143,11 +150,15 @@
         await base.OnInitializedAsync();
     }
 
+    async Task OnSearch(string keywords)
+    {
+        _dataSource.QueryParameters.Keywords = keywords;
+        await QueryAsync();
+    }
+
     async Task QueryAsync()
     {
-        LoadingSelectedItems = true;
         await _dataSource.QueryAsync();
-        LoadingSelectedItems = false;
     }
 
     async Task QueryNodeSettingsAsync()

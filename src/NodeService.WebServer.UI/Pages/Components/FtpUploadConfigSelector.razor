@@ -3,15 +3,20 @@
 @inherits Selector<FtpUploadConfigModel>
 
 <GridRow>
-    <div style="margin:5px 0px;padding:5px;display:block;width:100%;min-height:50px;border:2px dashed dodgerblue;border-radius:8px">
-        @if (SelectedItems != null)
-        {
-            foreach (var item in SelectedItems)
-            {
-                <Tag @key="item.Id" Closable OnClose="() => RemoveSelectedItem(item)">@item.Name</Tag>
-            }
-        }
-    </div>
+    <Select ItemValue="c=>c"
+            ItemLabel="c=>c.Name"
+            TItem="FtpUploadConfigModel"
+            TItemValue="FtpUploadConfigModel"
+            @bind-Values="@SelectedItems"
+            DataSource="@SelectedItems"
+            Mode="multiple"
+            AllowClear="true"
+            Style="margin-bottom:4px;margin-top:4px"
+            MaxTagCount="50"
+            BoundaryAdjustMode="TriggerBoundaryAdjustMode.InView"
+            EnableSearch
+            DropdownMatchSelectWidth="false">
+    </Select>
 
 
 </GridRow>

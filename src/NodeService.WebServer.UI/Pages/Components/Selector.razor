@@ -28,12 +28,6 @@
         {
             items = [items.LastOrDefault()];
         }
-
-        if (SelectedItems == items)
-        {
-            return;
-        }
-
         SelectedItemsChanged.InvokeAsync(items);
     }
 

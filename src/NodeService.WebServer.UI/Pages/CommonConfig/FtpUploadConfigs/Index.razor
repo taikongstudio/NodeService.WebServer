@@ -16,6 +16,8 @@
     <Modal Width="800"
            Title="@_modalTitle"
            MaskClosable="false"
+           DefaultMaximized
+           Maximizable
            Style="top:0"
            @bind-Visible="@_editFormVisible"
            ConfirmLoading="@_editFormConfirmLoading"
@@ -37,20 +39,8 @@
                     <Input @bind-Value="@context.Name"/>
                 </FormItem>
                 <FormItem Label="Ftp配置">
-                    @if (_selectedFtpConfigs != null)
-                    {
-                        foreach (var item in _selectedFtpConfigs)
-                        {
-                            <Tag @key="item.Id" Style="height:20px">@item.Name</Tag>
-                            break;
-                        }
-                    }
-                    <Tag Class="site-tag-plus" OnClick="ShowFtpConfigSelectorDialogAsync">
-                        <Icon Type="@IconType.Outline.Search"/>
-                    </Tag>
-                    <CommonDialog @ref="_ftpConfigDialog" Closed="OnSelectFtpConfigDialogClosed">
-                        <FtpConfigSelector @ref="_ftpConfigSelector" @bind-SelectedItems="@_selectedFtpConfigs" Mode="SelectionMode.Single"/>
-                    </CommonDialog>
+                    <FtpConfigSelector @ref="_ftpConfigSelector" @bind-SelectedItems="@_selectedFtpConfigs" Mode="SelectionMode.Single" />
+
                 </FormItem>
                 <FormItem Label="远程目录">
                     <AntDesign.Input @bind-Value="@context.RemoteDirectory">

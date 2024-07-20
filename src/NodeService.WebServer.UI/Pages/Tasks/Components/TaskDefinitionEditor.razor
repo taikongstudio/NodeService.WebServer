@@ -17,11 +17,6 @@
     }
     else
     {
-        <CommonDialog @ref="_taskTypeDescSelectorDialog" Closed="OnTaskTypeDescSelectorDialogClosed">
-            <TaskTypeDescSelector @ref="_taskTypeDescSelector"
-                                  @bind-SelectedItems="@_selectedTaskTypeDescConfigList"
-                                  Mode="SelectionMode.Single" />
-        </CommonDialog>
         <Form Model="@TaskDefinition"
               LabelColSpan="6"
               Layout="@FormLayout.Horizontal"
@@ -47,13 +42,10 @@
             </FormItem>
 
             <FormItem Label="任务类型">
-                @if (TaskDefinition != null && TaskDefinition.Value.TaskTypeDesc != null)
-                {
-                    <Tag @key="TaskDefinition.Value.TaskTypeDesc.Id">@TaskDefinition.Value.TaskTypeDesc.Name</Tag>
-                }
-                <Tag Class="site-tag-plus" OnClick="() => _taskTypeDescSelectorDialog.ShowAsync()">
-                    <Icon Type="@IconType.Outline.Edit" />
-                </Tag>
+                <TaskTypeDescSelector @ref="_taskTypeDescSelector"
+                                      SelectedItems="@_selectedTaskTypeDescList"
+                                      SelectedItemsChanged="OnSelectedTaskTypeDescChanged"
+                                      Mode="SelectionMode.Single" />
             </FormItem>
             <OptionValueEditor @ref="@_optionValueEditor" OptionValueEditors="@TaskDefinition.OptionValueEditors" />
 
@@ -129,8 +121,8 @@
 @code {
     bool _loading;
     IEnumerable<NodeInfoModel> _selectedNodes = [];
-    IEnumerable<TaskTypeDescConfigModel> _selectedTaskTypeDescConfigList = [];
-    IEnumerable<TaskDefinitionModel> _selectedTaskDefinitionList = [];
+    IEnumerable<TaskTypeDescConfigModel> _selectedTaskTypeDescList = [];
+    IEnumerable<TaskDefinitionModel> _selectedTaskDefinitionList;
     OptionValueEditor _optionValueEditor;
     string _modalTitle;
     bool _editFormVisible;
@@ -296,7 +288,7 @@
 
     async Task OnTaskTypeDescSelectorDialogClosed()
     {
-        await OnSelectedTaskTypeDescChanged(_selectedTaskTypeDescConfigList);
+        await OnSelectedTaskTypeDescChanged(_selectedTaskTypeDescList);
     }
 
 
@@ -304,6 +296,7 @@
     {
         try
         {
+            _selectedTaskTypeDescList = items;
             var model = items.FirstOrDefault();
             _loading = true;
             if (model == null)
@@ -614,7 +607,7 @@
     async Task CloseImpl()
     {
         _selectedNodes = [];
-        _selectedTaskTypeDescConfigList = [];
+        _selectedTaskTypeDescList = [];
         _selectedTaskDefinitionList = [];
         _editFormVisible = false;
         _editFormSubmitting = false;

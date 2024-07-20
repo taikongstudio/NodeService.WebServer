@@ -80,7 +80,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
                         {
                             var ipAddress = op.Argument.IpAddress;
                             clientUpdateConfig = await QueryConfigurationAsync(name, key, ipAddress);
-                            clientUpdateConfig = await FilterIpAddress(clientUpdateConfig, ipAddress);
+                            clientUpdateConfig = await FilterIpAddressAsync(clientUpdateConfig, ipAddress);
                             op.TrySetResult(clientUpdateConfig);
                         }
                         catch (Exception ex)
@@ -115,7 +115,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
         return hasNodeInfo;
     }
 
-    private async ValueTask<ClientUpdateConfigModel?> FilterIpAddress(
+    private async ValueTask<ClientUpdateConfigModel?> FilterIpAddressAsync(
         ClientUpdateConfigModel? clientUpdateConfig,
         string ipAddress)
     {

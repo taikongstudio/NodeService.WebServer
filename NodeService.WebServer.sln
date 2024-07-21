@@ -25,11 +25,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeService.WebServer.Data.
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeService.WebServer.UI.Diagrams", "src\NodeService.WebServer.UI.Diagrams\NodeService.WebServer.UI.Diagrams.csproj", "{D734EF29-E72E-42AB-9DFC-28474796DCE2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NodeService.CoreServer", "src\NodeService.CoreServer\NodeService.CoreServer.csproj", "{9C463072-90F5-483A-AC6B-42E9D2454599}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeService.CoreServer", "src\NodeService.CoreServer\NodeService.CoreServer.csproj", "{9C463072-90F5-483A-AC6B-42E9D2454599}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Servers", "Servers", "{F4B3E5E5-4420-4F2A-81B5-9F122024268C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NodeService.WebClient", "src\NodeService.WebClient\NodeService.WebClient.csproj", "{802A042C-CA6A-4984-9306-EFD1DA32DBAF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeService.WebClient", "src\NodeService.WebClient\NodeService.WebClient.csproj", "{802A042C-CA6A-4984-9306-EFD1DA32DBAF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

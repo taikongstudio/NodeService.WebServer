@@ -3,10 +3,11 @@
 @inject ILogger<Index> _logger;
 <Modal Width="800"
        Title="@_modalTitle"
-       Style="top:0"
-       @bind-Visible="@_editFormVisible"
+       Style="top:0;bottom:0"
+       @bind-Visible="@IsVisible"
        Maximizable="true"
-       DefaultMaximized="true"
+       MaxBodyHeight="80vh"
+       DefaultMaximized="false"
        ConfirmLoading="@_editFormConfirmLoading"
        OnOk="@HandleEditFormOk"
        OnCancel="@HandleEditFormCancel"
@@ -18,15 +19,15 @@
     else
     {
         <Form Model="@TaskDefinition"
-              LabelColSpan="6"
-              Layout="@FormLayout.Horizontal"
+              LabelColSpan="8"
+              Layout="@FormLayout.Vertical"
               Loading="@_loading"
-              WrapperColSpan="18"
+              WrapperColSpan="24"
               OnFinish="OnEditFormFinish"
               OnFinishFailed="OnEditFormFinishFailed"
               @ref="@_editForm">
             <FormItem Label="名称">
-                <Input @bind-Value="@context.Name" />
+                <Input @bind-Value="@context.Name" AutoFocus/>
             </FormItem>
             <FormItem Label="描述">
                 <Input @bind-Value="@context.Description" />
@@ -34,6 +35,16 @@
             <FormItem Label="启用">
                 <Switch @bind-Checked="@context.IsEnabled" />
             </FormItem>
+            <Divider />
+            <FormItem Label="指定节点">
+
+                <NodeSelector Mode="SelectionMode.Multiple"
+                              SelectedItems="@_selectedNodes"
+                              LoadingSelectedItems="@_isSelectedNodeLoading"
+                              SelectedItemsChanged="OnSelectedNodesChanged" />
+
+            </FormItem>
+            <Divider />
             <FormItem Label="环境变量">
                 <StringEntryTable ItemsSource="@context.EnvironmentVariables"
                                   NameTitle="变量"
@@ -49,25 +60,44 @@
             </FormItem>
             <OptionValueEditor @ref="@_optionValueEditor" OptionValueEditors="@TaskDefinition.OptionValueEditors" />
 
+            <Divider/>
+             <Row Gutter="24">
+                 <GridCol Span="12">
+                    <FormItem Label="执行时长" Help="设置任务的执行时长，单位为秒，默认值0表示不限制执行时长。">
+                        <AntDesign.InputNumber Style="width:200px" TValue="int" Min="1" @bind-Value="@context.ExecutionLimitTimeSeconds" /><Text> 秒</Text>
+                    </FormItem>
+                </GridCol>
+                <GridCol Span="12">
+                <FormItem Label="等待时长" Help="设置等待节点就绪的等待时长。">
+                    <AntDesign.InputNumber Style="width:200px" Min="0" @bind-Value="@context.PenddingLimitTimeSeconds" /><Text> 秒</Text>
+                </FormItem>
+                </GridCol>
+               </Row>
 
-            <FormItem Label="执行时长" Help="设置任务的执行时长，单位为秒，默认值0表示不限制执行时长。">
-                <AntDesign.InputNumber TValue="int" Min="1" @bind-Value="@context.ExecutionLimitTimeSeconds" /><Text> 秒</Text>
-            </FormItem>
-            <FormItem Label="等待时长" Help="设置等待节点就绪的等待时长。">
-                <AntDesign.InputNumber Min="0" @bind-Value="@context.PenddingLimitTimeSeconds" /><Text> 秒</Text>
-            </FormItem>
-            <FormItem  Label="最大自动重试次数" Help="任务等待超时和失败后的最大重试次数，0次表示不重试。">
-                <AntDesign.InputNumber TValue="int" Min="0" @bind-Value="@context.MaxRetryCount" /><Text> 次</Text>
-            </FormItem>
-            <FormItem Label="自动重试间隔" Help="任务等待超时和失败后的重试间隔，以秒为单位，0秒表示立即重试。">
-                <AntDesign.InputNumber Disabled="@(context.MaxRetryCount==0)" Min="0" @bind-Value="@context.Value.RetryDuration" /><Text> 秒</Text>
-            </FormItem>
-            <FormItem Label="触发方式">
-                <RadioGroup @bind-Value="@context.TriggerType">
-                    <Radio RadioButton Value="@TaskTriggerType.Schedule">定时触发</Radio>
-                    <Radio RadioButton Value="@TaskTriggerType.Manual">手动执行</Radio>
-                </RadioGroup>
-            </FormItem>
+            <Divider />
+            <Row Gutter="24">
+                <GridCol Span="12"  >
+                    <FormItem Label="最大自动重试次数" Help="任务等待超时和失败后的最大重试次数，0次表示不重试。">
+                        <AntDesign.InputNumber Style="width:200px" TValue="int" Min="0" @bind-Value="@context.MaxRetryCount" /><Text> 次</Text>
+                    </FormItem>
+                </GridCol>
+                <GridCol Span="12">
+                    <FormItem Label="自动重试间隔" Help="任务等待超时和失败后的重试间隔，以秒为单位，0秒表示立即重试。">
+                        <AntDesign.InputNumber Style="width:200px" Disabled="@(context.MaxRetryCount==0)" Min="0" @bind-Value="@context.Value.RetryDuration" /><Text> 秒</Text>
+                    </FormItem>
+                </GridCol>
+            </Row>
+
+            <Divider />
+            @if (TriggerTypeEditable)
+            {
+                <FormItem Label="触发方式">
+                    <RadioGroup @bind-Value="@context.TriggerType">
+                        <Radio RadioButton Value="@TaskTriggerType.Schedule">定时触发</Radio>
+                        <Radio RadioButton Value="@TaskTriggerType.Manual">手动执行</Radio>
+                    </RadioGroup>
+                </FormItem>
+            }
             @if (context.TriggerType == TaskTriggerType.Schedule)
             {
                 <FormItem Label="Cron表达式">
@@ -78,36 +108,42 @@
                                       AddingNewItem="AddCronExpression"
                                       ValueChanged="OnCronExpressionValueChanged" />
                 </FormItem>
+                <Divider />
             }
-            <FormItem Label="优先级">
-                <RadioGroup @bind-Value="context.Value.Priority" Size="middle">
-                    <Radio RadioButton Value="@(TaskExecutionPriority.Lowest)">最低</Radio>
-                    <Radio RadioButton Value="@(TaskExecutionPriority.Low)">低</Radio>
-                    <Radio RadioButton Value="@(TaskExecutionPriority.Normal)">正常</Radio>
-                    <Radio RadioButton Value="@(TaskExecutionPriority.High)">高</Radio>
-                    <Radio RadioButton Value="@(TaskExecutionPriority.Highest)">最高</Radio>
-                </RadioGroup>
-            </FormItem>
-            <FormItem Label="并发执行策略">
-                <RadioGroup @bind-Value="@context.ExecutionStrategy">
-                    <Radio RadioButton Value="@TaskExecutionStrategy.Skip">请勿启动新实例</Radio>
-                    <Radio RadioButton Value="@TaskExecutionStrategy.Concurrent">并行运行新实例</Radio>
-                    <Radio RadioButton Value="@TaskExecutionStrategy.Queue">对新实例等待节点响应</Radio>
-                    <Radio RadioButton Value="@TaskExecutionStrategy.Stop">停止现有实例</Radio>
-                </RadioGroup>
-            </FormItem>
 
-            <FormItem Label="指定节点">
+            <Row Gutter="24">
+                <GridCol Span="12"  >
+                    <FormItem Label="优先级">
+                        <RadioGroup @bind-Value="context.Value.Priority" Size="middle">
+                            <Radio RadioButton Value="@(TaskExecutionPriority.Lowest)">最低</Radio>
+                            <Radio RadioButton Value="@(TaskExecutionPriority.Low)">低</Radio>
+                            <Radio RadioButton Value="@(TaskExecutionPriority.Normal)">正常</Radio>
+                            <Radio RadioButton Value="@(TaskExecutionPriority.High)">高</Radio>
+                            <Radio RadioButton Value="@(TaskExecutionPriority.Highest)">最高</Radio>
+                        </RadioGroup>
+                    </FormItem>
+                    </GridCol>
+                <GridCol Span="12">
+                    <FormItem Label="并发执行策略">
+                        <RadioGroup @bind-Value="@context.ExecutionStrategy">
+                            <Radio RadioButton Value="@TaskExecutionStrategy.Skip">请勿启动</Radio>
+                            <Radio RadioButton Value="@TaskExecutionStrategy.Concurrent">并行运行</Radio>
+                            <Radio RadioButton Value="@TaskExecutionStrategy.Queue">排队</Radio>
+                            <Radio RadioButton Value="@TaskExecutionStrategy.Stop">停止所有实例</Radio>
+                        </RadioGroup>
+                    </FormItem>
+                </GridCol>
+            </Row>
 
-                <NodeSelector Mode="SelectionMode.Multiple"
-                              SelectedItems="@_selectedNodes"
-                              LoadingSelectedItems="@_isSelectedNodeLoading"
-                              SelectedItemsChanged="OnSelectedNodesChanged" />
 
-            </FormItem>
+
+            <Divider />
+
             @if (IsChildTaskSelectorVisible)
             {
-                <FormItem Label="后续任务">
+
+                <Divider />
+                <FormItem Label="后续任务" Help="当任务执行成功时自动启动后续任务">
                     <TaskDefinitionSelector Mode="SelectionMode.Multiple"
                                             @bind-SelectedItems="@_selectedTaskDefinitionList" />
                 </FormItem>
@@ -125,7 +161,6 @@
     IEnumerable<TaskDefinitionModel> _selectedTaskDefinitionList;
     OptionValueEditor _optionValueEditor;
     string _modalTitle;
-    bool _editFormVisible;
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
     string? _selectedNodeInfoId;
@@ -134,19 +169,41 @@
     TaskTypeDescSelector _taskTypeDescSelector;
     CommonDialog _taskTypeDescSelectorDialog;
     bool _isSelectedNodeLoading;
+    bool _isVisible;
+    bool _initialized;
 
     [Parameter] public EventCallback Closed { get; set; }
     [Parameter] public bool IsChildTaskSelectorVisible { get; set; } = true;
     [Parameter] public TaskDefinitionModel TaskDefinition { get; set; }
     [Parameter] public EventCallback<TaskDefinitionModel> TaskDefinitionChanged { get; set; }
+    [Parameter] public TaskTriggerType DefaultTriggerType { get; set; }
+    [Parameter] public bool TriggerTypeEditable { get; set; } = true;
+    [Parameter]
+    public bool IsVisible
+    {
+        get { return _isVisible; }
+        set
+        {
+            _isVisible = value;
+        }
+    }
 
     async Task HandleEditFormOk(MouseEventArgs e)
     {
         try
         {
-            _editFormVisible = true;
+            IsVisible = true;
             if (TaskDefinition == null)
             {
+                return;
+            }
+            if (string.IsNullOrEmpty(TaskDefinition.Name))
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = "请设置任务名称"
+                    });
                 return;
             }
             if (TaskDefinition.TriggerType == TaskTriggerType.Schedule
@@ -157,6 +214,15 @@
                     {
                         Message = "错误提示",
                         Description = "调度触发模式需要设置至少一个Cron表达式"
+                    });
+                return;
+            }
+            if (TaskDefinition.Value.TaskTypeDesc == null)
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = "需要设置任务内容"
                     });
                 return;
             }
@@ -334,35 +400,53 @@
     async Task ShowEditForm()
     {
         _loading = true;
-        _editFormVisible = true;
-        if (TaskDefinition == null)
+        try
         {
-            TaskDefinition = new TaskDefinitionModel
+            if (_initialized)
+            {
+                return;
+            }
+            if (TaskDefinition == null)
+            {
+                TaskDefinition = new TaskDefinitionModel
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        IsEnabled = true,
+                    };
+                TaskDefinition.Value.TriggerType = DefaultTriggerType;
+                if (TaskDefinitionChanged.HasDelegate)
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    IsEnabled = true
-                };
-            if (TaskDefinitionChanged.HasDelegate)
-            {
-                await TaskDefinitionChanged.InvokeAsync(TaskDefinition);
+                    await TaskDefinitionChanged.InvokeAsync(TaskDefinition);
+                }
+                _modalTitle = "新建配置";
             }
-            _modalTitle = "新建配置";
+            else
+            {
+                _modalTitle = "编辑配置";
+                if (TaskDefinition.Value.TaskTypeDesc == null)
+                {
+                    TaskDefinition.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(TaskDefinition.Value.TaskTypeDescId);
+                }
+                await OnSelectedTaskTypeDescChanged([TaskDefinition.Value.TaskTypeDesc]);
+                _selectedTaskDefinitionList = await TaskDefinition.Value.ChildTaskDefinitions.QueryTaskDefinitionListAsync(ApiService);
+                _isSelectedNodeLoading = true;
+                _selectedNodes = await TaskDefinition.Value.NodeList.QueryNodeListAsync(ApiService);
+                _isSelectedNodeLoading = false;
+            }
+            _initialized = true;
         }
-        else
+        catch (Exception ex)
         {
-            _modalTitle = "编辑配置";
-            if (TaskDefinition.Value.TaskTypeDesc == null)
-            {
-                TaskDefinition.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(TaskDefinition.Value.TaskTypeDescId);
-            }
-            await OnSelectedTaskTypeDescChanged([TaskDefinition.Value.TaskTypeDesc]);
-            _selectedTaskDefinitionList = await TaskDefinition.Value.ChildTaskDefinitions.QueryTaskDefinitionListAsync(ApiService);
-            _isSelectedNodeLoading = true;
-            _selectedNodes = await TaskDefinition.Value.NodeList.QueryNodeListAsync(ApiService);
-            _isSelectedNodeLoading = false;
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
         }
-
-        _loading = false;
+        finally
+        {
+            _loading = false;
+        }
     }
 
     async Task OnEditFormFinish(EditContext editContext)
@@ -370,11 +454,14 @@
         try
         {
             TaskDefinition.Value.ChildTaskDefinitions.Clear();
-            TaskDefinition.Value.ChildTaskDefinitions.AddRange(_selectedTaskDefinitionList.Select(x => new StringEntry
+            if (_selectedTaskDefinitionList != null)
             {
-                Name = x.Name,
-                Value = x.Id
-            }));
+                TaskDefinition.Value.ChildTaskDefinitions.AddRange(_selectedTaskDefinitionList.Select(x => new StringEntry
+                    {
+                        Name = x.Name,
+                        Value = x.Id
+                    }));
+            }
             TaskDefinition.NodeList.Clear();
             TaskDefinition.NodeList.AddRange(
                 _selectedNodes
@@ -410,7 +497,7 @@
         {
             _editFormSubmitting = false;
             _editFormConfirmLoading = false;
-            _editFormVisible = false;
+            IsVisible = false;
         }
     }
 
@@ -586,7 +673,7 @@
 
     void HandleEditFormCancel(MouseEventArgs e)
     {
-        _editFormVisible = false;
+        IsVisible = false;
         _selectedNodes = [];
     }
 
@@ -597,19 +684,21 @@
         e.DataItem.BeginEdit();
     }
 
-    public async Task ShowAsync(TaskDefinitionModel? taskDefintion = null)
+    protected override async Task OnParametersSetAsync()
     {
-        this.TaskDefinition = taskDefintion;
-        await ShowEditForm();
-        StateHasChanged();
+        if (this.IsVisible)
+        {
+            await this.ShowEditForm();
+        }
+        await base.OnParametersSetAsync();
     }
 
     async Task CloseImpl()
     {
+        _initialized = false;
         _selectedNodes = [];
         _selectedTaskTypeDescList = [];
         _selectedTaskDefinitionList = [];
-        _editFormVisible = false;
         _editFormSubmitting = false;
         _editFormConfirmLoading = false;
         _selectedNodeInfoId = null;

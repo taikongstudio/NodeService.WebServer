@@ -13,14 +13,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>控制面板</title>
     <base href="~/"/>
-    <script defer="" src="_content/NodeService.WebServer.UI.Diagrams/fontawesome/js/all.js"></script>
-    <link id="theme-style" rel="stylesheet" href="_content/NodeService.WebServer.UI.Diagrams/css/styles.css">
     <link href="_content/AntDesign/css/ant-design-blazor.css" rel="stylesheet"/>
     <link href="_content/AntDesign.ProLayout/css/ant-design-pro-layout-blazor.css" rel="stylesheet"/>
     <link href="./css/site.css" rel="stylesheet"/>
     <link href="NodeService.WebServer.styles.css" rel="stylesheet"/>
-    <link href="_content/Z.Blazor.Diagrams/style.css" rel="stylesheet" />
-    <link href="_content/Z.Blazor.Diagrams/default.styles.css" rel="stylesheet" />
 </head>
 <body>
     @if (string.IsNullOrEmpty(CommandLineOptions.features))
@@ -28,17 +24,9 @@
         <app>
             <component type="typeof(App)" render-mode="Server" />
         </app>
-        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/jquery-3.4.1.min.js"></script>
-        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/bootstrap/js/bootstrap.min.js"></script>
-        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/prism/prism.js"></script>
-        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/jquery-scrollTo/jquery.scrollTo.min.js"></script>
-        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/plugins/stickyfill/dist/stickyfill.min.js"></script>
-        <script type="text/javascript" src="_content/NodeService.WebServer.UI.Diagrams/js/main.js"></script>
         <script src="_content/AntDesign/js/ant-design-blazor.js"></script>
         <script src="_content/AntDesign.Charts/ant-design-charts-blazor.js"></script>
         <script src="_content/AntDesign.Charts/g2plot.min.js"></script>
-        <script src="_content/CurrieTechnologies.Razor.Clipboard/clipboard.min.js"></script>
-        <script src="_content/Z.Blazor.Diagrams/script.min.js"></script>
         <script src="_content/BlazorMonaco/jsInterop.js"></script>
         <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/loader.js"></script>
         <script src="_content/BlazorMonaco/lib/monaco-editor/min/vs/editor/editor.main.js"></script>

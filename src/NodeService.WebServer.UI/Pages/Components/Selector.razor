@@ -7,8 +7,19 @@
     [Parameter] public SelectionMode Mode { get; set; }
     [Parameter] public IEnumerable<TItem> SelectedItems { get; set; }
     [Parameter] public EventCallback<IEnumerable<TItem>> SelectedItemsChanged { get; set; }
+    [Parameter] public bool IsInvalidateRequsted { get; set; }
+    [Parameter] public EventCallback Invalidated { get; set; }
 
     protected virtual IEnumerable<TItem> ItemsSource { get; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsInvalidateRequsted)
+        {
+            IsInvalidateRequsted = false;
+            await this.InvalidateAsync();
+        }
+    }
 
     public void RemoveSelectedItem(TItem value)
     {
@@ -42,6 +53,14 @@
                 return "checkbox";
             default:
                 return "checkbox";
+        }
+    }
+
+    protected virtual async Task InvalidateAsync()
+    {
+        if (Invalidated.HasDelegate)
+        {
+            await Invalidated.InvokeAsync();
         }
     }
 

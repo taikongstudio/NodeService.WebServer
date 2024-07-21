@@ -1,0 +1,223 @@
+﻿
+@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
+<style type="text/css">
+    .ant-card .ant-card-body {
+        padding:2px 5px 2px 5px;
+    }
+
+    .ant-list .ant-list-footer {
+        padding: 5px 5px 15px 5px;
+    }
+</style>
+<TaskDefinitionEditor IsVisible="@_isTaskDefinitionEditorVisible" Closed="@OnTaskDefinitionEditorClosedAsync" TriggerTypeEditable="false" IsChildTaskSelectorVisible="false" DefaultTriggerType="_defaultTriggerType" @bind-TaskDefinition="@_selectedTaskDefinition" />
+<Drawer MaskClosable="false" Closable="true" @bind-Visible="_showTaskDefinitionDrawer" OnClose="@CloseSelectTaskDefinitionSelector" Width="400" Placement="right" Title='("选择任务")'>
+    <Text>选择已有任务定义</Text>
+    <TaskDefinitionSelector Mode="SelectionMode.Single" IsInvalidateRequsted="@_isInvalidateRequested" Invalidated="()=>_isInvalidateRequested=false" @bind-SelectedItems="@_selectedTaskDefinitions" />
+    <Divider />
+    <Row>
+        <AntDesign.Col Span="18">
+            <Button OnClick="@ShowTaskDefinitionEditor">创建新任务定义</Button>
+        </AntDesign.Col>
+        <AntDesign.Col Span="6">
+            <Button Type="@ButtonType.Primary" OnClick="@CloseSelectTaskDefinitionSelector">确定</Button>
+        </AntDesign.Col>
+    </Row>
+
+</Drawer>
+
+<Card Size="small" >
+    <TitleTemplate>
+        <Paragraph EditConfig="editableStr" Editable="@TaskGroup.IsDesignMode" Style="max-width:200px;overflow:hidden;display:flex;flex-direction:row">
+            <div style="width:auto;max-width:180px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;">@editableStr.Text</div>
+        </Paragraph>
+    </TitleTemplate>
+    <Extra>
+        @if (TaskGroup.IsDesignMode)
+        {
+            <Dropdown Trigger="new Trigger[] { Trigger.Click }">
+                <Overlay>
+                    <Menu Style="">
+                        <MenuItem Icon="plus" OnClick="@ShowSelectTaskDefinitionSelector">添加任务</MenuItem>
+                        <MenuItem Icon="delete"  OnClick="()=>OnRemoved.InvokeAsync(TaskGroup)">删除任务分组</MenuItem>
+                    </Menu>
+                </Overlay>
+                <ChildContent>
+                      <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Menu" />
+        
+                </ChildContent>
+            </Dropdown>
+        }
+
+    </Extra>
+    <Body>
+        <AntList Bordered="false" DataSource="@TaskGroup.Tasks">
+            <ChildContent Context="task">
+                <ListItem Style="padding:10px 0px 10px 0px;display:flex;flex-direction:column;align-content:stretch;align-items:stretch">
+                    <div title="@task.Name" draggable="true" @ondrop="e=>OnDrop(e, task)" @ondragstart="e=>OnDragStart(e, task)" ondragover="event.preventDefault()">
+                        <Popover Style="width:100%" Placement="@Placement.Right" Trigger="@(new AntDesign.Trigger[] { AntDesign.Trigger.Hover})" TitleTemplate="@_text" >
+                            <ContentTemplate>
+                                <div>
+                                    <Button Type="@ButtonType.Dashed" Icon="@IconType.Outline.Edit"  Block OnClick="()=>OnTaskClickedAsync(task)">编辑</Button>
+                                    <Button Type="@ButtonType.Dashed" Icon="@IconType.Outline.Delete" Danger Block OnClick="()=>OnRemoveTaskAsync(task)">删除</Button>
+                                </div>
+                            </ContentTemplate>
+                            <ChildContent>
+                                <TaskFlowTaskComponent Task="task" OnTaskClicked="@OnTaskClickedAsync" />
+                                </ChildContent>
+                        </Popover>
+                    </div>
+                </ListItem>
+            </ChildContent>
+        </AntList>
+    </Body>
+</Card>
+
+
+
+@code {
+
+    private RenderFragment _text =@<span>编辑任务</span>;
+
+    const int ButtonWidth = 70;
+
+
+    IEnumerable<TaskDefinitionModel> _selectedTaskDefinitions;
+    TaskDefinitionModel _selectedTaskDefinition;
+
+
+    bool _showTaskDefinitionDrawer;
+    bool _isTaskDefinitionEditorVisible;
+    bool _isInvalidateRequested;
+
+    TaskFlowTaskDesignModel? _dragging;
+
+    TypographyEditableConfig editableStr = new();
+
+    TaskFlowTaskDesignModel _editingTask;
+
+    TaskTriggerType _defaultTriggerType = TaskTriggerType.Manual;
+
+    [Parameter]
+    public TaskFlowGroupDesignModel TaskGroup{ get; set; }
+
+    [Parameter]
+
+    public EventCallback<TaskFlowGroupDesignModel> OnRemoved { get; set; }
+
+    protected override void OnInitialized()
+    {
+        this.editableStr.OnChange = OnNameChanged;
+        base.OnInitialized();
+    }
+
+    void OnNameChanged(string name)
+    {
+        this.TaskGroup.Name = name;
+    }
+
+    protected override void OnParametersSet()
+    {
+        this.editableStr.Text = this.TaskGroup.Name;
+        base.OnParametersSet();
+    }
+
+    void OnDrop(DragEventArgs e, TaskFlowTaskDesignModel item)
+    {
+        if (item != null && _dragging != null)
+        {
+            int index = TaskGroup.Tasks.IndexOf(item);
+            TaskGroup.Tasks.Remove(_dragging);
+            TaskGroup.Tasks.Insert(index, _dragging);
+            _dragging = null;
+            StateHasChanged();
+        }
+    }
+
+    void OnDragStart(DragEventArgs e, TaskFlowTaskDesignModel item)
+    {
+        e.DataTransfer.DropEffect = "copyMove";
+        e.DataTransfer.EffectAllowed = "copyMove";
+        _dragging = item;
+    }
+
+    Task<TaskFlowTaskDesignModel> AddTaskAsync()
+    {
+        var task = new TaskFlowTaskDesignModel()
+            {
+                Name = "未命名任务",
+                IsDesignMode = true,
+            };
+        this.TaskGroup.Tasks.Add(task);
+        return Task.FromResult(task);
+    }
+
+    async Task ShowSelectTaskDefinitionSelector()
+    {
+        _selectedTaskDefinitions = [];
+        _selectedTaskDefinition = null;
+        _showTaskDefinitionDrawer = true;
+        await Task.CompletedTask;
+    }
+
+    async Task CloseSelectTaskDefinitionSelector()
+    {
+        _showTaskDefinitionDrawer = false;
+        var taskDefinition = this._selectedTaskDefinitions?.FirstOrDefault();
+        this._selectedTaskDefinition = null;
+        if (taskDefinition != null && _editingTask == null)
+        {
+            _editingTask = await this.AddTaskAsync();
+        }
+        if (_editingTask != null)
+        {
+            this._editingTask.SetTaskDefinition(taskDefinition);
+        }
+        _editingTask = null;
+    }
+
+    async Task ShowTaskDefinitionEditor()
+    {
+        _isTaskDefinitionEditorVisible = true;
+        await Task.CompletedTask;
+    }
+
+    async Task OnTaskClickedAsync(TaskFlowTaskDesignModel taskFlowTask)
+    {
+        if (taskFlowTask.IsDesignMode)
+        {
+            _editingTask = taskFlowTask;
+            await this.ShowSelectTaskDefinitionSelector();
+            _selectedTaskDefinition = null;
+            if (taskFlowTask.TaskDefinition == null)
+            {
+                _selectedTaskDefinitions = [];
+
+            }
+            else
+            {
+                _selectedTaskDefinitions = [taskFlowTask.TaskDefinition];
+            }
+        }
+        else
+        {
+
+        }
+    }
+
+    async Task OnTaskDefinitionEditorClosedAsync()
+    {
+        _isTaskDefinitionEditorVisible = false;
+        _isInvalidateRequested = true;
+        if (_selectedTaskDefinition != null)
+        {
+            _selectedTaskDefinitions = [_selectedTaskDefinition];
+        }
+        await Task.CompletedTask;
+    }
+
+    async Task OnRemoveTaskAsync(TaskFlowTaskDesignModel taskFlowTask)
+    {
+        this.TaskGroup.Tasks.Remove(taskFlowTask);
+        await Task.CompletedTask;
+    }
+}

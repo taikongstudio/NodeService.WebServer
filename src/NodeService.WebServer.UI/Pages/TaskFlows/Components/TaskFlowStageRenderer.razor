@@ -1,4 +1,4 @@
-﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.ViewModels
+﻿@* @using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
 
 
 <div @ondrag:stopPropagation @ondragstart:stopPropagation>
@@ -30,3 +30,4 @@
         return TaskStageExecutionInstances?.FirstOrDefault(x => x.TaskFlowStageTemplateId == taskFlowStageTemplate.Id);
     }
 }
+ *@

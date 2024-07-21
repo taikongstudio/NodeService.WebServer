@@ -1,0 +1,12 @@
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
+<Button Type="@ButtonType.Primary" Block Icon="edit" OnClick="()=>OnTaskClicked.InvokeAsync(Task)">@Task.Name</Button>
+
+@code {
+
+    [Parameter]
+    public TaskFlowTaskDesignModel Task { get; set; }
+
+    [Parameter]
+
+    public EventCallback<TaskFlowTaskDesignModel> OnTaskClicked{ get; set; }
+}

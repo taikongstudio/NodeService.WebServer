@@ -45,7 +45,6 @@
         <ProjectReference Include="..\NodeService.WebServer.Extensions\NodeService.WebServer.Extensions.csproj" />
         <ProjectReference Include="..\NodeService.WebServer.Models\NodeService.WebServer.Models.csproj" />
         <ProjectReference Include="..\NodeService.WebServer.Services\NodeService.WebServer.Services.csproj" />
-        <ProjectReference Include="..\NodeService.WebServer.UI.Diagrams\NodeService.WebServer.UI.Diagrams.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -59,10 +58,12 @@
     <ItemGroup>
         <None Include="Pages\Components\ConfigurationVersionSelectorDialog.razor" />
         <None Include="Pages\Nodes\Settings\Index.razor" />
-        <None Include="Pages\TaskFlows\Components\TaskFlowStepsRenderer.razor" />
     </ItemGroup>
 
     <ItemGroup>
+        <Content Update="Layouts\TaskDiagramLayout.razor">
+          <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+        </Content>
         <Content Update="Pages\Notifications\Components\DataQualityCheck.razor">
             <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
         </Content>

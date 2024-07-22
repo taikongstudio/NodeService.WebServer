@@ -19,7 +19,7 @@ public class HeartBeatResponseHandler : IMessageHandler
         ILogger<HeartBeatResponseHandler> logger,
         INodeSessionService nodeSessionService,
         BatchQueue<NodeHeartBeatSessionMessage> heartBeatBatchQueue,
-        BatchQueue<NodeStatusChangeRecordModel> nodeStatusChangeRecordBatchQueue)
+                BatchQueue<NodeStatusChangeRecordModel> nodeStatusChangeRecordBatchQueue)
     {
         _logger = logger;
         _nodeSessionService = nodeSessionService;
@@ -36,14 +36,6 @@ public class HeartBeatResponseHandler : IMessageHandler
         if (NodeSessionId != NodeSessionId.Empty)
         {
             _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Offline);
-            await _nodeStatusChangeRecordBatchQueue.SendAsync(new NodeStatusChangeRecordModel()
-            {
-                Id = Guid.NewGuid().ToString(),
-                CreationDateTime = DateTime.UtcNow,
-                NodeId = NodeSessionId.NodeId.Value,
-                Status = NodeStatus.Offline,
-                Message = $"Offline"
-            });
             await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
             {
                 Message = null,

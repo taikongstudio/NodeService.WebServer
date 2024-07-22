@@ -40,7 +40,7 @@ namespace NodeService.WebServer.Services.DataQueue
                         join nodeProfile in repo.DbContext.Set<NodeProfileModel>() on statusChange.NodeId equals nodeProfile.NodeInfoId
                         where (statusChange.CreationDateTime.Date >= parameters.BeginDateTime && statusChange.CreationDateTime <= parameters.EndDateTime)
                         && (parameters.NodeIdList.Count <= 0 || parameters.NodeIdList.Contains(statusChange.NodeId)) &&
-                        (parameters.NodeStatus == NodeStatus.All ? true : statusChange.Status == parameters.NodeStatus)
+                        (parameters.NodeStatus == NodeStatus.All || statusChange.Status == parameters.NodeStatus)
                         group statusChange by new { statusChange.NodeId, statusChange.Status, statusChange.CreationDateTime.Date, statusChange.Name, nodeProfile.ClientVersion }
                         into g
                         where g.Count() > 0
@@ -61,7 +61,11 @@ namespace NodeService.WebServer.Services.DataQueue
                 DateTime = x.Date,
                 Name = x.Name
             }).ToList();
-            return new ListQueryResult<NodeStatusChangeStatisticItem>(count, parameters.PageIndex, parameters.PageSize, list);
+            return new ListQueryResult<NodeStatusChangeStatisticItem>(
+                count,
+                parameters.PageIndex,
+                parameters.PageSize,
+                list);
         }
     }
 }

@@ -37,8 +37,14 @@ public partial class ApplicationDbContext
 
     private void MySql_BuildNodeStatusChangeRecordModel(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<NodeStatusChangeRecordModel>()
-            .HasKey(t => t.Id);
+        modelBuilder.Entity<NodeStatusChangeRecordModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.ProcessList)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<List<StringEntry>>(v, (JsonSerializerOptions)null));
+        });
     }
 
     private void MySql_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)

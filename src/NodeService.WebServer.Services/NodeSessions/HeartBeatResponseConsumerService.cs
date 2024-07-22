@@ -5,12 +5,35 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
+using System.Collections.Generic;
 using System.Globalization;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
 public class HeartBeatResponseConsumerService : BackgroundService
 {
+    record struct AnalysisPropsResult
+    {
+        public AnalysisProcessListResult ProcessListResult { get; set; }
+
+        public AnalysisServiceProcessListResult ServiceProcessListResult { get; set; }
+
+    }
+
+    class AnalysisProcessListResult
+    {
+        public IEnumerable<string> Usages { get; set; } = [];
+
+        public List<ProcessInfo> StatusChangeProcessList { get; set; } = [];
+    }
+
+    class AnalysisServiceProcessListResult
+    {
+        public IEnumerable<string> Usages { get; set; } = [];
+
+        public List<ServiceProcessInfo> StatusChangeProcessList { get; set; } = [];
+    }
+
     readonly ExceptionCounter _exceptionCounter;
     readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatSessionMessageBatchQueue;
     readonly ILogger<HeartBeatResponseConsumerService> _logger;
@@ -23,12 +46,15 @@ public class HeartBeatResponseConsumerService : BackgroundService
     readonly WebServerCounter _webServerCounter;
     readonly IAsyncQueue<NotificationMessage> _notificationQueue;
     readonly NodeInfoQueryService _nodeInfoQueryService;
+    readonly BatchQueue<NodeStatusChangeRecordModel> _nodeStatusChangeRecordBatchQueue;
+    readonly ObjectCache _objectCache;
     readonly WebServerOptions _webServerOptions;
     NodeSettings _nodeSettings;
 
     public HeartBeatResponseConsumerService(
         ILogger<HeartBeatResponseConsumerService> logger,
         ExceptionCounter exceptionCounter,
+        ObjectCache objectCache,
         IMemoryCache memoryCache,
         WebServerCounter webServerCounter,
         IOptionsMonitor<WebServerOptions> optionsMonitor,
@@ -39,7 +65,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
         ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertyRepositoryFactory,
-        BatchQueue<NodeHeartBeatSessionMessage> heartBeatSessionMessageBatchBlock)
+        BatchQueue<NodeHeartBeatSessionMessage> heartBeatSessionMessageBatchBlock,
+        BatchQueue<NodeStatusChangeRecordModel> nodeStatusChangeRecordBatchQueue)
     {
         _logger = logger;
         _nodeSessionService = nodeSessionService;
@@ -55,6 +82,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
         _webServerCounter = webServerCounter;
         _notificationQueue = notificationQueue;
         _nodeInfoQueryService = nodeInfoQueryService;
+        _nodeStatusChangeRecordBatchQueue = nodeStatusChangeRecordBatchQueue;
+        _objectCache = objectCache;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -220,6 +249,9 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             stopwatch.Restart();
 
+            AnalysisPropsResult analysisPropsResult = default;
+            var analysisPropsResultKey = $"NodePropsAnalysisResult:{nodeInfo.Id}";
+
             if (hearBeatResponse != null)
             {
                 if (hearBeatMessage.NodeSessionId.NodeId == NodeId.Null)
@@ -269,16 +301,57 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 if (!string.IsNullOrEmpty(nodeInfo.Profile.IpAddress))
                     _nodeSettings.MatchAreaTag(nodeInfo);
 
-
-                ProcessProps(nodeInfo, hearBeatResponse);
+                analysisPropsResult = ProcessProps(nodeInfo, hearBeatResponse);
+                nodeInfo.Profile.Usages = string.Join(
+                    ",",
+                    analysisPropsResult.ServiceProcessListResult.Usages.Union(analysisPropsResult.ProcessListResult.Usages).Distinct());
+                await _objectCache.SetObjectAsync(analysisPropsResultKey, analysisPropsResult, cancellationToken);
             }
-            if (nodeStatus == NodeStatus.Offline && nodePropSnapshot != null)
+            if (nodeStatus == NodeStatus.Offline)
             {
-                await _nodeInfoQueryService.SaveNodePropSnapshotAsync(
-                    nodeInfo,
-                    nodePropSnapshot,
-                    true,
-                    cancellationToken);
+                var statusChanged = new NodeStatusChangeRecordModel()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    CreationDateTime = DateTime.UtcNow,
+                    NodeId = hearBeatMessage.NodeSessionId.NodeId.Value,
+                    Status = NodeStatus.Offline,
+                    Message = $"Offline",
+                };
+                if (analysisPropsResult == default)
+                {
+                    analysisPropsResult = await _objectCache.GetObjectAsync<AnalysisPropsResult>(analysisPropsResultKey, cancellationToken);
+                }
+                if (analysisPropsResult != default)
+                {
+                    foreach (var item in analysisPropsResult.ProcessListResult.StatusChangeProcessList)
+                    {
+                        statusChanged.ProcessList.Add(new StringEntry()
+                        {
+                            Name = item.ProcessName,
+                            Value = item.Id.ToString()
+                        });
+                    }
+
+                    foreach (var item in analysisPropsResult.ServiceProcessListResult.StatusChangeProcessList)
+                    {
+                        statusChanged.ProcessList.Add(new StringEntry()
+                        {
+                            Name = item.Name,
+                            Value = item.ProcessId.ToString()
+                        });
+                    }
+
+                }
+
+                if (nodePropSnapshot != null)
+                {
+                    await _nodeInfoQueryService.SaveNodePropSnapshotAsync(
+                            nodeInfo,
+                            nodePropSnapshot,
+                            true,
+                            cancellationToken);
+                }
+                await _nodeStatusChangeRecordBatchQueue.SendAsync(statusChanged);
             }
         }
         catch (Exception ex)
@@ -288,79 +361,145 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private void ProcessProps(NodeInfoModel nodeInfo, HeartBeatResponse hearBeatResponse)
+    private AnalysisPropsResult ProcessProps(NodeInfoModel nodeInfo, HeartBeatResponse hearBeatResponse)
     {
-        if (hearBeatResponse.Properties.Count > 0)
+        AnalysisPropsResult analysisPropsResult = default;
+        try
         {
-            if (hearBeatResponse.Properties.TryGetValue(NodePropertyModel.Process_Processes_Key,
-                    out var processListJsonString)
-                &&
-                !string.IsNullOrEmpty(processListJsonString)
-                &&
-                processListJsonString.Contains('['))
+            if (hearBeatResponse.Properties.Count > 0)
             {
-                var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processListJsonString);
-                if (processInfoList != null) AnalysisNodeProcessInfoList(nodeInfo, processInfoList);
-            }
-            if (hearBeatResponse.Properties.TryGetValue(NodePropertyModel.System_Win32Services_Key,
-                    out var win32ServiceListJsonString)
-                &&
-                !string.IsNullOrEmpty(win32ServiceListJsonString)
-                &&
-                win32ServiceListJsonString.Contains('['))
-            {
-                var serviceProcessInfoList = JsonSerializer.Deserialize<ServiceProcessInfo[]>(win32ServiceListJsonString);
-                if (serviceProcessInfoList != null) AnalysisNodeServiceProcessInfoList(nodeInfo, serviceProcessInfoList);
-            }
-
-        }
-    }
-
-    private void AnalysisNodeProcessInfoList(NodeInfoModel nodeInfo, ProcessInfo[] processInfoList)
-    {
-        if (_nodeSettings.ProcessUsagesMapping != null && processInfoList != null)
-        {
-            var usagesList = nodeInfo.Profile.Usages?.Split(',') ?? [];
-            var usages = new HashSet<string>(usagesList);
-            foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
-            {
-                if (string.IsNullOrEmpty(mapping.Name)
-                    || string.IsNullOrEmpty(mapping.Value))
-                    continue;
-                foreach (var processInfo in processInfoList)
-                    if (processInfo.FileName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
-                        usages.Add(mapping.Value);
-            }
-
-            nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(static x => x));
-        }
-    }
-
-    private void AnalysisNodeServiceProcessInfoList(NodeInfoModel nodeInfo, ServiceProcessInfo[] serviceProcessInfoList)
-    {
-        if (_nodeSettings.ProcessUsagesMapping != null && serviceProcessInfoList != null)
-        {
-            var usagesList = nodeInfo.Profile.Usages?.Split(',') ?? [];
-            var usages = new HashSet<string>(usagesList);
-            foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
-            {
-                if (string.IsNullOrEmpty(mapping.Name)
-                    || string.IsNullOrEmpty(mapping.Value))
-                    continue;
-                foreach (var serviceProcessInfo in serviceProcessInfoList)
+                if (hearBeatResponse.Properties.TryGetValue(NodePropertyModel.Process_Processes_Key,
+                        out var processListJsonString)
+                    &&
+                    !string.IsNullOrEmpty(processListJsonString)
+                    &&
+                    processListJsonString.Contains('['))
                 {
-                    if (serviceProcessInfo.PathName != null && serviceProcessInfo.PathName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+                    var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]>(processListJsonString);
+                    if (processInfoList != null)
                     {
-                        usages.Add(mapping.Value);
+                        analysisPropsResult.ProcessListResult = AnalysisNodeProcessInfoList(nodeInfo, processInfoList);
                     }
-                    else if (serviceProcessInfo.Name != null && serviceProcessInfo.Name.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+
+                }
+                if (hearBeatResponse.Properties.TryGetValue(NodePropertyModel.System_Win32Services_Key,
+                        out var win32ServiceListJsonString)
+                    &&
+                    !string.IsNullOrEmpty(win32ServiceListJsonString)
+                    &&
+                    win32ServiceListJsonString.Contains('['))
+                {
+                    var serviceProcessInfoList = JsonSerializer.Deserialize<ServiceProcessInfo[]>(win32ServiceListJsonString);
+                    if (serviceProcessInfoList != null)
                     {
-                        usages.Add(mapping.Value);
+                        analysisPropsResult.ServiceProcessListResult = AnalysisNodeServiceProcessInfoList(nodeInfo, serviceProcessInfoList);
                     }
                 }
             }
-            nodeInfo.Profile.Usages = usages.Count == 0 ? null : string.Join(",", usages.OrderBy(static x => x));
+
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
         }
 
+        return analysisPropsResult;
+    }
+
+    private AnalysisProcessListResult AnalysisNodeProcessInfoList(NodeInfoModel nodeInfo, ProcessInfo[] processInfoList)
+    {
+        var analysisProcessListResult = new AnalysisProcessListResult();
+        try
+        {
+            if (_nodeSettings.ProcessUsagesMapping != null && processInfoList != null)
+            {
+                var usagesList = nodeInfo.Profile.Usages?.Split(',') ?? [];
+                var usages = new HashSet<string>(usagesList);
+                foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
+                {
+                    if (string.IsNullOrEmpty(mapping.Name)
+                        || string.IsNullOrEmpty(mapping.Value))
+                        continue;
+                    foreach (var processInfo in processInfoList)
+                        if (processInfo.FileName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+                            usages.Add(mapping.Value);
+                }
+                analysisProcessListResult.Usages = usages;
+            }
+            if (_nodeSettings.NodeStatusChangeRememberProcessList != null && processInfoList != null)
+            {
+                foreach (var item in _nodeSettings.NodeStatusChangeRememberProcessList)
+                {
+                    foreach (var processInfo in processInfoList)
+                    {
+                        if (processInfo.FileName.Contains(item.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            analysisProcessListResult.StatusChangeProcessList.Add(processInfo);
+                        }
+                    }
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+
+        return analysisProcessListResult;
+    }
+
+    private AnalysisServiceProcessListResult AnalysisNodeServiceProcessInfoList(NodeInfoModel nodeInfo, ServiceProcessInfo[] serviceProcessInfoList)
+    {
+        var analisisProcessListResult = new AnalysisServiceProcessListResult();
+        try
+        {
+            if (_nodeSettings.ProcessUsagesMapping != null && serviceProcessInfoList != null)
+            {
+                var usagesList = nodeInfo.Profile.Usages?.Split(',') ?? [];
+                var usages = new HashSet<string>(usagesList);
+                foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
+                {
+                    if (string.IsNullOrEmpty(mapping.Name)
+                        || string.IsNullOrEmpty(mapping.Value))
+                        continue;
+                    foreach (var serviceProcessInfo in serviceProcessInfoList)
+                    {
+                        if (serviceProcessInfo.PathName != null && serviceProcessInfo.PathName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            usages.Add(mapping.Value);
+                        }
+                        else if (serviceProcessInfo.Name != null && serviceProcessInfo.Name.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            usages.Add(mapping.Value);
+                        }
+                    }
+                }
+                analisisProcessListResult.Usages = usages;
+
+            }
+            if (_nodeSettings.NodeStatusChangeRememberProcessList != null && serviceProcessInfoList != null)
+            {
+                foreach (var item in _nodeSettings.NodeStatusChangeRememberProcessList)
+                {
+                    foreach (var processInfo in serviceProcessInfoList)
+                    {
+                        if (processInfo.Name.Contains(item.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            analisisProcessListResult.StatusChangeProcessList.Add(processInfo);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+
+        return analisisProcessListResult;
     }
 }

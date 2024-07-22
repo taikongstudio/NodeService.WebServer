@@ -15,6 +15,7 @@
         EnableVirtualization="false"
         TItem="NodeStatusChangeRecordModel"
         Resizable
+        RowExpandable="(x)=>x.Data.ProcessList!=null"
         OnChange="OnTableChange"
         PageIndex="@_dataSource.PageIndex"
         PageSize="@_dataSource.PageSize"
@@ -67,6 +68,9 @@
             <PropertyColumn Title="时间" Sortable Property="c => c.CreationDateTime" DefaultSortOrder="SortDirection.Descending"></PropertyColumn>
             <PropertyColumn Title="消息" Sortable="true" Property="c => c.Message"></PropertyColumn>
         </ColumnDefinitions>
+        <ExpandTemplate>
+            <StringEntryTable IsEditable="false" ItemsSource="@(context.Data.ProcessList??[])" NameTitle="进程信息" ValueTitle="进程ID"/>
+        </ExpandTemplate>
     </Table>
 </GridContent>
 

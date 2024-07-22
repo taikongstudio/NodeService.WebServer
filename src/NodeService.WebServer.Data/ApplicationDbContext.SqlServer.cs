@@ -42,6 +42,11 @@ public partial class ApplicationDbContext
     {
         modelBuilder.Entity<NodeStatusChangeRecordModel>()
             .HasKey(t => t.Id);
+        modelBuilder.Entity<NodeStatusChangeRecordModel>()
+            .Property(x => x.ProcessList)
+            .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
+            .Metadata
+            .SetValueComparer(GetEnumerableComparer<StringEntry>());
     }
 
     private void SqlServer_BuildClientUpdateCounterModel(ModelBuilder modelBuilder)

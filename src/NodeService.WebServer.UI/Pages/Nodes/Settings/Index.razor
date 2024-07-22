@@ -45,6 +45,12 @@
                             NameTitle="区域"
                             ItemsSource="@_nodeSettings.NodeSiteMapping"/>
         </TabPane>
+        <TabPane Tab="节点状态变更记录进程" Key="5">
+            <StringEntryTable
+                ValueTitle="进程名称"
+                IsValueHidden
+                ItemsSource="@_nodeSettings.NodeStatusChangeRememberProcessList" />
+        </TabPane>
     </Tabs>
 
 </GridContent>

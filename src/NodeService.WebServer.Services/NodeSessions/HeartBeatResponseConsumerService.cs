@@ -314,9 +314,16 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     _nodeSettings.MatchAreaTag(nodeInfo);
 
                 analysisPropsResult = ProcessProps(nodeInfo, hearBeatResponse);
-                nodeInfo.Profile.Usages = string.Join(
-                    ",",
-                    analysisPropsResult.ServiceProcessListResult.Usages.Union(analysisPropsResult.ProcessListResult.Usages).Distinct());
+                List<string> processList = [];
+                if (analysisPropsResult.ServiceProcessListResult.Usages != null)
+                {
+                    processList.AddRange(analysisPropsResult.ServiceProcessListResult.Usages);
+                }
+                if (analysisPropsResult.ProcessListResult.Usages != null)
+                {
+                    processList.AddRange(analysisPropsResult.ProcessListResult.Usages);
+                }
+                nodeInfo.Profile.Usages = string.Join<string>(",", processList.Distinct());
                 await _objectCache.SetObjectAsync(analysisPropsResultKey, analysisPropsResult, cancellationToken);
             }
             if (nodeStatus == NodeStatus.Offline)

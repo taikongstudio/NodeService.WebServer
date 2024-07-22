@@ -15,7 +15,7 @@
         EnableVirtualization="false"
         TItem="NodeStatusChangeRecordModel"
         Resizable
-        RowExpandable="(x)=>x.Data.ProcessList!=null"
+        RowExpandable="(x)=>x.Data.ProcessList!=null&&x.Data.ProcessList.Count>0"
         OnChange="OnTableChange"
         PageIndex="@_dataSource.PageIndex"
         PageSize="@_dataSource.PageSize"

@@ -14,21 +14,33 @@ public class HeartBeatResponseConsumerService : BackgroundService
 {
     record struct AnalysisPropsResult
     {
+        public AnalysisPropsResult()
+        {
+        }
+
         public AnalysisProcessListResult ProcessListResult { get; set; }
 
         public AnalysisServiceProcessListResult ServiceProcessListResult { get; set; }
 
     }
 
-    class AnalysisProcessListResult
+    record struct AnalysisProcessListResult
     {
+        public AnalysisProcessListResult()
+        {
+        }
+
         public IEnumerable<string> Usages { get; set; } = [];
 
         public List<ProcessInfo> StatusChangeProcessList { get; set; } = [];
     }
 
-    class AnalysisServiceProcessListResult
+    record struct AnalysisServiceProcessListResult
     {
+        public AnalysisServiceProcessListResult()
+        {
+        }
+
         public IEnumerable<string> Usages { get; set; } = [];
 
         public List<ServiceProcessInfo> StatusChangeProcessList { get; set; } = [];

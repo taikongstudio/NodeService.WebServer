@@ -10,6 +10,8 @@ public abstract record class NodeSessionMessage
 {
     public NodeSessionId NodeSessionId { get; init; }
 
+    public string HostName { get; init; }
+
     public INodeMessage Message { get; init; }
 }
 

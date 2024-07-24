@@ -1,0 +1,183 @@
+﻿@page "/TaskFlows/Instances/View/{TaskFlowInstanceId}"
+
+@layout NodeService.WebServer.UI.Layouts.TaskFlowTemplateLayout
+@using NodeService.WebServer.UI.Pages.TaskFlows.Instances.Components
+@using NodeService.WebServer.UI.Pages.TaskFlows.Instances.Models
+@inject ApiService ApiService
+@inject IMessageService _message
+@implements IDisposable
+<style>
+    .site-layout .site-layout-background {
+        background: #fff;
+    }
+
+    body { /* ADDED */
+        margin: 0;
+        background-color:#fff
+    }
+
+    #TaskFlowDesigner {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: min-content min-content auto min-content;
+        grid-gap: 6px;
+        grid-template-areas: "header header" "nav nav" "main sidebar " "footer footer";
+        height: 100vh; /* ADDED */
+    }
+
+    #TaskFlowDesigner .taskflow-header {
+        grid-area: header;
+        background-color: #fff;
+        height:50px;
+        padding: 0 10px;
+    }
+
+    #TaskFlowDesigner .taskflow-navigation {
+        grid-area: nav;
+        height:40px;
+        line-height:40px;
+        background-color: #fff;
+        padding: 0px 20px;
+    }
+
+    #TaskFlowDesigner .taskflow-sidebar {
+        grid-area: sidebar;
+        background-color: #fff;
+        overflow: auto;
+    }
+
+    #TaskFlowDesigner .taskflow-main {
+        grid-area: main;
+        background-color: #fff;
+        overflow: auto;
+        margin:0px;
+        padding:10px;
+        height:100%;
+        width:100%
+    }
+
+    #TaskFlowDesigner .taskflow-footer {
+        grid-area: footer;
+        background-color: #fff;
+    }
+
+    #TaskFlowDesigner .ant-steps{
+        width:auto;
+        display:inline-flex;
+    }
+    #TaskFlowDesigner .ant-steps .ant-steps-item{
+            width: 308px;
+            padding:4px;
+    }
+
+</style>
+
+
+<div class="taskflow-grid" id="TaskFlowDesigner">
+    <Space Class="taskflow-header">
+        <SpaceItem>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home"></Button>
+        </SpaceItem>
+
+        <SpaceItem>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload"></Button>
+        </SpaceItem>
+    </Space>
+    <div class="taskflow-navigation">
+        <Paragraph  Editable="false" Style="max-width:300px;overflow:hidden;display:flex;flex-direction:row">
+            <div style="width:280px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;font-size:15px">@_taskFlowInstance.Name</div>
+        </Paragraph>
+    </div>
+    <div class="taskflow-main">
+        <Steps  Percent="60" Current="@CalcActiveTaskStage()" >
+            @foreach (var taskStage in _taskFlowInstance.Value.TaskStages)
+            {
+                <Step Title="@taskStage.Name"></Step>
+            }
+        </Steps>
+        <Space Align="start" >
+
+            @foreach (var taskStage in _taskFlowInstance.Value.TaskStages)
+            {
+                <SpaceItem>
+                    <StageComponent TaskStage="@taskStage"  />
+                </SpaceItem>
+            }
+        </Space>
+    </div>
+    <div class="taskflow-footer">
+
+    </div>
+
+</div>
+
+@code {
+    TaskFlowExecutionInstanceModel _taskFlowInstance = new TaskFlowExecutionInstanceModel();
+    bool _isSettingsDrawVisible;
+    System.Threading.Timer _timer;
+    RenderFragment customDot = @<Icon Type="loading" Theme="outline" />;
+    
+    [Parameter] public string TaskFlowInstanceId { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _timer = new System.Threading.Timer(OnTick, null, 1000, 3000);
+        base.OnInitialized();
+    }
+
+    async void OnTick(object? state)
+    {
+        if (!string.IsNullOrEmpty(TaskFlowInstanceId))
+        {
+            await QueryTaskFlowInstanceAsync();
+        }
+    }
+
+    async Task QueryTaskFlowInstanceAsync()
+    {
+        try
+        {
+            var rsp = await ApiService.QueryTaskFlowExecutionInstanceAsync(TaskFlowInstanceId);
+            if (rsp.ErrorCode == 0)
+            {
+                _taskFlowInstance = rsp.Result;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+
+        }
+
+    }
+
+    async Task OnSettingsButtonClickedAsync()
+    {
+        _isSettingsDrawVisible = true;
+        await Task.CompletedTask;
+    }
+
+    int CalcActiveTaskStage()
+    {
+        if (_taskFlowInstance == null)
+        {
+            return 0;
+        }
+        var index = 0;
+        foreach (var taskFlowStage in _taskFlowInstance.Value.TaskStages)
+        {
+            if (taskFlowStage.Status == TaskExecutionStatus.Running)
+            {
+                break;
+            }
+            index++;
+        }
+        return index;
+    }
+
+    public void Dispose()
+    {
+        _timer.Dispose();
+    }
+
+}

@@ -1,0 +1,37 @@
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
+<Button Type="@ButtonType.Default" Block Icon="@GetIcon()" OnClick="()=>OnTaskClicked.InvokeAsync(Task)">@Task.Name</Button>
+
+@code {
+
+    [Parameter]
+    public TaskFlowTaskExecutionInstance Task { get; set; }
+
+    [Parameter]
+
+    public EventCallback<TaskFlowTaskExecutionInstance> OnTaskClicked { get; set; }
+
+    string GetIcon()
+    {
+        switch (Task.Status)
+        {
+            case TaskExecutionStatus.Triggered:
+                return "thunderbolt";
+            case TaskExecutionStatus.Pendding:
+                return "clock-circle";
+            case TaskExecutionStatus.Started:
+            case  TaskExecutionStatus.Running:
+                return "loading";
+            case TaskExecutionStatus.Cancelled:
+                return "info";
+            case TaskExecutionStatus.PenddingTimeout:
+                return "warning";
+            case TaskExecutionStatus.Failed:
+                return "warning";
+            case TaskExecutionStatus.Finished:
+                return "check";
+            default:
+                break;
+        }
+        return "";
+    }
+}

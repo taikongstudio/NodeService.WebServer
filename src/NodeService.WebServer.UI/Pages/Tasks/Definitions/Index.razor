@@ -14,8 +14,9 @@
                                         @bind-Visible="@_versionSelectorDialogVisible"
                                         TItem="TaskDefinitionModel">
     </ConfigurationVersionSelectorDialog>
-    <TaskDefinitionEditor
-        Closed="OnTaskDefinitionEditorClosed"
+    <TaskDefinitionEditor IsVisible="_isTaskDefinitionEditorVisible"
+        @bind-TaskDefinition="_taskDefinition"
+        IsVisibleChanged="OnTaskDefinitionEditorVisibleChanged"
         @ref="_taskDefinitionEditor"/>
     <InvokeTaskDialog
         TaskDefinition="@_taskDefinition"
@@ -181,8 +182,10 @@
         _taskDefinition = model;
     }
 
-    async Task OnTaskDefinitionEditorClosed()
+    async Task OnTaskDefinitionEditorVisibleChanged(bool visible)
     {
+        _taskDefinition = null;
+        _isTaskDefinitionEditorVisible = false;
         await _dataSource.QueryAsync();
     }
 

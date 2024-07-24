@@ -1,9 +1,5 @@
 ﻿using Microsoft.AspNetCore.Http;
-using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Services.NodeSessions;
-using System.Net.Http;
-using System.Net.NetworkInformation;
 
 namespace NodeService.WebServer.Services.NodeSessions.MessageHandlers;
 
@@ -19,7 +15,7 @@ public class HeartBeatResponseHandler : IMessageHandler
         ILogger<HeartBeatResponseHandler> logger,
         INodeSessionService nodeSessionService,
         BatchQueue<NodeHeartBeatSessionMessage> heartBeatBatchQueue,
-                BatchQueue<NodeStatusChangeRecordModel> nodeStatusChangeRecordBatchQueue)
+        BatchQueue<NodeStatusChangeRecordModel> nodeStatusChangeRecordBatchQueue)
     {
         _logger = logger;
         _nodeSessionService = nodeSessionService;
@@ -54,14 +50,16 @@ public class HeartBeatResponseHandler : IMessageHandler
         }
         _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);
         _nodeSessionService.UpdateNodeIpAddress(NodeSessionId, _remoteIpAddress);
+        var hostName = _nodeSessionService.GetNodeName(NodeSessionId);
         if (message is HeartBeatResponse heartBeatResponse)
         {
             heartBeatResponse.Properties.TryAdd("RemoteIpAddress", _remoteIpAddress);
             await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
             {
                 Message = heartBeatResponse,
-                NodeSessionId = NodeSessionId
-            });
+                NodeSessionId = NodeSessionId,
+                HostName = hostName,
+            }, cancellationToken);
         }
 
     }

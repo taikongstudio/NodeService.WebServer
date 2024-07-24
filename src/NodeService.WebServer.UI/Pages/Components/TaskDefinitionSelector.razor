@@ -1,58 +1,78 @@
 ﻿@inject ApiService ApiService
 @inject NotificationService _notice
 @inherits Selector<TaskDefinitionModel>
+<style type="text/css">
+    td .ant-table-cell{
+        padding:3px;
+    }
+    </style>
 
-<GridRow>
-    <GridCol  Span="24">
-    <Select ItemValue="c=>c"
-            ItemLabel="c=>c.Name"
-            TItem="TaskDefinitionModel"
-            TItemValue="TaskDefinitionModel"
-            @bind-Values="@SelectedItems"
-            DataSource="@SelectedItems"
-            Mode="multiple"
-            AllowClear="true"
-            Placeholder="选择任务定义"
-            Style="margin-bottom:4px;margin-top:4px;width:100%"
-            MaxTagCount="50"
-            BoundaryAdjustMode="TriggerBoundaryAdjustMode.InView"
-            EnableSearch
-            DropdownMatchSelectWidth="false">
-    </Select>
 
-    </GridCol>
+    <Flex Vertical>
+    <GridRow>
+        <GridCol Span="24">
+            <Select ItemValue="c=>c"
+                    ItemLabel="c=>c.Name"
+                    TItem="TaskDefinitionModel"
+                    TItemValue="TaskDefinitionModel"
+                    @bind-Values="@SelectedItems"
+                    DataSource="@SelectedItems"
+                    Mode="multiple"
+                    AllowClear="true"
+                    Placeholder="选择任务定义"
+                    Style="margin-bottom:4px;margin-top:4px;width:100%"
+                    MaxTagCount="50"
+                    BoundaryAdjustMode="TriggerBoundaryAdjustMode.InView"
+                    EnableSearch
+                    DropdownMatchSelectWidth="false">
+            </Select>
 
-</GridRow>
+        </GridCol>
 
-<GridRow>
-    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.QueryAsync"/>
-</GridRow>
+    </GridRow>
 
-<GridRow>
-    <GridCol Flex=@("auto")>
-        <Table Size="TableSize.Small"
-               OnChange="(QueryModel<TaskDefinitionModel> query) => OnTableChanged(query)"
-               OnPageIndexChange="@_dataSource.OnPaginationEvent"
-               OnPageSizeChange="@_dataSource.OnPaginationEvent"
-               PageSize="@_dataSource.PageSize"
-               PageIndex="@_dataSource.PageIndex"
-               Total="@_dataSource.TotalCount"
-               Loading="@_dataSource.IsLoading"
-               DataSource="@_dataSource.ItemsSource"
-               SelectedRows="@SelectedItems"
-               SelectedRowsChanged="(IEnumerable<TaskDefinitionModel> items) => OnSelectedItemsChanged(items)"
-               RowKey="x => x.Id">
-            <ColumnDefinitions Context="ctx">
-                <Selection Key="@ctx.Id" Type="@GetSelectionMode()"/>
-                <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
-                <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="配置名称"></PropertyColumn>
-            </ColumnDefinitions>
-        </Table>
-    </GridCol>
-</GridRow>
+    <GridRow>
+        <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.QueryAsync" />
+    </GridRow>
+
+    <GridRow>
+        <GridCol Flex=@("auto")>
+            <Table Size="TableSize.Small"
+                   OnChange="(QueryModel<TaskDefinitionModel> query) => OnTableChanged(query)"
+                   OnPageIndexChange="@_dataSource.OnPaginationEvent"
+                   OnPageSizeChange="@_dataSource.OnPaginationEvent"
+                   PageSize="@_dataSource.PageSize"
+                   PageIndex="@_dataSource.PageIndex"
+                   Total="@_dataSource.TotalCount"
+                   Loading="@_dataSource.IsLoading"
+                   DataSource="@_dataSource.ItemsSource"
+                   SelectedRows="@SelectedItems" 
+                   SelectedRowsChanged="(IEnumerable<TaskDefinitionModel> items) => OnSelectedItemsChanged(items)"
+                   RowKey="x => x.Id">
+                  
+                <ColumnDefinitions Context="ctx">
+                    <Selection Key="@ctx.Id" Type="@GetSelectionMode()" />
+                    <PropertyColumn Property="c => c.Id" Ellipsis Width="100" Sortable Title="标志"></PropertyColumn>
+                    <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="配置名称"></PropertyColumn>
+                    <ActionColumn Width="100">
+                        <Space>
+                            <SpaceItem>
+                                <Button Style="padding:0px" Shape="@ButtonShape.Circle" Type="@ButtonType.Link" Icon="@IconType.Outline.Edit" OnClick="() => ShowTaskDefinitionEditorAsync(ctx.JsonClone<TaskDefinitionModel>())"></Button>
+                            </SpaceItem>
+
+                        </Space>
+                    </ActionColumn>
+                </ColumnDefinitions>
+            </Table>
+        </GridCol>
+    </GridRow>
+    </Flex>
+
 
 
 @code {
+
+    [Parameter] public EventCallback<TaskDefinitionModel> OnEdit { get; set; }
 
     PaginationDataSource<TaskDefinitionModel, PaginationQueryParameters> _dataSource;
 
@@ -113,5 +133,13 @@
     {
         await _dataSource.QueryAsync();
         await base.InvalidateAsync();
+    }
+
+    async Task ShowTaskDefinitionEditorAsync(TaskDefinitionModel taskDefinition)
+    {
+        if (OnEdit.HasDelegate)
+        {
+            await OnEdit.InvokeAsync(taskDefinition);
+        }
     }
 }

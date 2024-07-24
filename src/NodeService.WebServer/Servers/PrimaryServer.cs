@@ -396,6 +396,7 @@ namespace NodeService.WebServer.Servers
             //builder.Services.AddSingleton<MyDynamicRouteValueTransformer>();
             builder.Services.AddSingleton<NodeFileSyncQueueDictionary>();
             builder.Services.AddSingleton<FtpClientFactory>();
+            //builder.Services.AddDistributedMemoryCache();
             builder.Services.AddStackExchangeRedisCache(options =>
             {
                 var endPointsString = builder.Configuration.GetValue<string>("RedisOptions:EndPoints");

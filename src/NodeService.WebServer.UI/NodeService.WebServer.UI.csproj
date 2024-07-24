@@ -9,6 +9,7 @@
     <ItemGroup>
         <Content Remove="Pages\CommonConfig\Components\ConfigurationVersionSelectorDialog.razor" />
         <Content Remove="Pages\Nodes\List\Settings.razor" />
+        <Content Remove="Pages\TaskFlows\Instances\Components\TaskActivationRecordDrawer.razor" />
     </ItemGroup>
 
 
@@ -53,11 +54,13 @@
 
     <ItemGroup>
         <_ContentIncludedByDefault Remove="Pages\Nodes\List\Settings.razor" />
+        <_ContentIncludedByDefault Remove="Pages\TaskFlows\Instances\Components\TaskActivationRecordDrawer.razor" />
     </ItemGroup>
 
     <ItemGroup>
         <None Include="Pages\Components\ConfigurationVersionSelectorDialog.razor" />
         <None Include="Pages\Nodes\Settings\Index.razor" />
+        <None Include="Pages\TaskFlows\Components\TaskActivationRecordDrawer.razor" />
     </ItemGroup>
 
     <ItemGroup>
@@ -70,6 +73,10 @@
         <Content Update="Pages\TaskFlows\Templates\Index.razor">
           <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
         </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+      <UpToDateCheckInput Remove="Pages\TaskFlows\Instances\Components\TaskActivationRecordDrawer.razor" />
     </ItemGroup>
 
 

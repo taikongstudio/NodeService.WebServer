@@ -1,0 +1,219 @@
+﻿@using NodeService.Infrastructure.DataModels;
+@implements IDisposable
+@inject IMessageService _message
+
+<Drawer Visible="@Visible" VisibleChanged="@VisibleChanged" OnClose="@OnDrawerClosed" Title="@("查看节点运行状态")" Width="600">
+    <Space Style="margin-bottom:16px" >
+        <SpaceItem>
+            <Button Shape="@ButtonShape.Circle" OnClick="() => RetryTaskAsync()" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo"></Button>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Shape="@ButtonShape.Circle" OnClick="() => CancelTaskAsync()" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Close"></Button>
+        </SpaceItem>
+    </Space>
+    <Table Size="TableSize.Small"
+           Loading="@_isLoading"
+           EnableVirtualization="false"
+           TItem="TaskExecutionNodeInfo"
+           DataSource="@_dataSourceList"
+           Resizable
+           Total="@_dataSourceList.Count"
+           @bind-SelectedRows="@_selectedTaskExecutionNodeInfos"
+           PageIndex="1"
+           RowKey="x => x.NodeInfoId"
+           PageSize="10">
+        <ColumnDefinitions>
+            <Selection Key="@context.NodeInfoId" Type="checkbox" />
+            <PropertyColumn Title="标志" Ellipsis Sortable Width="150" Property="c => c.NodeInfoId"></PropertyColumn>
+            <PropertyColumn Title="状态" Ellipsis Sortable Width="150" Property="c => c.Status"></PropertyColumn>
+            <PropertyColumn Title="消息" Ellipsis Sortable Property="c => c.Instances">
+                <Text>@context.Instances.LastOrDefault()?.Message</Text>
+            </PropertyColumn>
+            <ActionColumn Fixed="right" Width="100" Title="操作">
+                <CellRender Context="cellData">
+                    <Space>
+                        <SpaceItem>
+                            <Button Disabled="@(CanRetry(context.Status)==false)" Shape="@ButtonShape.Circle" OnClick="() => RetryTaskAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo"></Button>
+                            <Button Disabled="@(IsRunning(context.Status)==false)" Shape="@ButtonShape.Circle" OnClick="() => CancelTaskAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
+                        </SpaceItem>
+                    </Space>
+                </CellRender>
+            </ActionColumn>
+        </ColumnDefinitions>
+    </Table>
+</Drawer>
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public ApiService ApiService { get; set; }
+    [Parameter] public TaskFlowTaskExecutionInstance ExecutionInstance { get; set; }
+
+    bool _isLoading;
+    System.Threading.Timer _timer;
+    bool _isTaskActivationRecordLoading;
+    IEnumerable<TaskExecutionNodeInfo> _selectedTaskExecutionNodeInfos = [];
+    List<TaskExecutionNodeInfo> _dataSourceList = [];
+    TaskActivationRecordModel _taskActivationRecord = new TaskActivationRecordModel();
+
+    bool IsRunning(TaskExecutionStatus taskExecutionStatus)
+    {
+        return taskExecutionStatus == TaskExecutionStatus.Running;
+    }
+
+    bool CanRetry(TaskExecutionStatus taskExecutionStatus)
+    {
+        return taskExecutionStatus == TaskExecutionStatus.Unknown
+        ||
+        taskExecutionStatus == TaskExecutionStatus.Failed
+        ||
+        taskExecutionStatus == TaskExecutionStatus.PenddingTimeout;
+    }
+
+
+    async Task OnDrawerClosed()
+    {
+        if (_timer != null)
+        {
+            _timer.Dispose();
+        }
+        await Task.CompletedTask;
+    }
+
+    async Task RetryTaskAsync()
+    {
+        if (_selectedTaskExecutionNodeInfos == null)
+        {
+            return;
+        }
+        foreach (var item in _selectedTaskExecutionNodeInfos)
+        {
+            var currentTask = item.Instances.LastOrDefault();
+            if (currentTask == default)
+            {
+                continue;
+            }
+            switch (currentTask.Status)
+            {
+                case TaskExecutionStatus.Unknown:
+                case TaskExecutionStatus.Failed:
+                case TaskExecutionStatus.PenddingTimeout:
+                    await RetryTaskAsync(currentTask.TaskExecutionInstanceId);
+                    break;
+            }
+        }
+    }
+
+    async Task CancelTaskAsync()
+    {
+        if (_selectedTaskExecutionNodeInfos == null)
+        {
+            return;
+        }
+        foreach (var item in _selectedTaskExecutionNodeInfos)
+        {
+            var currentTask = item.Instances.LastOrDefault();
+            if (currentTask == default)
+            {
+                continue;
+            }
+            switch (currentTask.Status)
+            {
+                case TaskExecutionStatus.Running:
+                    await CancelTaskAsync(currentTask.TaskExecutionInstanceId);
+                    break;
+            }
+        }
+    }
+
+    async Task RetryTaskAsync(string? taskExecutionInstanceId)
+    {
+        try
+        {
+            if (taskExecutionInstanceId == null)
+            {
+                return;
+            }
+            var rsp = await this.ApiService.RetryTaskAsync(taskExecutionInstanceId);
+        }
+        catch (Exception ex)
+        {
+            await _message.Error("查看节点状态失败");
+        }
+
+    }
+
+    async Task CancelTaskAsync(string? taskExecutionInstanceId)
+    {
+        try
+        {
+            if (taskExecutionInstanceId == null)
+            {
+                return;
+            }
+            var rsp = await this.ApiService.CancelTaskAsync(taskExecutionInstanceId, new TaskCancellationParameters()
+                {
+                    TaskExeuctionInstanceId = taskExecutionInstanceId,
+                    Source = "web",
+                    Context = "web"
+                });
+            await _message.Info("取消任务成功");
+        }
+        catch (Exception ex)
+        {
+            await _message.Error($"取掉任务失败:{ex.ToString()}");
+        }
+
+    }
+
+
+    async void OnTick(object? state)
+    {
+        var taskFlowTask = state as TaskFlowTaskExecutionInstance;
+        if (taskFlowTask == null)
+        {
+            return;
+        }
+        _isTaskActivationRecordLoading = true;
+        if (_taskActivationRecord == null || _taskActivationRecord.Id != _taskActivationRecord.Id)
+        {
+            _taskActivationRecord = await taskFlowTask.QueryTaskFlowTaskDetailsAsync(ApiService);
+        }
+        else
+        {
+            var taskActivationRecord = await taskFlowTask.QueryTaskFlowTaskDetailsAsync(ApiService);
+            _taskActivationRecord.Value.TaskExecutionNodeList = taskActivationRecord.Value.TaskExecutionNodeList;
+        }
+        _dataSourceList = _taskActivationRecord.Value.TaskExecutionNodeList;
+        _isTaskActivationRecordLoading = false;
+       // await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (ExecutionInstance==null)
+            {
+                return;
+            }
+            _timer = new System.Threading.Timer(OnTick, ExecutionInstance, 1000, 3000);
+        }
+        catch (Exception ex)
+        {
+            await _message.Error("查看节点状态失败");
+        }
+        finally
+        {
+            _isTaskActivationRecordLoading = false;
+        }
+        await base.OnInitializedAsync();
+    }
+
+    public void Dispose()
+    {
+        if (_timer != null)
+        {
+            _timer.Dispose();
+        }
+    }
+}

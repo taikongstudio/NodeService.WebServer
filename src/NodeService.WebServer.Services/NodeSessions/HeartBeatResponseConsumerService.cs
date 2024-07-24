@@ -225,7 +225,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
+    async ValueTask RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
        await using var repo =await _propertyBagRepositoryFactory.CreateRepositoryAsync();
         var propertyBag =
@@ -299,6 +299,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                         false,
                         cancellationToken);
                 }
+                nodeInfo.Name = hearBeatMessage.HostName;
                 nodeInfo.Profile.UpdateTime = DateTime.ParseExact(
                     hearBeatResponse.Properties[NodePropertyModel.LastUpdateDateTime_Key],
                     NodePropertyModel.DateTimeFormatString, DateTimeFormatInfo.InvariantInfo);

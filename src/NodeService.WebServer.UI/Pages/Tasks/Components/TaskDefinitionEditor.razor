@@ -170,23 +170,17 @@
     CommonDialog _taskTypeDescSelectorDialog;
     bool _isSelectedNodeLoading;
     bool _isVisible;
-    bool _initialized;
+    bool _isVisibleRequested;
 
-    [Parameter] public EventCallback Closed { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
     [Parameter] public bool IsChildTaskSelectorVisible { get; set; } = true;
     [Parameter] public TaskDefinitionModel TaskDefinition { get; set; }
     [Parameter] public EventCallback<TaskDefinitionModel> TaskDefinitionChanged { get; set; }
     [Parameter] public TaskTriggerType DefaultTriggerType { get; set; }
     [Parameter] public bool TriggerTypeEditable { get; set; } = true;
-    [Parameter]
-    public bool IsVisible
-    {
-        get { return _isVisible; }
-        set
-        {
-            _isVisible = value;
-        }
-    }
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnOk { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
 
     async Task HandleEditFormOk(MouseEventArgs e)
     {
@@ -402,10 +396,11 @@
         _loading = true;
         try
         {
-            if (_initialized)
+            if (_isVisibleRequested)
             {
                 return;
             }
+            _isVisibleRequested = true;
             if (TaskDefinition == null)
             {
                 TaskDefinition = new TaskDefinitionModel
@@ -423,7 +418,7 @@
             else
             {
                 _modalTitle = "编辑配置";
-                if (TaskDefinition.Value.TaskTypeDesc == null)
+                if (TaskDefinition.Value.TaskTypeDesc == null && TaskDefinition.Value.TaskTypeDescId != null)
                 {
                     TaskDefinition.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(TaskDefinition.Value.TaskTypeDescId);
                 }
@@ -433,7 +428,6 @@
                 _selectedNodes = await TaskDefinition.Value.NodeList.QueryNodeListAsync(ApiService);
                 _isSelectedNodeLoading = false;
             }
-            _initialized = true;
         }
         catch (Exception ex)
         {
@@ -475,6 +469,10 @@
             if (apiResponse.ErrorCode == 0)
             {
                 _selectedNodes = [];
+                if (OnOk.HasDelegate)
+                {
+                    await OnOk.InvokeAsync();
+                }
             }
             else
             {
@@ -671,10 +669,18 @@
     }
 
 
-    void HandleEditFormCancel(MouseEventArgs e)
+    async Task HandleEditFormCancel(MouseEventArgs e)
     {
-        IsVisible = false;
         _selectedNodes = [];
+        IsVisible = false;
+        if (IsVisibleChanged.HasDelegate)
+        {
+            await IsVisibleChanged.InvokeAsync();
+        }
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
     }
 
     void NewEnvVarAdding(AddingNewItemEventArgs<StringEntry> e)
@@ -684,18 +690,18 @@
         e.DataItem.BeginEdit();
     }
 
-    protected override async Task OnParametersSetAsync()
+    protected override async Task OnInitializedAsync()
     {
         if (this.IsVisible)
         {
             await this.ShowEditForm();
         }
-        await base.OnParametersSetAsync();
+        await base.OnInitializedAsync();
     }
 
     async Task CloseImpl()
     {
-        _initialized = false;
+        _isVisibleRequested = false;
         _selectedNodes = [];
         _selectedTaskTypeDescList = [];
         _selectedTaskDefinitionList = [];
@@ -703,9 +709,9 @@
         _editFormConfirmLoading = false;
         _selectedNodeInfoId = null;
         _selectedTaskDefinitionId = null;
-        if (Closed.HasDelegate)
+        if (IsVisibleChanged.HasDelegate)
         {
-            await Closed.InvokeAsync();
+            await IsVisibleChanged.InvokeAsync(IsVisible);
         }
     }
 

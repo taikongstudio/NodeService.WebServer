@@ -1,0 +1,93 @@
+﻿@using NodeService.Infrastructure.DataModels;
+@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
+@using NodeService.WebServer.UI.Pages.TaskFlows.Components;
+@inject ApiService ApiService
+@inject IMessageService _message
+
+<style type="text/css">
+    .ant-card .ant-card-body {
+        padding:2px 5px 2px 5px;
+    }
+
+    .ant-list .ant-list-footer {
+        padding: 5px 5px 15px 5px;
+    }
+</style>
+
+@if (_isVisible)
+{
+    <TaskActivationRecordDrawer Visible="@_isVisible" VisibleChanged="@OnTaskActivationRecordDrawerVisibleChangedAsync" ApiService="@ApiService" ExecutionInstance="@_taskFlowTask" />
+}
+
+
+<Card Size="small" >
+    <TitleTemplate>
+        <Paragraph Editable="false" Style="max-width:200px;overflow:hidden;display:flex;flex-direction:row">
+            <div style="width:auto;max-width:180px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;">@TaskGroup.Name</div>
+        </Paragraph>
+    </TitleTemplate>
+    <Extra>
+        <Dropdown Trigger="new Trigger[] { Trigger.Click }">
+            <Overlay>
+                <Menu Style="">
+     
+                </Menu>
+            </Overlay>
+            <ChildContent>
+                <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Menu" />
+
+            </ChildContent>
+        </Dropdown>
+    </Extra>
+    <Body>
+        <AntList Bordered="false" DataSource="@TaskGroup.Tasks">
+            <ChildContent Context="task">
+                <ListItem Style="padding:10px 0px 10px 0px;display:flex;flex-direction:column;align-content:stretch;align-items:stretch">
+                    <div title="@task.Name" draggable="false"  ondragover="event.preventDefault()">
+                        <Popover Style="width:100%" Placement="@Placement.Right" Trigger="@(new AntDesign.Trigger[] { AntDesign.Trigger.Hover})" TitleTemplate="@_text" >
+                            <ContentTemplate>
+                                <div>
+                                    <Button Type="@ButtonType.Dashed" Icon="@IconType.Outline.Subnode"  Block OnClick="()=>OnTaskClickedAsync(task)">查看节点执行状态</Button>
+                                </div>
+                            </ContentTemplate>
+                            <ChildContent>
+                                <TaskComponent Task="task" OnTaskClicked="@OnTaskClickedAsync" />
+                             </ChildContent>
+                        </Popover>
+                    </div>
+                </ListItem>
+            </ChildContent>
+        </AntList>
+    </Body>
+</Card>
+
+
+
+@code {
+    bool _isVisible;
+    TaskFlowTaskExecutionInstance _taskFlowTask;
+    RenderFragment _text =@<span>查看任务</span>;
+
+    [Parameter]
+    public TaskFlowGroupExecutionInstance TaskGroup{ get; set; }
+
+
+    async Task OnTaskClickedAsync(TaskFlowTaskExecutionInstance taskFlowTask)
+    {
+        _taskFlowTask = taskFlowTask;
+        _isVisible = true;
+        await Task.CompletedTask;
+    }
+
+    async Task OnTaskActivationRecordDrawerVisibleChangedAsync(bool visible)
+    {
+        _isVisible = visible;
+        await Task.CompletedTask;
+    }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+}

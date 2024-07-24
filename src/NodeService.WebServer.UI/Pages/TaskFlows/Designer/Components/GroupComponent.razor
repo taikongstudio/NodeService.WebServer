@@ -9,19 +9,27 @@
         padding: 5px 5px 15px 5px;
     }
 </style>
-<TaskDefinitionEditor IsVisible="@_isTaskDefinitionEditorVisible" Closed="@OnTaskDefinitionEditorClosedAsync" TriggerTypeEditable="false" IsChildTaskSelectorVisible="false" DefaultTriggerType="_defaultTriggerType" @bind-TaskDefinition="@_selectedTaskDefinition" />
-<Drawer MaskClosable="false" Closable="true" @bind-Visible="_showTaskDefinitionDrawer" OnClose="@CloseSelectTaskDefinitionSelector" Width="400" Placement="right" Title='("选择任务")'>
-    <Text>选择已有任务定义</Text>
-    <TaskDefinitionSelector Mode="SelectionMode.Single" IsInvalidateRequsted="@_isInvalidateRequested" Invalidated="()=>_isInvalidateRequested=false" @bind-SelectedItems="@_selectedTaskDefinitions" />
-    <Divider />
-    <Row>
-        <AntDesign.Col Span="18">
-            <Button OnClick="@ShowTaskDefinitionEditor">创建新任务定义</Button>
-        </AntDesign.Col>
-        <AntDesign.Col Span="6">
-            <Button Type="@ButtonType.Primary" OnClick="@CloseSelectTaskDefinitionSelector">确定</Button>
-        </AntDesign.Col>
-    </Row>
+@if (_isTaskDefinitionEditorVisible)
+{
+    <TaskDefinitionEditor IsVisible="@_isTaskDefinitionEditorVisible"
+                          IsVisibleChanged="@OnTaskDefinitionEditorClosedAsync"
+                          TriggerTypeEditable="false"
+                          IsChildTaskSelectorVisible="false"
+                          DefaultTriggerType="_defaultTriggerType"
+                          @bind-TaskDefinition="@_selectedTaskDefinition"
+                          OnOk="@OnTaskDefinitionEditorOkAsync"
+                          OnCancel="@OnTaskDefinitionEditorCancelAsync" />
+
+}
+<Drawer  MaskClosable="false" Closable="true" @bind-Visible="_showTaskDefinitionDrawer" OnClose="@CloseSelectTaskDefinitionSelector" Width="500" Placement="right" Title='("选择任务")'>
+    <ChildContent>
+        <Button OnClick="@CreateNewTaskDefinitionAsync">创建新任务定义</Button>
+        <TaskDefinitionSelector Mode="SelectionMode.Single"
+                                IsInvalidateRequsted="@_isInvalidateRequested"
+                                Invalidated="()=>_isInvalidateRequested=false"
+                                @bind-SelectedItems="@_selectedTaskDefinitions"
+                                OnEdit="(taskDefinition)=>ShowTaskDefinitionEditor(taskDefinition)" />
+    </ChildContent>
 
 </Drawer>
 
@@ -62,7 +70,7 @@
                                 </div>
                             </ContentTemplate>
                             <ChildContent>
-                                <TaskFlowTaskComponent Task="task" OnTaskClicked="@OnTaskClickedAsync" />
+                                <TaskComponent Task="task" OnTaskClicked="@OnTaskClickedAsync" />
                                 </ChildContent>
                         </Popover>
                     </div>
@@ -88,6 +96,7 @@
     bool _showTaskDefinitionDrawer;
     bool _isTaskDefinitionEditorVisible;
     bool _isInvalidateRequested;
+    bool _resetTaskDefinitions;
 
     TaskFlowTaskDesignModel? _dragging;
 
@@ -175,9 +184,24 @@
         _editingTask = null;
     }
 
+    async Task ShowTaskDefinitionEditor(TaskDefinitionModel taskDefinition)
+    {
+        _selectedTaskDefinition = taskDefinition;
+        await ShowTaskDefinitionEditor();
+        _resetTaskDefinitions = false;
+    }
+
+    async Task CreateNewTaskDefinitionAsync()
+    {
+        _selectedTaskDefinition = null;
+        await ShowTaskDefinitionEditor();
+        _resetTaskDefinitions = false;
+    }
+
     async Task ShowTaskDefinitionEditor()
     {
         _isTaskDefinitionEditorVisible = true;
+        _resetTaskDefinitions = true;
         await Task.CompletedTask;
     }
 
@@ -207,10 +231,27 @@
     async Task OnTaskDefinitionEditorClosedAsync()
     {
         _isTaskDefinitionEditorVisible = false;
+        await Task.CompletedTask;
+    }
+
+    async Task OnTaskDefinitionEditorOkAsync()
+    {
         _isInvalidateRequested = true;
         if (_selectedTaskDefinition != null)
         {
             _selectedTaskDefinitions = [_selectedTaskDefinition];
+            _selectedTaskDefinition = null;
+        }
+        await Task.CompletedTask;
+    }
+
+    async Task OnTaskDefinitionEditorCancelAsync()
+    {
+        _isInvalidateRequested = true;
+        if (_resetTaskDefinitions)
+        {
+            _selectedTaskDefinitions = null;
+            _selectedTaskDefinition = null;
         }
         await Task.CompletedTask;
     }

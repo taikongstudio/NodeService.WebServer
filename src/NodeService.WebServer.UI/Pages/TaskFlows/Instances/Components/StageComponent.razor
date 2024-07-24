@@ -1,0 +1,46 @@
+﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
+@using NodeService.WebServer.UI.Pages.TaskFlows.Instances.Models
+<style type="text/css">
+    .ant-card{
+        border-radius:2px;
+    }
+    .ant-card-head{
+        padding:0 10px;
+    }
+
+    .ant-timeline {
+        padding-top: 10px;
+    }
+
+        .ant-timeline .ant-timeline-item {
+            margin-left:10px;
+            padding-bottom: 0px;
+            padding-top: 0px;
+        }
+</style>
+
+                <Card Size="small" Bordered Style="width:300px;">
+                    <TitleTemplate>
+                        <Paragraph  Editable="false" Style="max-width:240px;overflow:hidden;display:flex;flex-direction:row">
+            <div style="width:auto;max-width:220px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;">@TaskStage.Name</div>
+                        </Paragraph>
+                    </TitleTemplate>
+                    <Extra>
+                    </Extra>
+                    <Body>
+                                @foreach (var taskGroup in TaskStage.TaskGroups)
+                                {
+                                    <GroupComponent TaskGroup="@taskGroup" />
+                                }
+                    </Body>
+                </Card>
+@code {
+    [Parameter]
+    public TaskFlowStageExecutionInstance TaskStage{ get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+}

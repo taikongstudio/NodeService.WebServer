@@ -1,8 +1,11 @@
 ﻿@page "/TaskFlows/Templates/Designer"
+@page "/TaskFlows/Templates/Designer/{TaskFlowTemplateId}"
 
 @layout NodeService.WebServer.UI.Layouts.TaskFlowTemplateLayout
 @using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Components
 @using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
+@inject ApiService ApiService
+@inject IMessageService _message
 <style>
     .site-layout .site-layout-background {
         background: #fff;
@@ -70,13 +73,38 @@
 </style>
 
 
+<Drawer Title="@("任务流程设置")" @bind-Visible="@_isSettingsDrawVisible" Width="500">
+            <Form Model="@_taskFlow" Size="@AntSizeLDSType.Default"
+              LabelColSpan="4"
+              Layout="@FormLayout.Vertical"
+              WrapperColSpan="20">
+
+            <FormItem Label="触发类型">
+                <RadioGroup @bind-Value="@_taskFlow.TriggerType">
+            <Radio RadioButton Value="@TaskTriggerType.Schedule">定时启动</Radio>
+            <Radio RadioButton Value="@TaskTriggerType.Manual">手动启动</Radio>
+                </RadioGroup>
+            </FormItem>
+        @if(_taskFlow.TriggerType== TaskTriggerType.Schedule)
+        {
+            <FormItem Label="Cron表达式">
+                <StringEntryTable ItemsSource="@_taskFlow.CronExpressions" />
+            </FormItem>
+        }
+    </Form>
+
+</Drawer>
+
 <div class="taskflow-grid" id="TaskFlowDesigner">
     <Space Class="taskflow-header">
         <SpaceItem>
             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home"></Button>
         </SpaceItem>
         <SpaceItem>
-            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save"></Button>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="@OnSaveAsync"></Button>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Setting" OnClick="@OnSettingsButtonClickedAsync"></Button>
         </SpaceItem>
     </Space>
     <div class="taskflow-navigation">
@@ -102,7 +130,7 @@
             @foreach (var taskStage in _taskFlow.Stages)
             {
                 <SpaceItem>
-                    <TaskFlowDesignerStageComponent TaskStage="@taskStage" Changed="@OnTaskStageChanged" />
+                    <StageComponent TaskStage="@taskStage" Changed="@OnTaskStageChanged" />
                 </SpaceItem>
             }
         </Space>
@@ -115,25 +143,97 @@
 
 @code {
     TaskFlowDesignModel _taskFlow = new TaskFlowDesignModel();
-    bool _isSiderCollasped;
+    bool _isSettingsDrawVisible;
     TypographyEditableConfig editableStr = new();
     RenderFragment customDot = @<Icon Type="loading" Theme="outline" />;
+    
+    [Parameter] public string TaskFlowTemplateId { get; set; }
 
-    protected override void OnInitialized()
+    protected override async void OnInitialized()
     {
-        _taskFlow = new TaskFlowDesignModel()
-            {
-                IsDesignMode = true,
-                Name = "任务流程",
-                Stages = Enumerable.Range(0, 100).Select(x=> new TaskFlowStageDesignModel()
+        if (!string.IsNullOrEmpty(TaskFlowTemplateId))
+        {
+            await QueryTaskFlowTemplateAsync();
+        }
+        else
+        {
+            _taskFlow = new TaskFlowDesignModel()
                 {
                     IsDesignMode = true,
-                    Name = "未命名任务阶段"+x,
+                    Name = "任务流程"
+                };
+            _taskFlow.Stages.Add(new TaskFlowStageDesignModel()
+                {
+                    IsDesignMode = true,
+                    Name = "未命名任务阶段_" + DateTime.UtcNow,
 
-                }).ToList()
-            };
+                });
+        }
+
         this.editableStr.OnChange = OnNameChanged;
         base.OnInitialized();
+    }
+
+    async Task QueryTaskFlowTemplateAsync()
+    {
+        try
+        {
+            var rsp = await ApiService.QueryTaskFlowTemplateAsync(TaskFlowTemplateId);
+            if (rsp.ErrorCode == 0)
+            {
+                var taskFlowTemplate = rsp.Result;
+                if (taskFlowTemplate != null)
+                {
+                    var taskFlowDesignModel = new TaskFlowDesignModel()
+                        {
+                            Name = taskFlowTemplate.Name,
+                            TriggerType = taskFlowTemplate.GetTriggerTask().TriggerType,
+                            CronExpressions = taskFlowTemplate.GetTriggerTask().TriggerSources,
+                            IsDesignMode = true,
+                        };
+                    foreach (var taskFlowStage in taskFlowTemplate.Value.TaskStages.Where(x => x.Attributes != TaskFlowStateAttributes.Hidden))
+                    {
+                        var taskFlowStageDesignModel = new TaskFlowStageDesignModel()
+                            {
+                                Name = taskFlowStage.Name,
+                                IsDesignMode = true,
+                            };
+                        taskFlowDesignModel.Stages.Add(taskFlowStageDesignModel);
+                        foreach (var taskFlowGroup in taskFlowStage.TaskGroups)
+                        {
+                            var taskFlowGroupDesignModel = new TaskFlowGroupDesignModel()
+                                {
+                                    Name = taskFlowGroup.Name,
+                                    IsDesignMode = true,
+                                };
+                            taskFlowStageDesignModel.Groups.Add(taskFlowGroupDesignModel);
+                            foreach (var taskFlowTask in taskFlowGroup.Tasks)
+                            {
+                                var taskFlowTaskDesignModel = new TaskFlowTaskDesignModel()
+                                    {
+                                        Name = taskFlowTask.Name,
+                                        IsDesignMode = true,
+                                    };
+                                taskFlowGroupDesignModel.Tasks.Add(taskFlowTaskDesignModel);
+                                var queryTaskDefinitionRsp = await ApiService.QueryTaskDefinitionAsync(taskFlowTask.TaskDefinitionId);
+                                if (queryTaskDefinitionRsp.ErrorCode == 0)
+                                {
+                                    taskFlowTaskDesignModel.SetTaskDefinition(queryTaskDefinitionRsp.Result);
+                                }
+                            }
+                        }
+                    }
+
+                    _taskFlow = taskFlowDesignModel;
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+
+        }
+
     }
 
     void OnNameChanged(string name)
@@ -153,17 +253,99 @@
         base.OnParametersSet();
     }
 
-    async Task OnSiderCollaspedAsync(bool value)
+    async Task OnSettingsButtonClickedAsync()
     {
-        if (value)
-        {
-            _isSiderCollasped = true;
-        }
-        else
-        {
-            _isSiderCollasped = false;
-        }
+        _isSettingsDrawVisible = true;
         await Task.CompletedTask;
+    }
+
+    async Task OnSaveAsync()
+    {
+        try
+        {
+            var taskFlowTemplate = new TaskFlowTemplateModel()
+                {
+                    Id = TaskFlowTemplateId ?? Guid.NewGuid().ToString(),
+                    Name = _taskFlow.Name,
+                    CreationDateTime = DateTime.UtcNow,
+                    ModifiedDateTime = DateTime.UtcNow,
+                };
+            taskFlowTemplate.Value.Id = taskFlowTemplate.Id;
+            taskFlowTemplate.Value.Name = taskFlowTemplate.Name;
+            var triggerStage = new TaskFlowStageTemplate()
+                {
+                    CreationDateTime = DateTime.UtcNow,
+                    IsDesignMode = true,
+                    Id = Guid.NewGuid().ToString(),
+                    ModifiedDateTime = DateTime.UtcNow,
+                    Name = "触发阶段",
+                    Attributes = TaskFlowStateAttributes.Hidden
+                };
+            var triggerGroup = new TaskFlowGroupTemplate()
+                {
+                    CreationDateTime = DateTime.UtcNow,
+                    IsDesignMode = true,
+                    Id = Guid.NewGuid().ToString(),
+                    ModifiedDateTime = DateTime.UtcNow,
+                    Name = "触发任务组",
+                };
+            var triggerTask = new TaskFlowTaskTemplate()
+                {
+                    CreationDateTime = DateTime.UtcNow,
+                    IsDesignMode = true,
+                    Id = Guid.NewGuid().ToString(),
+                    ModifiedDateTime = DateTime.UtcNow,
+                    Name = "触发任务",
+                    TriggerType = _taskFlow.TriggerType,
+                    TriggerSources = _taskFlow.CronExpressions,
+                    TemplateType = TaskFlowTaskTemplateType.TriggerTask
+                };
+            triggerStage.TaskGroups.Add(triggerGroup);
+            triggerGroup.Tasks.Add(triggerTask);
+            taskFlowTemplate.Value.TaskStages.Add(triggerStage);
+            foreach (var stage in _taskFlow.Stages)
+            {
+                var stageTemplate = new TaskFlowStageTemplate()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = stage.Name,
+                        CreationDateTime = DateTime.UtcNow,
+                        ModifiedDateTime = DateTime.UtcNow,
+                    };
+                taskFlowTemplate.Value.TaskStages.Add(stageTemplate);
+                foreach (var group in stage.Groups)
+                {
+                    var groupTemplate = new TaskFlowGroupTemplate()
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Name = group.Name,
+                            CreationDateTime = DateTime.UtcNow,
+                            ModifiedDateTime = DateTime.UtcNow,
+                        };
+                    stageTemplate.TaskGroups.Add(groupTemplate);
+                    foreach (var task in group.Tasks)
+                    {
+                        var taskTemplate = new TaskFlowTaskTemplate()
+                            {
+                                Id = Guid.NewGuid().ToString(),
+                                Name = task.Name,
+                                CreationDateTime = DateTime.UtcNow,
+                                ModifiedDateTime = DateTime.UtcNow,
+                                TaskDefinitionId = task.TaskDefinition?.Id,
+                                TemplateType = TaskFlowTaskTemplateType.RemoteNodeTask,
+                            };
+                        groupTemplate.Tasks.Add(taskTemplate);
+                    }
+                }
+            }
+            await ApiService.AddOrUpdateAsync(taskFlowTemplate);
+            await _message.Info("保存成功:");
+        }
+        catch (Exception ex)
+        {
+            await _message.Error("保存失败:" + ex.ToString());
+        }
+
     }
 
 }

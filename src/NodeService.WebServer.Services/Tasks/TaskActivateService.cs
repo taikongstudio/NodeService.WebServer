@@ -195,6 +195,29 @@ public class TaskActivateService : BackgroundService
                         }
                         else
                         {
+                            bool isPenddingTimeOut = false;
+                            var timeSpan = DateTime.UtcNow - penddingContext.FireParameters.FireTimeUtc;
+                            if (penddingContext.TaskDefinition.PenddingLimitTimeSeconds == 0)
+                            {
+                                isPenddingTimeOut = true;
+                            }
+                            else if (penddingContext.TaskDefinition.PenddingLimitTimeSeconds > 0
+                                &&
+                                 timeSpan > TimeSpan.FromSeconds(penddingContext.TaskDefinition.PenddingLimitTimeSeconds))
+                            {
+                                isPenddingTimeOut = true;
+                            }
+
+                            if (isPenddingTimeOut)
+                            {
+                                await SendTaskExecutionReportAsync(
+                                        penddingContext.Id,
+                                        TaskExecutionStatus.PenddingTimeout,
+                                        $"Time out after waiting {penddingContext.TaskDefinition.PenddingLimitTimeSeconds} seconds");
+                                _logger.LogInformation($"{penddingContext.Id}:SendAsync PenddingTimeout");
+                                continue;
+                            }
+
                             await PenddingContextChannel.Writer.WriteAsync(penddingContext, cancellationToken);
                         }
                     }
@@ -312,7 +335,7 @@ public class TaskActivateService : BackgroundService
             var exString = ex.ToString();
             _exceptionCounter.AddOrUpdate(ex, context.Id);
             _logger.LogError(exString);
-            await SendTaskExecutionReportReportAsync(
+            await SendTaskExecutionReportAsync(
                 context.Id,
                 TaskExecutionStatus.Failed,
                 exString);
@@ -323,7 +346,7 @@ public class TaskActivateService : BackgroundService
         }
         if (context.CancellationToken.IsCancellationRequested)
         {
-            await SendTaskExecutionReportReportAsync(
+            await SendTaskExecutionReportAsync(
                 context.Id,
                 TaskExecutionStatus.PenddingTimeout,
                 $"Time out after waiting {context.TaskDefinition.PenddingLimitTimeSeconds} seconds");
@@ -331,7 +354,7 @@ public class TaskActivateService : BackgroundService
         }
     }
 
-    async Task SendTaskExecutionReportReportAsync(string taskExecutionInstanceId, TaskExecutionStatus status, string message)
+    public async Task SendTaskExecutionReportAsync(string taskExecutionInstanceId, TaskExecutionStatus status, string message)
     {
         await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
         {
@@ -487,7 +510,7 @@ public class TaskActivateService : BackgroundService
                 context.EnsureInit();
                 await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
             }
-
+            await SendTaskExecutionReportAsync(taskExecutionInstance.Id, TaskExecutionStatus.Triggered, string.Empty);
         }
     }
 
@@ -540,7 +563,6 @@ public class TaskActivateService : BackgroundService
             ParentId = parameters.ParentTaskExecutionInstanceId,
             FireInstanceId = parameters.FireInstanceId
         };
-        taskExecutionInstance.Status = TaskExecutionStatus.Pendding;
         switch (taskDefinition.ExecutionStrategy)
         {
             case TaskExecutionStrategy.Concurrent:

@@ -14,10 +14,14 @@
                                         @bind-Visible="@_versionSelectorDialogVisible"
                                         TItem="TaskDefinitionModel">
     </ConfigurationVersionSelectorDialog>
-    <TaskDefinitionEditor IsVisible="_isTaskDefinitionEditorVisible"
-        @bind-TaskDefinition="_taskDefinition"
-        IsVisibleChanged="OnTaskDefinitionEditorVisibleChanged"
-        @ref="_taskDefinitionEditor"/>
+    @if (_isTaskDefinitionEditorVisible)
+    {
+        <TaskDefinitionEditor IsVisible="_isTaskDefinitionEditorVisible"
+                              @bind-TaskDefinition="_taskDefinition"
+                              IsVisibleChanged="OnTaskDefinitionEditorVisibleChanged"
+                              @ref="_taskDefinitionEditor" />
+    }
+
     <InvokeTaskDialog
         TaskDefinition="@_taskDefinition"
         @bind-Visible="@_InvokeTaskDialogVisible"/>

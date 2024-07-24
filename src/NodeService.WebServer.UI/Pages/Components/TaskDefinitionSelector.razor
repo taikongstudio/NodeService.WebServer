@@ -56,9 +56,12 @@
                     <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="配置名称"></PropertyColumn>
                     <ActionColumn Width="100">
                         <Space>
-                            <SpaceItem>
-                                <Button Style="padding:0px" Shape="@ButtonShape.Circle" Type="@ButtonType.Link" Icon="@IconType.Outline.Edit" OnClick="() => ShowTaskDefinitionEditorAsync(ctx.JsonClone<TaskDefinitionModel>())"></Button>
-                            </SpaceItem>
+                            @if (OnEdit.HasDelegate)
+                            {
+                                <SpaceItem>
+                                    <Button Style="padding:0px" Shape="@ButtonShape.Circle" Type="@ButtonType.Link" Icon="@IconType.Outline.Edit" OnClick="() => ShowTaskDefinitionEditorAsync(ctx.JsonClone<TaskDefinitionModel>())"></Button>
+                                </SpaceItem>
+                            }
 
                         </Space>
                     </ActionColumn>

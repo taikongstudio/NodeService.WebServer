@@ -27,7 +27,7 @@ internal class ClearConfigService : BackgroundService
         var ftpUploadConfigs = await dbContext.TaskDefinitionDbSet.ToListAsync();
         foreach (var item in ftpUploadConfigs)
         {
-            item.Value.IsEnabled = false;
+            item.Value.IsEnabled = true;
 
             dbContext.Update(item);
         }

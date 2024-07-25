@@ -87,9 +87,8 @@
     [Parameter] public ApiService ApiService { get; set; }
     [Parameter] public TaskFlowTaskExecutionInstance ExecutionInstance { get; set; }
 
-    bool _isLoading;
     System.Threading.Timer _timer;
-    bool _isTaskActivationRecordLoading;
+    bool _isLoading;
     IEnumerable<TaskExecutionNodeInfo> _selectedTaskExecutionNodeInfos = [];
     List<TaskExecutionNodeInfo> _dataSourceList = [];
     TaskActivationRecordModel _taskActivationRecord = new TaskActivationRecordModel();
@@ -103,9 +102,9 @@
 
     bool CanRetry(TaskExecutionStatus taskExecutionStatus)
     {
-      return  taskExecutionStatus == TaskExecutionStatus.Failed
-        ||
-        taskExecutionStatus == TaskExecutionStatus.PenddingTimeout;
+        return  taskExecutionStatus == TaskExecutionStatus.Failed
+          ||
+          taskExecutionStatus == TaskExecutionStatus.PenddingTimeout;
     }
 
 
@@ -207,24 +206,31 @@
 
     async void OnTick(object? state)
     {
-        var taskFlowTask = state as TaskFlowTaskExecutionInstance;
-        if (taskFlowTask == null)
+        try
         {
-            return;
+            var taskFlowTask = state as TaskFlowTaskExecutionInstance;
+            if (taskFlowTask == null)
+            {
+                return;
+            }
+            _isLoading = true;
+            if (_taskActivationRecord == null || _taskActivationRecord.Id != _taskActivationRecord.Id)
+            {
+                _taskActivationRecord = await taskFlowTask.QueryTaskFlowTaskDetailsAsync(ApiService);
+            }
+            else
+            {
+                var taskActivationRecord = await taskFlowTask.QueryTaskFlowTaskDetailsAsync(ApiService);
+                _taskActivationRecord.Value.TaskExecutionNodeList = taskActivationRecord.Value.TaskExecutionNodeList;
+            }
+            _dataSourceList = _taskActivationRecord.Value.TaskExecutionNodeList;
+            _isLoading = false;
         }
-        _isTaskActivationRecordLoading = true;
-        if (_taskActivationRecord == null || _taskActivationRecord.Id != _taskActivationRecord.Id)
+        catch (Exception ex)
         {
-            _taskActivationRecord = await taskFlowTask.QueryTaskFlowTaskDetailsAsync(ApiService);
+            
         }
-        else
-        {
-            var taskActivationRecord = await taskFlowTask.QueryTaskFlowTaskDetailsAsync(ApiService);
-            _taskActivationRecord.Value.TaskExecutionNodeList = taskActivationRecord.Value.TaskExecutionNodeList;
-        }
-        _dataSourceList = _taskActivationRecord.Value.TaskExecutionNodeList;
-        _isTaskActivationRecordLoading = false;
-        // await InvokeAsync(StateHasChanged);
+
     }
 
     protected override async Task OnInitializedAsync()
@@ -235,6 +241,7 @@
             {
                 return;
             }
+            _isLoading = true;
             _timer = new System.Threading.Timer(OnTick, ExecutionInstance, 1000, 3000);
         }
         catch (Exception ex)
@@ -243,7 +250,7 @@
         }
         finally
         {
-            _isTaskActivationRecordLoading = false;
+            _isLoading = false;
         }
         await base.OnInitializedAsync();
     }

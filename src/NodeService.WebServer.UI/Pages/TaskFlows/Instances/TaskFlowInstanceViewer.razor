@@ -102,8 +102,20 @@
 
             @foreach (var taskStage in _taskFlowInstance.Value.TaskStages)
             {
-                <SpaceItem>
-                    <StageComponent TaskStage="@taskStage"  />
+                <SpaceItem >
+                    @if (_taskFlowInstance.Value.CurrentStageIndex == _taskFlowInstance.Value.TaskStages.IndexOf(taskStage))
+                    {
+                        <div style="border-color:dodgerblue;border-width:5px;border-style:solid">
+                            <StageComponent TaskStage="@taskStage" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div style="border-color:transparent;border-width:5px;border-style:solid">
+                            <StageComponent TaskStage="@taskStage" />
+                        </div>
+                    }
+
                 </SpaceItem>
             }
         </Space>

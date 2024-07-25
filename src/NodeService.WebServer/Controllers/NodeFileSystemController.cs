@@ -177,6 +177,7 @@ public class NodeFileSystemController : Controller
                 }
             }
             rsp.SetResult(bulkQueryFileInfoCacheResult);
+            _logger.LogInformation(JsonSerializer.Serialize(bulkQueryFileInfoCacheResult));
         }
         catch (Exception ex)
         {

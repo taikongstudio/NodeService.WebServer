@@ -22,9 +22,9 @@ class TaskActivationRecordProcessContext
             Message = x.TaskExecutionInstance.Message
         });
         TaskActivationRecord.Value.ResetCounters();
-        for (int i = 0; i < TaskActivationRecord.TaskExecutionNodeList.Count; i++)
+
+        foreach (var taskExecutionNodeInfo in TaskActivationRecord.TaskExecutionNodeList)
         {
-            var taskExecutionNodeInfo = TaskActivationRecord.TaskExecutionNodeList[i];
             var nodeInfoId = taskExecutionNodeInfo.NodeInfoId;
             TaskExecutionInstanceModel? newValue = null;
             foreach (var processContext in TaskExecutionInstanceProcessContexts)
@@ -44,7 +44,6 @@ class TaskActivationRecordProcessContext
                 taskExecutionNodeInfo.AddOrUpdateInstance(newValue);
             }
             taskExecutionNodeInfo.UpdateCounters();
-            TaskActivationRecord.TaskExecutionNodeList[i] = taskExecutionNodeInfo;
             switch (taskExecutionNodeInfo.Status)
             {
                 case TaskExecutionStatus.Unknown:
@@ -123,7 +122,7 @@ class TaskActivationRecordProcessContext
             TaskActivationRecord.Status = TaskExecutionStatus.Pendding;
         }
 
-        TaskActivationRecord.TaskExecutionNodeList = [.. TaskActivationRecord.TaskExecutionNodeList];
+        TaskActivationRecord.TaskExecutionNodeList = [.. TaskActivationRecord.TaskExecutionNodeList.Select(x => x with { })];
         await ValueTask.CompletedTask;
     }
 

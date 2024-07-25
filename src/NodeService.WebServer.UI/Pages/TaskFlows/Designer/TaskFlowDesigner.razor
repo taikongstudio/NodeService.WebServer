@@ -53,7 +53,9 @@
         margin:0px;
         padding:10px;
         height:100%;
-        width:100%
+        width:100%;
+        display: flex;
+        flex-direction: column;
     }
 
     #TaskFlowDesigner .taskflow-footer {
@@ -104,7 +106,10 @@
             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="@OnSaveAsync"></Button>
         </SpaceItem>
         <SpaceItem>
-            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Setting" OnClick="@OnSettingsButtonClickedAsync"></Button>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="@OnSaveAsync"></Button>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Plus" OnClick="@AddStageAsync"></Button>
         </SpaceItem>
     </Space>
     <div class="taskflow-navigation">
@@ -113,7 +118,7 @@
         </Paragraph>
     </div>
     <div class="taskflow-main">
-        <Steps Percent="60"  Current="0" ProgressDot=@customDot>
+@*         <Steps Percent="60"  Current="0" ProgressDot=@customDot>
             @foreach (var taskStage in _taskFlow.Stages)
             {
                 <Step  Description="This is a description.">
@@ -124,13 +129,13 @@
                     </TitleTemplate>
                 </Step>
             }
-        </Steps>
+        </Steps> *@
         <Space Align="start" >
 
             @foreach (var taskStage in _taskFlow.Stages)
             {
                 <SpaceItem>
-                    <StageComponent TaskStage="@taskStage" Changed="@OnTaskStageChanged" />
+                    <StageComponent TaskStage="@taskStage" Changed="@OnTaskStageChanged" Removed="@OnTaskStageRemoved" />
                 </SpaceItem>
             }
         </Space>
@@ -247,6 +252,12 @@
         this.StateHasChanged();
     }
 
+    async Task OnTaskStageRemoved(TaskFlowStageDesignModel taskFlowStage)
+    {
+        this._taskFlow.Stages.Remove(taskFlowStage);
+        await Task.CompletedTask;
+    }
+
     protected override void OnParametersSet()
     {
         this.editableStr.Text = this._taskFlow.Name;
@@ -346,6 +357,15 @@
             await _message.Error("保存失败:" + ex.ToString());
         }
 
+    }
+
+    async Task AddStageAsync()
+    {
+        _taskFlow.Stages.Add(new TaskFlowStageDesignModel()
+            {
+                Name = "新建任务阶段"
+            });
+        await Task.CompletedTask;
     }
 
 }

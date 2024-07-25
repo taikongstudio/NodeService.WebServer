@@ -53,7 +53,8 @@
         margin:0px;
         padding:10px;
         height:100%;
-        width:100%
+        width:100%;
+        display: inline-block;
     }
 
     #TaskFlowDesigner .taskflow-footer {
@@ -78,23 +79,25 @@
         <SpaceItem>
             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home"></Button>
         </SpaceItem>
-
         <SpaceItem>
             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload"></Button>
+        </SpaceItem>
+        <SpaceItem>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo"></Button>
         </SpaceItem>
     </Space>
     <div class="taskflow-navigation">
         <Paragraph  Editable="false" Style="max-width:300px;overflow:hidden;display:flex;flex-direction:row">
-            <div style="width:280px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;font-size:15px">@_taskFlowInstance.Name</div>
+            <div style="width:280px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;font-size:15px"></div>
         </Paragraph>
     </div>
     <div class="taskflow-main">
-        <Steps  Percent="60" Current="@CalcActiveTaskStage()" >
+@*         <Steps  Percent="60" Current="@CalcActiveTaskStage()" >
             @foreach (var taskStage in _taskFlowInstance.Value.TaskStages)
             {
                 <Step Title="@taskStage.Name"></Step>
             }
-        </Steps>
+        </Steps> *@
         <Space Align="start" >
 
             @foreach (var taskStage in _taskFlowInstance.Value.TaskStages)
@@ -121,7 +124,7 @@
 
     protected override void OnInitialized()
     {
-        _timer = new System.Threading.Timer(OnTick, null, 1000, 3000);
+        _timer = new System.Threading.Timer(OnTick, null,100, 3000);
         base.OnInitialized();
     }
 
@@ -155,6 +158,11 @@
     {
         _isSettingsDrawVisible = true;
         await Task.CompletedTask;
+    }
+
+    async Task RerunAsync()
+    {
+        
     }
 
     int CalcActiveTaskStage()

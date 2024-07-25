@@ -673,7 +673,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         TaskExecutionInstanceModel taskExecutionInstance,
         CancellationToken cancellationToken = default)
     {
-        TaskExecutionNodeInfo taskExecutionNodeInfo = default;
+        TaskExecutionNodeInfo? taskExecutionNodeInfo = default;
         foreach (var item in taskActivationRecord.Value.TaskExecutionNodeList)
         {
             if (item.NodeInfoId == taskExecutionInstance.NodeInfoId)
@@ -681,6 +681,10 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 taskExecutionNodeInfo = item;
                 break;
             }
+        }
+        if (taskExecutionNodeInfo == null)
+        {
+            return;
         }
         if (taskDefinitionSnapshot.MaxRetryCount > 0 && taskExecutionNodeInfo.RetryCount < taskDefinitionSnapshot.MaxRetryCount - 1)
         {

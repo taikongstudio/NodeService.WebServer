@@ -25,8 +25,18 @@
                         </Paragraph>
                     </TitleTemplate>
                     <Extra>
-        <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Plus" OnClick="@AddTaskStageAsync"></Button>
-                    </Extra>
+                            <Dropdown Trigger="new Trigger[] { Trigger.Click }">
+                                <Overlay>
+                                    <Menu Style="">
+                                        <MenuItem Icon="plus" OnClick="@AddTaskGroupAsync">添加任务分组</MenuItem>
+                                        <MenuItem Icon="delete" OnClick="@RemoveTaskStageAsync">删除任务阶段</MenuItem>
+                                     </Menu>
+                                </Overlay>
+                                <ChildContent>
+                                    <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Default" Icon="@IconType.Outline.Menu" />
+                                </ChildContent>
+                            </Dropdown>
+                       </Extra>
                     <Body>
                      <Timeline>
                         @foreach (var taskGroup in TaskStage.Groups)
@@ -43,6 +53,9 @@
     public TaskFlowStageDesignModel TaskStage{ get; set; }
     [Parameter]
     public EventCallback<TaskFlowStageDesignModel> Changed { get; set; }
+
+    [Parameter]
+    public EventCallback<TaskFlowStageDesignModel> Removed { get; set; }
 
     TypographyEditableConfig editableStr = new();
 
@@ -67,11 +80,11 @@
         base.OnParametersSet();
     }
 
-    async Task AddTaskStageAsync()
+    async Task AddTaskGroupAsync()
     {
         this.TaskStage.Groups.Add(new TaskFlowGroupDesignModel()
             {
-                Name = "未命名阶段",
+                Name = "未命名任务分组",
                 IsDesignMode = true,
             });
         await Task.CompletedTask;
@@ -81,5 +94,10 @@
     {
         this.TaskStage.Groups.Remove(taskFlowGroup);
         await Task.CompletedTask;
+    }
+
+    async Task RemoveTaskStageAsync()
+    {
+        await Removed.InvokeAsync(TaskStage);
     }
 }

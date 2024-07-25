@@ -21,9 +21,7 @@
 
                 <Card Size="small" Bordered Style="width:300px;">
                     <TitleTemplate>
-                        <Paragraph  Editable="false" Style="max-width:240px;overflow:hidden;display:flex;flex-direction:row">
-            <div style="width:auto;max-width:220px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;">@TaskStage.Name</div>
-                        </Paragraph>
+                            <Icon Type="@GetIcon()" Fill="dodgerblue" Theme="outline" Style="margin-right:8px" Height="16" Width="16" />@TaskStage.Name
                     </TitleTemplate>
                     <Extra>
                     </Extra>
@@ -41,6 +39,31 @@
     protected override void OnInitialized()
     {
         base.OnInitialized();
+    }
+
+    string GetIcon()
+    {
+        switch (TaskStage.Status)
+        {
+            case TaskExecutionStatus.Triggered:
+                return "thunderbolt";
+            case TaskExecutionStatus.Pendding:
+                return "clock-circle";
+            case TaskExecutionStatus.Started:
+            case TaskExecutionStatus.Running:
+                return "loading";
+            case TaskExecutionStatus.Cancelled:
+                return "info";
+            case TaskExecutionStatus.PenddingTimeout:
+                return "warning";
+            case TaskExecutionStatus.Failed:
+                return "warning";
+            case TaskExecutionStatus.Finished:
+                return "check";
+            default:
+                break;
+        }
+        return "";
     }
 
 }

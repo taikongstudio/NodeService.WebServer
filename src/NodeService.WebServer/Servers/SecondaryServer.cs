@@ -64,14 +64,21 @@ namespace NodeService.WebServer.Servers
             app.MapPrometheusScrapingEndpoint();
             app.MapRazorPages();
             app.UseRateLimiter();
+            try
+            {
+                var factory = app.Services.GetService<IDbContextFactory<ApplicationDbContext>>();
+                await using var dbContext = await factory.CreateDbContextAsync();
+                dbContext.Database.EnsureCreated();
 
-            var factory = app.Services.GetService<IDbContextFactory<ApplicationDbContext>>();
-            await using var dbContext = await factory.CreateDbContextAsync();
-            dbContext.Database.EnsureCreated();
+                using var scope = app.Services.CreateAsyncScope();
+                using var applicationUserDbContext = scope.ServiceProvider.GetService<ApplicationUserDbContext>();
+                applicationUserDbContext.Database.EnsureCreated();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
 
-            using var scope = app.Services.CreateAsyncScope();
-            using var applicationUserDbContext = scope.ServiceProvider.GetService<ApplicationUserDbContext>();
-            applicationUserDbContext.Database.EnsureCreated();
         }
 
         void Configure(WebApplicationBuilder builder)

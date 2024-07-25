@@ -19,7 +19,7 @@ namespace NodeService.WebServer.Extensions
             }
             return taskExecutionInstance.Status switch
             {
-                TaskExecutionStatus.PenddingTimeout or TaskExecutionStatus.Failed => true,
+                TaskExecutionStatus.PenddingTimeout or TaskExecutionStatus.Failed or TaskExecutionStatus.Cancelled => true,
                 _ => false,
             };
         }

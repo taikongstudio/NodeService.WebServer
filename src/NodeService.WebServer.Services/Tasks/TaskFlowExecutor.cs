@@ -39,10 +39,17 @@ namespace NodeService.WebServer.Services.Tasks
             }
             foreach (var taskStageExecutionInstance in taskFlowExecutionInstance.TaskStages)
             {
+                var taskStageTemplate = taskFlowTemplate.Value.TaskStages.FirstOrDefault(x => x.Id == taskStageExecutionInstance.TaskFlowStageTemplateId);
                 if (taskStageExecutionInstance.IsTerminatedStatus())
                 {
                     continue;
                 }
+
+                if (taskStageExecutionInstance.Status == TaskExecutionStatus.Unknown)
+                {
+
+                }
+
                 await ExecuteTaskStageAsync(
                             taskFlowTemplate,
                             taskFlowExecutionInstance,
@@ -149,9 +156,9 @@ namespace NodeService.WebServer.Services.Tasks
                   .Value.FindStageTemplate(taskFlowStageExecutionInstance.TaskFlowStageTemplateId)
                   ?.FindGroupTemplate(taskFlowGroupExecutionInstance.TaskFlowGroupTemplateId)
                   ?.FindTaskTemplate(taskFlowTaskExecutionInstance.TaskFlowTaskTemplateId);
-            if (taskFlowTaskTemplate == null)
+            if (taskFlowTaskTemplate==null)
             {
-                throw new InvalidOperationException();
+                return;
             }
             if (taskFlowTaskTemplate.TemplateType == TaskFlowTaskTemplateType.TriggerTask)
             {

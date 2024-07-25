@@ -150,19 +150,30 @@ public class NodeFileSystemController : Controller
                         Result = FileInfoCacheResult.None
                     });
                 }
-                else if (
+                else
+                {
+                    if (
                         nodeFileSyncRequest.FileInfo.FullName == fileInfoCache.FullName
                         &&
                         nodeFileSyncRequest.FileInfo.Length == fileInfoCache.Length
                         &&
-                        nodeFileSyncRequest.FileInfo.LastWriteTime == fileInfoCache.DateTime
-                        )
-                {
-                    bulkQueryFileInfoCacheResult.Items.Add(new QueryFileInfoCacheResult()
+                        nodeFileSyncRequest.FileInfo.LastWriteTime == fileInfoCache.ModifiedDateTime
+                            )
                     {
-                        FullPath = nodeFileSyncRequest.FileInfo.FullName,
-                        Result = FileInfoCacheResult.Cached
-                    });
+                        bulkQueryFileInfoCacheResult.Items.Add(new QueryFileInfoCacheResult()
+                        {
+                            FullPath = nodeFileSyncRequest.FileInfo.FullName,
+                            Result = FileInfoCacheResult.Cached
+                        });
+                    }
+                    else
+                    {
+                        bulkQueryFileInfoCacheResult.Items.Add(new QueryFileInfoCacheResult()
+                        {
+                            FullPath = nodeFileSyncRequest.FileInfo.FullName,
+                            Result = FileInfoCacheResult.None
+                        });
+                    }
                 }
             }
             rsp.SetResult(bulkQueryFileInfoCacheResult);

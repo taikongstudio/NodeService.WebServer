@@ -10,7 +10,7 @@ namespace NodeService.WebServer.Services.Tasks
 {
     public partial class TaskExecutionReportConsumerService
     {
-        static string? GetTaskFlowInstanceId(TaskActivationRecordModel  taskActivationRecord)
+        static string? GetTaskFlowInstanceId(TaskActivationRecordModel taskActivationRecord)
         {
             if (taskActivationRecord.TaskDefinitionId == null)
             {
@@ -58,7 +58,37 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         continue;
                     }
-                    taskFlowTaskExecutionInstance.Status = activationRecord.Status;
+                    var status = taskFlowTaskExecutionInstance.Status;
+                    if (status != activationRecord.Status)
+                    {
+                        status = activationRecord.Status;
+                        switch (status)
+                        {
+                            case TaskExecutionStatus.Unknown:
+                                break;
+                            case TaskExecutionStatus.Triggered:
+                                break;
+                            case TaskExecutionStatus.Pendding:
+                                break;
+                            case TaskExecutionStatus.Started:
+                                break;
+                            case TaskExecutionStatus.Running:
+                                break;
+                            case TaskExecutionStatus.Failed:
+                                break;
+                            case TaskExecutionStatus.Finished:
+                                break;
+                            case TaskExecutionStatus.Cancelled:
+                                break;
+                            case TaskExecutionStatus.PenddingTimeout:
+                                break;
+                            case TaskExecutionStatus.MaxCount:
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    taskFlowTaskExecutionInstance.Status = status;
                     taskFlowTaskExecutionInstance.TaskActiveRecordId = activationRecord.Id;
                 }
                 taskFlowExecutionInstance.Value = taskFlowExecutionInstance.Value with { };
@@ -66,13 +96,13 @@ namespace NodeService.WebServer.Services.Tasks
                 taskFlowExecutionInstanceList.Add(taskFlowExecutionInstance);
             }
 
-            foreach (var array in taskFlowExecutionInstanceList.Chunk(10))
+            foreach (var taskFlowExecutionInstance in taskFlowExecutionInstanceList)
             {
-                foreach (var taskFlowExeuctionInstance in array)
-                {
-                    await _taskFlowExecutor.ExecuteAsync(taskFlowExeuctionInstance, cancellationToken);
-                }
-                await taskFlowExecutionInstanceRepo.UpdateRangeAsync(array, cancellationToken);
+                await _taskFlowExecutor.ExecuteAsync(taskFlowExecutionInstance, cancellationToken);
+            }
+            foreach (var item in taskFlowExecutionInstanceList.Chunk(10))
+            {
+                await taskFlowExecutionInstanceRepo.UpdateRangeAsync(item, cancellationToken);
             }
         }
     }

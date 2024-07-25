@@ -2,6 +2,13 @@
 @implements IDisposable
 @inject IMessageService _message
 
+<CommonDialog @bind-Visible="@_taskLogExecutionLogViewerVisible">
+    @if (_taskLogExecutionLogViewerVisible)
+    {
+        <TaskExecutionInstanceLogViewer TaskExecutionInstanceId="@_taskExecutionInstanceId" />
+    }
+</CommonDialog>
+
 <Drawer Visible="@Visible" VisibleChanged="@VisibleChanged" OnClose="@OnDrawerClosed" Title="@("查看节点运行状态")" Width="600">
     <Space Style="margin-bottom:16px" >
         <SpaceItem>
@@ -25,16 +32,48 @@
         <ColumnDefinitions>
             <Selection Key="@context.NodeInfoId" Type="checkbox" />
             <PropertyColumn Title="标志" Ellipsis Sortable Width="150" Property="c => c.NodeInfoId"></PropertyColumn>
-            <PropertyColumn Title="状态" Ellipsis Sortable Width="150" Property="c => c.Status"></PropertyColumn>
+            <PropertyColumn Title="状态" Ellipsis Sortable Width="100" Property="c => c.Status">
+                @switch (context.Status)
+                {
+                    case TaskExecutionStatus.Unknown:
+                        <Text>未知</Text>
+                        break;
+                    case TaskExecutionStatus.Triggered:
+                        <Text>已触发</Text>
+                        break;
+                    case TaskExecutionStatus.Pendding:
+                        <Text>等待节点响应</Text>
+                        break;
+                    case TaskExecutionStatus.Started:
+                        <Text>已启动</Text>
+                        break;
+                    case TaskExecutionStatus.Running:
+                        <Text>运行中</Text>
+                        break;
+                    case TaskExecutionStatus.Finished:
+                        <Text>完成</Text>
+                        break;
+                    case TaskExecutionStatus.Cancelled:
+                        <Text>已取消</Text>
+                        break;
+                    case TaskExecutionStatus.Failed:
+                        <Text>失败</Text>
+                        break;
+                    case TaskExecutionStatus.PenddingTimeout:
+                        <Text>等待超时</Text>
+                        break;
+                }
+            </PropertyColumn>
             <PropertyColumn Title="消息" Ellipsis Sortable Property="c => c.Instances">
                 <Text>@context.Instances.LastOrDefault()?.Message</Text>
             </PropertyColumn>
-            <ActionColumn Fixed="right" Width="100" Title="操作">
+            <ActionColumn Fixed="right"  Title="操作">
                 <CellRender Context="cellData">
                     <Space>
                         <SpaceItem>
                             <Button Disabled="@(CanRetry(context.Status)==false)" Shape="@ButtonShape.Circle" OnClick="() => RetryTaskAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo"></Button>
                             <Button Disabled="@(IsRunning(context.Status)==false)" Shape="@ButtonShape.Circle" OnClick="() => CancelTaskAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
+                            <Button Shape="@ButtonShape.Circle" OnClick="() => ShowLogAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.File"></Button>
                         </SpaceItem>
                     </Space>
                 </CellRender>
@@ -54,6 +93,8 @@
     IEnumerable<TaskExecutionNodeInfo> _selectedTaskExecutionNodeInfos = [];
     List<TaskExecutionNodeInfo> _dataSourceList = [];
     TaskActivationRecordModel _taskActivationRecord = new TaskActivationRecordModel();
+    string _taskExecutionInstanceId;
+    bool _taskLogExecutionLogViewerVisible;
 
     bool IsRunning(TaskExecutionStatus taskExecutionStatus)
     {
@@ -62,9 +103,7 @@
 
     bool CanRetry(TaskExecutionStatus taskExecutionStatus)
     {
-        return taskExecutionStatus == TaskExecutionStatus.Unknown
-        ||
-        taskExecutionStatus == TaskExecutionStatus.Failed
+      return  taskExecutionStatus == TaskExecutionStatus.Failed
         ||
         taskExecutionStatus == TaskExecutionStatus.PenddingTimeout;
     }
@@ -185,7 +224,7 @@
         }
         _dataSourceList = _taskActivationRecord.Value.TaskExecutionNodeList;
         _isTaskActivationRecordLoading = false;
-       // await InvokeAsync(StateHasChanged);
+        // await InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnInitializedAsync()
@@ -207,6 +246,17 @@
             _isTaskActivationRecordLoading = false;
         }
         await base.OnInitializedAsync();
+    }
+
+    async Task ShowLogAsync(string? taskExecutionInstanceId)
+    {
+        if (string.IsNullOrEmpty(taskExecutionInstanceId))
+        {
+            return;
+        }
+        _taskExecutionInstanceId = taskExecutionInstanceId;
+        _taskLogExecutionLogViewerVisible = true;
+        await Task.CompletedTask;
     }
 
     public void Dispose()

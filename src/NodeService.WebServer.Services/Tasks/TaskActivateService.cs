@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
@@ -700,6 +701,8 @@ public class TaskActivateService : BackgroundService
                 nodes,
                 taskExecutionInstance.GetTaskFlowTaskKey());
             await _serviceParametersBatchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
+
+
         }
     }
 
@@ -712,7 +715,7 @@ public class TaskActivateService : BackgroundService
         foreach (var fireTaskFlowParametersGroup in fireTaskFlowParameterList.GroupBy(static x => x.TaskFlowTemplateId))
         {
             var taskFlowTemplateId = fireTaskFlowParametersGroup.Key;
-            var taskFlowTemplate = await GetTaskFlowTemplateAsync(taskFlowTemplateId);
+            var taskFlowTemplate = await GetTaskFlowTemplateAsync(taskFlowTemplateId, cancellationToken);
             if (taskFlowTemplate == null)
             {
                 continue;
@@ -720,57 +723,7 @@ public class TaskActivateService : BackgroundService
             List<TaskFlowExecutionInstanceModel> taskFlowExecutionInstances = [];
             foreach (var fireTaskFlowParameters in fireTaskFlowParametersGroup)
             {
-                var taskFlowExecutionInstance = new TaskFlowExecutionInstanceModel()
-                {
-                    Id = fireTaskFlowParameters.TaskFlowInstanceId,
-                    Name = taskFlowTemplate.Name,
-                    CreationDateTime = DateTime.UtcNow,
-                    ModifiedDateTime = DateTime.UtcNow
-                };
-                taskFlowExecutionInstance.Value.Id = fireTaskFlowParameters.TaskFlowInstanceId;
-                taskFlowExecutionInstance.Value.Name = taskFlowTemplate.Name;
-                taskFlowExecutionInstance.Value.CreationDateTime = DateTime.UtcNow;
-                taskFlowExecutionInstance.Value.ModifiedDateTime = DateTime.UtcNow;
-                taskFlowExecutionInstance.Value.TaskFlowTemplateId = taskFlowTemplateId;
-                foreach (var taskFlowStageTemplate in taskFlowTemplate.Value.TaskStages)
-                {
-                    var taskFlowStageExecutionInstance = new TaskFlowStageExecutionInstance()
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Name = taskFlowStageTemplate.Name,
-                        CreationDateTime = DateTime.UtcNow,
-                        ModifiedDateTime = DateTime.UtcNow,
-                        TaskFlowStageTemplateId = taskFlowStageTemplate.Id
-                    };
-                    taskFlowExecutionInstance.Value.TaskStages.Add(taskFlowStageExecutionInstance);
-                    foreach (var taskFlowGroupTemplate in taskFlowStageTemplate.TaskGroups)
-                    {
-                        var taskFlowGroupExeuctionInstance = new TaskFlowGroupExecutionInstance()
-                        {
-                            Id = Guid.NewGuid().ToString(),
-                            Name = taskFlowGroupTemplate.Name,
-                            CreationDateTime = DateTime.UtcNow,
-                            ModifiedDateTime = DateTime.UtcNow,
-                            TaskFlowGroupTemplateId = taskFlowGroupTemplate.Id
-                        };
-                        taskFlowStageExecutionInstance.TaskGroups.Add(taskFlowGroupExeuctionInstance);
-                        foreach (var taskFlowTaskTemplate in taskFlowGroupTemplate.Tasks)
-                        {
-                            var taskFlowTaskExecutionInstance = new TaskFlowTaskExecutionInstance()
-                            {
-                                Id = Guid.NewGuid().ToString(),
-                                Name = taskFlowTaskTemplate.Name,
-                                CreationDateTime = DateTime.UtcNow,
-                                ModifiedDateTime = DateTime.UtcNow,
-                                Status = TaskExecutionStatus.Unknown,
-                                TaskFlowTaskTemplateId = taskFlowTaskTemplate.Id,
-                                TaskDefinitionId = taskFlowTaskTemplate.TaskDefinitionId,
-                            };
-                            taskFlowGroupExeuctionInstance.Tasks.Add(taskFlowTaskExecutionInstance);
-                        }
-                    }
-                }
-                taskFlowExecutionInstances.Add(taskFlowExecutionInstance);
+                CreateTaskFlowExecutionInstance(taskFlowTemplate, taskFlowExecutionInstances, fireTaskFlowParameters);
             }
             foreach (var taskFlowExecutionInstance in taskFlowExecutionInstances)
             {
@@ -780,6 +733,64 @@ public class TaskActivateService : BackgroundService
             await taskFlowExeuctionInstanceRepo.AddRangeAsync(taskFlowExecutionInstances, cancellationToken);
         }
 
+    }
+
+    static void CreateTaskFlowExecutionInstance(
+        TaskFlowTemplateModel? taskFlowTemplate,
+        List<TaskFlowExecutionInstanceModel> taskFlowExecutionInstances,
+        FireTaskFlowParameters fireTaskFlowParameters)
+    {
+        var taskFlowExecutionInstance = new TaskFlowExecutionInstanceModel()
+        {
+            Id = fireTaskFlowParameters.TaskFlowInstanceId,
+            Name = taskFlowTemplate.Name,
+            CreationDateTime = DateTime.UtcNow,
+            ModifiedDateTime = DateTime.UtcNow
+        };
+        taskFlowExecutionInstance.Value.Id = fireTaskFlowParameters.TaskFlowInstanceId;
+        taskFlowExecutionInstance.Value.Name = taskFlowTemplate.Name;
+        taskFlowExecutionInstance.Value.CreationDateTime = DateTime.UtcNow;
+        taskFlowExecutionInstance.Value.ModifiedDateTime = DateTime.UtcNow;
+        taskFlowExecutionInstance.Value.TaskFlowTemplateId = taskFlowTemplate.Id;
+        foreach (var taskFlowStageTemplate in taskFlowTemplate.Value.TaskStages)
+        {
+            var taskFlowStageExecutionInstance = new TaskFlowStageExecutionInstance()
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = taskFlowStageTemplate.Name,
+                CreationDateTime = DateTime.UtcNow,
+                ModifiedDateTime = DateTime.UtcNow,
+                TaskFlowStageTemplateId = taskFlowStageTemplate.Id
+            };
+            taskFlowExecutionInstance.Value.TaskStages.Add(taskFlowStageExecutionInstance);
+            foreach (var taskFlowGroupTemplate in taskFlowStageTemplate.TaskGroups)
+            {
+                var taskFlowGroupExeuctionInstance = new TaskFlowGroupExecutionInstance()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Name = taskFlowGroupTemplate.Name,
+                    CreationDateTime = DateTime.UtcNow,
+                    ModifiedDateTime = DateTime.UtcNow,
+                    TaskFlowGroupTemplateId = taskFlowGroupTemplate.Id
+                };
+                taskFlowStageExecutionInstance.TaskGroups.Add(taskFlowGroupExeuctionInstance);
+                foreach (var taskFlowTaskTemplate in taskFlowGroupTemplate.Tasks)
+                {
+                    var taskFlowTaskExecutionInstance = new TaskFlowTaskExecutionInstance()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = taskFlowTaskTemplate.Name,
+                        CreationDateTime = DateTime.UtcNow,
+                        ModifiedDateTime = DateTime.UtcNow,
+                        Status = TaskExecutionStatus.Unknown,
+                        TaskFlowTaskTemplateId = taskFlowTaskTemplate.Id,
+                        TaskDefinitionId = taskFlowTaskTemplate.TaskDefinitionId,
+                    };
+                    taskFlowGroupExeuctionInstance.Tasks.Add(taskFlowTaskExecutionInstance);
+                }
+            }
+        }
+        taskFlowExecutionInstances.Add(taskFlowExecutionInstance);
     }
 
     async Task ProcessFireTaskParametersAsync(

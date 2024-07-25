@@ -44,16 +44,24 @@
             <ChildContent Context="task">
                 <ListItem Style="padding:10px 0px 10px 0px;display:flex;flex-direction:column;align-content:stretch;align-items:stretch">
                     <div title="@task.Name" draggable="false"  ondragover="event.preventDefault()">
-                        <Popover Style="width:100%" Placement="@Placement.Right" Trigger="@(new AntDesign.Trigger[] { AntDesign.Trigger.Hover})" TitleTemplate="@_text" >
-                            <ContentTemplate>
-                                <div>
-                                    <Button Type="@ButtonType.Dashed" Icon="@IconType.Outline.Subnode"  Block OnClick="()=>OnTaskClickedAsync(task)">查看节点执行状态</Button>
-                                </div>
-                            </ContentTemplate>
-                            <ChildContent>
-                                <TaskComponent Task="task" OnTaskClicked="@OnTaskClickedAsync" />
-                             </ChildContent>
-                        </Popover>
+                        @if (task.TaskActiveRecordId == null)
+                        {
+                            <TaskComponent Task="task"  />
+                        }
+                        else
+                        {
+                            <Popover Style="width:100%" Placement="@Placement.Right" Trigger="@(new AntDesign.Trigger[] { AntDesign.Trigger.Hover})" TitleTemplate="@_text">
+                                <ContentTemplate>
+                                    <div>
+                                        <Button Type="@ButtonType.Dashed" Icon="@IconType.Outline.Subnode" Block OnClick="()=>OnTaskClickedAsync(task)">查看节点执行状态</Button>
+                                    </div>
+                                </ContentTemplate>
+                                <ChildContent>
+                                    <TaskComponent Task="task" OnTaskClicked="@OnTaskClickedAsync" />
+                                </ChildContent>
+                            </Popover>
+                        }
+
                     </div>
                 </ListItem>
             </ChildContent>

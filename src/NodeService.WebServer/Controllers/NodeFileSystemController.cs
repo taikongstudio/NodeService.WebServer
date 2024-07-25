@@ -157,7 +157,7 @@ public class NodeFileSystemController : Controller
                         &&
                         nodeFileSyncRequest.FileInfo.Length == fileInfoCache.Length
                         &&
-                        nodeFileSyncRequest.FileInfo.LastWriteTime == fileInfoCache.ModifiedDateTime
+                        nodeFileSyncRequest.FileInfo.LastWriteTime == fileInfoCache.DateTime
                             )
                     {
                         bulkQueryFileInfoCacheResult.Items.Add(new QueryFileInfoCacheResult()

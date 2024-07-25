@@ -11,6 +11,7 @@ namespace NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
 
     public class TaskFlowStageDesignModel : TaskFlowDesignModelBase
     {
+        public int ExecutionTimeLimitSeconds { get; set; }
         public List<TaskFlowGroupDesignModel> Groups { get; set; } = [];
     }
 

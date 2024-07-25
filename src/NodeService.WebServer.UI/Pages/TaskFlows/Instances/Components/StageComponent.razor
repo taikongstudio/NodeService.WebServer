@@ -45,20 +45,11 @@
     {
         switch (TaskStage.Status)
         {
-            case TaskExecutionStatus.Triggered:
-                return "thunderbolt";
-            case TaskExecutionStatus.Pendding:
+            case TaskFlowExecutionStatus.Unknown:
                 return "clock-circle";
-            case TaskExecutionStatus.Started:
-            case TaskExecutionStatus.Running:
+            case TaskFlowExecutionStatus.Running:
                 return "loading";
-            case TaskExecutionStatus.Cancelled:
-                return "info";
-            case TaskExecutionStatus.PenddingTimeout:
-                return "warning";
-            case TaskExecutionStatus.Failed:
-                return "warning";
-            case TaskExecutionStatus.Finished:
+            case TaskFlowExecutionStatus.Finished:
                 return "check";
             default:
                 break;

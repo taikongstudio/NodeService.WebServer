@@ -174,7 +174,7 @@
         var index = 0;
         foreach (var taskFlowStage in _taskFlowInstance.Value.TaskStages)
         {
-            if (taskFlowStage.Status == TaskExecutionStatus.Running)
+            if (taskFlowStage.Status == TaskFlowExecutionStatus.Running)
             {
                 break;
             }

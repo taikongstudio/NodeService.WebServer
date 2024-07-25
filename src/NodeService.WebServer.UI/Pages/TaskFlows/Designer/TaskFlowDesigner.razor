@@ -202,6 +202,7 @@
                             {
                                 Name = taskFlowStage.Name,
                                 IsDesignMode = true,
+                                ExecutionTimeLimitSeconds = taskFlowStage.ExecutionTimeLimitSeconds
                             };
                         taskFlowDesignModel.Stages.Add(taskFlowStageDesignModel);
                         foreach (var taskFlowGroup in taskFlowStage.TaskGroups)
@@ -322,6 +323,7 @@
                         Name = stage.Name,
                         CreationDateTime = DateTime.UtcNow,
                         ModifiedDateTime = DateTime.UtcNow,
+                        ExecutionTimeLimitSeconds = stage.ExecutionTimeLimitSeconds
                     };
                 taskFlowTemplate.Value.TaskStages.Add(stageTemplate);
                 foreach (var group in stage.Groups)

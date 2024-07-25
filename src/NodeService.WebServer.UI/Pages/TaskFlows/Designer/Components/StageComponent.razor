@@ -18,36 +18,49 @@
         }
 </style>
 
-                <Card Size="small" Bordered Style="width:300px;">
-                    <TitleTemplate>
-                        <Paragraph EditConfig="editableStr" Editable="@TaskStage.IsDesignMode" Style="max-width:240px;overflow:hidden;display:flex;flex-direction:row">
-                                <div style="width:auto;max-width:220px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;">@editableStr.Text</div>
-                        </Paragraph>
-                    </TitleTemplate>
-                    <Extra>
-                            <Dropdown Trigger="new Trigger[] { Trigger.Click }">
-                                <Overlay>
-                                    <Menu Style="">
-                                        <MenuItem Icon="plus" OnClick="@AddTaskGroupAsync">添加任务分组</MenuItem>
-                                        <MenuItem Icon="delete" OnClick="@RemoveTaskStageAsync">删除任务阶段</MenuItem>
-                                     </Menu>
-                                </Overlay>
-                                <ChildContent>
-                                    <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Default" Icon="@IconType.Outline.Menu" />
-                                </ChildContent>
-                            </Dropdown>
-                       </Extra>
-                    <Body>
-                     <Timeline>
-                        @foreach (var taskGroup in TaskStage.Groups)
-                        {
-                            <TimelineItem>
-                                    <GroupComponent TaskGroup="@taskGroup" OnRemoved="RemoveTaskGroupAsync" />
-                            </TimelineItem>
-                        }
-                    </Timeline>
-                    </Body>
-                </Card>
+<Drawer Title="@("设置")" @bind-Visible="@_isSettingsDrawVisible" Width="500">
+    <Form Model="@TaskStage" Size="@AntSizeLDSType.Default"
+          LabelColSpan="8"
+          Layout="@FormLayout.Vertical"
+          WrapperColSpan="24">
+        <FormItem Label="执行时长限制" Help="当此阶段执行时长超出限制时，强制进入下个阶段。">
+            <AntDesign.InputNumber Width="200" @bind-Value="@TaskStage.ExecutionTimeLimitSeconds" /><Text Style="margin-left:8px">秒</Text>
+        </FormItem>
+    </Form>
+
+</Drawer>
+
+<Card Size="small" Bordered Style="width:300px;">
+    <TitleTemplate>
+        <Paragraph EditConfig="editableStr" Editable="@TaskStage.IsDesignMode" Style="max-width:240px;overflow:hidden;display:flex;flex-direction:row">
+                <div style="width:auto;max-width:220px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;">@editableStr.Text</div>
+        </Paragraph>
+    </TitleTemplate>
+    <Extra>
+            <Dropdown Trigger="new Trigger[] { Trigger.Click }">
+                <Overlay>
+                    <Menu Style="">
+                        <MenuItem Icon="plus" OnClick="@AddTaskGroupAsync">添加任务分组</MenuItem>
+                        <MenuItem Icon="delete" OnClick="@RemoveTaskStageAsync">删除任务阶段</MenuItem>
+                        <MenuItem Icon="settings" OnClick="@ShowSettingsDrawerAsync">设置</MenuItem>
+                     </Menu>
+                </Overlay>
+                <ChildContent>
+                    <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Default" Icon="@IconType.Outline.Menu" />
+                </ChildContent>
+            </Dropdown>
+        </Extra>
+    <Body>
+        <Timeline>
+        @foreach (var taskGroup in TaskStage.Groups)
+        {
+            <TimelineItem>
+                    <GroupComponent TaskGroup="@taskGroup" OnRemoved="RemoveTaskGroupAsync" />
+            </TimelineItem>
+        }
+    </Timeline>
+    </Body>
+</Card>
 @code {
     [Parameter]
     public TaskFlowStageDesignModel TaskStage{ get; set; }
@@ -58,6 +71,7 @@
     public EventCallback<TaskFlowStageDesignModel> Removed { get; set; }
 
     TypographyEditableConfig editableStr = new();
+    bool _isSettingsDrawVisible;
 
     protected override void OnInitialized()
     {
@@ -99,5 +113,11 @@
     async Task RemoveTaskStageAsync()
     {
         await Removed.InvokeAsync(TaskStage);
+    }
+
+    async Task ShowSettingsDrawerAsync()
+    {
+        _isSettingsDrawVisible = true;
+        await Task.CompletedTask;
     }
 }

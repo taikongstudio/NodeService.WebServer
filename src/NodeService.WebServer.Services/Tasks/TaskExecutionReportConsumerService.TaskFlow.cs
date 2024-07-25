@@ -1,10 +1,4 @@
-﻿using NodeService.Infrastructure.DataModels;
-using NodeService.WebServer.Data;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Grpc.Core;
 
 namespace NodeService.WebServer.Services.Tasks
 {
@@ -58,37 +52,30 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         continue;
                     }
-                    var status = taskFlowTaskExecutionInstance.Status;
-                    if (status != activationRecord.Status)
+                    switch (activationRecord.Status)
                     {
-                        status = activationRecord.Status;
-                        switch (status)
-                        {
-                            case TaskExecutionStatus.Unknown:
-                                break;
-                            case TaskExecutionStatus.Triggered:
-                                break;
-                            case TaskExecutionStatus.Pendding:
-                                break;
-                            case TaskExecutionStatus.Started:
-                                break;
-                            case TaskExecutionStatus.Running:
-                                break;
-                            case TaskExecutionStatus.Failed:
-                                break;
-                            case TaskExecutionStatus.Finished:
-                                break;
-                            case TaskExecutionStatus.Cancelled:
-                                break;
-                            case TaskExecutionStatus.PenddingTimeout:
-                                break;
-                            case TaskExecutionStatus.MaxCount:
-                                break;
-                            default:
-                                break;
-                        }
+                        case TaskExecutionStatus.Unknown:
+                            taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Unknown;
+                            break;
+                        case TaskExecutionStatus.Triggered:
+                        case TaskExecutionStatus.Pendding:
+                        case TaskExecutionStatus.Started:
+                        case TaskExecutionStatus.Running:
+                            taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Running;
+                            break;
+                        case TaskExecutionStatus.Failed:
+                        case TaskExecutionStatus.PenddingTimeout:
+                        case TaskExecutionStatus.Cancelled:
+                            taskFlowTaskExecutionInstance.Status = activationRecord.Status;
+                            break;
+                        case TaskExecutionStatus.Finished:
+                            taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Finished;
+                            break;
+                        case TaskExecutionStatus.MaxCount:
+                            break;
+                        default:
+                            break;
                     }
-                    taskFlowTaskExecutionInstance.Status = status;
                     taskFlowTaskExecutionInstance.TaskActiveRecordId = activationRecord.Id;
                 }
                 taskFlowExecutionInstance.Value = taskFlowExecutionInstance.Value with { };

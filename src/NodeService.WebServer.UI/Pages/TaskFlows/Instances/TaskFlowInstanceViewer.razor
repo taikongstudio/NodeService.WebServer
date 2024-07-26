@@ -5,6 +5,8 @@
 @using NodeService.WebServer.UI.Pages.TaskFlows.Instances.Models
 @inject ApiService ApiService
 @inject IMessageService _message
+@inject NavigationManager NavigationManager
+
 @implements IDisposable
 <style>
     .site-layout .site-layout-background {
@@ -77,13 +79,7 @@
 <div class="taskflow-grid" id="TaskFlowDesigner">
     <Space Class="taskflow-header">
         <SpaceItem>
-            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home"></Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload"></Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo"></Button>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home" OnClick="@GoHome"></Button>
         </SpaceItem>
     </Space>
     <div class="taskflow-navigation">
@@ -223,5 +219,10 @@
             {
                 StageIndex = taskStageIndex
             });
+    }
+
+    void GoHome()
+    {
+        NavigationManager.NavigateTo("/TaskFlows/Instances/");
     }
 }

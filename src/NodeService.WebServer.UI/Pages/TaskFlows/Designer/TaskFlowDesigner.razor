@@ -6,6 +6,7 @@
 @using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
 @inject ApiService ApiService
 @inject IMessageService _message
+@inject NavigationManager NavigationManager
 <style>
     .site-layout .site-layout-background {
         background: #fff;
@@ -100,10 +101,7 @@
 <div class="taskflow-grid" id="TaskFlowDesigner">
     <Space Class="taskflow-header">
         <SpaceItem>
-            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home"></Button>
-        </SpaceItem>
-        <SpaceItem>
-            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="@OnSaveAsync"></Button>
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home" OnClick="@GoHome"></Button>
         </SpaceItem>
         <SpaceItem>
             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="@OnSaveAsync"></Button>
@@ -162,6 +160,7 @@
         }
         else
         {
+            TaskFlowTemplateId = Guid.NewGuid().ToString();
             _taskFlow = new TaskFlowDesignModel()
                 {
                     IsDesignMode = true,
@@ -277,7 +276,7 @@
         {
             var taskFlowTemplate = new TaskFlowTemplateModel()
                 {
-                    Id = TaskFlowTemplateId ?? Guid.NewGuid().ToString(),
+                    Id = TaskFlowTemplateId,
                     Name = _taskFlow.Name,
                     CreationDateTime = DateTime.UtcNow,
                     ModifiedDateTime = DateTime.UtcNow,
@@ -352,7 +351,7 @@
                 }
             }
             await ApiService.AddOrUpdateAsync(taskFlowTemplate);
-            await _message.Info("保存成功:");
+            await _message.Info("保存成功");
         }
         catch (Exception ex)
         {
@@ -368,6 +367,11 @@
                 Name = "新建任务阶段"
             });
         await Task.CompletedTask;
+    }
+
+    void GoHome()
+    {
+        NavigationManager.NavigateTo("/TaskFlows/Templates/");
     }
 
 }

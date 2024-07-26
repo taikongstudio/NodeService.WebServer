@@ -204,11 +204,11 @@
             await _message.Error("无法切换到尚未运行的阶段");
             return;
         }
-        if (taskStageIndex == this._taskFlowInstance.Value.CurrentStageIndex)
-        {
-            await _message.Error("当前阶段正在运行");
-            return;
-        }
+        // if (taskStageIndex == this._taskFlowInstance.Value.CurrentStageIndex)
+        // {
+        //     await _message.Error("当前阶段正在运行");
+        //     return;
+        // }
         // var currentStage = this._taskFlowInstance.Value.TaskStages.ElementAtOrDefault(this._taskFlowInstance.Value.CurrentStageIndex)!;
         // if (currentStage.Status != TaskFlowExecutionStatus.Finished)
         // {

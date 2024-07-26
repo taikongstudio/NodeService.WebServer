@@ -24,7 +24,18 @@
             <Icon Type="@GetIcon()" Fill="dodgerblue" Theme="outline" Style="margin-right:8px" Height="16" Width="16" />@TaskStage.Name
     </TitleTemplate>
     <Extra>
-        <Button Icon="swap" Type="@ButtonType.Default" Shape="@ButtonShape.Circle" OnClick="()=>SwitchStage.InvokeAsync(TaskStage)" />
+        <Dropdown Trigger="new Trigger[] { Trigger.Click }">
+            <Overlay>
+                <Menu Style="">
+                    <MenuItem Icon="swap" OnClick="()=>SwitchStage.InvokeAsync(TaskStage)">切换至此阶段</MenuItem>
+                </Menu>
+            </Overlay>
+            <ChildContent>
+                <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Menu" />
+
+            </ChildContent>
+        </Dropdown>
+
     </Extra>
     <Body>
                 @foreach (var taskGroup in TaskStage.TaskGroups)

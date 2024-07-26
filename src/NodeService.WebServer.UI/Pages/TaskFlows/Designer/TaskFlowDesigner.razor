@@ -116,18 +116,6 @@
         </Paragraph>
     </div>
     <div class="taskflow-main">
-@*         <Steps Percent="60"  Current="0" ProgressDot=@customDot>
-            @foreach (var taskStage in _taskFlow.Stages)
-            {
-                <Step  Description="This is a description.">
-                    <TitleTemplate>
-                        <Paragraph EditConfig="editableStr" Editable="@false" Style="max-width:200px;overflow:hidden;display:flex;flex-direction:row">
-                            <div style="width:180px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;">@editableStr.Text</div>
-                        </Paragraph>
-                    </TitleTemplate>
-                </Step>
-            }
-        </Steps> *@
         <Space Align="start" >
 
             @foreach (var taskStage in _taskFlow.Stages)

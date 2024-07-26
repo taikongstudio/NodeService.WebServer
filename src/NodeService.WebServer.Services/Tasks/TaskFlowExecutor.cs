@@ -108,10 +108,6 @@ namespace NodeService.WebServer.Services.Tasks
         {
             try
             {
-                if (taskFlowExecutionInstance.Value.IsTerminatedStatus())
-                {
-                    return;
-                }
                 await using var taskFlowTemplateRepo = await _taskFlowTemplateRepoFactory.CreateRepositoryAsync();
                 var taskFlowTemplate = await taskFlowTemplateRepo.GetByIdAsync(taskFlowExecutionInstance.Value.TaskFlowTemplateId, cancellationToken);
                 if (taskFlowTemplate == null)
@@ -120,6 +116,10 @@ namespace NodeService.WebServer.Services.Tasks
                 }
                 do
                 {
+                    if (taskFlowExecutionInstance.Value.CurrentStageIndex == taskFlowExecutionInstance.TaskStages.Count - 1)
+                    {
+                        break;
+                    }
                     var taskFlowStageExecutionInstance = taskFlowExecutionInstance.TaskStages.ElementAtOrDefault(taskFlowExecutionInstance.Value.CurrentStageIndex);
                     if (taskFlowStageExecutionInstance == null)
                     {
@@ -128,7 +128,7 @@ namespace NodeService.WebServer.Services.Tasks
                     var taskStageTemplate = taskFlowTemplate.Value.TaskStages.FirstOrDefault(x => x.Id == taskFlowStageExecutionInstance.TaskFlowStageTemplateId);
                     if (taskFlowStageExecutionInstance.IsTerminatedStatus())
                     {
-                        taskFlowExecutionInstance.Value.CurrentStageIndex++;
+                        MoveToNextStage(taskFlowExecutionInstance);
                         continue;
                     }
                     await ExecuteTaskStageAsync(
@@ -139,7 +139,7 @@ namespace NodeService.WebServer.Services.Tasks
                     taskFlowStageExecutionInstance.RetryTasks = false;
                     if (taskFlowStageExecutionInstance.Status == TaskFlowExecutionStatus.Finished)
                     {
-                        taskFlowExecutionInstance.Value.CurrentStageIndex++;
+                        MoveToNextStage(taskFlowExecutionInstance);
                         continue;
                     }
                     break;
@@ -227,8 +227,7 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         return;
                     }
-                    taskFlowExecutionInstance.Value.CurrentStageIndex++;
-                    taskFlowExecutionInstance.Value.CurrentStageIndex = Math.Min(taskFlowExecutionInstance.Value.TaskStages.Count - 1, taskFlowExecutionInstance.Value.CurrentStageIndex);
+                    MoveToNextStage(taskFlowExecutionInstance);
                     await taskFlowRepo.SaveChangesAsync(cancellationToken);
                     await this.ExecuteTaskFlowAsync(taskFlowExecutionInstance, cancellationToken);
                 }
@@ -245,6 +244,12 @@ namespace NodeService.WebServer.Services.Tasks
             await _executionQueue.SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
             return Disposable.Empty;
+        }
+
+         void MoveToNextStage(TaskFlowExecutionInstanceModel taskFlowExecutionInstance)
+        {
+            taskFlowExecutionInstance.Value.CurrentStageIndex++;
+            taskFlowExecutionInstance.Value.CurrentStageIndex = Math.Min(taskFlowExecutionInstance.Value.TaskStages.Count - 1, taskFlowExecutionInstance.Value.CurrentStageIndex);
         }
 
         async ValueTask ExecuteTaskGroupAsync(

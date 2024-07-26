@@ -51,6 +51,7 @@ public record struct FireTaskParameters
         string taskDefinitionId,
         string fireInstanceId,
         List<StringEntry> nodeList,
+        List<StringEntry> envVars,
         TaskFlowTaskKey taskFlowTaskKey = default)
     {
         return new FireTaskParameters
@@ -61,7 +62,7 @@ public record struct FireTaskParameters
             TaskDefinitionId = taskDefinitionId,
             ScheduledFireTimeUtc = DateTime.UtcNow,
             NodeList = nodeList,
-            EnvironmentVariables = [],
+            EnvironmentVariables = envVars,
             TaskFlowTaskKey = taskFlowTaskKey,
             RetryTasks = true,
         };
@@ -477,7 +478,10 @@ public class TaskActivateService : BackgroundService
                 {
                     taskDefinition.NodeList = fireTaskParameters.NodeList;
                 }
-
+                if (fireTaskParameters.EnvironmentVariables != null && fireTaskParameters.EnvironmentVariables.Count > 0)
+                {
+                    taskDefinition.Value.EnvironmentVariables = fireTaskParameters.EnvironmentVariables;
+                }
                 var nodeInfoList = await QueryNodeListAsync(taskDefinition, cancellationToken);
 
                 BuildTaskExecutionInstanceList(
@@ -522,7 +526,8 @@ public class TaskActivateService : BackgroundService
                     TaskFlowInstanceId = taskFlowTaskKey.TaskFlowInstanceId,
                     TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId,
                     TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId,
-                    NodeList = [.. taskDefinition.NodeList]
+                    NodeList = [.. taskDefinition.NodeList],
+                    EnvironmentVariables = fireTaskParameters.EnvironmentVariables
                 };
                 await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
                 await taskActivationRecordRepo.AddAsync(taskActivationRecord, cancellationToken);
@@ -594,8 +599,7 @@ public class TaskActivateService : BackgroundService
                         taskDefinition,
                         nodeSessionId,
                         fireTaskParameters,
-                        taskFlowTaskKey,
-                        cancellationToken);
+                        taskFlowTaskKey);
                     taskExecutionInstanceList.Add(KeyValuePair.Create(nodeSessionId, taskExecutionInstance));
                 }
             }
@@ -665,8 +669,7 @@ public class TaskActivateService : BackgroundService
         TaskDefinitionModel taskDefinition,
         NodeSessionId nodeSessionId,
         FireTaskParameters parameters,
-        TaskFlowTaskKey taskFlowTaskKey = default,
-        CancellationToken cancellationToken = default)
+        TaskFlowTaskKey taskFlowTaskKey = default)
     {
         var nodeName = _nodeSessionService.GetNodeName(nodeSessionId) ?? nodeInfo.Name;
         var taskExecutionInstance = new TaskExecutionInstanceModel
@@ -844,6 +847,7 @@ public class TaskActivateService : BackgroundService
                 taskExecutionRecord.TaskDefinitionId,
                 taskExecutionInstance.FireInstanceId,
                 nodes,
+                taskExecutionRecord.Value.EnvironmentVariables,
                 taskExecutionInstance.GetTaskFlowTaskKey());
             await _serviceParametersBatchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
 

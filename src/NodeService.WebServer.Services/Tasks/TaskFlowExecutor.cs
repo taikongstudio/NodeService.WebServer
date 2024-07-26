@@ -75,31 +75,41 @@ namespace NodeService.WebServer.Services.Tasks
             int stageIndex,
             CancellationToken cancellationToken = default)
         {
-            await using var taskFlowExecutionInstanceRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
-            var taskFlowExecutionInstance = await taskFlowExecutionInstanceRepo.GetByIdAsync(taskFlowExecutionInstanceId, cancellationToken);
-            if (taskFlowExecutionInstance == null)
+            try
             {
-                return;
+                await using var taskFlowExecutionInstanceRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
+                var taskFlowExecutionInstance = await taskFlowExecutionInstanceRepo.GetByIdAsync(taskFlowExecutionInstanceId, cancellationToken);
+                if (taskFlowExecutionInstance == null)
+                {
+                    return;
+                }
+                bool resetStage = false;
+                foreach (var taskFlowStageExecutionInstance in taskFlowExecutionInstance.Value.TaskStages.Skip(stageIndex))
+                {
+                    if (!resetStage)
+                    {
+                        taskFlowStageExecutionInstance.RetryTasks = true;
+                    }
+                    if (resetStage)
+                    {
+                        taskFlowStageExecutionInstance.Status = TaskFlowExecutionStatus.Unknown;
+                    }
+                    if (!resetStage)
+                    {
+                        resetStage = true;
+                    }
+                }
+                taskFlowExecutionInstance.Value.CurrentStageIndex = stageIndex;
+                await this.ExecuteTaskFlowAsync(taskFlowExecutionInstance, cancellationToken);
+                taskFlowExecutionInstance.ModifiedDateTime = DateTime.UtcNow;
+                await taskFlowExecutionInstanceRepo.UpdateAsync(taskFlowExecutionInstance, cancellationToken);
             }
-            bool resetStage = false;
-            foreach (var taskFlowStageExecutionInstance in taskFlowExecutionInstance.Value.TaskStages.Skip(stageIndex))
+            catch (Exception ex)
             {
-                if (!resetStage)
-                {
-                    taskFlowStageExecutionInstance.RetryTasks = true;
-                }
-                if (resetStage)
-                {
-                    taskFlowStageExecutionInstance.Status = TaskFlowExecutionStatus.Unknown;
-                }
-                if (!resetStage)
-                {
-                    resetStage = true;
-                }
+                _logger.LogError(ex.ToString());
+                _exceptionCounter.AddOrUpdate(ex);
             }
-            taskFlowExecutionInstance.Value.CurrentStageIndex = stageIndex;
-            await this.ExecuteTaskFlowAsync(taskFlowExecutionInstance, cancellationToken);
-            await taskFlowExecutionInstanceRepo.UpdateAsync(taskFlowExecutionInstance, cancellationToken);
+
         }
 
         async ValueTask ExecuteTaskFlowAsync(
@@ -108,21 +118,17 @@ namespace NodeService.WebServer.Services.Tasks
         {
             try
             {
-                await using var taskFlowTemplateRepo = await _taskFlowTemplateRepoFactory.CreateRepositoryAsync();
-                var taskFlowTemplate = await taskFlowTemplateRepo.GetByIdAsync(taskFlowExecutionInstance.Value.TaskFlowTemplateId, cancellationToken);
+                var taskFlowTemplate = JsonSerializer.Deserialize<TaskFlowTemplateModel>(taskFlowExecutionInstance.Value.TaskFlowTemplateJson);
                 if (taskFlowTemplate == null)
                 {
                     return;
                 }
                 do
                 {
-                    if (taskFlowExecutionInstance.Value.CurrentStageIndex == taskFlowExecutionInstance.TaskStages.Count - 1)
-                    {
-                        break;
-                    }
                     var taskFlowStageExecutionInstance = taskFlowExecutionInstance.TaskStages.ElementAtOrDefault(taskFlowExecutionInstance.Value.CurrentStageIndex);
                     if (taskFlowStageExecutionInstance == null)
                     {
+                        taskFlowExecutionInstance.Value.CurrentStageIndex = taskFlowExecutionInstance.TaskStages.Count - 1;
                         break;
                     }
                     var taskStageTemplate = taskFlowTemplate.Value.TaskStages.FirstOrDefault(x => x.Id == taskFlowStageExecutionInstance.TaskFlowStageTemplateId);
@@ -143,7 +149,8 @@ namespace NodeService.WebServer.Services.Tasks
                         continue;
                     }
                     break;
-                } while (true);
+                }
+                while (true);
 
                 if (taskFlowExecutionInstance.TaskStages.All(x => x.Status == TaskFlowExecutionStatus.Finished))
                 {
@@ -153,7 +160,7 @@ namespace NodeService.WebServer.Services.Tasks
                 {
                     taskFlowExecutionInstance.Value.Status = TaskFlowExecutionStatus.Running;
                 }
-
+                taskFlowExecutionInstance.ModifiedDateTime = DateTime.UtcNow;
             }
             catch (Exception ex)
             {
@@ -227,7 +234,10 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         return;
                     }
-                    MoveToNextStage(taskFlowExecutionInstance);
+                    if (taskFlowExecutionInstance.Value.CurrentStageIndex < taskFlowExecutionInstance.Value.TaskStages.Count - 1)
+                    {
+                        MoveToNextStage(taskFlowExecutionInstance);
+                    }
                     await taskFlowRepo.SaveChangesAsync(cancellationToken);
                     await this.ExecuteTaskFlowAsync(taskFlowExecutionInstance, cancellationToken);
                 }
@@ -249,7 +259,6 @@ namespace NodeService.WebServer.Services.Tasks
          void MoveToNextStage(TaskFlowExecutionInstanceModel taskFlowExecutionInstance)
         {
             taskFlowExecutionInstance.Value.CurrentStageIndex++;
-            taskFlowExecutionInstance.Value.CurrentStageIndex = Math.Min(taskFlowExecutionInstance.Value.TaskStages.Count - 1, taskFlowExecutionInstance.Value.CurrentStageIndex);
         }
 
         async ValueTask ExecuteTaskGroupAsync(
@@ -300,14 +309,22 @@ namespace NodeService.WebServer.Services.Tasks
             TaskFlowTaskExecutionInstance taskFlowTaskExecutionInstance,
             CancellationToken cancellationToken = default)
         {
-            var taskFlowTaskTemplate = taskFlowTemplate
-                  .Value.FindStageTemplate(taskFlowStageExecutionInstance.TaskFlowStageTemplateId)
-                  ?.FindGroupTemplate(taskFlowGroupExecutionInstance.TaskFlowGroupTemplateId)
-                  ?.FindTaskTemplate(taskFlowTaskExecutionInstance.TaskFlowTaskTemplateId);
+            var taskFlowStageTemplate = taskFlowTemplate.Value.FindStageTemplate(taskFlowStageExecutionInstance.TaskFlowStageTemplateId);
+            if (taskFlowStageTemplate==null)
+            {
+                return;
+            }
+            var taskFlowGroupTemplate = taskFlowStageTemplate.FindGroupTemplate(taskFlowGroupExecutionInstance.TaskFlowGroupTemplateId);
+            if (taskFlowGroupTemplate==null)
+            {
+                return;
+            }
+            var taskFlowTaskTemplate = taskFlowGroupTemplate.FindTaskTemplate(taskFlowTaskExecutionInstance.TaskFlowTaskTemplateId);
             if (taskFlowTaskTemplate == null)
             {
                 return;
             }
+               
             if (taskFlowTaskTemplate.TemplateType == TaskFlowTaskTemplateType.TriggerTask)
             {
                 taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Finished;

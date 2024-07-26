@@ -7,6 +7,7 @@
 @inject ApiService ApiService
 @inject IMessageService _message
 @inject NavigationManager NavigationManager
+@implements IDisposable
 <style>
     .site-layout .site-layout-background {
         background: #fff;
@@ -35,8 +36,8 @@
 
     #TaskFlowDesigner .taskflow-navigation {
         grid-area: nav;
-        height:40px;
-        line-height:40px;
+        height:30px;
+        line-height:30px;
         background-color: #fff;
         padding: 0px 20px;
     }
@@ -137,7 +138,8 @@
     bool _isSettingsDrawVisible;
     TypographyEditableConfig editableStr = new();
     RenderFragment customDot = @<Icon Type="loading" Theme="outline" />;
-    
+    PeriodicTimer _saveTimer;
+
     [Parameter] public string TaskFlowTemplateId { get; set; }
 
     protected override async void OnInitialized()
@@ -152,17 +154,25 @@
             _taskFlow = new TaskFlowDesignModel()
                 {
                     IsDesignMode = true,
-                    Name = "任务流程"
+                    Name = $"任务流程 {DateTime.UtcNow}"
                 };
             _taskFlow.Stages.Add(new TaskFlowStageDesignModel()
                 {
                     IsDesignMode = true,
-                    Name = "未命名任务阶段_" + DateTime.UtcNow,
-
+                    Name = $"未命名任务阶段_{DateTime.UtcNow}",
                 });
         }
 
         this.editableStr.OnChange = OnNameChanged;
+        _saveTimer = new PeriodicTimer(TimeSpan.FromSeconds(10));
+        _ = Task.Run(async () =>
+        {
+            while (await _saveTimer.WaitForNextTickAsync())
+            {
+                await this.OnSaveAsync();
+            }
+        });
+
         base.OnInitialized();
     }
 
@@ -218,6 +228,7 @@
                     }
 
                     _taskFlow = taskFlowDesignModel;
+                    this.editableStr.Text = this._taskFlow.Name;
                     StateHasChanged();
                 }
             }
@@ -244,12 +255,6 @@
     {
         this._taskFlow.Stages.Remove(taskFlowStage);
         await Task.CompletedTask;
-    }
-
-    protected override void OnParametersSet()
-    {
-        this.editableStr.Text = this._taskFlow.Name;
-        base.OnParametersSet();
     }
 
     async Task OnSettingsButtonClickedAsync()
@@ -339,7 +344,7 @@
                 }
             }
             await ApiService.AddOrUpdateAsync(taskFlowTemplate);
-            await _message.Info("保存成功");
+            await _message.Info("自动保存成功");
         }
         catch (Exception ex)
         {
@@ -352,7 +357,7 @@
     {
         _taskFlow.Stages.Add(new TaskFlowStageDesignModel()
             {
-                Name = "新建任务阶段"
+                Name = $"未命名任务阶段_{DateTime.UtcNow}",
             });
         await Task.CompletedTask;
     }
@@ -360,6 +365,14 @@
     void GoHome()
     {
         NavigationManager.NavigateTo("/TaskFlows/Templates/");
+    }
+
+    public void Dispose()
+    {
+        if (_saveTimer != null)
+        {
+            _saveTimer.Dispose();
+        }
     }
 
 }

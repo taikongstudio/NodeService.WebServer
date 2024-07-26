@@ -81,19 +81,14 @@
         <SpaceItem>
             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home" OnClick="@GoHome"></Button>
         </SpaceItem>
+        <SpaceItem>
+
+        </SpaceItem>
     </Space>
     <div class="taskflow-navigation">
-        <Paragraph  Editable="false" Style="max-width:300px;overflow:hidden;display:flex;flex-direction:row">
-            <div style="width:280px; overflow: hidden; white-space: nowrap;text-overflow: ellipsis;font-size:15px"></div>
-        </Paragraph>
+        <Title Level="4">@_taskFlowInstance?.Name   <Text>启动时间 @_taskFlowInstance?.CreationDateTime</Text></Title>
     </div>
     <div class="taskflow-main">
-@*         <Steps  Percent="60" Current="@CalcActiveTaskStage()" >
-            @foreach (var taskStage in _taskFlowInstance.Value.TaskStages)
-            {
-                <Step Title="@taskStage.Name"></Step>
-            }
-        </Steps> *@
         <Space Align="start" >
 
             @foreach (var taskStage in _taskFlowInstance.Value.TaskStages)

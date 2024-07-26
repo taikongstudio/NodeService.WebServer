@@ -897,6 +897,7 @@ public class TaskActivateService : BackgroundService
         taskFlowExecutionInstance.Value.CreationDateTime = DateTime.UtcNow;
         taskFlowExecutionInstance.Value.ModifiedDateTime = DateTime.UtcNow;
         taskFlowExecutionInstance.Value.TaskFlowTemplateId = taskFlowTemplate.Id;
+        taskFlowExecutionInstance.Value.TaskFlowTemplateJson = JsonSerializer.Serialize(taskFlowTemplate);
         foreach (var taskFlowStageTemplate in taskFlowTemplate.Value.TaskStages)
         {
             var taskFlowStageExecutionInstance = new TaskFlowStageExecutionInstance()

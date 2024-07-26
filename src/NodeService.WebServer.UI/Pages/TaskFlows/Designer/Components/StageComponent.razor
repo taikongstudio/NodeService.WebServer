@@ -98,7 +98,7 @@
     {
         this.TaskStage.Groups.Add(new TaskFlowGroupDesignModel()
             {
-                Name = "未命名任务分组",
+                Name = $"未命名任务分组_{DateTime.UtcNow}",
                 IsDesignMode = true,
             });
         await Task.CompletedTask;

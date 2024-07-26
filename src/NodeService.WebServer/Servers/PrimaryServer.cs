@@ -476,7 +476,7 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(TimeSpan.FromHours(4), 1024*100));
             builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
 
-            builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(TimeSpan.FromMinutes(30), 1024));
+            builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(TimeSpan.FromHours(1), 1024*100));
             builder.Services.AddSingleton(
                 new BatchQueue<AsyncOperation<FileRecordModel, bool>>(TimeSpan.FromSeconds(1), 1024 * 2));
             builder.Services.AddSingleton(

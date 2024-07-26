@@ -103,19 +103,9 @@
             @foreach (var taskStage in _taskFlowInstance.Value.TaskStages)
             {
                 <SpaceItem >
-                    @if (_taskFlowInstance.Value.CurrentStageIndex == _taskFlowInstance.Value.TaskStages.IndexOf(taskStage))
-                    {
-                        <div style="border-color:dodgerblue;border-width:5px;border-style:solid">
-                            <StageComponent TaskStage="@taskStage" />
-                        </div>
-                    }
-                    else
-                    {
-                        <div style="border-color:transparent;border-width:5px;border-style:solid">
-                            <StageComponent TaskStage="@taskStage" />
-                        </div>
-                    }
-
+                    <div style="border-color:@(IsCurrentStage(taskStage)?"dodgerblue":"transparent");border-width:5px;border-style:solid">
+                        <StageComponent TaskStage="@taskStage" SwitchStage="@SwitchStageAsync" />
+                    </div>
                 </SpaceItem>
             }
         </Space>
@@ -200,4 +190,38 @@
         _timer.Dispose();
     }
 
+    bool IsCurrentStage(TaskFlowStageExecutionInstance taskStage)
+    {
+        return _taskFlowInstance.Value.CurrentStageIndex == _taskFlowInstance.Value.TaskStages.IndexOf(taskStage);
+    }
+
+    async Task SwitchStageAsync(TaskFlowStageExecutionInstance taskStage)
+    {
+        var taskStageIndex = _taskFlowInstance.Value.TaskStages.IndexOf(taskStage);
+        if (taskStageIndex == 0)
+        {
+            await _message.Error("无法切换触发阶段");
+            return;
+        }
+        if (taskStageIndex > this._taskFlowInstance.Value.CurrentStageIndex)
+        {
+            await _message.Error("无法切换到尚未运行的阶段");
+            return;
+        }
+        if (taskStageIndex == this._taskFlowInstance.Value.CurrentStageIndex)
+        {
+            await _message.Error("当前阶段正在运行");
+            return;
+        }
+        // var currentStage = this._taskFlowInstance.Value.TaskStages.ElementAtOrDefault(this._taskFlowInstance.Value.CurrentStageIndex)!;
+        // if (currentStage.Status != TaskFlowExecutionStatus.Finished)
+        // {
+        //     await _message.Error("当前阶段未完成，无法切换阶段");
+        //     return;
+        // }
+        await ApiService.SwitchStageAsync(_taskFlowInstance.Id, new TaskFlowSwitchStageParameters()
+            {
+                StageIndex = taskStageIndex
+            });
+    }
 }

@@ -87,7 +87,7 @@
     [Parameter] public ApiService ApiService { get; set; }
     [Parameter] public TaskFlowTaskExecutionInstance ExecutionInstance { get; set; }
 
-    System.Threading.Timer _timer;
+    PeriodicTimer _timer;
     bool _isLoading;
     IEnumerable<TaskExecutionNodeInfo> _selectedTaskExecutionNodeInfos = [];
     List<TaskExecutionNodeInfo> _dataSourceList = [];
@@ -204,11 +204,10 @@
     }
 
 
-    async void OnTick(object? state)
+    async Task RefreshAsync(TaskFlowTaskExecutionInstance taskFlowTask)
     {
         try
         {
-            var taskFlowTask = state as TaskFlowTaskExecutionInstance;
             if (taskFlowTask == null)
             {
                 return;
@@ -228,7 +227,7 @@
         }
         catch (Exception ex)
         {
-            
+
         }
 
     }
@@ -242,7 +241,15 @@
                 return;
             }
             _isLoading = true;
-            _timer = new System.Threading.Timer(OnTick, ExecutionInstance, 1000, 3000);
+            _timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+            _ = Task.Run(async () =>
+            {
+                do
+                {
+                    await RefreshAsync(ExecutionInstance);
+                } while (await _timer.WaitForNextTickAsync());
+            });
+
         }
         catch (Exception ex)
         {

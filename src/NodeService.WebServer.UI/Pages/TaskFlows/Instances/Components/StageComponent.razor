@@ -19,22 +19,26 @@
         }
 </style>
 
-                <Card Size="small" Bordered Style="width:300px;">
-                    <TitleTemplate>
-                            <Icon Type="@GetIcon()" Fill="dodgerblue" Theme="outline" Style="margin-right:8px" Height="16" Width="16" />@TaskStage.Name
-                    </TitleTemplate>
-                    <Extra>
-                    </Extra>
-                    <Body>
-                                @foreach (var taskGroup in TaskStage.TaskGroups)
-                                {
-                                    <GroupComponent TaskGroup="@taskGroup" />
-                                }
-                    </Body>
-                </Card>
+<Card Size="small" Bordered Style="width:300px;">
+    <TitleTemplate>
+            <Icon Type="@GetIcon()" Fill="dodgerblue" Theme="outline" Style="margin-right:8px" Height="16" Width="16" />@TaskStage.Name
+    </TitleTemplate>
+    <Extra>
+        <Button Icon="swap" Type="@ButtonType.Default" Shape="@ButtonShape.Circle" OnClick="()=>SwitchStage.InvokeAsync(TaskStage)" />
+    </Extra>
+    <Body>
+                @foreach (var taskGroup in TaskStage.TaskGroups)
+                {
+                    <GroupComponent TaskGroup="@taskGroup" />
+                }
+    </Body>
+</Card>
 @code {
     [Parameter]
     public TaskFlowStageExecutionInstance TaskStage{ get; set; }
+
+    [Parameter]
+    public EventCallback<TaskFlowStageExecutionInstance> SwitchStage { get; set; }
 
     protected override void OnInitialized()
     {

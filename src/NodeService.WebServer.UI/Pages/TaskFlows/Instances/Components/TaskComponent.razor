@@ -1,5 +1,5 @@
 ﻿@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
-<Button Type="@ButtonType.Default" Block Icon="@GetIcon()" OnClick="()=>OnTaskClicked.InvokeAsync(Task)">@Task.Name</Button>
+<Button Type="@ButtonType.Default" Block Icon="@GetIcon()" OnClick="()=>OnTaskClicked.InvokeAsync(Task)">@($"{Task.Name} {GetProgress()}")</Button>
 
 @code {
 
@@ -33,5 +33,10 @@
                 break;
         }
         return "";
+    }
+
+    string GetProgress()
+    {
+        return Task.TotalCount == 0 ? string.Empty : $"({Task.FinishedCount}/{Task.TotalCount})";
     }
 }

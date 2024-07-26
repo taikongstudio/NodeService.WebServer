@@ -62,14 +62,20 @@ namespace NodeService.WebServer.Services.Tasks
                         case TaskExecutionStatus.Started:
                         case TaskExecutionStatus.Running:
                             taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Running;
+                            taskFlowTaskExecutionInstance.FinishedCount = activationRecord.Value.FinishedCount;
+                            taskFlowTaskExecutionInstance.TotalCount = activationRecord.Value.TotalCount;
                             break;
                         case TaskExecutionStatus.Failed:
                         case TaskExecutionStatus.PenddingTimeout:
                         case TaskExecutionStatus.Cancelled:
                             taskFlowTaskExecutionInstance.Status = activationRecord.Status;
+                            taskFlowTaskExecutionInstance.FinishedCount = activationRecord.Value.FinishedCount;
+                            taskFlowTaskExecutionInstance.TotalCount = activationRecord.Value.TotalCount;
                             break;
                         case TaskExecutionStatus.Finished:
                             taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Finished;
+                            taskFlowTaskExecutionInstance.FinishedCount = activationRecord.Value.FinishedCount;
+                            taskFlowTaskExecutionInstance.TotalCount = activationRecord.Value.TotalCount;
                             break;
                         case TaskExecutionStatus.MaxCount:
                             break;

@@ -1,9 +1,21 @@
-﻿<FormItem Label="Url">
-    <TextArea @bind-Value="@Configuration.Url" />
+﻿<FormItem Label="AppId">
+    <Input @bind-Value="@Configuration.AppId" />
+</FormItem>
+
+<FormItem Label="AppSecret">
+    <Input @bind-Value="@Configuration.AppSecret" />
+</FormItem>
+
+<FormItem Label="接收者">
+    <StringEntryTable ValueTitle="手机号码" NameTitle="备注" ItemsSource="@Configuration.Recievers" AddingNewItem="AddCC" />
 </FormItem>
 
 @code {
 
     [Parameter] public LarkNotificationOptions Configuration { get; set; }
 
+    void AddCC(AddingNewItemEventArgs<StringEntry> e)
+    {
+        e.DataItem.BeginEdit();
+    }
 }

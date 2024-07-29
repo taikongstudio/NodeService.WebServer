@@ -894,7 +894,8 @@ public class TaskActivateService : BackgroundService
             Id = fireTaskFlowParameters.TaskFlowInstanceId,
             Name = taskFlowTemplate.Name,
             CreationDateTime = DateTime.UtcNow,
-            ModifiedDateTime = DateTime.UtcNow
+            ModifiedDateTime = DateTime.UtcNow,
+            TaskFlowTemplateId = taskFlowTemplate.Id,
         };
         taskFlowExecutionInstance.Value.Id = fireTaskFlowParameters.TaskFlowInstanceId;
         taskFlowExecutionInstance.Value.Name = taskFlowTemplate.Name;

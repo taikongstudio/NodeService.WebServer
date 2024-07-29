@@ -12,6 +12,10 @@ public class EmailNotificationHandler
     public async Task<NotificationResult> HandleAsync(NotificationMessage notificationMessage)
     {
         var notificationResult = new NotificationResult();
+        if (notificationMessage.Content.Index != 0)
+        {
+            return notificationResult;
+        }
         if (!notificationMessage.Configuration.Options.TryGetValue(
                 NotificationConfigurationType.Email,
                 out var emailOptionsValue) || emailOptionsValue is not EmailNotificationOptions options)
@@ -43,10 +47,10 @@ public class EmailNotificationHandler
         {
             Sender = new MailboxAddress(options.Sender,
                 options.UserName),
-            Subject = notificationMessage.Subject,
+            Subject = notificationMessage.Content.AsT0.Subject,
             Body = new TextPart(TextFormat.Html)
             {
-                Text = notificationMessage.Message
+                Text = notificationMessage.Content.AsT0.Message
             }
         };
         foreach (var to in options.To)

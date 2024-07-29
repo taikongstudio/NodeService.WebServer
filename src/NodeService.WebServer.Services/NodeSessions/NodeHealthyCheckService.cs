@@ -51,7 +51,7 @@ public class NodeHealthyCheckService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        if (Debugger.IsAttached) await Task.CompletedTask;
+        if (Debugger.IsAttached) await Task.Delay(TimeSpan.FromHours(1));
         while (!cancellationToken.IsCancellationRequested)
         {
             await CheckNodeHealthyAsync(cancellationToken);
@@ -138,11 +138,17 @@ public class NodeHealthyCheckService : BackgroundService
         await using var repo = await _notificationRepositoryFactory.CreateRepositoryAsync();
 
         var stringBuilder = new StringBuilder();
+        List<StringEntry> stringEntries = [];
         foreach (var nodeHealthyCheckItemGroups in nodeHealthyCheckItemList.GroupBy(static x => x.Node))
-        foreach (var nodeHealthCheckItem in nodeHealthyCheckItemGroups.OrderBy(static x =>
-                     x.Node.Profile.ServerUpdateTimeUtc))
-            stringBuilder.Append(
-                $"<tr><td>{nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc}</td><td>{nodeHealthCheckItem.Node.Name}</td><td>{nodeHealthCheckItem.Message}</td></tr>");
+        {
+            foreach (var nodeHealthCheckItem in nodeHealthyCheckItemGroups.OrderBy(static x =>
+             x.Node.Profile.ServerUpdateTimeUtc))
+            {
+                stringBuilder.Append($"<tr><td>{nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc}</td><td>{nodeHealthCheckItem.Node.Name}</td><td>{nodeHealthCheckItem.Message}</td></tr>");
+                stringEntries.Add(new StringEntry(nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc.ToString(), nodeHealthCheckItem.Node.Name));
+            }
+        }
+
         var content = _nodeHealthyCheckConfiguration.ContentFormat.Replace("{0}", stringBuilder.ToString());
 
 
@@ -155,6 +161,12 @@ public class NodeHealthyCheckService : BackgroundService
                     content,
                     notificationConfig.Value),
                 cancellationToken);
+
+            await _notificationQueue.EnqueueAsync(
+            new NotificationMessage(_nodeHealthyCheckConfiguration.Subject,
+                stringEntries,
+                notificationConfig.Value),
+            cancellationToken);
         }
     }
 

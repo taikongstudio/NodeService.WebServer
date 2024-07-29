@@ -29,7 +29,7 @@ namespace NodeService.WebServer.Controllers
 
         [HttpGet("/api/TaskFlows/Instances/List")]
         public async Task<PaginationResponse<TaskFlowExecutionInstanceModel>> QueryTaskExecutionInstanceListAsync(
-    [FromQuery] PaginationQueryParameters queryParameters
+    [FromQuery] QueryTaskFlowExecutionInstanceListParameters queryParameters
 )
         {
             var apiResponse = new PaginationResponse<TaskFlowExecutionInstanceModel>();
@@ -38,6 +38,10 @@ namespace NodeService.WebServer.Controllers
                 await using var repo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync();
                 var queryResult = await repo.PaginationQueryAsync(new TaskFlowExecutionInstanceSpecification(
                         queryParameters.Keywords,
+                        queryParameters.Status,
+                        queryParameters.BeginDateTime,
+                        queryParameters.EndDateTime,
+                       DataFilterCollection<string>.Includes(queryParameters.TaskFlowTemplateIdList),
                         queryParameters.SortDescriptions),
                     queryParameters.PageSize,
                     queryParameters.PageIndex

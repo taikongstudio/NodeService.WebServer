@@ -35,16 +35,38 @@ public class NotificationService : BackgroundService
                         var emailNotificationMessageHandler = new EmailNotificationHandler();
                         await emailNotificationMessageHandler.HandleAsync(notificationMessage);
                         break;
+                    case NotificationConfigurationType.Lark:
+                        var larkNotificationMessageHandler = new LarkNotificationHandler();
+                        await larkNotificationMessageHandler.HandleAsync(notificationMessage);
+                        break;
                 }
 
                 await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-                dbContext.NotificationRecordDbSet.Add(new NotificationRecordModel
+                switch (notificationMessage.Content.Index)
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    CreationDateTime = DateTime.UtcNow,
-                    Name = notificationMessage.Subject ?? string.Empty,
-                    Value = notificationMessage.Message
-                });
+                    case 0:
+                        dbContext.NotificationRecordDbSet.Add(new NotificationRecordModel
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            CreationDateTime = DateTime.UtcNow,
+                            Name = notificationMessage.Content.AsT0.Subject ?? string.Empty,
+                            Value = notificationMessage.Content.AsT0.Message
+                        });
+                        break;
+                    case 1:
+                        dbContext.NotificationRecordDbSet.Add(new NotificationRecordModel
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            CreationDateTime = DateTime.UtcNow,
+                            Name = notificationMessage.Content.AsT1.Subject ?? string.Empty,
+                            Value = string.Join(Environment.NewLine, notificationMessage.Content.AsT1.Entries.Select(x => $"{x.Name}:{x.Value}"))
+                        });
+                        break;
+                    default:
+                        break;
+                }
+
+
                 await dbContext.SaveChangesAsync();
             }
 
@@ -54,4 +76,5 @@ public class NotificationService : BackgroundService
                 _logger.LogError(ex.ToString());
             }
     }
+
 }

@@ -699,6 +699,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 taskDefinitionId,
                 fireInstanceId,
                 nodeList,
+                taskActivationRecord.GetTaskDefinition().EnvironmentVariables,
                 taskExecutionInstance.GetTaskFlowTaskKey());
             if (taskDefinitionSnapshot.RetryDuration == 0)
             {

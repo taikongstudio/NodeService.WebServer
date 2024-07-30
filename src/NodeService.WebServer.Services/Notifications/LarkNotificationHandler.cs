@@ -262,41 +262,51 @@ namespace NodeService.WebServer.Services.Notifications
                 foreach (var user_list_item in open_id_rsp.data.user_list)
                 {
 
-                    foreach (var item in notificationMessage.Content.AsT1.Entries)
+                    foreach (var entryArray in notificationMessage.Content.AsT1.Entries.Chunk(20))
                     {
-                        using var sendMessageReq = new HttpRequestMessage();
-                        sendMessageReq.Method = HttpMethod.Post;
-                        sendMessageReq.RequestUri = new Uri("https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=user_id");
-
-                        sendMessageReq.Content = JsonContent.Create(new message()
+                        if (entryArray == null)
                         {
-                            msg_type = "interactive",
-                            content = JsonSerializer.Serialize(new interactive_content()
-                            {
-                                type = "template",
-                                data = new Data()
-                                {
-                                    template_id = "AAq0dGsSmpZ6T",
-                                    template_variable = new Template_variable()
-                                    {
-                                        date = item.Name,
-                                        name = item.Value
-
-                                    }
-                                }
-                            }),
-                            receive_id = user_list_item.user_id,
-                        });
-
-                        var httpSendMessageRsp = await httpClient.SendAsync(sendMessageReq, default);
-                        var result = await httpSendMessageRsp.Content.ReadAsStringAsync();
-
-                        var sendMessageRsp = await httpSendMessageRsp.Content.ReadFromJsonAsync<send_message_rsp>();
-
-                        if (sendMessageRsp.code != 0)
-                        {
-                            throw new Exception(sendMessageRsp.msg);
+                            continue;
                         }
+
+                        foreach (var item in entryArray)
+                        {
+                            using var sendMessageReq = new HttpRequestMessage();
+                            sendMessageReq.Method = HttpMethod.Post;
+                            sendMessageReq.RequestUri = new Uri("https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=user_id");
+
+                            sendMessageReq.Content = JsonContent.Create(new message()
+                            {
+                                msg_type = "interactive",
+                                content = JsonSerializer.Serialize(new interactive_content()
+                                {
+                                    type = "template",
+                                    data = new Data()
+                                    {
+                                        template_id = "AAq0dGsSmpZ6T",
+                                        template_variable = new Template_variable()
+                                        {
+                                            date = item.Name,
+                                            name = item.Value
+
+                                        }
+                                    }
+                                }),
+                                receive_id = user_list_item.user_id,
+                            });
+
+                            var httpSendMessageRsp = await httpClient.SendAsync(sendMessageReq, default);
+                            var result = await httpSendMessageRsp.Content.ReadAsStringAsync();
+
+                            var sendMessageRsp = await httpSendMessageRsp.Content.ReadFromJsonAsync<send_message_rsp>();
+
+                            if (sendMessageRsp.code != 0)
+                            {
+                                throw new Exception(sendMessageRsp.msg);
+                            }
+                        }
+
+                        await Task.Delay(TimeSpan.FromSeconds(1));
                     }
 
 

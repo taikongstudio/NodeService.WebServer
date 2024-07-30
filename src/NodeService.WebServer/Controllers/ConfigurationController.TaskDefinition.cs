@@ -36,7 +36,7 @@ public partial class ConfigurationController
                 TaskDefinitionId = taskDefinitionId,
                 ScheduledFireTimeUtc = DateTime.UtcNow,
                 NodeList = invokeTaskParameters.NodeList,
-                EnvironmentVariables = invokeTaskParameters.EnvironmentVaribales
+                EnvironmentVariables = invokeTaskParameters.EnvironmentVariables
             }), cancellationToken);
             apiResponse.SetResult(new InvokeTaskResult()
             {

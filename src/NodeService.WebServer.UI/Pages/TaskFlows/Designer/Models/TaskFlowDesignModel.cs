@@ -7,6 +7,7 @@ namespace NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
         public TaskTriggerType TriggerType { get; set; }
         public List<StringEntry> CronExpressions { get; set; } = [];
         public List<TaskFlowStageDesignModel> Stages { get; set; } = [];
+        public List<StringEntry> EnvironmentVariables { get; set; } = [];
     }
 
     public class TaskFlowStageDesignModel : TaskFlowDesignModelBase

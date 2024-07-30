@@ -673,6 +673,10 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         TaskExecutionInstanceModel taskExecutionInstance,
         CancellationToken cancellationToken = default)
     {
+        if (taskActivationRecord.TaskFlowInstanceId != null)
+        {
+            return;
+        }
         TaskExecutionNodeInfo? taskExecutionNodeInfo = default;
         foreach (var item in taskActivationRecord.Value.TaskExecutionNodeList)
         {
@@ -699,7 +703,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 taskDefinitionId,
                 fireInstanceId,
                 nodeList,
-                taskActivationRecord.GetTaskDefinition().EnvironmentVariables,
+                taskActivationRecord.GetTaskDefinition()?.EnvironmentVariables ?? [],
                 taskExecutionInstance.GetTaskFlowTaskKey());
             if (taskDefinitionSnapshot.RetryDuration == 0)
             {

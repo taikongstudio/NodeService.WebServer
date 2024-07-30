@@ -2,6 +2,7 @@
 using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataQueue;
 using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
@@ -17,6 +18,7 @@ namespace NodeService.WebServer.Services.Tasks
         readonly BatchQueue<TaskActivateServiceParameters> _taskActivateServiceParametersBatchQueue;
         readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
         readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
+        readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
         readonly ActionBlock<AsyncOperation<Func<Task>>> _executionQueue;
 
         public TaskFlowExecutor(
@@ -24,7 +26,8 @@ namespace NodeService.WebServer.Services.Tasks
             ExceptionCounter exceptionCounter,
             BatchQueue<TaskActivateServiceParameters> taskActivateServiceBatchQueue,
             ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
-            ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory
+            ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
+            ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory
             )
         {
             _logger = logger;
@@ -32,6 +35,7 @@ namespace NodeService.WebServer.Services.Tasks
             _taskActivateServiceParametersBatchQueue = taskActivateServiceBatchQueue;
             _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
             _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
+            _taskActivationRecordRepoFactory = taskActivationRecordRepoFactory;
             _executionQueue = new ActionBlock<AsyncOperation<Func<Task>>>(ExecutionTaskAsync, new ExecutionDataflowBlockOptions()
             {
                 EnsureOrdered = true,
@@ -310,12 +314,12 @@ namespace NodeService.WebServer.Services.Tasks
             CancellationToken cancellationToken = default)
         {
             var taskFlowStageTemplate = taskFlowTemplate.Value.FindStageTemplate(taskFlowStageExecutionInstance.TaskFlowStageTemplateId);
-            if (taskFlowStageTemplate==null)
+            if (taskFlowStageTemplate == null)
             {
                 return;
             }
             var taskFlowGroupTemplate = taskFlowStageTemplate.FindGroupTemplate(taskFlowGroupExecutionInstance.TaskFlowGroupTemplateId);
-            if (taskFlowGroupTemplate==null)
+            if (taskFlowGroupTemplate == null)
             {
                 return;
             }
@@ -324,13 +328,14 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 return;
             }
-               
+
             if (taskFlowTaskTemplate.TemplateType == TaskFlowTaskTemplateType.TriggerTask)
             {
                 taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Finished;
             }
             else if (taskFlowTaskTemplate.TemplateType == TaskFlowTaskTemplateType.RemoteNodeTask)
             {
+
                 switch (taskFlowTaskExecutionInstance.Status)
                 {
                     case TaskExecutionStatus.Unknown:
@@ -343,6 +348,7 @@ namespace NodeService.WebServer.Services.Tasks
                                 FireInstanceId = fireInstanceId,
                                 TaskDefinitionId = taskFlowTaskExecutionInstance.TaskDefinitionId,
                                 ScheduledFireTimeUtc = DateTime.UtcNow,
+                                EnvironmentVariables = taskFlowTemplate.Value.EnvironmentVariables,
                                 TaskFlowTaskKey = new TaskFlowTaskKey(
                                      taskFlowExecutionInstance.Value.TaskFlowTemplateId,
                                      taskFlowExecutionInstance.Value.Id,
@@ -356,7 +362,7 @@ namespace NodeService.WebServer.Services.Tasks
                     case TaskExecutionStatus.PenddingTimeout:
                     case TaskExecutionStatus.Cancelled:
                     case TaskExecutionStatus.Failed:
-                    //case TaskExecutionStatus.Running:
+                        //case TaskExecutionStatus.Running:
                         {
                             if (!taskFlowStageExecutionInstance.RetryTasks)
                             {
@@ -374,6 +380,7 @@ namespace NodeService.WebServer.Services.Tasks
                                 FireInstanceId = fireInstanceId,
                                 TaskDefinitionId = taskFlowTaskExecutionInstance.TaskDefinitionId,
                                 ScheduledFireTimeUtc = DateTime.UtcNow,
+                                EnvironmentVariables = taskFlowTemplate.Value.EnvironmentVariables,
                                 RetryTasks = true,
                                 TaskFlowTaskKey = new TaskFlowTaskKey(
                                      taskFlowExecutionInstance.Value.TaskFlowTemplateId,

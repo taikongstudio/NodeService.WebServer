@@ -399,6 +399,10 @@ public partial class ApplicationDbContext
                         .HasConversion(x => Serialize(x), x => Deserialize<List<TaskFlowStageTemplate>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<TaskFlowStageTemplate>());
+                    ownedNavigationBuilder.Property(x => x.EnvironmentVariables)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<StringEntry>());
                 });
         });
 

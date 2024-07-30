@@ -112,17 +112,18 @@
         try
         {
             var invokeTaskParameters = new InvokeTaskParameters
-            {
-                UserName = "WebUser",
-            };
+                {
+                    UserName = "WebUser",
+                    EnvironmentVariables = TaskDefinition.Value.EnvironmentVariables
+                };
             invokeTaskParameters.NodeList.Clear();
             if (_selectedNodes != null)
             {
                 invokeTaskParameters.NodeList.AddRange(_selectedNodes.Select(x => new StringEntry
-                {
-                    Name = x.Name,
-                    Value = x.Id
-                }));
+                    {
+                        Name = x.Name,
+                        Value = x.Id
+                    }));
             }
 
             var apiResponse = await ApiService.InvokeTaskAsync(TaskDefinition.Id, invokeTaskParameters);
@@ -133,19 +134,19 @@
             else
             {
                 await _notice.Open(new NotificationConfig
-                {
-                    Message = "错误提示",
-                    Description = apiResponse.Message
-                });
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
             }
         }
         catch (Exception ex)
         {
             await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = ex.ToString()
-            });
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
         }
     }
 

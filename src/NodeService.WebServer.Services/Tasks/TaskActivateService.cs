@@ -480,7 +480,18 @@ public class TaskActivateService : BackgroundService
                 }
                 if (fireTaskParameters.EnvironmentVariables != null && fireTaskParameters.EnvironmentVariables.Count > 0)
                 {
-                    taskDefinition.Value.EnvironmentVariables = fireTaskParameters.EnvironmentVariables;
+                    foreach (var item in fireTaskParameters.EnvironmentVariables)
+                    {
+                        var entry = taskDefinition.Value.EnvironmentVariables.Find(x => x.Name == item.Name);
+                        if (entry == null)
+                        {
+                            taskDefinition.Value.EnvironmentVariables.Add(item);
+                        }
+                        else
+                        {
+                            entry.Value = item.Value;
+                        }
+                    }
                 }
                 var nodeInfoList = await QueryNodeListAsync(taskDefinition, cancellationToken);
 
@@ -620,6 +631,18 @@ public class TaskActivateService : BackgroundService
         foreach (var kv in taskExecutionInstanceList)
         {
             var taskExecutionInstance = kv.Value;
+            if (taskDefinition.Value.TaskTypeDesc.Value.FullName == "NodeService.ServiceHost.Tasks.ExecuteBatchScriptTask")
+            {
+                if (taskDefinition.Value.Options.TryGetValue("Scripts", out var scriptsObject) && scriptsObject is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
+                {
+                    var scriptsString = jsonElement.GetString();
+                    foreach (var item in taskDefinition.Value.EnvironmentVariables)
+                    {
+                        scriptsString = scriptsString.Replace($"$({item.Name})", item.Value);
+                    }
+                    taskDefinition.Value.Options["Scripts"] = scriptsString;
+                }
+            }
             var context = new TaskPenddingContext(taskExecutionInstance.Id)
             {
                 NodeSessionService = _nodeSessionService,

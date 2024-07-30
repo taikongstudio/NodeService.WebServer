@@ -82,24 +82,29 @@
               LabelColSpan="8"
               Layout="@FormLayout.Vertical"
               WrapperColSpan="24">
-
             <FormItem Label="触发类型">
                 <RadioGroup @bind-Value="@_taskFlow.TriggerType">
-                <Radio RadioButton Value="@TaskTriggerType.Manual">手动启动</Radio>
-                <Radio RadioButton Value="@TaskTriggerType.Schedule">定时启动</Radio>
+                    <Radio RadioButton Value="@TaskTriggerType.Manual">手动启动</Radio>
+                    <Radio RadioButton Value="@TaskTriggerType.Schedule">定时启动</Radio>
                 </RadioGroup>
             </FormItem>
-        @if(_taskFlow.TriggerType== TaskTriggerType.Schedule)
-        {
-            <FormItem Label="Cron表达式">
-                <StringEntryTable ItemsSource="@_taskFlow.CronExpressions"
-                                  NameTitle="备注"
-                                  ValueTitle="Cron表达式"
-                                  IsTagHidden="false"
-                                  AddingNewItem="AddCronExpression"
-                                  ValueChanged="OnCronExpressionValueChanged" />
+            @if (_taskFlow.TriggerType == TaskTriggerType.Schedule)
+            {
+                <FormItem Label="Cron表达式">
+                    <StringEntryTable ItemsSource="@_taskFlow.CronExpressions"
+                                      NameTitle="备注"
+                                      ValueTitle="Cron表达式"
+                                      IsTagHidden="false"
+                                      AddingNewItem="AddCronExpression"
+                                      ValueChanged="OnCronExpressionValueChanged" />
+                </FormItem>
+            }
+            <FormItem Label="环境变量">
+                <StringEntryTable ItemsSource="@_taskFlow.EnvironmentVariables"
+                                  NameTitle="名称"
+                                  ValueTitle="值"
+                                  AddingNewItem="NewEnvVarAdding" />
             </FormItem>
-        }
     </Form>
 
 </Drawer>
@@ -200,6 +205,7 @@
                             TriggerType = taskFlowTemplate.GetTriggerTask().TriggerType,
                             CronExpressions = taskFlowTemplate.GetTriggerTask().TriggerSources,
                             IsDesignMode = true,
+                            EnvironmentVariables = taskFlowTemplate.Value.EnvironmentVariables ?? []
                         };
                     foreach (var taskFlowStage in taskFlowTemplate.Value.TaskStages.Where(x => x.Attributes != TaskFlowStateAttributes.Hidden))
                     {
@@ -284,6 +290,7 @@
                 };
             taskFlowTemplate.Value.Id = taskFlowTemplate.Id;
             taskFlowTemplate.Value.Name = taskFlowTemplate.Name;
+            taskFlowTemplate.Value.EnvironmentVariables = _taskFlow.EnvironmentVariables;
             var triggerStage = new TaskFlowStageTemplate()
                 {
                     CreationDateTime = DateTime.UtcNow,
@@ -414,4 +421,10 @@
         }
     }
 
+    void NewEnvVarAdding(AddingNewItemEventArgs<StringEntry> e)
+    {
+        e.DataItem.Name = string.Empty;
+        e.DataItem.Value = string.Empty;
+        e.DataItem.BeginEdit();
+    }
 }

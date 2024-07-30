@@ -12,4 +12,9 @@ public class NotificationRecordSpecification : ListSpecification<NotificationRec
         Query.OrderByDescending(x => x.CreationDateTime);
         if (sortDescriptions != null && sortDescriptions.Any()) Query.SortBy(sortDescriptions);
     }
+
+    public NotificationRecordSpecification(string id)
+    {
+        Query.Where(x => x.Id == id);
+    }
 }

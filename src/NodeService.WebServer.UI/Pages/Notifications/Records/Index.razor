@@ -43,20 +43,13 @@
             <PropertyColumn Title="创建时间" Sortable="true" Property="c => c.CreationDateTime"></PropertyColumn>
             <PropertyColumn Title="内容" Sortable="true" Ellipsis Property="c => c.Value"></PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
-                <CellRender Context="cellData">
-                    <Space>
-                    </Space>
-                </CellRender>
+                <Space>
+                    <SpaceItem>
+                        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="()=>Navigate(context)"></Button>
+                    </SpaceItem>
+                </Space>
             </ActionColumn>
         </ColumnDefinitions>
-        <ExpandTemplate>
-            <Tabs Animated>
-                <TabPane Tab="参数" Key="1">
-
-
-                </TabPane>
-            </Tabs>
-        </ExpandTemplate>
     </Table>
 </GridContent>
 
@@ -122,6 +115,11 @@
     public void Dispose()
     {
         _dataSource.Dispose();
+    }
+
+    void Navigate(NotificationRecordModel notificationRecord)
+    {
+        NavigationManager.NavigateTo($"/Notifications/Records/Details/{notificationRecord.Id}");
     }
 
 }

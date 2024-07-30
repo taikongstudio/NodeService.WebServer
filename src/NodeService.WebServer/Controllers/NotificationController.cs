@@ -48,4 +48,26 @@ public class NotificationController : Controller
 
         return apiResponse;
     }
+
+    [HttpGet("/api/Notification/Records/Details/{id}")]
+    public async Task<ApiResponse<NotificationRecordModel>> QueryNotificationRecordAsync(
+        string id, CancellationToken cancellationToken = default)
+    {
+        var apiResponse = new ApiResponse<NotificationRecordModel>();
+        try
+        {
+            await using var repo = await _notificationRecordsRepositoryFactory.CreateRepositoryAsync();
+            var queryResult = await repo.GetByIdAsync(id, cancellationToken);
+            apiResponse.SetResult(queryResult);
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.ToString();
+        }
+
+        return apiResponse;
+    }
 }

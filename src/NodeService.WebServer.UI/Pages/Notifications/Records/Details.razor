@@ -1,0 +1,55 @@
+﻿@page "/Notifications/Records/Details/{NotificationRecordId}"
+@using NodeService.WebServer.UI.Layouts
+@inject ApiService ApiService
+@inject NotificationService _notice
+@inject ConfirmService _confirmService
+@inject NavigationManager NavigationManager
+@layout NotificationHtmlViewerLayout
+
+<style type="text/css">
+    table {
+        border-collapse: collapse;
+    }
+    table, th, td {
+        border: 1px solid  black;
+    }
+</style>
+
+@if (_notificationRecord == null)
+{
+    <Empty/>
+}
+else
+{
+    <table style="width:800px;margin:10px 10px 10px 10px;">
+        <tr>
+            <th>时间</th>
+            <th>主机</th>
+            <th>消息</th>
+        </tr>
+        @((MarkupString)_notificationRecord.Value)
+    </table>
+
+}
+
+
+@code {
+    [Parameter]
+    public string NotificationRecordId { get; set; }
+
+    NotificationRecordModel _notificationRecord;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(NotificationRecordId))
+        {
+            var rsp = await ApiService.QueryNotificationRecordAsync(NotificationRecordId);
+            if (rsp.ErrorCode == 0)
+            {
+                _notificationRecord = rsp.Result;
+            }
+        }
+
+        await base.OnInitializedAsync();
+    }
+}

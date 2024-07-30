@@ -343,22 +343,28 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 }
                 if (analysisPropsResult != default)
                 {
-                    foreach (var item in analysisPropsResult.ProcessListResult.StatusChangeProcessList)
+                    if (analysisPropsResult.ProcessListResult.StatusChangeProcessList != null)
                     {
-                        statusChanged.ProcessList.Add(new StringEntry()
+                        foreach (var item in analysisPropsResult.ProcessListResult.StatusChangeProcessList)
                         {
-                            Name = item.ProcessName,
-                            Value = item.Id.ToString()
-                        });
+                            statusChanged.ProcessList.Add(new StringEntry()
+                            {
+                                Name = item.ProcessName,
+                                Value = item.Id.ToString()
+                            });
+                        }
                     }
 
-                    foreach (var item in analysisPropsResult.ServiceProcessListResult.StatusChangeProcessList)
+                    if (analysisPropsResult.ServiceProcessListResult.StatusChangeProcessList != null)
                     {
-                        statusChanged.ProcessList.Add(new StringEntry()
+                        foreach (var item in analysisPropsResult.ServiceProcessListResult.StatusChangeProcessList)
                         {
-                            Name = item.Name,
-                            Value = item.ProcessId.ToString()
-                        });
+                            statusChanged.ProcessList.Add(new StringEntry()
+                            {
+                                Name = item.Name,
+                                Value = item.ProcessId.ToString()
+                            });
+                        }
                     }
 
                 }

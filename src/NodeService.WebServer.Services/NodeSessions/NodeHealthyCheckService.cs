@@ -55,7 +55,7 @@ public class NodeHealthyCheckService : BackgroundService
         while (!cancellationToken.IsCancellationRequested)
         {
             await CheckNodeHealthyAsync(cancellationToken);
-            await Task.Delay(TimeSpan.FromMinutes(1), cancellationToken);
+            await Task.Delay(TimeSpan.FromMinutes(60), cancellationToken);
         }
     }
 

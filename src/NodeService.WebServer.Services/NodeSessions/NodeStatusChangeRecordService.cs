@@ -1,14 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Options;
-using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 

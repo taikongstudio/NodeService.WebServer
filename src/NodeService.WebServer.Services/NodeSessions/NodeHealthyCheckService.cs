@@ -131,7 +131,7 @@ public class NodeHealthyCheckService : BackgroundService
     }
 
 
-    private async Task SendNodeHealthyCheckNotificationAsync(
+    async ValueTask SendNodeHealthyCheckNotificationAsync(
         List<NodeHealthyCheckItem> nodeHealthyCheckItemList,
         CancellationToken cancellationToken = default)
     {
@@ -144,8 +144,8 @@ public class NodeHealthyCheckService : BackgroundService
             foreach (var nodeHealthCheckItem in nodeHealthyCheckItemGroups.OrderBy(static x =>
              x.Node.Profile.ServerUpdateTimeUtc))
             {
-                stringBuilder.Append($"<tr><td>{nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc.ToString("yyyy/MM/dd HH:mm:ss:ffff")}</td><td>{nodeHealthCheckItem.Node.Name}</td><td>{nodeHealthCheckItem.Message}</td></tr>");
-                stringEntries.Add(new StringEntry(nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc.ToString("yyyy/MM/dd HH:mm:ss:ffff"), nodeHealthCheckItem.Node.Name));
+                stringBuilder.Append($"<tr><td>{nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc.ToString("yyyy/MM/dd HH:mm:ss")}</td><td>{nodeHealthCheckItem.Node.Name}</td><td>{nodeHealthCheckItem.Message}</td></tr>");
+                stringEntries.Add(new StringEntry(nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc.ToString("yyyy/MM/dd HH:mm:ss"), nodeHealthCheckItem.Node.Name));
             }
         }
 

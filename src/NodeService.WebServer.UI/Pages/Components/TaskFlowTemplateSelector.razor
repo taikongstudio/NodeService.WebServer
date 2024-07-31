@@ -1,0 +1,139 @@
+﻿@inject ApiService ApiService
+@inject NotificationService _notice
+@inherits Selector<TaskFlowTemplateModel>
+<style type="text/css">
+    td .ant-table-cell{
+        padding:3px;
+    }
+    </style>
+
+
+    <Flex Vertical>
+    <GridRow>
+        <GridCol Span="24">
+            <Select ItemValue="c=>c"
+                    ItemLabel="c=>c.Name"
+                    TItem="TaskFlowTemplateModel"
+                    TItemValue="TaskFlowTemplateModel"
+                    @bind-Values="@SelectedItems"
+                    DataSource="@SelectedItems"
+                    Mode="multiple"
+                    AllowClear="true"
+                    Placeholder="选择任务定义"
+                    Style="margin-bottom:4px;margin-top:4px;width:100%"
+                    MaxTagCount="50"
+                    BoundaryAdjustMode="TriggerBoundaryAdjustMode.InView"
+                    EnableSearch
+                    DropdownMatchSelectWidth="false">
+            </Select>
+
+        </GridCol>
+
+    </GridRow>
+
+    <GridRow>
+        <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="_dataSource.QueryAsync" />
+    </GridRow>
+
+    <GridRow>
+        <GridCol Flex=@("auto")>
+            <Table Size="TableSize.Small"
+                   OnChange="(QueryModel<TaskFlowTemplateModel> query) => OnTableChanged(query)"
+                   OnPageIndexChange="@_dataSource.OnPaginationEvent"
+                   OnPageSizeChange="@_dataSource.OnPaginationEvent"
+                   PageSize="@_dataSource.PageSize"
+                   PageIndex="@_dataSource.PageIndex"
+                   Total="@_dataSource.TotalCount"
+                   Loading="@_dataSource.IsLoading"
+                   DataSource="@_dataSource.ItemsSource"
+                   SelectedRows="@SelectedItems" 
+                   SelectedRowsChanged="(IEnumerable<TaskFlowTemplateModel> items) => OnSelectedItemsChanged(items)"
+                   RowKey="x => x.Id">
+                  
+                <ColumnDefinitions Context="ctx">
+                    <Selection Key="@ctx.Id" Type="@GetSelectionMode()" />
+                    <PropertyColumn Property="c => c.Id" Ellipsis Width="100" Sortable Title="标志"></PropertyColumn>
+                    <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="配置名称"></PropertyColumn>
+                    <ActionColumn Width="100">
+                        <Space>
+                            @if (OnEdit.HasDelegate)
+                            {
+                                <SpaceItem>
+                                    <Button Style="padding:0px" Shape="@ButtonShape.Circle" Type="@ButtonType.Link" Icon="@IconType.Outline.Edit" OnClick="() => ShowTaskDefinitionEditorAsync(ctx.JsonClone<TaskFlowTemplateModel>())"></Button>
+                                </SpaceItem>
+                            }
+
+                        </Space>
+                    </ActionColumn>
+                </ColumnDefinitions>
+            </Table>
+        </GridCol>
+    </GridRow>
+    </Flex>
+
+
+
+@code {
+
+    [Parameter] public EventCallback<TaskFlowTemplateModel> OnEdit { get; set; }
+
+    PaginationDataSource<TaskFlowTemplateModel, PaginationQueryParameters> _dataSource;
+
+    protected override IEnumerable<TaskFlowTemplateModel> ItemsSource => _dataSource.ItemsSource;
+
+    protected override void OnInitialized()
+    {
+        _dataSource = new PaginationDataSource<TaskFlowTemplateModel, PaginationQueryParameters>(ApiService.QueryTaskFlowTemplateListAsync, StateHasChanged);
+        _dataSource.QueryParameters.PageIndex = 1;
+        _dataSource.QueryParameters.PageSize = 10;
+        _dataSource.ExceptionHandler = OnExepction;
+        base.OnInitialized();
+    }
+
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        _dataSource.QueryParameters.Keywords = null;
+        _dataSource.QueryParameters.PageIndex = 1;
+        await _dataSource.QueryAsync();
+    }
+
+    async Task OnTableChanged(QueryModel<TaskFlowTemplateModel> query)
+    {
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        foreach (var sortModel in query.SortModel)
+        {
+            if (sortModel.Sort == null)
+            {
+                continue;
+            }
+
+            _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(sortModel.FieldName, sortModel.Sort));
+        }
+
+        await _dataSource.QueryAsync();
+    }
+
+    protected override async Task InvalidateAsync()
+    {
+        await _dataSource.QueryAsync();
+        await base.InvalidateAsync();
+    }
+
+    async Task ShowTaskDefinitionEditorAsync(TaskFlowTemplateModel taskFlowTemplate)
+    {
+        if (OnEdit.HasDelegate)
+        {
+            await OnEdit.InvokeAsync(taskFlowTemplate);
+        }
+    }
+}

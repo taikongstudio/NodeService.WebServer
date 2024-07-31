@@ -39,7 +39,7 @@
                     <Title Level="3">任务实例</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.QueryAsync"/>
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@QueryTaskExecutionInstanceListAsync" />
                 </GridCol>
             </GridRow>
             <GridRow Wrap Style="min-height:30px">
@@ -61,20 +61,29 @@
             </GridRow>
             <GridRow Wrap Style="min-height:30px">
                 <Text>任务定义配置：</Text>
+                <GridRow>
+                    <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowTaskDefinitionSelectorDialogAsync"></Button>
+                </GridRow>
 
-                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowTaskDefinitionSelectorDialogAsync"></Button>
+                <GridRow>
+                    <Select ItemValue="c=>c"
+                            ItemLabel="c=>c.Name"
+                            TItem="TaskDefinitionModel"
+                            TItemValue="TaskDefinitionModel"
+                            @bind-Values="@_selectedTaskDefinitionList"
+                            DataSource="@_selectedTaskDefinitionList"
+                            Mode="multiple"
+                            AllowClear
+                            AutoFocus
+                            Placeholder="选择任务定义"
+                            Style="margin-bottom:4px;margin-top:4px"
+                            MaxTagCount="50"
+                            BoundaryAdjustMode="TriggerBoundaryAdjustMode.InView"
+                            EnableSearch
+                            DropdownMatchSelectWidth="false">
+                    </Select>
 
-                @if (_selectedTaskDefinitionList != null)
-                {
-                    foreach (var item in _selectedTaskDefinitionList)
-                    {
-                        <Tag @key="item.Id" Style="height:20px;">@item.Name</Tag>
-                    }
-                }
-                else
-                {
-                    <Text>全部</Text>
-                }
+                </GridRow>
 
             </GridRow>
             <GridRow>
@@ -98,7 +107,6 @@
                     <SpaceItem>
                         <Button Type="@ButtonType.Primary" OnClick="QueryTaskExecutionInstanceListAsync">查询</Button>
                     </SpaceItem>
-
                 </Space>
             </GridRow>
         </TitleTemplate>
@@ -228,6 +236,15 @@
 
     protected override void OnInitialized()
     {
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待节点响应" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Started, Name = "已启动" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Running, Name = "运行中" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Failed, Name = "失败" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Finished, Name = "完成" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Cancelled, Name = "已取消" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.PenddingTimeout, Name = "等待超时" });
         _dataSource = new RoutedPaginationDataSource<TaskExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
         _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
@@ -244,15 +261,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待节点响应" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Started, Name = "已启动" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Running, Name = "运行中" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Failed, Name = "失败" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Finished, Name = "完成" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Cancelled, Name = "已取消" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.PenddingTimeout, Name = "等待超时" });
         BeginDateTime = DateTime.Today.Date.AddDays(-7);
         EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
@@ -301,10 +309,7 @@
                 _dataSource.QueryParameters.TaskDefinitionIdList.AddRange(_selectedTaskDefinitionList.Select(x => x.Id));
             }
 
-            if (_selectedStatus != TaskExecutionStatus.Unknown)
-            {
-                _dataSource.QueryParameters.Status = _selectedStatus;
-            }
+            _dataSource.QueryParameters.Status = _selectedStatus;
 
             await _dataSource.RequestAsync();
         }

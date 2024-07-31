@@ -8,7 +8,9 @@
 @implements IDisposable
 
 <GridContent>
-
+    <CommonDialog Closed="OnDialogClosed" @ref="_taskFlowTemplateSelectorDialog">
+        <TaskFlowTemplateSelector @bind-SelectedItems="_selectedTaskFlowTemplateList" Mode="SelectionMode.Multiple" />
+    </CommonDialog>
     <Table Size="TableSize.Small"
            Loading="@_dataSource.IsLoading"
            EnableVirtualization="false"
@@ -27,13 +29,56 @@
                     <Title Level="3">任务流实例</Title>
                 </GridCol>
                 <GridCol Span="6" Offset="12">
-                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@_dataSource.RequestAsync" />
+                    <Search Placeholder="搜索" @bind-Value="@_dataSource.QueryParameters.Keywords" OnSearch="@QueryTaskFlowExecutionInstanceListAsync" />
                 </GridCol>
             </GridRow>
+            <GridRow Wrap Style="min-height:30px">
+                <Text>任务流定义配置：</Text>
+                <GridRow>
+                    <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowFlowTaskFlowTemplateSelectorDialogAsync"></Button>
+                </GridRow>
+
+                <GridRow>
+                    <Select ItemValue="c=>c"
+                            ItemLabel="c=>c.Name"
+                            TItem="TaskFlowTemplateModel"
+                            TItemValue="TaskFlowTemplateModel"
+                            @bind-Values="@_selectedTaskFlowTemplateList"
+                            DataSource="@_selectedTaskFlowTemplateList"
+                            Mode="multiple"
+                            AllowClear
+                            AutoFocus
+                            Placeholder="选择任务定义"
+                            Style="margin-bottom:4px;margin-top:4px"
+                            MaxTagCount="50"
+                            BoundaryAdjustMode="TriggerBoundaryAdjustMode.InView"
+                            EnableSearch
+                            DropdownMatchSelectWidth="false">
+                    </Select>
+
+                </GridRow>
+
+            </GridRow>
             <GridRow>
-                <Space>
+                <Space Wrap Style="margin-bottom:16px">
                     <SpaceItem>
-                        <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Reload" Type="@ButtonType.Primary" OnClick="_dataSource.QueryAsync"></Button>
+                        <RangePicker ValueExpression="() => DateTimes" Size="middle" TValue="DateTime?[]" ShowTime="false" OnChange="OnDatePickerChanged" />
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Select TItem="TaskFlowExeuctionStatusModel"
+                                TItemValue="TaskFlowExecutionStatus"
+                                DataSource="@_taskFlowExeuctionStatusList"
+                                @bind-Value="@_selectedStatus"
+                                LabelName="@nameof(TaskFlowExeuctionStatusModel.Name)"
+                                ValueName="@nameof(TaskFlowExeuctionStatusModel.Value)"
+                                Placeholder="选择状态"
+                                DefaultActiveFirstOption="true"
+                                Style="width:200px"
+                                OnSelectedItemChanged="OnSelectedStatusChanged">
+                        </Select>
+                    </SpaceItem>
+                    <SpaceItem>
+                        <Button Type="@ButtonType.Primary" OnClick="QueryTaskFlowExecutionInstanceListAsync">查询</Button>
                     </SpaceItem>
                 </Space>
             </GridRow>
@@ -42,9 +87,9 @@
 
             <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
             <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="状态" Ellipsis Sortable Property="c => c.Status" DefaultSortOrder="@SortDirection.Ascending"></PropertyColumn>
             <PropertyColumn Title="创建时间" Ellipsis Sortable Property="c => c.CreationDateTime" DefaultSortOrder="@SortDirection.Descending"></PropertyColumn>
             <PropertyColumn Title="修改时间" Ellipsis Sortable Property="c => c.ModifiedDateTime" DefaultSortOrder="@SortDirection.Descending"></PropertyColumn>
-
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
@@ -61,16 +106,39 @@
 
 @code {
 
-    RoutedPaginationDataSource<TaskFlowExecutionInstanceModel, PaginationQueryParameters> _dataSource;
+    class TaskFlowExeuctionStatusModel
+    {
+        public TaskFlowExecutionStatus Value { get; set; }
+
+        public string Name { get; set; }
+    }
+
+    DateTime BeginDateTime;
+    DateTime EndDateTime;
+    TaskFlowExecutionStatus _selectedStatus;
+    CommonDialog _taskFlowTemplateSelectorDialog;
+
+    readonly List<TaskFlowExeuctionStatusModel> _taskFlowExeuctionStatusList = [];
+    IEnumerable<TaskFlowTemplateModel> _selectedTaskFlowTemplateList = [];
+
+    readonly DateTime?[] DateTimes = [default, default];
+
+    RoutedPaginationDataSource<TaskFlowExecutionInstanceModel, QueryTaskFlowExecutionInstanceListParameters> _dataSource;
 
 
     protected override void OnInitialized()
     {
-        _dataSource = new RoutedPaginationDataSource<TaskFlowExecutionInstanceModel, PaginationQueryParameters>(
+        _taskFlowExeuctionStatusList.Add(new TaskFlowExeuctionStatusModel { Value = TaskFlowExecutionStatus.Unknown, Name = "全部" });
+        _taskFlowExeuctionStatusList.Add(new TaskFlowExeuctionStatusModel { Value = TaskFlowExecutionStatus.Running, Name = "运行中" });
+        _taskFlowExeuctionStatusList.Add(new TaskFlowExeuctionStatusModel { Value = TaskFlowExecutionStatus.Finished, Name = "完成" });
+        _taskFlowExeuctionStatusList.Add(new TaskFlowExeuctionStatusModel { Value = TaskFlowExecutionStatus.Fault, Name = "错误" });
+        _dataSource = new RoutedPaginationDataSource<TaskFlowExecutionInstanceModel, QueryTaskFlowExecutionInstanceListParameters>(
             NavigationManager.BaseUri,
             ApiService.QueryTaskFlowExecutionInstanceListAsync,
             StateHasChanged);
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskFlowExecutionInstanceModel.Status), "desc"));
         _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskFlowExecutionInstanceModel.CreationDateTime), "desc"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskFlowExecutionInstanceModel.ModifiedDateTime), "desc"));
         _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();
     }
@@ -86,15 +154,60 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await _dataSource.RequestAsync();
+        BeginDateTime = DateTime.Today.Date.AddDays(-7);
+        EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
+        DateTimes[0] = BeginDateTime;
+        DateTimes[1] = EndDateTime;
+        _dataSource.QueryParameters.SortDescriptions.Clear();
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskFlowExecutionInstance.Status), "ascend"));
+        _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskFlowExecutionInstance.CreationDateTime), "descend"));
+        await QueryTaskFlowExecutionInstanceListAsync();
         await base.OnInitializedAsync();
     }
+
+    void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
+    {
+        BeginDateTime = e.Dates[0] ?? DateTime.Today.Date.AddDays(-7);
+        EndDateTime = e.Dates[1] ?? DateTime.Today.Date.AddDays(1).Date.AddSeconds(-1);
+    }
+
+
+    async Task QueryTaskFlowExecutionInstanceListAsync()
+    {
+        try
+        {
+            _dataSource.QueryParameters.BeginDateTime = BeginDateTime;
+            _dataSource.QueryParameters.EndDateTime = EndDateTime;
+
+            _dataSource.QueryParameters.TaskFlowTemplateIdList.Clear();
+            if (_selectedTaskFlowTemplateList != null)
+            {
+                _dataSource.QueryParameters.TaskFlowTemplateIdList.AddRange(_selectedTaskFlowTemplateList.Select(x => x.Id));
+            }
+
+            _dataSource.QueryParameters.Status = _selectedStatus;
+
+            await _dataSource.RequestAsync();
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
 
     void GotoViewer(TaskFlowExecutionInstanceModel model)
     {
         NavigationManager.NavigateTo($"/TaskFlows/Instances/View/{model.Id}");
     }
 
+    void OnSelectedStatusChanged(TaskFlowExeuctionStatusModel status)
+    {
+    }
 
     async Task OnTableChange(QueryModel<TaskFlowExecutionInstanceModel> query)
     {
@@ -112,9 +225,20 @@
         await _dataSource.RequestAsync();
     }
 
+    async Task ShowFlowTaskFlowTemplateSelectorDialogAsync()
+    {
+        await _taskFlowTemplateSelectorDialog.ShowAsync();
+    }
+
     public void Dispose()
     {
         _dataSource.Dispose();
+    }
+
+    Task OnDialogClosed()
+    {
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
 }

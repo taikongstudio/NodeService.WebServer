@@ -158,11 +158,11 @@ namespace NodeService.WebServer.Services.Tasks
 
                 if (taskFlowExecutionInstance.TaskStages.All(x => x.Status == TaskFlowExecutionStatus.Finished))
                 {
-                    taskFlowExecutionInstance.Value.Status = TaskFlowExecutionStatus.Finished;
+                    taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Finished;
                 }
                 else if (taskFlowExecutionInstance.Value.TaskStages.Any(x => x.Status != TaskFlowExecutionStatus.Finished))
                 {
-                    taskFlowExecutionInstance.Value.Status = TaskFlowExecutionStatus.Running;
+                    taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Running;
                 }
                 taskFlowExecutionInstance.ModifiedDateTime = DateTime.UtcNow;
             }

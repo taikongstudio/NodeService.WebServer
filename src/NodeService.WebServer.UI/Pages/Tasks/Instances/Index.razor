@@ -4,7 +4,6 @@
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
-@inject ClipboardService ClipboardService
 @implements IDisposable
 <GridContent>
     <CommonDialog Title="@_taskLogDialogTitle"
@@ -112,7 +111,11 @@
         </TitleTemplate>
         <ColumnDefinitions>
             <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox"/>
-            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="标志" Sortable="true" Width="100" Property="c => c.Id">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
+                </Text>
+            </PropertyColumn>
             <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="触发源头" Sortable="true" Property="c => c.TriggerSource">
                 @switch (context.TriggerSource)
@@ -180,10 +183,6 @@
                         }
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="() => ShowTaskLogViewerDialogAsync(context.Id)">
-                            </Button>
-                        </SpaceItem>
-                        <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Link" OnClick="() => CopyTaskLogViewLinkToClipboardAsync(context.Id)">
                             </Button>
                         </SpaceItem>
                         <SpaceItem>
@@ -408,26 +407,6 @@
                 Description = ex.ToString()
             });
         }
-    }
-
-    async Task CopyTaskLogViewLinkToClipboardAsync(string value)
-    {
-        if (!await ClipboardService.IsSupportedAsync())
-        {
-            await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = "粘贴板服务不可用。"
-            });
-            return;
-        }
-
-        await ClipboardService.WriteTextAsync($"{ApiService.HttpClient.BaseAddress}Tasks/Instances/{value}/Log");
-        await _notice.Open(new NotificationConfig
-        {
-            Message = "提示",
-            Description = "已经复制到粘贴板。"
-        });
     }
 
     async Task ShowNodeSelectorDialogAsync()

@@ -62,8 +62,16 @@
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
-            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
-            <PropertyColumn Title="节点标志" Ellipsis Sortable Property="c => c.NodeId"></PropertyColumn>
+            <PropertyColumn Title="标志" Sortable="true" Width="100" Property="c => c.Id">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
+                </Text>
+            </PropertyColumn>
+            <PropertyColumn Title="节点标志" Sortable="true" Width="100" Property="c => c.NodeId">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.NodeId">@context.NodeId</div>
+                </Text>
+            </PropertyColumn>
             <PropertyColumn Title="节点名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="时间" Sortable Property="c => c.CreationDateTime" DefaultSortOrder="SortDirection.Descending"></PropertyColumn>
             <PropertyColumn Title="消息" Sortable="true" Property="c => c.Message"></PropertyColumn>

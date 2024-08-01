@@ -76,10 +76,31 @@
         </TitleTemplate>
         <ColumnDefinitions>
             <Selection Key="@context.Id" Width="40" Fixed="left" Type="checkbox" />
-            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
-            <PropertyColumn Title="节点标志" Ellipsis Sortable Property="c => c.NodeInfoId"></PropertyColumn>
-            <PropertyColumn Title="文件路径" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="存储路径" Ellipsis Sortable="true" Property="c => c.StoragePath"></PropertyColumn>
+            <PropertyColumn Title="标志" Sortable="true" Width="100" Property="c => c.Id">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
+                </Text>
+            </PropertyColumn>
+            <PropertyColumn Title="上下文标志" Sortable="true" Width="200" Property="c => c.ContextId">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.ContextId">@context.ContextId</div>
+                </Text>
+            </PropertyColumn>
+            <PropertyColumn Title="节点标志" Sortable="true" Width="100" Property="c => c.NodeInfoId">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.NodeInfoId">@context.NodeInfoId</div>
+                </Text>
+            </PropertyColumn>
+            <PropertyColumn Title="文件路径" Sortable="true" Width="200" Property="c => c.Name">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Name">@context.Name</div>
+                </Text>
+            </PropertyColumn>
+            <PropertyColumn Title="存储路径" Sortable="true" Width="200" Property="c => c.StoragePath">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.StoragePath">@context.StoragePath</div>
+                </Text>
+            </PropertyColumn>
             <PropertyColumn Title="状态" SorterMultiple="1" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
                 @switch (context.Status)
                 {
@@ -131,8 +152,11 @@
                 <Text>@FormatSize(context.TransferredBytes)</Text>
             </PropertyColumn>
             <PropertyColumn Title="错误代码"  Ellipsis Property="c => c.ErrorCode"></PropertyColumn>
-            <PropertyColumn Title="消息"  Ellipsis Property="c => c.Message"></PropertyColumn>
-
+            <PropertyColumn Title="异常消息" Sortable="true" Width="200" Property="c => c.Message">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Message">@context.Message</div>
+                </Text>
+            </PropertyColumn>
         </ColumnDefinitions>
     </Table>
 </GridContent>

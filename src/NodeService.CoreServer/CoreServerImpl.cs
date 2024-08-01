@@ -1,5 +1,4 @@
 ﻿using AntDesign.ProLayout;
-using CurrieTechnologies.Razor.Clipboard;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http.Features;
@@ -317,7 +316,6 @@ namespace NodeService.CoreServer
             builder.Services.AddScoped<IUserService, UserService>();
             builder.Services.AddScoped<IAccountService, AccountService>();
             builder.Services.AddScoped<IProfileService, ProfileService>();
-            builder.Services.AddClipboard();
 
             builder.Services.AddScoped(serviceProvider =>
             {

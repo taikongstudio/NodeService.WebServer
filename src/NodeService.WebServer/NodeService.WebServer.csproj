@@ -7,13 +7,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="Areas\Identity\Pages\Account\Components\**" />
-      <Content Remove="Areas\Identity\Pages\Account\Components\**" />
-      <EmbeddedResource Remove="Areas\Identity\Pages\Account\Components\**" />
-      <None Remove="Areas\Identity\Pages\Account\Components\**" />
-    </ItemGroup>
-
-    <ItemGroup>
         <_WebToolingArtifacts Remove="Properties\PublishProfiles\10.201.76.21.pubxml" />
         <_WebToolingArtifacts Remove="Properties\PublishProfiles\172.27.241.153.pubxml" />
         <_WebToolingArtifacts Remove="Properties\PublishProfiles\43.163.8.23.pubxml" />

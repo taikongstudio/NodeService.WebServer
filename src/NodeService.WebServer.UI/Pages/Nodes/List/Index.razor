@@ -204,6 +204,11 @@
                 </GridRow>
             </TitleTemplate>
             <ColumnDefinitions>
+                    <PropertyColumn Title="标志" Sortable="true" Width="100"   Property="c => c.Id">
+                        <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                            <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
+                        </Text>
+                    </PropertyColumn>
                 <PropertyColumn Title="厂区" Sortable="true" Width="100" Property="c => c.Profile.FactoryName">
                     <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
                 </PropertyColumn>
@@ -226,15 +231,15 @@
                             break;
                     }
                     @if (context.DeviceType == NodeDeviceType.Computer)
-                    {
-                        <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
-                    }
-                    else
-                    {
-                        <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link" OnClick="() => ShowEditNodeDeviceFormAsync(context)">
-                            @context.Name
-                        </Button>
-                    }
+                        {
+                            <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
+                        }
+                        else
+                        {
+                            <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link" OnClick="() => ShowEditNodeDeviceFormAsync(context)">
+                                @context.Name
+                            </Button>
+                        }
 
                 </PropertyColumn>
                 <PropertyColumn
@@ -268,15 +273,15 @@
                         <ChildContent>
                             @if (context.PingReplyInfo == null)
                             {
-                                <Tag Icon="warning">@context.Profile.IpAddress</Tag>
+                                    <Tag Icon="warning"><Text Copyable>@context.Profile.IpAddress</Text></Tag>
                             }
                             else if (context.PingReplyInfo.Status == System.Net.NetworkInformation.IPStatus.Success)
                             {
-                                <Tag Icon="wifi">@context.Profile.IpAddress</Tag>
+                                    <Tag Icon="wifi"><Text Copyable>@context.Profile.IpAddress</Text></Tag>
                             }
                             else
                             {
-                                <Tag Icon="disconnect">@context.Profile.IpAddress</Tag>
+                                    <Tag Icon="disconnect"><Text Copyable>@context.Profile.IpAddress</Text></Tag>
                             }
                         </ChildContent>
 
@@ -320,6 +325,7 @@
     bool _editFormSubmitting;
     bool _editFormConfirmLoading;
     NodeInfoModel _editModel;
+    TypographyEllipsisConfig _typographyEllipsisConfig;
 
     NodeStatus _nodeStatus = NodeStatus.All;
     NodeDeviceType _nodeDeviceType = NodeDeviceType.All;
@@ -481,10 +487,14 @@
 
     protected override void OnInitialized()
     {
+        _typographyEllipsisConfig = new TypographyEllipsisConfig()
+        {
+             Rows=1,
+        };
         _nodeDeviceTypes =
         [
             new EnumModel<NodeDeviceType>("网络设备", NodeDeviceType.NetworkDevice),
-    new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPortDevice)
+            new EnumModel<NodeDeviceType>("串口设备", NodeDeviceType.SerialPortDevice)
         ];
         _dataSource = new RoutedPaginationDataSource<NodeInfoModel, QueryNodeListParameters>(NavigationManager.BaseUri, ApiService.QueryNodeListAsync, StateHasChanged);
         _dataSource.QueryParameters.Status = NodeStatus.All;

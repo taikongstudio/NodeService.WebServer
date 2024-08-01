@@ -5,7 +5,6 @@
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
-@inject ClipboardService ClipboardService
 @implements IDisposable
 <GridContent>
     <FileRecordPropertyWindow Visible="_isFileRecordPropertyWindowVisible" DataContext="_editingFileRecord" Closed="OnFileRecordPropertyWindowClosed"/>
@@ -334,26 +333,6 @@
         }
 
         await _dataSource.RequestAsync();
-    }
-
-    async Task CopyTaskLogViewLinkToClipboardAsync(string value)
-    {
-        if (!await ClipboardService.IsSupportedAsync())
-        {
-            await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = "粘贴板服务不可用。"
-            });
-            return;
-        }
-
-        await ClipboardService.WriteTextAsync($"{ApiService.HttpClient.BaseAddress}tasks/Instances/{value}/log");
-        await _notice.Open(new NotificationConfig
-        {
-            Message = "提示",
-            Description = "已经复制到粘贴板。"
-        });
     }
 
     async Task ShowNodeSelectorDialogAsync()

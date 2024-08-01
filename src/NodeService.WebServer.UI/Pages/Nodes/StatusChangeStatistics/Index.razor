@@ -70,7 +70,11 @@
         </TitleTemplate>
         <ColumnDefinitions>
             <PropertyColumn Title="日期" Ellipsis  Property="c => c.DateTime"></PropertyColumn>
-            <PropertyColumn Title="节点标志" Ellipsis  Property="c => c.NodeInfoId"></PropertyColumn>
+            <PropertyColumn Title="节点标志" Sortable="true" Width="100" Property="c => c.NodeInfoId">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.NodeInfoId">@context.NodeInfoId</div>
+                </Text>
+            </PropertyColumn>
             <PropertyColumn Title="节点名称" Ellipsis  Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="状态" Property="c=>c.Status"  ></PropertyColumn>
             <PropertyColumn Title="次数"  Property="c => c.Count"></PropertyColumn>

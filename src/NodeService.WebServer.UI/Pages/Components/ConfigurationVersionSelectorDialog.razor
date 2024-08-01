@@ -26,7 +26,11 @@
                    DataSource="@_dataSource.ItemsSource"
                    RowKey="x => x.Id">
                 <ColumnDefinitions Context="ctx">
-                    <PropertyColumn Property="c => c.Id" Ellipsis Sortable Title="标志"></PropertyColumn>
+                    <PropertyColumn Title="标志" Sortable="true" Width="100" Property="c => c.Id">
+                        <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                            <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@ctx.Id">@ctx.Id</div>
+                        </Text>
+                    </PropertyColumn>
                     <PropertyColumn Property="c => c.CreationDateTime" Ellipsis Sortable Title="创建日期"></PropertyColumn>
                     <PropertyColumn Property="c => c.Version" DefaultSortOrder="SortDirection.Descending" Ellipsis Sortable Title="版本">
                         <Text>@($"V{ctx.Version}")</Text>

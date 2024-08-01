@@ -52,7 +52,11 @@
                   
                 <ColumnDefinitions Context="ctx">
                     <Selection Key="@ctx.Id" Type="@GetSelectionMode()" />
-                    <PropertyColumn Property="c => c.Id" Ellipsis Width="100" Sortable Title="标志"></PropertyColumn>
+                    <PropertyColumn Title="标志" Sortable="true" Width="100" Property="c => c.Id">
+                        <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                            <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@ctx.Id">@ctx.Id</div>
+                        </Text>
+                    </PropertyColumn>
                     <PropertyColumn Property="c => c.Name" Ellipsis Sortable Title="配置名称"></PropertyColumn>
                     <ActionColumn Width="100">
                         <Space>

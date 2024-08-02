@@ -1,0 +1,234 @@
+﻿@if (IsEditable)
+{
+    <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddNewItem" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+    <Button Shape="@ButtonShape.Circle" Danger Icon="@IconType.Outline.Delete" OnClick="RemoveSelectedItems" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+}
+
+<Table Context="mappingEntry"
+       TItem="TimeOnlyModel"
+       DataSource="@ItemsSource"
+       Size="TableSize.Small"
+       SelectedRows="SelectedItems"
+       SelectedRowsChanged="@OnSelectedItemsChanged"
+       RowKey="x => x.Id">
+    <Selection Key="@mappingEntry.Id" Type="checkbox" />
+    <PropertyColumn Hidden="@IsNameHidden" Title="@NameTitle" Property="c => c.Name" Sortable>
+        @if (mappingEntry.IsEditing && IsNameEditable)
+        {
+            <Input Type="text" Value="@mappingEntry.Name" ValueChanged="(string value) => OnNameChanged(mappingEntry, value)" AutoFocus="@IsNameEditable" />
+
+        }
+        else if (IsNameEditable)
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
+                @mappingEntry.Name
+            </div>
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Name</div>
+        }
+    </PropertyColumn>
+    <PropertyColumn Hidden="@IsValueHidden" Title="@ValueTitle" Property="c => c.Time" Sortable>
+        @if (mappingEntry.IsEditing && IsValueEditable)
+        {
+            <TimePicker Value="@mappingEntry.Time" ValueChanged="(TimeOnly value) => OnValueChanged(mappingEntry, value)" AutoFocus="@(!IsNameEditable && IsValueEditable)" />
+
+        }
+        else if (IsValueEditable)
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px" @onclick="() => mappingEntry.BeginEdit()">
+                @mappingEntry.Time
+            </div>
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" style="padding-right:24px">@mappingEntry.Time</div>
+        }
+    </PropertyColumn>
+    @if (IsEditable)
+    {
+        <ActionColumn Fixed="right" Width="100" Title="操作">
+            <Space>
+                @if (IsNameEditable || IsValueEditable )
+                {
+                    @if (mappingEntry.IsEditing)
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Size="small" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="() => OnEndEdit(mappingEntry)"></Button>
+                        </SpaceItem>
+                    }
+                    else
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Size="small" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => OnBeginEdit(mappingEntry)"></Button>
+                        </SpaceItem>
+                    }
+                }
+
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle" Size="small" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="() => RemoveSelectedItem(mappingEntry)"></Button>
+                </SpaceItem>
+
+            </Space>
+        </ActionColumn>
+    }
+
+</Table>
+
+
+@code {
+
+
+    [Parameter] public IList<TimeOnlyModel> ItemsSource { get; set; }
+
+
+    public IEnumerable<TimeOnlyModel> SelectedItems { get; set; } = [];
+
+
+    [Parameter] public EventCallback<IEnumerable<TimeOnlyModel>> SelectedItemsChanged { get; set; }
+
+    [Parameter] public EventCallback<AddingNewItemEventArgs<TimeOnlyModel>> AddingNewItem { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<TimeOnlyModel, TimeOnly>> ValueChanged { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<TimeOnlyModel, string>> NameChanged { get; set; }
+
+
+    [Parameter] public EventCallback<TimeOnlyModel> EndEdit { get; set; }
+
+    [Parameter] public EventCallback<TimeOnlyModel> Deleted { get; set; }
+
+    [Parameter] public EventCallback<TimeOnlyModel> BeginEdit { get; set; }
+
+    [Parameter] public string NameTitle { get; set; } = "备注";
+
+    [Parameter] public string ValueTitle { get; set; } = "时间";
+
+
+    [Parameter] public bool IsNameEditable { get; set; } = true;
+
+    [Parameter] public bool IsValueEditable { get; set; } = true;
+
+    [Parameter] public bool IsNameHidden { get; set; } = false;
+
+    [Parameter] public bool IsValueHidden { get; set; } = false;
+
+
+    [Parameter] public bool IsEditable { get; set; } = true;
+
+    [Parameter] public IEnumerable<TimeOnlyModel> NameList { get; set; } = [];
+
+    [Parameter] public IEnumerable<TimeOnlyModel> ValueList { get; set; } = [];
+
+    async Task RemoveSelectedItem(TimeOnlyModel value)
+    {
+        ItemsSource.Remove(value);
+        if (Deleted.HasDelegate)
+        {
+            await Deleted.InvokeAsync(value);
+        }
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (!IsEditable)
+        {
+            IsNameEditable = false;
+            IsValueEditable = false;
+        }
+
+        return base.OnParametersSetAsync();
+    }
+
+    async Task OnSelectedItemsChanged(IEnumerable<TimeOnlyModel> items)
+    {
+        SelectedItems = items;
+        await SelectedItemsChanged.InvokeAsync(items);
+    }
+
+    async Task RemoveSelectedItems()
+    {
+        foreach (var item in SelectedItems)
+        {
+            ItemsSource.Remove(item);
+            if (Deleted.HasDelegate)
+            {
+                await Deleted.InvokeAsync(item);
+            }
+        }
+
+        SelectedItems = [];
+    }
+
+    async Task AddNewItem()
+    {
+        var entry = new TimeOnlyModel();
+        var e = new AddingNewItemEventArgs<TimeOnlyModel>(entry);
+        await AddingNewItem.InvokeAsync(e);
+        if (e.Handled)
+        {
+            return;
+        }
+
+        ItemsSource.Add(entry);
+        entry.BeginEdit();
+    }
+
+
+    async Task OnValueChanged(TimeOnlyModel stringEntry, TimeOnly value)
+    {
+        var e = new ValueChangedEventArgs<TimeOnlyModel, TimeOnly>(stringEntry, value);
+        if (ValueChanged.HasDelegate)
+        {
+            await ValueChanged.InvokeAsync(e);
+        }
+
+        if (!e.Handled)
+        {
+            stringEntry.Time = value;
+        }
+    }
+
+    async Task OnNameChanged(TimeOnlyModel stringEntry, string? value)
+    {
+        var e = new ValueChangedEventArgs<TimeOnlyModel, string>(stringEntry, value);
+        if (NameChanged.HasDelegate)
+        {
+            await NameChanged.InvokeAsync(e);
+        }
+
+        if (!e.Handled)
+        {
+            stringEntry.Name = value;
+        }
+    }
+
+    async Task OnBeginEdit(TimeOnlyModel stringEntry)
+    {
+        if (BeginEdit.HasDelegate)
+        {
+            await BeginEdit.InvokeAsync(stringEntry);
+        }
+        else
+        {
+            stringEntry.BeginEdit();
+        }
+    }
+
+    async Task OnEndEdit(TimeOnlyModel stringEntry)
+    {
+        if (EndEdit.HasDelegate)
+        {
+            await EndEdit.InvokeAsync(stringEntry);
+        }
+        else
+        {
+            stringEntry.EndEdit();
+        }
+    }
+
+
+}

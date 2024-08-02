@@ -1,6 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 
-namespace NodeService.WebServer.Services.Tasks;
+namespace NodeService.WebServer.Services.TaskSchedule;
 
 public static class TriggerBuilderHelper
 {

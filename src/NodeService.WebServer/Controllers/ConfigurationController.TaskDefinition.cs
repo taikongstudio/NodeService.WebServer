@@ -2,6 +2,7 @@
 using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.Tasks;
+using NodeService.WebServer.Services.TaskSchedule;
 using System.Security.Cryptography;
 
 namespace NodeService.WebServer.Controllers;
@@ -84,7 +85,7 @@ public partial class ConfigurationController
         CancellationToken cancellationToken = default)
     {
         var messageQueue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
-        var taskScheduleParameters = new TaskScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
+        var taskScheduleParameters = new TaskDefinitionScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
         var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
         var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
             taskScheduleServiceParameters,
@@ -136,7 +137,7 @@ public partial class ConfigurationController
     {
         if (taskDefinition.TaskFlowTemplateId == null)
         {
-            var taskScheduleParameters = new TaskScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
+            var taskScheduleParameters = new TaskDefinitionScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
             var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
             var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
             taskScheduleServiceParameters,

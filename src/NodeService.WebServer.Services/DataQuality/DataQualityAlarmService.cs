@@ -2,9 +2,11 @@
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Configuration;
 using System.Linq;
 using System.Text;
@@ -82,8 +84,11 @@ public class DataQualityAlarmService : BackgroundService
                         continue;
 
                     await _notificationQueue.EnqueueAsync(
-                        new NotificationMessage(configuration.Subject,
-                            content,
+                        new NotificationMessage(
+                            new EmailContent(
+                                configuration.Subject,
+                                stringBuilder.ToString(),
+                                []),
                             notificationConfig.Value),
                         cancellationToken);
                 }

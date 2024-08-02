@@ -24,11 +24,10 @@ internal class ClearConfigService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         var dbContext = _dbContextFactory.CreateDbContext();
-        var ftpUploadConfigs = await dbContext.TaskFlowExecutionInstanceDbSet.ToListAsync();
+        var ftpUploadConfigs = await dbContext.TaskFlowTemplateDbSet.ToListAsync();
         foreach (var item in ftpUploadConfigs)
         {
-            item.TaskFlowTemplateId = item.Value.TaskFlowTemplateId;
-            item.Status = item.Value.Status;
+            item.Value.TaskStages[0].TaskGroups[0].Tasks[0].TriggerType = Infrastructure.DataModels.TaskTriggerType.Manual;
             dbContext.Update(item);
         }
 

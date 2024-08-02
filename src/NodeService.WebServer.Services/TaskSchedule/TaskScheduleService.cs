@@ -1,60 +1,11 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
-using OneOf;
+using NodeService.WebServer.Services.TaskSchedule;
 using Quartz.Spi;
 
-namespace NodeService.WebServer.Services.Tasks;
-
-public readonly record struct TaskScheduleParameters
-{
-    public  string TaskDefinitionId { get; init; }
-
-    public  TriggerSource TriggerSource { get; init; }
-
-    public TaskScheduleParameters(
-        TriggerSource triggerSource,
-        string taskDefinitionId)
-    {
-        TriggerSource = triggerSource;
-        TaskDefinitionId = taskDefinitionId;
-    }
-}
-
-public readonly record struct TaskFlowScheduleParameters
-{
-    public TaskFlowScheduleParameters(
-        TriggerSource triggerSource,
-        string taskFlowTemplateId)
-    {
-        TriggerSource = triggerSource;
-        TaskFlowTemplateId = taskFlowTemplateId;
-    }
-
-    public string TaskFlowTemplateId { get; init; }
-
-    public TriggerSource TriggerSource { get; init; }
-}
-
-public readonly record struct TaskScheduleServiceParameters
-{
-    public TaskScheduleServiceParameters(TaskScheduleParameters parameters)
-    {
-        Parameters = parameters;
-    }
-
-    public TaskScheduleServiceParameters(TaskFlowScheduleParameters parameters)
-    {
-        Parameters = parameters;
-    }
-
-    public OneOf<TaskScheduleParameters, TaskFlowScheduleParameters> Parameters { get; init; }
-}
-
-public readonly record struct TaskScheduleServiceResult
-{
-
-}
+namespace NodeService.WebServer.Services.TaskSchedule;
 
 
 public partial  class TaskScheduleService : BackgroundService
@@ -66,6 +17,7 @@ public partial  class TaskScheduleService : BackgroundService
     readonly ISchedulerFactory _schedulerFactory;
     readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
+    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepoFactory;
     readonly TaskSchedulerDictionary _taskSchedulerDictionary;
 
     readonly IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>> _taskScheduleServiceParametersQueue;
@@ -73,20 +25,21 @@ public partial  class TaskScheduleService : BackgroundService
 
     public TaskScheduleService(
         ILogger<TaskScheduleService> logger,
-        IJobFactory  jobFactory,
+        IJobFactory jobFactory,
         IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>> taskScheduleServiceParametersQueue,
         ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepoFactory,
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
+        ApplicationRepositoryFactory<PropertyBag> propertyBagRepoFactory,
         JobScheduler jobScheduler,
         ISchedulerFactory schedulerFactory,
-        TaskSchedulerDictionary taskSchedulerDictionary,
-
+        [FromKeyedServices(nameof(TaskScheduleService))] TaskSchedulerDictionary taskSchedulerDictionary,
         ExceptionCounter exceptionCounter)
     {
         _jobFactory = jobFactory;
         _schedulerFactory = schedulerFactory;
         _taskDefinitionRepositoryFactory = taskDefinitionRepoFactory;
         _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
+        _propertyBagRepoFactory = propertyBagRepoFactory;
         _logger = logger;
         _jobScheduler = jobScheduler;
         _taskSchedulerDictionary = taskSchedulerDictionary;
@@ -102,8 +55,9 @@ public partial  class TaskScheduleService : BackgroundService
         bool schedule = !Debugger.IsAttached;
         if (schedule)
         {
-            await ScheduleTasksAsync(cancellationToken);
-            await ScheduleTaskFlowsAsync(cancellationToken);
+            await ScheduleTaskDefinitionsAsync(cancellationToken);
+            await ScheduleTaskFlowTemplatesAsync(cancellationToken);
+            await ScheduleNodeHealthyCheckAsync(cancellationToken);
         }
 
         while (!cancellationToken.IsCancellationRequested)
@@ -114,21 +68,35 @@ public partial  class TaskScheduleService : BackgroundService
                 switch (op.Argument.Parameters.Index)
                 {
                     case 0:
-                        await ProcessTaskScheduleParametersAsync(op, cancellationToken);
+                        await ProcessTaskDefinitionScheduleParametersAsync(op, cancellationToken);
                         break;
                     case 1:
                         await ProcessTaskFlowScheduleParametersAsync(op, cancellationToken);
                         break;
+                    case 2:
+                        await ProcessNodeHealthyCheckScheduleParametersAsync(op, cancellationToken);
+                        break;
                     default:
                         break;
                 }
-
+                op.TrySetResult(new TaskScheduleServiceResult());
             }
             catch (Exception ex)
             {
+                op.TrySetException(ex);
                 _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
+        }
+    }
+
+    private async ValueTask DeleteAllTaskScheduleAsync(string key, string context)
+    {
+        for (var triggerSource = TriggerSource.Schedule; triggerSource < TriggerSource.Max - 1; triggerSource++)
+        {
+            var taskSchedulerKey = new TaskSchedulerKey(key, triggerSource, context);
+            if (_taskSchedulerDictionary.TryRemove(taskSchedulerKey, out var asyncDisposable))
+                await asyncDisposable.DisposeAsync();
         }
     }
 

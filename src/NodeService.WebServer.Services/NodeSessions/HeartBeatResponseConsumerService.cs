@@ -12,40 +12,6 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public class HeartBeatResponseConsumerService : BackgroundService
 {
-    record struct AnalysisPropsResult
-    {
-        public AnalysisPropsResult()
-        {
-        }
-
-        public AnalysisProcessListResult ProcessListResult { get; set; }
-
-        public AnalysisServiceProcessListResult ServiceProcessListResult { get; set; }
-
-    }
-
-    record struct AnalysisProcessListResult
-    {
-        public AnalysisProcessListResult()
-        {
-        }
-
-        public IEnumerable<string> Usages { get; set; } = [];
-
-        public List<ProcessInfo> StatusChangeProcessList { get; set; } = [];
-    }
-
-    record struct AnalysisServiceProcessListResult
-    {
-        public AnalysisServiceProcessListResult()
-        {
-        }
-
-        public IEnumerable<string> Usages { get; set; } = [];
-
-        public List<ServiceProcessInfo> StatusChangeProcessList { get; set; } = [];
-    }
-
     readonly ExceptionCounter _exceptionCounter;
     readonly BatchQueue<NodeHeartBeatSessionMessage> _hearBeatSessionMessageBatchQueue;
     readonly ILogger<HeartBeatResponseConsumerService> _logger;
@@ -195,17 +161,14 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     continue;
                 }
                 if (hearBeatSessionMessage == null) continue;
-                stopwatch.Start();
-                await ProcessHeartBeatMessageAsync(
-                    hearBeatSessionMessage,
-                    nodeInfo,
-                    cancellationToken);
-
-                stopwatch.Stop();
-                _logger.LogInformation(
-                    $"process heartbeat {hearBeatSessionMessage.NodeSessionId} spent:{stopwatch.Elapsed}");
-                stopwatch.Reset();
+                hearBeatSessionMessage.NodeInfo = nodeInfo;
             }
+
+            await Parallel.ForEachAsync(array, new ParallelOptions()
+            {
+                CancellationToken = cancellationToken,
+                MaxDegreeOfParallelism = 4
+            }, ProcessHeartBeatMessageAsync);
 
             stopwatch.Start();
             await _nodeInfoQueryService.UpdateNodeInfoListAsync(nodeList, cancellationToken);
@@ -238,12 +201,13 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     async ValueTask ProcessHeartBeatMessageAsync(
         NodeHeartBeatSessionMessage hearBeatMessage,
-        NodeInfoModel nodeInfo,
         CancellationToken cancellationToken = default
     )
     {
+        var timeStamp = Stopwatch.GetTimestamp();
         try
         {
+            var nodeInfo = hearBeatMessage.NodeInfo;
             var stopwatch = new Stopwatch();
             if (nodeInfo == null) return;
             var hearBeatResponse = hearBeatMessage.GetMessage();
@@ -253,7 +217,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             stopwatch.Start();
 
-            var nodePropSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfo.Id, cancellationToken);
+            var nodePropSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfo.Id, false, cancellationToken);
 
             stopwatch.Stop();
 
@@ -310,7 +274,28 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 nodeInfo.Profile.IpAddress = hearBeatResponse.Properties["RemoteIpAddress"];
                 nodeInfo.Profile.InstallStatus = true;
                 nodeInfo.Profile.LoginName = hearBeatResponse.Properties[NodePropertyModel.Environment_UserName_Key];
+                if (hearBeatResponse.Properties.TryGetValue(NodePropertyModel.Domain_ComputerDomain_Key, out string computerDomain))
+                {
+                    nodeInfo.Profile.ComputerDomain = computerDomain;
+                }
                 nodeInfo.Profile.FactoryName = "Unknown";
+
+                var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(
+                    nodeInfo.Id,
+                    cancellationToken);
+
+                if (computerInfo == null)
+                {
+                    nodeInfo.Profile.FoundInLims = false;
+                }
+                else
+                {
+                    nodeInfo.Profile.FoundInLims = true;
+                    nodeInfo.Profile.LabArea = computerInfo.LabArea?.name;
+                    nodeInfo.Profile.LabName = computerInfo.LabInfo?.name;
+                }
+
+
                 if (!string.IsNullOrEmpty(nodeInfo.Profile.IpAddress))
                     _nodeSettings.MatchAreaTag(nodeInfo);
 
@@ -377,13 +362,18 @@ public class HeartBeatResponseConsumerService : BackgroundService
                             true,
                             cancellationToken);
                 }
-                await _nodeStatusChangeRecordBatchQueue.SendAsync(statusChanged);
+                await _nodeStatusChangeRecordBatchQueue.SendAsync(statusChanged, cancellationToken);
             }
         }
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError($"{ex}");
+        }
+        finally
+        {
+            var ellaspedTime = Stopwatch.GetElapsedTime(timeStamp);
+
         }
     }
 

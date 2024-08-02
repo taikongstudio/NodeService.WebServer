@@ -1,9 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.WebServer.Services.NodeSessions;
+using NodeService.WebServer.Services.Tasks;
 using Quartz.Impl;
 using Quartz.Spi;
 
-namespace NodeService.WebServer.Services.Tasks
+namespace NodeService.WebServer.Services.TaskSchedule
 {
     public class TaskScheduleSetupOptions
     {

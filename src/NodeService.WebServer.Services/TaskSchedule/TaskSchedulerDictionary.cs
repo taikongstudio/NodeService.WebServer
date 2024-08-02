@@ -1,4 +1,4 @@
-﻿namespace NodeService.WebServer.Services.Tasks;
+﻿namespace NodeService.WebServer.Services.TaskSchedule;
 
 public readonly record struct TaskSchedulerKey
 {

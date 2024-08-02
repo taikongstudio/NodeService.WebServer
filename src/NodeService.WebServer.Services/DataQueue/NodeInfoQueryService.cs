@@ -1,7 +1,9 @@
 ﻿using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.DataQueue
 {
@@ -12,14 +14,20 @@ namespace NodeService.WebServer.Services.DataQueue
         readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
         private readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropsRepoFactory;
         readonly ObjectCache _objectCache;
+        private readonly IDbContextFactory<LimsDbContext> _limsDbContextFactory;
+        private readonly ILogger<NodeInfoQueryService> _logger;
+        private readonly ExceptionCounter _exceptionCounter;
         readonly JsonSerializerOptions _jsonOptions;
 
         public NodeInfoQueryService(
+            ILogger<NodeInfoQueryService> logger,
+            ExceptionCounter exceptionCounter,
             ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
             ApplicationRepositoryFactory<NodeProfileModel> nodeProfileRepoFactory,
             ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
             ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertySnapshotRepositoryFactory,
-            ObjectCache objectCache)
+            ObjectCache objectCache,
+            IDbContextFactory<LimsDbContext> limsDbContextFactory)
         {
             _jsonOptions = _jsonOptions = new JsonSerializerOptions()
             {
@@ -30,6 +38,57 @@ namespace NodeService.WebServer.Services.DataQueue
             _propertyBagRepositoryFactory = propertyBagRepositoryFactory;
             _nodePropsRepoFactory = nodePropertySnapshotRepositoryFactory;
             _objectCache = objectCache;
+            _limsDbContextFactory = limsDbContextFactory;
+            _logger = logger;
+            _exceptionCounter = exceptionCounter;
+        }
+
+        public async ValueTask<dl_equipment_ctrl_computer?> Query_dl_equipment_ctrl_computer_Async(string nodeInfoId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var nodeInfo = await QueryNodeInfoByIdAsync(nodeInfoId, false, cancellationToken);
+                if (nodeInfo == null)
+                {
+                    return null;
+                }
+                await using var dbContext = await _limsDbContextFactory.CreateDbContextAsync(cancellationToken);
+                var fullName = $"{nodeInfo.Name}.{nodeInfo.Profile.ComputerDomain}";
+                var result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.full_name == fullName).FirstOrDefaultAsync(cancellationToken);
+                if (result == null)
+                {
+                    result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.name == nodeInfo.Name).FirstOrDefaultAsync(cancellationToken);
+                }
+                if (result != null)
+                {
+                    if (result.area_id != null)
+                    {
+                        var lab_area = await dbContext.dl_common_area.FindAsync([result.area_id], cancellationToken);
+                        result.LabArea = lab_area;
+                    }
+
+                    if (result.laboratory != null)
+                    {
+                        var lab_info = await dbContext.dl_common_area.FindAsync([result.laboratory], cancellationToken);
+                        result.LabInfo = lab_info;
+                    }
+
+                    if (result.base_id != null)
+                    {
+                        var factory_info = await dbContext.dl_common_area.FindAsync([result.base_id], cancellationToken);
+                        result.Factory = factory_info;
+                    }
+
+                }
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                _exceptionCounter.AddOrUpdate(ex, nodeInfoId);
+
+            }
+            return null;
         }
 
         public async ValueTask<NodeId> EnsureNodeInfoAsync(
@@ -63,9 +122,10 @@ namespace NodeService.WebServer.Services.DataQueue
 
         public async ValueTask<NodePropertySnapshotModel?> QueryNodePropsAsync(
             string nodeId,
+            bool useCache = false,
             CancellationToken cancellationToken = default)
         {
-            var nodeInfo = await QueryNodeInfoByIdAsync(nodeId, false, cancellationToken);
+            var nodeInfo = await QueryNodeInfoByIdAsync(nodeId, useCache, cancellationToken);
             if (nodeInfo == null || nodeInfo.LastNodePropertySnapshotId == null)
             {
                 return null;
@@ -285,8 +345,6 @@ namespace NodeService.WebServer.Services.DataQueue
             else
             {
                 nodeInfo.Profile.TestInfo = value.TestInfo;
-                nodeInfo.Profile.LabArea = value.LabArea;
-                nodeInfo.Profile.LabName = value.LabName;
                 nodeInfo.Profile.Usages = value.Usages;
                 nodeInfo.Profile.Remarks = value.Remarks;
                 await UpdateNodeInfoListAsync([nodeInfo], cancellationToken);

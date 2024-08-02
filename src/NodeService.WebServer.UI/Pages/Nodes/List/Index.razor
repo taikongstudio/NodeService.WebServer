@@ -204,11 +204,14 @@
                 </GridRow>
             </TitleTemplate>
             <ColumnDefinitions>
-                    <PropertyColumn Title="标志" Sortable="true" Width="100"   Property="c => c.Id">
-                        <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
-                            <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
-                        </Text>
-                    </PropertyColumn>
+                <PropertyColumn Title="标志" Sortable="true" Width="100"   Property="c => c.Id">
+                    <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                        <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
+                    </Text>
+                </PropertyColumn>
+                <PropertyColumn Title="LIMS关联性" Sortable="true" Width="100" Property="c => c.Profile.FoundInLims">
+                    <Switch Disabled Value="@context.Profile.FoundInLims"/>
+                </PropertyColumn>
                 <PropertyColumn Title="厂区" Sortable="true" Width="100" Property="c => c.Profile.FactoryName">
                     <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
                 </PropertyColumn>

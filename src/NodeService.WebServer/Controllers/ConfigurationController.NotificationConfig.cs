@@ -2,6 +2,8 @@
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.TaskSchedule;
+using NodeService.WebServer.UI.Pages.Notifications.Components;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -61,7 +63,7 @@ public partial class ConfigurationController
         try
         {
             var _notificationMessageQueue = _serviceProvider.GetService<IAsyncQueue<NotificationMessage>>();
-            await _notificationMessageQueue.EnqueueAsync(new NotificationMessage(parameters.Subject, parameters.Message,
+            await _notificationMessageQueue.EnqueueAsync(new NotificationMessage(new EmailContent(parameters.Subject, parameters.Message, []),
                 rsp.Result.Value));
         }
         catch (Exception ex)
@@ -111,17 +113,24 @@ public partial class ConfigurationController
 
     [HttpPost("/api/CommonConfig/NotificationSource/NodeHealthyCheck/Update")]
     public async Task<ApiResponse> UpdateNodeHealthyCheckConfigurationAsync(
-        [FromBody] NodeHealthyCheckConfiguration model, CancellationToken cancellationToken = default)
+        [FromBody] NodeHealthyCheckConfiguration model,
+        CancellationToken cancellationToken = default)
     {
         var rsp = new ApiResponse();
         try
         {
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            await using var repo = await repoFactory.CreateRepositoryAsync();
-            var propertyBag =
-                await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
+            await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+            var propertyBag = await repo.FirstOrDefaultAsync(
+                new PropertyBagSpecification(NotificationSources.NodeHealthyCheck),
+                cancellationToken);
             propertyBag["Value"] = JsonSerializer.Serialize(model);
-            await repo.SaveChangesAsync();
+            await repo.SaveChangesAsync(cancellationToken);
+            var queue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
+            var parameters = new TaskScheduleServiceParameters(new NodeHealthyCheckScheduleParameters(NotificationSources.NodeHealthyCheck));
+            var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(parameters, AsyncOperationKind.AddOrUpdate);
+            await queue.EnqueueAsync(op, cancellationToken);
+            await op.WaitAsync(cancellationToken);
         }
         catch (Exception ex)
         {

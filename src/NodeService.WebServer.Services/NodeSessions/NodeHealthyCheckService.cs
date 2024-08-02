@@ -2,60 +2,78 @@
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataQueue;
+using NPOI.HSSF.UserModel;
+using NPOI.HSSF.Util;
+using NPOI.SS.Formula.Functions;
+using NPOI.SS.UserModel;
+using NPOI.SS.Util;
+using NPOI.Util;
+using NPOI.XSSF.UserModel;
+
+using System.Data;
+using System.Threading;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
-public class NodeHealthyCheckService : BackgroundService
+public partial class NodeHealthyCheckService : BackgroundService
 {
-    private class NodeHealthyCheckItem
-    {
-        public NodeInfoModel Node { get; set; }
 
-        public string Message { get; set; }
-    }
-
-    private readonly ExceptionCounter _exceptionCounter;
-    private readonly NodeHealthyCounterDictionary _healthyCounterDict;
-    private readonly NodeHealthyCounterDictionary _healthyCounterDictionary;
-    private readonly ILogger<NodeHealthyCheckService> _logger;
-    private readonly INodeSessionService _nodeSessionService;
-    private readonly IAsyncQueue<NotificationMessage> _notificationQueue;
-    private readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<NotificationConfigModel> _notificationRepositoryFactory;
-    private readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
-    private NodeSettings _nodeSettings;
-    private NodeHealthyCheckConfiguration _nodeHealthyCheckConfiguration;
-    private string _timeDiffWarningMsg;
+    readonly ExceptionCounter _exceptionCounter;
+    readonly NodeInfoQueryService _nodeInfoQueryService;
+    private readonly ObjectCache _objectCache;
+    readonly ILogger<NodeHealthyCheckService> _logger;
+    readonly INodeSessionService _nodeSessionService;
+    readonly IAsyncQueue<NotificationMessage> _notificationQueue;
+    readonly IAsyncQueue<NodeHealthyCheckFireEvent> _fireEventQueue;
+    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
+    readonly ApplicationRepositoryFactory<NotificationConfigModel> _notificationRepositoryFactory;
+    readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
+    NodeSettings _nodeSettings;
+    NodeHealthyCheckConfiguration _nodeHealthyCheckConfiguration;
 
     public NodeHealthyCheckService(
         ILogger<NodeHealthyCheckService> logger,
         INodeSessionService nodeSessionService,
         IAsyncQueue<NotificationMessage> notificationQueue,
-        NodeHealthyCounterDictionary healthyCounterDictionary,
+        IAsyncQueue<NodeHealthyCheckFireEvent> fireEventQueue,
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
         ApplicationRepositoryFactory<NotificationConfigModel> notificationRepositoryFactory,
-        ExceptionCounter exceptionCounter
+        NodeInfoQueryService  nodeInfoQueryService,
+        ExceptionCounter exceptionCounter,
+        ObjectCache objectCache
     )
     {
         _logger = logger;
         _nodeSessionService = nodeSessionService;
         _notificationQueue = notificationQueue;
-        _healthyCounterDictionary = healthyCounterDictionary;
+        _fireEventQueue = fireEventQueue;
         _propertyBagRepositoryFactory = propertyBagRepositoryFactory;
         _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
         _notificationRepositoryFactory = notificationRepositoryFactory;
         _exceptionCounter = exceptionCounter;
+        _nodeInfoQueryService = nodeInfoQueryService;
+        _objectCache = objectCache;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        if (Debugger.IsAttached) await Task.Delay(TimeSpan.FromHours(1));
+        //if (Debugger.IsAttached) await Task.Delay(TimeSpan.FromHours(1));
         while (!cancellationToken.IsCancellationRequested)
         {
-            await CheckNodeHealthyAsync(cancellationToken);
-            await Task.Delay(TimeSpan.FromMinutes(60), cancellationToken);
+            try
+            {
+                var fireEvent = await _fireEventQueue.DeuqueAsync(cancellationToken);
+                await CheckNodeHealthyAsync(cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                _exceptionCounter.AddOrUpdate(ex);
+            }
         }
     }
 
@@ -63,10 +81,15 @@ public class NodeHealthyCheckService : BackgroundService
     {
         try
         {
-            await RefreshNodeConfigurationAsync(cancellationToken);
+            await RefreshNodeHelthyCheckConfigurationAsync(cancellationToken);
             await RefreshNodeSettingsAsync(cancellationToken);
 
-            List<NodeHealthyCheckItem> nodeHealthyCheckItemList = [];
+            if (_nodeHealthyCheckConfiguration == null)
+            {
+                return;
+            }
+
+            List<NodeHeathyResult> resultList = [];
             await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
             var nodeInfoList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
                     AreaTags.Any,
@@ -76,21 +99,15 @@ public class NodeHealthyCheckService : BackgroundService
                 cancellationToken);
             foreach (var nodeInfo in nodeInfoList)
             {
-                var healthyCheckItems = GetNodeHealthyCheckItems(nodeInfo);
-                if (healthyCheckItems.Any())
+                var result = await GetNodeHealthyResultAsync(nodeInfo, cancellationToken);
+                if (result.Items.Count > 0)
                 {
-                    var healthyCounter = _healthyCounterDictionary.Ensure(new NodeId(nodeInfo.Id));
-                    if (healthyCounter.SentNotificationCount == 0 || CanSendNotification(healthyCounter))
-                    {
-                        healthyCounter.LastSentNotificationDateTimeUtc = DateTime.UtcNow;
-                        healthyCounter.SentNotificationCount++;
-                        nodeHealthyCheckItemList.AddRange(healthyCheckItems);
-                    }
+                    resultList.Add(result);
                 }
             }
 
-            if (nodeHealthyCheckItemList.Count <= 0) return;
-            await SendNodeHealthyCheckNotificationAsync(nodeHealthyCheckItemList, cancellationToken);
+            if (resultList.Count <= 0) return;
+            await SendNodeHealthyCheckNotificationAsync(resultList, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -99,21 +116,148 @@ public class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    private IEnumerable<NodeHealthyCheckItem> GetNodeHealthyCheckItems(NodeInfoModel nodeInfo)
+    private async ValueTask<NodeHeathyResult> GetNodeHealthyResultAsync(
+        NodeInfoModel nodeInfo,
+        CancellationToken cancellationToken = default)
     {
-        if (IsNodeOffline(nodeInfo))
-            yield return new NodeHealthyCheckItem()
+        var nodeHeathyResult = new NodeHeathyResult()
+        {
+            NodeInfo = nodeInfo,
+        };
+        try
+        {
+
+            if (IsNodeOffline(nodeInfo))
             {
-                Node = nodeInfo,
-                Message = "离线"
-            };
-        if (ShouldSendTimeDiffWarning(nodeInfo))
-            yield return new NodeHealthyCheckItem()
+                nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
+                {
+                    Exception = $"守护程序离线超过{_nodeHealthyCheckConfiguration.OfflineMinutes}分钟",
+                    Solution = "检查上位机是否处于运行状态",
+                });
+            }
+            if (ShouldSendTimeDiffWarning(nodeInfo))
             {
-                Node = nodeInfo,
-                Message = _timeDiffWarningMsg
-            };
+                nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
+                {
+                    Exception = $"上位机时间与服务器时间误差大于{_nodeSettings.TimeDiffWarningSeconds}秒",
+                    Solution = "建议校正计算机时间"
+                });
+            }
+            await foreach (var usage in ShouldSendProcessNotFoundWarningAsync(nodeInfo))
+            {
+                nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
+                {
+                    Exception = $"相关进程未开启",
+                    Solution = $"建议启动\"{usage}\"相关软件或服务"
+                });
+            }
+
+            var computerInfo =await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(nodeInfo.Id, cancellationToken);
+            if (computerInfo != null)
+            {
+                bool condition1 = computerInfo.Factory?.name == "博罗" && nodeInfo.Profile.FactoryName != "BL";
+                bool condition2 = computerInfo.Factory?.name == "光明" && nodeInfo.Profile.FactoryName != "GM";
+                if (condition1 || condition2)
+                {
+                    nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
+                    {
+                        Exception = $"上位机区域信息需更新",
+                        Solution = $"更新区域相关信息"
+                    });
+                }
+            }
+
+
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+        return nodeHeathyResult;
+    }
+
+    private async IAsyncEnumerable<string> ShouldSendProcessNotFoundWarningAsync(
+        NodeInfoModel nodeInfo,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        if (nodeInfo.Status == NodeStatus.Online && nodeInfo.Profile.Usages != null)
+        {
+            IEnumerable<ProcessInfo> processInfoList = [];
+            var analysisPropsResultKey = $"NodePropsAnalysisResult:{nodeInfo.Id}";
+            var analysisPropsResult = await _objectCache.GetObjectAsync<AnalysisPropsResult>(analysisPropsResultKey, cancellationToken);
+            processInfoList = analysisPropsResult.ProcessListResult.StatusChangeProcessList;
+            if (processInfoList == null)
+            {
+                processInfoList = await GetProcessListFromDbAsync(nodeInfo.Id, cancellationToken);
+            }
+
+            if (processInfoList == null || !processInfoList.Any())
+            {
+                yield break;
+            }
+
+            foreach (var usage in nodeInfo.Profile.Usages.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var usageCount = 0;
+                var processExitsCount = 0;
+                foreach (var item in _nodeSettings.ProcessUsagesMapping)
+                {
+                    if (string.IsNullOrEmpty(item.Name) || string.IsNullOrEmpty(item.Value))
+                    {
+                        continue;
+                    }
+                    if (usage != item.Value)
+                    {
+                        continue;
+                    }
+                    usageCount++;
+                    if (processInfoList != null)
+                    {
+                        foreach (var processInfo in processInfoList)
+                        {
+                            if (processInfo.FileName.Contains(item.Name))
+                            {
+                                processExitsCount++;
+                            }
+                        }
+                    }
+                }
+
+                if (usageCount > 0 && processExitsCount == 0)
+                {
+                    yield return usage;
+                }
+
+            }
+        }
         yield break;
+    }
+
+    private async ValueTask<IEnumerable<ProcessInfo>> GetProcessListFromDbAsync(string nodeInfoId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var nodePropsSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfoId, true, default);
+            if (nodePropsSnapshot != null)
+            {
+                var processEntry = nodePropsSnapshot.NodeProperties.FirstOrDefault(static x => x.Name == NodePropertyModel.Process_Processes_Key);
+
+                if (processEntry != default && processEntry.Value != null && processEntry.Value.Contains("[", StringComparison.CurrentCulture))
+                {
+                    var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]?>(processEntry.Value);
+                    return processInfoList;
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+            _exceptionCounter.AddOrUpdate(ex, nodeInfoId);
+        }
+
+        return null;
     }
 
     private bool IsNodeOffline(NodeInfoModel nodeInfo)
@@ -132,51 +276,45 @@ public class NodeHealthyCheckService : BackgroundService
 
 
     async ValueTask SendNodeHealthyCheckNotificationAsync(
-        List<NodeHealthyCheckItem> nodeHealthyCheckItemList,
+         List<NodeHeathyResult> resultList,
         CancellationToken cancellationToken = default)
     {
-        await using var repo = await _notificationRepositoryFactory.CreateRepositoryAsync();
 
-        var stringBuilder = new StringBuilder();
-        List<StringEntry> stringEntries = [];
-        foreach (var nodeHealthyCheckItemGroups in nodeHealthyCheckItemList.GroupBy(static x => x.Node))
+        if (!TryWriteToExcel(resultList, out var stream) || stream == null)
         {
-            foreach (var nodeHealthCheckItem in nodeHealthyCheckItemGroups.OrderBy(static x =>
-             x.Node.Profile.ServerUpdateTimeUtc))
-            {
-                stringBuilder.Append($"<tr><td>{nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc.ToString("yyyy/MM/dd HH:mm:ss")}</td><td>{nodeHealthCheckItem.Node.Name}</td><td>{nodeHealthCheckItem.Message}</td></tr>");
-                stringEntries.Add(new StringEntry(nodeHealthCheckItem.Node.Profile.ServerUpdateTimeUtc.ToString("yyyy/MM/dd HH:mm:ss"), nodeHealthCheckItem.Node.Name));
-            }
+            return;
         }
 
-        var content = _nodeHealthyCheckConfiguration.ContentFormat.Replace("{0}", stringBuilder.ToString());
+        var emailAttachment = new EmailAttachment(
+            $"{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.xlsx",
+            "application",
+            "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            stream);
 
+
+        var content = _nodeHealthyCheckConfiguration.ContentFormat.Replace("{0}", string.Empty);
+
+        await using var repo = await _notificationRepositoryFactory.CreateRepositoryAsync(cancellationToken);
 
         foreach (var entry in _nodeHealthyCheckConfiguration.Configurations)
         {
+
             var notificationConfig = await repo.GetByIdAsync(entry.Value, cancellationToken);
             if (notificationConfig == null || !notificationConfig.IsEnabled) continue;
             await _notificationQueue.EnqueueAsync(
-                new NotificationMessage(_nodeHealthyCheckConfiguration.Subject,
-                    content,
+                    new NotificationMessage(new EmailContent(_nodeHealthyCheckConfiguration.Subject, content, [emailAttachment]),
                     notificationConfig.Value),
                 cancellationToken);
 
             await _notificationQueue.EnqueueAsync(
-            new NotificationMessage(_nodeHealthyCheckConfiguration.Subject,
-                stringEntries,
+            new NotificationMessage(new LarkContent()
+            {
+                Subject = _nodeHealthyCheckConfiguration.Subject,
+                Entries = []
+            },
                 notificationConfig.Value),
             cancellationToken);
         }
-    }
-
-    private bool CanSendNotification(NodeHealthyCounter healthCounter)
-    {
-        return healthCounter.SentNotificationCount > 0
-               && (DateTime.UtcNow - healthCounter.LastSentNotificationDateTimeUtc) /
-               TimeSpan.FromMinutes(_nodeHealthyCheckConfiguration.NotificationDuration)
-               >
-               healthCounter.SentNotificationCount + 1;
     }
 
     private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
@@ -190,11 +328,10 @@ public class NodeHealthyCheckService : BackgroundService
         else
             _nodeSettings = JsonSerializer.Deserialize<NodeSettings>(value as string);
 
-        _timeDiffWarningMsg = $"服务与节点时间差异大于{_nodeSettings.TimeDiffWarningSeconds}秒";
     }
 
 
-    private async Task RefreshNodeConfigurationAsync(CancellationToken cancellationToken = default)
+    private async Task RefreshNodeHelthyCheckConfigurationAsync(CancellationToken cancellationToken = default)
     {
         await using var propertyBagRepo = await _propertyBagRepositoryFactory.CreateRepositoryAsync();
         await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
@@ -217,6 +354,162 @@ public class NodeHealthyCheckService : BackgroundService
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
+        }
+    }
+
+    public bool TryWriteToExcel(List<NodeHeathyResult> nodeHeathyResults, out Stream? stream)
+    {  
+        stream = null;
+        try
+        {
+            //创建工作薄  
+            IWorkbook wb = new XSSFWorkbook();
+
+            ICellStyle style1 = wb.CreateCellStyle();//样式
+            style1.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Left;//文字水平对齐方式
+            style1.VerticalAlignment = NPOI.SS.UserModel.VerticalAlignment.Center;//文字垂直对齐方式
+                                                                                  //设置边框
+            style1.BorderBottom = NPOI.SS.UserModel.BorderStyle.Thin;
+            style1.BorderLeft = NPOI.SS.UserModel.BorderStyle.Thin;
+            style1.BorderRight = NPOI.SS.UserModel.BorderStyle.Thin;
+            style1.BorderTop = NPOI.SS.UserModel.BorderStyle.Thin;
+            style1.WrapText = true;//自动换行
+
+            ICellStyle style2 = wb.CreateCellStyle();//样式
+            IFont font1 = wb.CreateFont();//字体
+            font1.FontName = "Microsoft YaHei";
+            font1.Color = HSSFColor.Red.Index;//字体颜色
+            font1.Boldweight = (short)FontBoldWeight.Normal;//字体加粗样式
+            style2.SetFont(font1);//样式里的字体设置具体的字体样式
+                                  //设置背景色
+            style2.FillForegroundColor = NPOI.HSSF.Util.HSSFColor.Yellow.Index;
+            style2.FillPattern = FillPattern.SolidForeground;
+            style2.FillBackgroundColor = NPOI.HSSF.Util.HSSFColor.Yellow.Index;
+            style2.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Left;//文字水平对齐方式
+            style2.VerticalAlignment = NPOI.SS.UserModel.VerticalAlignment.Center;//文字垂直对齐方式
+
+            ICellStyle dateStyle = wb.CreateCellStyle();//样式
+            dateStyle.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Left;//文字水平对齐方式
+            dateStyle.VerticalAlignment = NPOI.SS.UserModel.VerticalAlignment.Center;//文字垂直对齐方式
+                                                                                     //设置数据显示格式
+            IDataFormat dataFormatCustom = wb.CreateDataFormat();
+            dateStyle.DataFormat = dataFormatCustom.GetFormat("yyyy-MM-dd HH:mm:ss");
+
+            //创建一个表单
+            ISheet sheet = wb.CreateSheet("Sheet0");
+            //设置列宽
+            int[] columnWidth = { 20, 20, 20, 20, 20, 20, 20, 50, 50 };
+            for (int i = 0; i < columnWidth.Length; i++)
+            {
+                //设置列宽度，256*字符数，因为单位是1/256个字符
+                sheet.SetColumnWidth(i, 256 * columnWidth[i]);
+            }
+
+            //测试数据
+
+            IRow headerRow = sheet.CreateRow(0);
+            var headers = new string[] { "最后在线时间", "上位机名称", "测试区域", "实验室区域", "实验室名称", "上位机负责人", "IP地址", "异常消息", "建议处理措施" };
+            {
+                for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
+                {
+                    var cell = headerRow.CreateCell(columnIndex);//创建第j列
+                    SetCellValue<string>(cell, headers[columnIndex]);
+                }
+            }
+
+
+            var rowIndex = 0;
+            for (int dataIndex = 0; dataIndex < nodeHeathyResults.Count; dataIndex++)
+            {
+                var result = nodeHeathyResults[dataIndex];
+
+                foreach (var item in result.Items)
+                {
+                    var dataRow = sheet.CreateRow(rowIndex);
+                    rowIndex++;
+                    for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
+                    {
+                        var cell = dataRow.CreateCell(columnIndex);
+                        switch (columnIndex)
+                        {
+                            case 0:
+                                SetCellValue(cell, result.NodeInfo.Profile.ServerUpdateTimeUtc);
+                                cell.CellStyle = dateStyle;
+                                break;
+                            case 1:
+                                SetCellValue(cell, result.NodeInfo.Profile.Name ?? string.Empty);
+                                break;
+                            case 2:
+                                SetCellValue(cell, result.NodeInfo.Profile.TestInfo ?? string.Empty);
+                                break;
+                            case 3:
+                                SetCellValue(cell, result.NodeInfo.Profile.LabArea ?? string.Empty);
+                                break;
+                            case 4:
+                                SetCellValue(cell, result.NodeInfo.Profile.LabName ?? string.Empty);
+                                break;
+                            case 5:
+                                SetCellValue(cell, result.Manager ?? string.Empty);
+                                break;
+                            case 6:
+                                SetCellValue(cell, result.NodeInfo.Profile.IpAddress ?? string.Empty);
+                                break;
+                            case 7:
+                                SetCellValue(cell, item.Exception);
+                                break;
+                            case 8:
+                                SetCellValue(cell, item.Solution);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                }
+            }
+
+            stream = new MemoryStream();
+            wb.Write(stream, true);//向打开的这个Excel文件中写入表单并保存。  
+            stream.Position = 0;
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+        }
+        return false;
+    }
+
+    public static void SetCellValue<T>(ICell cell, T obj)
+    {
+        if (obj is int intValue)
+        {
+            cell.SetCellValue(intValue);
+        }
+        else if (obj is double doubleValue)
+        {
+            cell.SetCellValue(doubleValue);
+        }
+        else if (obj is IRichTextString richTextString)
+        {
+            cell.SetCellValue(richTextString);
+        }
+        else if (obj is string stringValue)
+        {
+            cell.SetCellValue(stringValue);
+        }
+        else if (obj is DateTime dateTimeValue)
+        {
+            cell.SetCellValue(dateTimeValue);
+        }
+        else if (obj is bool boolValue)
+        {
+            cell.SetCellValue(boolValue);
+        }
+        else
+        {
+            cell.SetCellValue(obj.ToString());
         }
     }
 }

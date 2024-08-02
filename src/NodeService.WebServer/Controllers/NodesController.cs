@@ -59,7 +59,7 @@ public partial class NodesController : Controller
         var apiResponse = new PaginationResponse<NodeInfoModel>();
         try
         {
-            var queryResult =await _nodeInfoQueryService.QueryNodeInfoListByQueryParameters(queryParameters, cancellationToken);
+            var queryResult = await _nodeInfoQueryService.QueryNodeInfoListByQueryParameters(queryParameters, cancellationToken);
             
             foreach (var item in queryResult.Items)
             {

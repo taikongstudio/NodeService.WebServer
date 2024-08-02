@@ -1,9 +1,11 @@
-﻿using System.Net.Security;
+﻿using System.IO;
+using System.Net.Security;
 using System.Security.Cryptography.X509Certificates;
 using MailKit;
 using MailKit.Net.Smtp;
 using MimeKit;
 using MimeKit.Text;
+using NodeService.WebServer.Models;
 
 namespace NodeService.WebServer.Services.Notifications;
 
@@ -43,21 +45,46 @@ public class EmailNotificationHandler
         await smtp.AuthenticateAsync(
             options.UserName,
             options.Password);
+
+        var multiPart = new Multipart();
+        var textPart = new TextPart(TextFormat.Html)
+        {
+            Text = notificationMessage.Content.AsT0.Body
+        };
+
+        multiPart.Add(textPart);
+
+        foreach (var attachment in notificationMessage.Content.AsT0.Attachments)
+        {
+            var attachmentPart = new MimePart(attachment.MediaType, attachment.MediaSubtype)
+            {
+                Content = new MimeContent(attachment.Stream, ContentEncoding.Default),
+                ContentDisposition = new ContentDisposition(ContentDisposition.Attachment),
+                ContentTransferEncoding = ContentEncoding.Binary,
+                FileName = attachment.Name
+            };
+            multiPart.Add(attachmentPart);
+        }
+
+
         var message = new MimeMessage
         {
             Sender = new MailboxAddress(options.Sender,
                 options.UserName),
             Subject = notificationMessage.Content.AsT0.Subject,
-            Body = new TextPart(TextFormat.Html)
-            {
-                Text = notificationMessage.Content.AsT0.Message
-            }
+            Body = multiPart
         };
         foreach (var to in options.To)
+        {
             message.To.Add(new MailboxAddress(to.Name, to.Value));
+        }
+
 
         foreach (var cc in options.CC)
+        {
             message.Cc.Add(new MailboxAddress(cc.Name, cc.Value));
+        }
+
 
         await smtp.SendAsync(FormatOptions.Default, message);
         await smtp.DisconnectAsync(true);

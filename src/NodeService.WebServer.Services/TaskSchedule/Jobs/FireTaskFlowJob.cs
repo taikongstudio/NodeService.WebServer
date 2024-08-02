@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.Tasks;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.Tasks
+namespace NodeService.WebServer.Services.TaskSchedule.Jobs
 {
     public class FireTaskFlowJob : JobBase
     {
@@ -29,8 +30,8 @@ namespace NodeService.WebServer.Services.Tasks
                 Logger.LogInformation($"Task fire instance id:{context.FireInstanceId}");
 
                 var batchQueue = ServiceProvider.GetService<BatchQueue<TaskActivateServiceParameters>>();
-                var taskFlowInstanceId = $"Manual_TaskFlow_{Guid.NewGuid()}";
-                var fireInstanceId = $"Manual_{Guid.NewGuid()}";
+                var taskFlowInstanceId = $"TaskFlow_Schedule_{Guid.NewGuid()}";
+                var fireInstanceId = $"Schedule_{Guid.NewGuid()}";
                 await batchQueue.SendAsync(new TaskActivateServiceParameters(new FireTaskFlowParameters
                 {
                     TaskFlowTemplateId = Properties[nameof(TaskFlowTemplateModel.Id)] as string,

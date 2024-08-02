@@ -1,7 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.Tasks;
 
-namespace NodeService.WebServer.Services.Tasks;
+namespace NodeService.WebServer.Services.TaskSchedule.Jobs;
 
 public class FireTaskJob : JobBase
 {

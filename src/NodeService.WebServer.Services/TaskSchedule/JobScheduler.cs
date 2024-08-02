@@ -1,12 +1,12 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.WebServer.Services.Counters;
 
-namespace NodeService.WebServer.Services.Tasks;
+namespace NodeService.WebServer.Services.TaskSchedule;
 
 public class JobScheduler
 {
     private readonly ExceptionCounter _exceptionCounter;
-    private readonly TaskSchedulerDictionary _jobSchedulerDictionary;
+    private readonly TaskSchedulerDictionary _taskSchedulerDictionary;
     private readonly ILogger _logger;
 
 
@@ -17,20 +17,20 @@ public class JobScheduler
     public JobScheduler(
         ISchedulerFactory schedulerFactory,
         ILogger<JobScheduler> logger,
-        TaskSchedulerDictionary jobSchedulerDictionary,
+        [FromKeyedServices(nameof(TaskScheduleService))] TaskSchedulerDictionary taskSchedulerDictionary,
         IServiceProvider serviceProvider,
         ExceptionCounter exceptionCounter
     )
     {
         _schedulerFactory = schedulerFactory;
         _logger = logger;
-        _jobSchedulerDictionary = jobSchedulerDictionary;
+        _taskSchedulerDictionary = taskSchedulerDictionary;
         _serviceProvider = serviceProvider;
         _exceptionCounter = exceptionCounter;
     }
 
     public async Task<IAsyncDisposable> ScheduleAsync<T>(
-        TaskSchedulerKey jobSchedulerKey,
+        TaskSchedulerKey taskSchedulerKey,
         IReadOnlyCollection<ITrigger> triggers,
         IDictionary<string, object?> properties,
         CancellationToken cancellationToken = default
@@ -45,9 +45,9 @@ public class JobScheduler
             IDictionary<string, object?> props = new Dictionary<string, object?>
             {
                 { nameof(JobBase.Properties), properties },
-                { nameof(JobBase.TriggerSource), jobSchedulerKey.TriggerSource },
+                { nameof(JobBase.TriggerSource), taskSchedulerKey.TriggerSource },
                 {
-                    nameof(JobBase.AsyncDispoable), jobSchedulerKey.TriggerSource
+                    nameof(JobBase.AsyncDispoable), taskSchedulerKey.TriggerSource
                                                     == TriggerSource.Manual
                         ? asyncDisposable
                         : null

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data;
+using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.Notifications;
@@ -50,7 +51,7 @@ public class NotificationService : BackgroundService
                             Id = Guid.NewGuid().ToString(),
                             CreationDateTime = DateTime.UtcNow,
                             Name = notificationMessage.Content.AsT0.Subject ?? string.Empty,
-                            Value = notificationMessage.Content.AsT0.Message
+                            Value = notificationMessage.Content.AsT0.Body
                         });
                         break;
                     case 1:

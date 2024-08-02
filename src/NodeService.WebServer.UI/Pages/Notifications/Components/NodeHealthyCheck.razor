@@ -10,11 +10,14 @@
       OnFinish="NodeHealthyHandleEditFormFinished"
       OnFinishFailed="NodeHealthyHandleEditFormFailed"
       @ref="@_editForm">
-    <FormItem Label="离线时长（分钟）">
+    <FormItem Label="启动" >
+        <AntDesign.Switch @bind-Value="@context.IsEnabled" />
+    </FormItem>
+    <FormItem Label="离线检测间隔（分钟）" Help="离线时间超出此时间会被告警">
         <AntDesign.InputNumber @bind-Value="@context.OfflineMinutes"/>
     </FormItem>
-    <FormItem Label="通知间隔（分钟）">
-        <AntDesign.InputNumber @bind-Value="@context.NotificationDuration"/>
+    <FormItem Label="通知时间">
+        <TimeOnlyTable ItemsSource="@context.DailyTimes" />
     </FormItem>
     <FormItem Required Label="主题">
         <Input @bind-Value="@context.Subject"/>

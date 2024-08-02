@@ -10,7 +10,7 @@ public partial class NodesController
         var rsp = new ApiResponse<NodePropertySnapshotModel>();
         try
         {
-            var nodeProps = await _nodeInfoQueryService.QueryNodePropsAsync(nodeId, cancellationToken);
+            var nodeProps = await _nodeInfoQueryService.QueryNodePropsAsync(nodeId, false, cancellationToken);
             rsp.SetResult(nodeProps);
         }
         catch (Exception ex)

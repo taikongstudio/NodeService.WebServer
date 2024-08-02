@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Hosting;
+using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
@@ -79,6 +80,8 @@ public readonly struct FireTaskFlowParameters
     public DateTimeOffset? PreviousFireTimeUtc { get; init; }
     public DateTimeOffset? ScheduledFireTimeUtc { get; init; }
     public DateTimeOffset FireTimeUtc { get; init; }
+
+    public List<StringEntry> EnvironmentVariables { get; init; }
 }
 
 public readonly record struct SwitchStageParameters
@@ -908,10 +911,25 @@ public class TaskActivateService : BackgroundService
     }
 
     static void CreateTaskFlowExecutionInstance(
-        TaskFlowTemplateModel? taskFlowTemplate,
+        TaskFlowTemplateModel taskFlowTemplate,
         List<TaskFlowExecutionInstanceModel> taskFlowExecutionInstances,
         FireTaskFlowParameters fireTaskFlowParameters)
     {
+        if (fireTaskFlowParameters.EnvironmentVariables != null && fireTaskFlowParameters.EnvironmentVariables.Count > 0)
+        {
+            foreach (var item in fireTaskFlowParameters.EnvironmentVariables)
+            {
+                var entry = taskFlowTemplate.EnvironmentVariables.Find(x => x.Name == item.Name);
+                if (entry == null)
+                {
+                    taskFlowTemplate.EnvironmentVariables.Add(item);
+                }
+                else
+                {
+                    entry.Value = item.Value;
+                }
+            }
+        }
         var taskFlowExecutionInstance = new TaskFlowExecutionInstanceModel()
         {
             Id = fireTaskFlowParameters.TaskFlowInstanceId,

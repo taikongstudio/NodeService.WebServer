@@ -1,17 +1,19 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Services.Tasks;
+using NodeService.WebServer.Services.TaskSchedule.Jobs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.Tasks
+namespace NodeService.WebServer.Services.TaskSchedule
 {
     public partial class TaskScheduleService
     {
-        async Task ProcessTaskScheduleParametersAsync(
+        async ValueTask ProcessTaskDefinitionScheduleParametersAsync(
         AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult> op,
         CancellationToken cancellationToken = default)
         {
@@ -20,10 +22,10 @@ namespace NodeService.WebServer.Services.Tasks
                 case AsyncOperationKind.None:
                     break;
                 case AsyncOperationKind.AddOrUpdate:
-                    await ScheduleTaskAsync(op.Argument.Parameters.AsT0, cancellationToken);
+                    await ScheduleTaskDefinitionAsync(op.Argument.Parameters.AsT0, cancellationToken);
                     break;
                 case AsyncOperationKind.Delete:
-                    await DeleteAllTaskScheduleAsync(op.Argument.Parameters.AsT0.TaskDefinitionId);
+                    await DeleteAllTaskScheduleAsync(op.Argument.Parameters.AsT0.TaskDefinitionId, nameof(FireTaskJob));
                     break;
                 case AsyncOperationKind.Query:
                     break;
@@ -32,8 +34,8 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        private async ValueTask ScheduleTaskAsync(
-            TaskScheduleParameters taskScheduleParameters,
+        private async ValueTask ScheduleTaskDefinitionAsync(
+            TaskDefinitionScheduleParameters taskScheduleParameters,
             CancellationToken cancellationToken = default)
         {
             if (taskScheduleParameters.TaskDefinitionId == null) return;
@@ -41,7 +43,7 @@ namespace NodeService.WebServer.Services.Tasks
             var taskDefinition = await repository.GetByIdAsync(taskScheduleParameters.TaskDefinitionId, cancellationToken);
             if (taskDefinition == null || !taskDefinition.Value.IsEnabled || taskDefinition.Value.TriggerType != TaskTriggerType.Schedule)
             {
-                await DeleteAllTaskScheduleAsync(taskScheduleParameters.TaskDefinitionId);
+                await DeleteAllTaskScheduleAsync(taskScheduleParameters.TaskDefinitionId, nameof(FireTaskJob));
                 return;
             }
 
@@ -57,7 +59,7 @@ namespace NodeService.WebServer.Services.Tasks
                 await asyncDisposable.DisposeAsync();
                 if (!taskDefinition.IsEnabled)
                 {
-                    await DeleteAllTaskScheduleAsync(taskScheduleParameters.TaskDefinitionId);
+                    await DeleteAllTaskScheduleAsync(taskScheduleParameters.TaskDefinitionId, nameof(FireTaskJob));
                     return;
                 }
 
@@ -77,17 +79,7 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        private async ValueTask DeleteAllTaskScheduleAsync(string key)
-        {
-            for (var triggerSource = TriggerSource.Schedule; triggerSource < TriggerSource.Max - 1; triggerSource++)
-            {
-                var taskSchedulerKey = new TaskSchedulerKey(key, triggerSource, nameof(FireTaskJob));
-                if (_taskSchedulerDictionary.TryRemove(taskSchedulerKey, out var asyncDisposable))
-                    await asyncDisposable.DisposeAsync();
-            }
-        }
-
-        private async ValueTask ScheduleTasksAsync(CancellationToken cancellationToken = default)
+        private async ValueTask ScheduleTaskDefinitionsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -97,7 +89,7 @@ namespace NodeService.WebServer.Services.Tasks
                     .ToList();
                 foreach (var taskDefinition in taskDefinitions)
                 {
-                    var taskScheduleParameters = new TaskScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
+                    var taskScheduleParameters = new TaskDefinitionScheduleParameters(TriggerSource.Schedule, taskDefinition.Id);
                     var taskScheduleServiceParameters = new TaskScheduleServiceParameters(taskScheduleParameters);
                     var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
                         taskScheduleServiceParameters,

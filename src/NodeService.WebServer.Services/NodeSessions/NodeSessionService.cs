@@ -10,6 +10,8 @@ public abstract record class NodeSessionMessage
 {
     public NodeSessionId NodeSessionId { get; init; }
 
+    public NodeInfoModel NodeInfo { get; set; }
+
     public string HostName { get; init; }
 
     public INodeMessage Message { get; init; }
@@ -38,18 +40,15 @@ public record class FileSystemWatchEventReportMessage : NodeSessionMessage<FileS
 public class NodeSessionService : INodeSessionService
 {
     private readonly ILogger<NodeSessionService> _logger;
-    private readonly NodeHealthyCounterDictionary _nodeHealthyCounterDictionary;
     private readonly ConcurrentDictionary<NodeSessionId, NodeSession> _nodeSessionDict;
 
     public NodeSessionService(
         ILogger<NodeSessionService> logger,
-        BatchQueue<NodeHeartBeatSessionMessage> hearBeatBatchQueue,
-        NodeHealthyCounterDictionary nodeHealthyCounterDictionary
+        BatchQueue<NodeHeartBeatSessionMessage> hearBeatBatchQueue
     )
     {
         _nodeSessionDict = new ConcurrentDictionary<NodeSessionId, NodeSession>();
         _logger = logger;
-        _nodeHealthyCounterDictionary = nodeHealthyCounterDictionary;
     }
 
     public IAsyncQueue<IMessage> GetInputQueue(NodeSessionId nodeSessionId)
@@ -80,7 +79,6 @@ public class NodeSessionService : INodeSessionService
 
     public void UpdateNodeStatus(NodeSessionId nodeSessionId, NodeStatus nodeStatus)
     {
-        if (nodeStatus == NodeStatus.Offline) _nodeHealthyCounterDictionary.Ensure(nodeSessionId.NodeId).OfflineCount++;
         EnsureNodeSession(nodeSessionId).Status = nodeStatus;
     }
 

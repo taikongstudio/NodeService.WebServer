@@ -10,7 +10,6 @@ using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Identity;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.ClientUpdate;
 using NodeService.WebServer.Services.Counters;
@@ -23,6 +22,7 @@ using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.NodeSessions.MessageHandlers;
 using NodeService.WebServer.Services.Notifications;
 using NodeService.WebServer.Services.Tasks;
+using NodeService.WebServer.Services.TaskSchedule;
 using NodeService.WebServer.Services.VirtualFileSystem;
 using NodeService.WebServer.UI.Services;
 using OpenTelemetry.Metrics;
@@ -451,11 +451,12 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<NodeStatusChangeQueryService>();
 
             builder.Services.AddSingleton<IJobFactory, JobFactory>();
-            builder.Services.AddSingleton<TaskSchedulerDictionary>();
+            builder.Services.AddKeyedSingleton<TaskSchedulerDictionary>(nameof(TaskScheduleService));
             builder.Services.AddSingleton<JobScheduler>();
             builder.Services.AddSingleton<TaskFlowExecutor>();
             builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
             builder.Services.AddSingleton<IAsyncQueue<TaskExecutionEventRequest>, AsyncQueue<TaskExecutionEventRequest>>();
+            builder.Services.AddSingleton<IAsyncQueue<NodeHealthyCheckFireEvent>, AsyncQueue<NodeHealthyCheckFireEvent>>();
             builder.Services.AddSingleton<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>, AsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             builder.Services.AddSingleton(new BatchQueue<TaskActivateServiceParameters>(TimeSpan.FromSeconds(1), 64));
             builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(TimeSpan.FromSeconds(1), 64));
@@ -472,7 +473,6 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
             builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(TimeSpan.FromSeconds(3), 2048));
             builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(TimeSpan.FromHours(8), 1024*100));
-            builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
 
             builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(TimeSpan.FromHours(1), 1024*100));
             builder.Services.AddSingleton(
@@ -535,9 +535,19 @@ namespace NodeService.WebServer.Servers
             {
                 options.UseInMemoryDatabase("default", (inMemoryDbOptions) =>
                 {
-                   
+
                 });
             }, 2048);
+
+            builder.Services.AddPooledDbContextFactory<LimsDbContext>(
+                options =>
+                options.UseMySql(builder.Configuration.GetConnectionString("LIMSMySQL"),
+                          MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
+                          {
+                              mySqlOptionBuilder.EnableRetryOnFailure();
+                              mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                              mySqlOptionBuilder.EnableStringComparisonTranslations();
+                          }));
         }
 
         public override async Task RunAsync(CancellationToken cancellationToken = default)

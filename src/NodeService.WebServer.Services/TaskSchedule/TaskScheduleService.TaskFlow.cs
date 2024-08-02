@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Services.TaskSchedule.Jobs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Reactive.Disposables;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.Tasks
+namespace NodeService.WebServer.Services.TaskSchedule
 {
     public partial class TaskScheduleService
     {
@@ -21,7 +22,7 @@ namespace NodeService.WebServer.Services.Tasks
                     await ScheduleTaskFlowAsync(op.Argument.Parameters.AsT1, cancellationToken);
                     break;
                 case AsyncOperationKind.Delete:
-                    await DeleteAllTaskScheduleAsync(op.Argument.Parameters.AsT1.TaskFlowTemplateId);
+                    await DeleteAllTaskScheduleAsync(op.Argument.Parameters.AsT1.TaskFlowTemplateId, nameof(FireTaskFlowJob));
                     break;
                 case AsyncOperationKind.Query:
                     break;
@@ -64,7 +65,7 @@ namespace NodeService.WebServer.Services.Tasks
                 await asyncDisposable.DisposeAsync();
                 if (!taskFlowTemplate.Value.IsDesignMode)
                 {
-                    await DeleteAllTaskScheduleAsync(taskFlowScheduleParameters.TaskFlowTemplateId);
+                    await DeleteAllTaskScheduleAsync(taskFlowScheduleParameters.TaskFlowTemplateId, nameof(FireTaskFlowJob));
                     return;
                 }
 
@@ -94,7 +95,7 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        private async ValueTask ScheduleTaskFlowsAsync(CancellationToken cancellationToken = default)
+        private async ValueTask ScheduleTaskFlowTemplatesAsync(CancellationToken cancellationToken = default)
         {
             try
             {

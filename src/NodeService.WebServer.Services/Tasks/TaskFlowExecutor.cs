@@ -308,6 +308,15 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         return;
                     }
+                    var currentStage = taskFlowExecutionInstance.Value.TaskStages.ElementAtOrDefault(taskFlowExecutionInstance.Value.CurrentStageIndex);
+                    if (currentStage == null)
+                    {
+                        return;
+                    }
+                    if (currentStage.Id != parameters.TaskFlowStageInstanceId)
+                    {
+                        return;
+                    }
                     if (taskFlowExecutionInstance.Value.CurrentStageIndex < taskFlowExecutionInstance.Value.TaskStages.Count - 1)
                     {
                         MoveToNextStage(taskFlowExecutionInstance);

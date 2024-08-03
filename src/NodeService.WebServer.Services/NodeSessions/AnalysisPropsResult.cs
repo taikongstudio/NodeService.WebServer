@@ -10,5 +10,8 @@
 
         public AnalysisServiceProcessListResult ServiceProcessListResult { get; set; }
 
+        public ProcessInfo[] ProcessInfoList { get; set; } = [];
+
+        public ServiceProcessInfo[] ServiceProcessInfoList { get; set; } = [];
     }
 }

@@ -398,6 +398,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     if (processInfoList != null)
                     {
                         analysisPropsResult.ProcessListResult = AnalysisNodeProcessInfoList(nodeInfo, processInfoList);
+                        analysisPropsResult.ProcessInfoList = processInfoList;
                     }
 
                 }
@@ -412,6 +413,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     if (serviceProcessInfoList != null)
                     {
                         analysisPropsResult.ServiceProcessListResult = AnalysisNodeServiceProcessInfoList(nodeInfo, serviceProcessInfoList);
+                        analysisPropsResult.ServiceProcessInfoList = serviceProcessInfoList;
                     }
                 }
             }

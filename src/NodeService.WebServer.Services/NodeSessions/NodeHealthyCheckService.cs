@@ -190,7 +190,7 @@ public partial class NodeHealthyCheckService : BackgroundService
                 IEnumerable<ProcessInfo> processInfoList = [];
                 var analysisPropsResultKey = $"NodePropsAnalysisResult:{nodeInfo.Id}";
                 var analysisPropsResult = await _objectCache.GetObjectAsync<AnalysisPropsResult>(analysisPropsResultKey, cancellationToken);
-                processInfoList = analysisPropsResult.ProcessListResult.StatusChangeProcessList;
+                processInfoList = analysisPropsResult.ProcessInfoList;
 
                 if (processInfoList == null || !processInfoList.Any())
                 {
@@ -250,7 +250,7 @@ public partial class NodeHealthyCheckService : BackgroundService
             {
                 var processEntry = nodePropsSnapshot.NodeProperties.FirstOrDefault(static x => x.Name == NodePropertyModel.Process_Processes_Key);
 
-                if (processEntry != default && processEntry.Value != null && processEntry.Value.Contains("[", StringComparison.CurrentCulture))
+                if (processEntry != default && processEntry.Value != null && processEntry.Value.Contains('[', StringComparison.CurrentCulture))
                 {
                     var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]?>(processEntry.Value);
                     return processInfoList;
@@ -316,7 +316,7 @@ public partial class NodeHealthyCheckService : BackgroundService
             await _notificationQueue.EnqueueAsync(
             new NotificationMessage(new LarkContent()
             {
-                Subject = _nodeHealthyCheckConfiguration.Subject,
+                Subject = $"{_nodeHealthyCheckConfiguration.Subject} {DateTime.Now:yyyy-MM-dd}",
                 Entries = []
             },
                 notificationConfig.Value),

@@ -584,7 +584,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 case TaskExecutionStatus.Cancelled:
                     break;
                 case TaskExecutionStatus.Finished:
-                    if (taskExecutionInstance.Status != TaskExecutionStatus.Finished)
+                    if (taskExecutionInstance.Status != TaskExecutionStatus.Finished && taskExecutionInstance.TaskFlowTaskId == null)
                     {
                         await ScheduleChildTasksAsync(
                             taskActivationRecord,
@@ -628,13 +628,12 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 {
                     taskExecutionInstance.Status = report.Status;
                 }
+                else if (report.Status == TaskExecutionStatus.PenddingTimeout)
+                {
+                    taskExecutionInstance.Status = report.Status;
+                }
             }
 
-
-            if (report.Status == TaskExecutionStatus.PenddingTimeout)
-            {
-                taskExecutionInstance.Status = report.Status;
-            }
             if (!string.IsNullOrEmpty(report.Message))
             {
 

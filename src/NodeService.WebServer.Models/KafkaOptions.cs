@@ -13,5 +13,7 @@ namespace NodeService.WebServer.Models
         public string TaskLogTopic { get; set; }
 
         public string ClientUpdateLogTopic { get; set; }
+
+        public string TaskDelayQueueMessageTopic { get; set; }
     }
 }

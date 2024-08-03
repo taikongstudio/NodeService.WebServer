@@ -1,6 +1,8 @@
 ﻿@page "/TaskFlows/Instances/View/{TaskFlowInstanceId}"
 
 @layout NodeService.WebServer.UI.Layouts.TaskFlowTemplateLayout
+@using NodeService.WebServer.UI.Pages.TaskFlows.Components
+@using NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
 @using NodeService.WebServer.UI.Pages.TaskFlows.Instances.Components
 @using NodeService.WebServer.UI.Pages.TaskFlows.Instances.Models
 @inject ApiService ApiService
@@ -75,14 +77,14 @@
 
 </style>
 
-
+<TaskFlowSettingsDrawer @bind-Visible="@_isSettingsDrawVisible" TaskFlow="@_taskFlowDesign" Disabled="true"/>
 <div class="taskflow-grid" id="TaskFlowDesigner">
     <Space Class="taskflow-header">
         <SpaceItem>
             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home" OnClick="@GoHome"></Button>
         </SpaceItem>
         <SpaceItem>
-
+            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Setting" OnClick="@OnSettingsButtonClickedAsync"></Button>
         </SpaceItem>
     </Space>
     <div class="taskflow-navigation">
@@ -109,6 +111,7 @@
 
 @code {
     TaskFlowExecutionInstanceModel _taskFlowInstance = new TaskFlowExecutionInstanceModel();
+    TaskFlowDesignModel _taskFlowDesign = new TaskFlowDesignModel();
     bool _isSettingsDrawVisible;
     System.Threading.Timer _timer;
     RenderFragment customDot = @<Icon Type="loading" Theme="outline" />;
@@ -137,6 +140,10 @@
             if (rsp.ErrorCode == 0)
             {
                 _taskFlowInstance = rsp.Result;
+                var taskFlowTemplateModel = JsonSerializer.Deserialize<TaskFlowTemplateModel>(_taskFlowInstance.Value.TaskFlowTemplateJson);
+                _taskFlowDesign.CronExpressions = taskFlowTemplateModel.Value.TaskStages[0].TaskGroups[0].Tasks[0].TriggerSources;
+                _taskFlowDesign.EnvironmentVariables = taskFlowTemplateModel.Value.EnvironmentVariables;
+                _taskFlowDesign.ExecutionTimeLimitMinutes = taskFlowTemplateModel.Value.ExecutionTimeLimitMinutes;
                 await InvokeAsync(StateHasChanged);
             }
         }

@@ -158,6 +158,9 @@
                     case TaskExecutionStatus.PenddingTimeout:
                         <Text>等待超时</Text>
                         break;
+                    case TaskExecutionStatus.PenddingCancel:
+                        <Text>等待取消响应</Text>
+                        break;
                 }
             </PropertyColumn>
             <PropertyColumn Title="触发时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
@@ -176,6 +179,7 @@
                                 </SpaceItem>
                                 break;
                             case TaskExecutionStatus.Running:
+                            case TaskExecutionStatus.PenddingCancel:
                                 <SpaceItem>
                                     <Button Danger Shape="@ButtonShape.Circle" OnClick="() => CancelTaskAsync(context)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
                                 </SpaceItem>
@@ -244,6 +248,7 @@
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Finished, Name = "完成" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Cancelled, Name = "已取消" });
         _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.PenddingTimeout, Name = "等待超时" });
+        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.PenddingCancel, Name = "等待取消响应" });
         _dataSource = new RoutedPaginationDataSource<TaskExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
         _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();

@@ -3,6 +3,7 @@ using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.TaskSchedule;
 using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
@@ -20,6 +21,11 @@ namespace NodeService.WebServer.Services.Tasks
         readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
         readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
         readonly ActionBlock<AsyncOperation<Func<Task>>> _executionQueue;
+        private readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
+        private readonly IDelayMessageBroadcast _delayMessageBroadcast;
+
+        const string SubType_ExecutionTimeLimit = "ExecutionTimeLimit";
+        const string SubTyoe_TaskFlowStageExecutionTimeLimit = "TaskFlowStageExecutionTimeLimit";
 
         public TaskFlowExecutor(
             ILogger<TaskFlowExecutor> logger,
@@ -27,7 +33,9 @@ namespace NodeService.WebServer.Services.Tasks
             BatchQueue<TaskActivateServiceParameters> taskActivateServiceBatchQueue,
             ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
             ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
-            ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory
+            ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
+            IAsyncQueue<KafkaDelayMessage> delayMessageQueue,
+            IDelayMessageBroadcast delayMessageBroadcast
             )
         {
             _logger = logger;
@@ -41,6 +49,62 @@ namespace NodeService.WebServer.Services.Tasks
                 EnsureOrdered = true,
                 MaxDegreeOfParallelism = 1
             });
+            _delayMessageQueue = delayMessageQueue;
+            _delayMessageBroadcast = delayMessageBroadcast;
+            _delayMessageBroadcast.AddHandler(nameof(TaskFlowExecutor), ProcessDelayMessage);
+        }
+
+        async ValueTask ProcessDelayMessage(KafkaDelayMessage kafkaDelayMessage, CancellationToken cancellationToken = default)
+        {
+            switch (kafkaDelayMessage.SubType)
+            {
+                case SubType_ExecutionTimeLimit:
+                    {
+                        await ProcessTaskFlowExecutionTimeLimitReachedAsync(kafkaDelayMessage.Id, cancellationToken);
+                    }
+                    break;
+                case SubTyoe_TaskFlowStageExecutionTimeLimit:
+                    {
+                        var stageId = kafkaDelayMessage.Properties["StageId"];
+                        await ProcessTaskFlowStageExecutionTimeLimitReachedAsync(
+                            new TaskFlowExecutionTimeLimitParameters(kafkaDelayMessage.Id, stageId),
+                            cancellationToken);
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        public async ValueTask ProcessTaskFlowExecutionTimeLimitReachedAsync(string taskFlowExecutionInstanceId, CancellationToken cancellationToken = default)
+        {
+            var op = new AsyncOperation<Func<Task>>(async () =>
+            {
+                try
+                {
+                    await using var taskFlowRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
+                    var taskFlowExecutionInstance = await taskFlowRepo.GetByIdAsync(taskFlowExecutionInstanceId, cancellationToken);
+                    if (taskFlowExecutionInstance == null)
+                    {
+                        return;
+                    }
+                    if (taskFlowExecutionInstance.Status == TaskFlowExecutionStatus.Finished || taskFlowExecutionInstance.Status == TaskFlowExecutionStatus.Fault)
+                    {
+                        return;
+                    }
+                    taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Fault;
+                    taskFlowExecutionInstance.Value.Message = $"Execution time limit!";
+                    await taskFlowRepo.SaveChangesAsync(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex.ToString());
+                    _exceptionCounter.AddOrUpdate(ex);
+                }
+
+            }, AsyncOperationKind.AddOrUpdate);
+            await _executionQueue.SendAsync(op, cancellationToken);
+            await op.WaitAsync(cancellationToken);
         }
 
         async Task ExecutionTaskAsync(AsyncOperation<Func<Task>> op)
@@ -122,6 +186,10 @@ namespace NodeService.WebServer.Services.Tasks
         {
             try
             {
+                if (taskFlowExecutionInstance.Status == TaskFlowExecutionStatus.Fault)
+                {
+                    return;
+                }
                 var taskFlowTemplate = JsonSerializer.Deserialize<TaskFlowTemplateModel>(taskFlowExecutionInstance.Value.TaskFlowTemplateJson);
                 if (taskFlowTemplate == null)
                 {
@@ -209,13 +277,16 @@ namespace NodeService.WebServer.Services.Tasks
                     var stageTemplate = taskFlowTemplate.Value.FindStageTemplate(taskFlowStageExecutionInstance.TaskFlowStageTemplateId);
                     if (stageTemplate != null && stageTemplate.ExecutionTimeLimitSeconds > 0)
                     {
-                        var prameters = new TaskFlowExecutionTimeLimitParameters(
-                            taskFlowExecutionInstance.Id,
-                            taskFlowStageExecutionInstance.Id);
-                        prameters.Disposable = Scheduler.Default.ScheduleAsync(
-                            prameters,
-                            TimeSpan.FromSeconds(stageTemplate.ExecutionTimeLimitSeconds),
-                            ExecutionTimeLimitReachedAsync);
+                        var kafkaDelayMessage = new KafkaDelayMessage()
+                        {
+                            Type = nameof(TaskFlowExecutor),
+                            SubType = SubTyoe_TaskFlowStageExecutionTimeLimit,
+                            Id = taskFlowExecutionInstance.Id,
+                            ScheduleDateTime = DateTime.UtcNow + TimeSpan.FromSeconds(stageTemplate.ExecutionTimeLimitSeconds),
+                            CreateDateTime = DateTime.UtcNow,
+                        };
+                        await _delayMessageQueue.EnqueueAsync(kafkaDelayMessage, cancellationToken);
+                        kafkaDelayMessage.Properties["StageId"] = taskFlowStageExecutionInstance.Id;
                     }
                     taskFlowStageExecutionInstance.Status = TaskFlowExecutionStatus.Running;
                     taskFlowStageExecutionInstance.CreationDateTime = DateTime.UtcNow;
@@ -223,8 +294,7 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        async Task<IDisposable> ExecutionTimeLimitReachedAsync(
-            System.Reactive.Concurrency.IScheduler scheduler,
+        async Task<IDisposable> ProcessTaskFlowStageExecutionTimeLimitReachedAsync(
             TaskFlowExecutionTimeLimitParameters parameters,
             CancellationToken cancellationToken)
         {
@@ -331,7 +401,20 @@ namespace NodeService.WebServer.Services.Tasks
 
             if (taskFlowTaskTemplate.TemplateType == TaskFlowTaskTemplateType.TriggerTask)
             {
-                taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Finished;
+                if (taskFlowTaskExecutionInstance.Status != TaskExecutionStatus.Finished)
+                {
+                    if (taskFlowTemplate.Value.ExecutionTimeLimitMinutes > 0)
+                    {
+                        await _delayMessageQueue.EnqueueAsync(new KafkaDelayMessage()
+                        {
+                            Type = nameof(TaskFlowExecutor),
+                            SubType = SubType_ExecutionTimeLimit,
+                            Id = taskFlowExecutionInstance.Id,
+                            ScheduleDateTime = DateTime.UtcNow + TimeSpan.FromMinutes(taskFlowTemplate.Value.ExecutionTimeLimitMinutes)
+                        }, cancellationToken);
+                    }
+                    taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Finished;
+                }
             }
             else if (taskFlowTaskTemplate.TemplateType == TaskFlowTaskTemplateType.RemoteNodeTask)
             {

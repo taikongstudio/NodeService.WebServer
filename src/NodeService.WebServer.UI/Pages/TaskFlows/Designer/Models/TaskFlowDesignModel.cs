@@ -8,6 +8,8 @@ namespace NodeService.WebServer.UI.Pages.TaskFlows.Designer.Models
         public List<StringEntry> CronExpressions { get; set; } = [];
         public List<TaskFlowStageDesignModel> Stages { get; set; } = [];
         public List<StringEntry> EnvironmentVariables { get; set; } = [];
+
+        public double ExecutionTimeLimitMinutes { get; set; }
     }
 
     public class TaskFlowStageDesignModel : TaskFlowDesignModelBase

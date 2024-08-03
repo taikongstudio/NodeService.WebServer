@@ -53,15 +53,12 @@ public class TaskLogPersistenceService : BackgroundService
 
     async Task ProcessExpiredTaskLogsAsync(CancellationToken cancellationToken = default)
     {
-        //await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
+        await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                await foreach (var taskExecutionInstance in QueryExpiredTaskExecutionInstanceAsync(cancellationToken))
-                {
-                    await DeleteTaskLogAsync(taskExecutionInstance, cancellationToken);
-                }
+               await ProcessExpiredTaskExecutionInstanceAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -74,7 +71,7 @@ public class TaskLogPersistenceService : BackgroundService
             }
         }
 
-        async IAsyncEnumerable<TaskExecutionInstanceModel> QueryExpiredTaskExecutionInstanceAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
+        async ValueTask ProcessExpiredTaskExecutionInstanceAsync(CancellationToken cancellationToken = default)
         {
             await using var repoFactory = await _taskExecutionInstanceFactory.CreateRepositoryAsync();
             int pageIndex = 1;
@@ -91,15 +88,15 @@ public class TaskLogPersistenceService : BackgroundService
                 }
                 foreach (var item in queryResult.Items)
                 {
-                    yield return item;
+                    await DeleteTaskLogAsync(item, cancellationToken);
                 }
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 if (queryResult.Items.Count() < pageSize)
                 {
                     break;
                 }
                 pageIndex++;
             }
-            yield break;
         }
 
         async Task DeleteTaskLogAsync(TaskExecutionInstanceModel taskExecutionInstance, CancellationToken cancellationToken = default)

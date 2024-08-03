@@ -22,11 +22,15 @@ namespace NodeService.WebServer.Services.TaskSchedule
             services.AddOptions();
             services.Configure(setupAction);
             services.AddSingleton<IJobFactory, JobFactory>();
-            services.AddSingleton<TaskSchedulerDictionary>();
+            services.AddKeyedSingleton<TaskSchedulerDictionary>(nameof(TaskScheduleService));
+            services.AddSingleton<IAsyncQueue<KafkaDelayMessage>, AsyncQueue<KafkaDelayMessage>>();
+            services.AddSingleton<IDelayMessageBroadcast, KafkaDelayMesageBroadcast>();
+            services.AddHostedService<KafkaDelayMessageQueueService>();
             services.AddSingleton<JobScheduler>();
             services.AddSingleton<TaskFlowExecutor>();
             services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
             services.AddSingleton<IAsyncQueue<TaskExecutionEventRequest>, AsyncQueue<TaskExecutionEventRequest>>();
+            services.AddSingleton<IAsyncQueue<NodeHealthyCheckFireEvent>, AsyncQueue<NodeHealthyCheckFireEvent>>();
             services.AddSingleton<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>, AsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
             services.AddSingleton(new BatchQueue<TaskActivateServiceParameters>(TimeSpan.FromSeconds(1), 64));
             services.AddSingleton(new BatchQueue<TaskCancellationParameters>(TimeSpan.FromSeconds(1), 64));
@@ -35,6 +39,8 @@ namespace NodeService.WebServer.Services.TaskSchedule
             services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
             services.AddSingleton(new BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(TimeSpan.FromSeconds(15), 2048));
             services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(TimeSpan.FromSeconds(3), 1024));
+            services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(TimeSpan.FromSeconds(3), 1024));
+
 
             return services;
         }

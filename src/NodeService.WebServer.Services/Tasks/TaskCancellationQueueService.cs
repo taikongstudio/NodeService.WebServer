@@ -59,7 +59,7 @@ public class TaskCancellationQueueService : BackgroundService
                                                 taskCancellationParameters.TaskExeuctionInstanceId,
                                                 cancellationToken);
                     if (taskExecutionInstance == null) continue;
-                    if (taskExecutionInstance.Status >= TaskExecutionStatus.Cancelled) continue;
+                    if (taskExecutionInstance.Status != TaskExecutionStatus.PenddingCancel && taskExecutionInstance.Status >= TaskExecutionStatus.Cancelled) continue;
                     if (_taskPenddingContextManager.TryGetContext(
                             taskCancellationParameters.TaskExeuctionInstanceId,
                             out var context)

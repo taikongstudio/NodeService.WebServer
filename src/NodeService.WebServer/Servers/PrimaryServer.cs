@@ -450,21 +450,10 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddSingleton<FileInfoCacheService>();
             builder.Services.AddSingleton<NodeStatusChangeQueryService>();
 
-            builder.Services.AddSingleton<IJobFactory, JobFactory>();
-            builder.Services.AddKeyedSingleton<TaskSchedulerDictionary>(nameof(TaskScheduleService));
-            builder.Services.AddSingleton<JobScheduler>();
-            builder.Services.AddSingleton<TaskFlowExecutor>();
-            builder.Services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
-            builder.Services.AddSingleton<IAsyncQueue<TaskExecutionEventRequest>, AsyncQueue<TaskExecutionEventRequest>>();
-            builder.Services.AddSingleton<IAsyncQueue<NodeHealthyCheckFireEvent>, AsyncQueue<NodeHealthyCheckFireEvent>>();
-            builder.Services.AddSingleton<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>, AsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
-            builder.Services.AddSingleton(new BatchQueue<TaskActivateServiceParameters>(TimeSpan.FromSeconds(1), 64));
-            builder.Services.AddSingleton(new BatchQueue<TaskCancellationParameters>(TimeSpan.FromSeconds(1), 64));
-            builder.Services.AddKeyedSingleton(nameof(TaskLogKafkaProducerService), new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(1), 2048));
-            builder.Services.AddKeyedSingleton(nameof(TaskLogPersistenceService), new BatchQueue<AsyncOperation<TaskLogUnit[]>>(TimeSpan.FromSeconds(5), 2048));
-            builder.Services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
-            builder.Services.AddSingleton(new BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(TimeSpan.FromSeconds(15), 2048));
-            builder.Services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(TimeSpan.FromSeconds(3), 1024));
+            builder.Services.AddTaskSchedule(options =>
+            {
+
+            });
 
 
             builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();

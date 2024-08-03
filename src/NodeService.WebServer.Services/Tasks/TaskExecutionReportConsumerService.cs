@@ -21,6 +21,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly TaskFlowExecutor _taskFlowExecutor;
     readonly ConfigurationQueryService _configurationQueryService;
     readonly ITaskPenddingContextManager _taskPenddingContextManager;
+    private readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
+    private readonly IDelayMessageBroadcast _delayMessageBroadcast;
     readonly ILogger<TaskExecutionReportConsumerService> _logger;
     readonly IMemoryCache _memoryCache;
 
@@ -33,8 +35,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
     readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
     readonly JobScheduler _jobScheduler;
-    readonly ConcurrentDictionary<string, IDisposable> _taskExecutionLimitDictionary;
     readonly WebServerCounter _webServerCounter;
+
+    const string SubType_ExecutionTimeLimit = "ExecutionTimeLimit";
 
     public TaskExecutionReportConsumerService(
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
@@ -42,7 +45,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
         BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
-        [FromKeyedServices(nameof(TaskLogKafkaProducerService))]BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
+        [FromKeyedServices(nameof(TaskLogKafkaProducerService))] BatchQueue<TaskLogUnit> taskLogUnitBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
         BatchQueue<TaskActivateServiceParameters> taskScheduleQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
@@ -52,7 +55,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         WebServerCounter webServerCounter,
         ExceptionCounter exceptionCounter,
         TaskFlowExecutor taskFlowExecutor,
-        ITaskPenddingContextManager taskPenddingContextManager
+        ITaskPenddingContextManager taskPenddingContextManager,
+        IAsyncQueue<KafkaDelayMessage> delayMessageQueue,
+        IDelayMessageBroadcast delayMessageBroadcast
     )
     {
         _logger = logger;
@@ -63,7 +68,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _taskExecutionReportBatchQueue = taskExecutionReportBatchQueue;
         _taskActivateQueue = taskScheduleQueue;
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
-        _taskExecutionLimitDictionary = new ConcurrentDictionary<string, IDisposable>();
         _jobScheduler = taskScheduler;
         _taskLogUnitBatchQueue = taskLogUnitBatchQueue;
         _memoryCache = memoryCache;
@@ -72,6 +76,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _taskFlowExecutor = taskFlowExecutor;
         _configurationQueryService = configurationQueryService;
         _taskPenddingContextManager = taskPenddingContextManager;
+        _delayMessageQueue = delayMessageQueue;
+        _delayMessageBroadcast = delayMessageBroadcast;
+        _delayMessageBroadcast.AddHandler(nameof(TaskExecutionReportConsumerService), ProcessDelayMessage);
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -88,6 +95,18 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         {
             await ProcessExpiredTaskExecutionInstanceAsync(cancellationToken);
             await Task.Delay(TimeSpan.FromHours(6), cancellationToken);
+        }
+    }
+
+    async ValueTask ProcessDelayMessage(KafkaDelayMessage kafkaDelayMessage, CancellationToken cancellationToken = default)
+    {
+        switch (kafkaDelayMessage.SubType)
+        {
+            case SubType_ExecutionTimeLimit:
+                await ProcessExcutionTimeLimitAsync(kafkaDelayMessage.Id, cancellationToken);
+                break;
+            default:
+                break;
         }
     }
 
@@ -416,20 +435,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         return null;
     }
 
-    void CancelTimeLimitTask(IEnumerable<TaskExecutionInstanceModel> taskExecutionInstances)
-    {
-        foreach (var item in taskExecutionInstances)
-        {
-            CancelTimeLimitTask(item.Id);
-        }
-    }
-
-    void CancelTimeLimitTask(string taskExecutionInstanceId)
-    {
-        if (!_taskExecutionLimitDictionary.TryRemove(taskExecutionInstanceId, out var token)) return;
-        token.Dispose();
-    }
-
     async Task ScheduleRetryTaskAsync(
     IEnumerable<TaskExecutionInstanceModel> taskExecutionInstances,
     CancellationToken cancellationToken = default)
@@ -463,7 +468,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                                                        id,
                                                        "TaskExecutionTimeLimit",
                                                        Dns.GetHostName()));
-                                 CancelTimeLimitTask(id);
                              }
                              catch (Exception ex)
                              {
@@ -472,11 +476,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
                              return Disposable.Empty;
                          });
-                    _taskExecutionLimitDictionary.AddOrUpdate(taskExecutionInstance.Id, token, (key, oldToken) =>
-                    {
-                        oldToken.Dispose();
-                        return token;
-                    });
                 }
             }
         }
@@ -487,40 +486,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         }
     }
 
-    private async Task ScheduleTimeLimitTaskAsync(
-        IEnumerable<TaskExecutionInstanceModel> taskExecutionInstances,
-        CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            if (taskExecutionInstances == null || !taskExecutionInstances.Any()) return;
-            await using var taskActivateRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
-            foreach (var taskExecutionInstanceGroup in taskExecutionInstances.GroupBy(static x => x.FireInstanceId))
-            {
-                var fireInstanceId = taskExecutionInstanceGroup.Key;
-                if (fireInstanceId == null) continue;
-                var taskActiveRecord = await taskActivateRecordRepo.GetByIdAsync(fireInstanceId, cancellationToken);
-                if (taskActiveRecord == null) continue;
-                var taskDefinition = taskActiveRecord.GetTaskDefinition();
-                if (taskDefinition == null)
-                {
-                    continue;
-                }
-                foreach (var taskExecutionInstance in taskExecutionInstanceGroup)
-                {
-                    ScheduleTimeLimitTask(taskDefinition, taskExecutionInstance.Id);
-                }
-
-            }
-        }
-        catch (Exception ex)
-        {
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
-        }
-    }
-
-    private void ScheduleTimeLimitTask(
+    private async ValueTask ScheduleTimeLimitTask(
         TaskDefinition taskDefinitionSnapshot,
         string taskExecutionInstanceId)
     {
@@ -531,39 +497,54 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         if (taskDefinitionSnapshot.ExecutionLimitTimeSeconds <= 0) return;
 
         var dueTime = TimeSpan.FromSeconds(taskDefinitionSnapshot.ExecutionLimitTimeSeconds);
-        var token = Scheduler.Default.ScheduleAsync(
-            taskExecutionInstanceId,
-            dueTime,
-            ProcessExcutionTimeLimitAsync);
-        _taskExecutionLimitDictionary.AddOrUpdate(
-            taskExecutionInstanceId,
-            token,
-            (key, oldToken) =>
-            {
-                oldToken.Dispose();
-                return token;
-            }
-        );
+        await _delayMessageQueue.EnqueueAsync(new KafkaDelayMessage()
+        {
+            Type = nameof(TaskExecutionReportConsumerService),
+            SubType = SubType_ExecutionTimeLimit,
+            CreateDateTime = DateTime.UtcNow,
+            ScheduleDateTime = DateTime.UtcNow + dueTime,
+            Id = taskExecutionInstanceId,
+        });
     }
 
-    async Task<IDisposable> ProcessExcutionTimeLimitAsync(
-        System.Reactive.Concurrency.IScheduler scheduler,
+    async ValueTask ProcessExcutionTimeLimitAsync(
         string taskExecutionInstanceId,
         CancellationToken cancellationToken)
     {
         try
         {
-            await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters(
-                                      taskExecutionInstanceId,
-                                       "TaskExecutionTimeLimit",
-                                       Dns.GetHostName()));
+            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
+            var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
+            if (taskExecutionInstance != null)
+            {
+                if (taskExecutionInstance.IsTerminatedStatus())
+                {
+                    return;
+                }
+                await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage()
+                {
+                    NodeSessionId = new Infrastructure.NodeSessions.NodeSessionId(taskExecutionInstance.NodeInfoId),
+                    Message = new TaskExecutionReport()
+                    {
+                        Id = taskExecutionInstanceId,
+                        Message = "pendding cancel",
+                        Status = TaskExecutionStatus.PenddingCancel,
+                        RequestId = Guid.NewGuid().ToString()
+                    }
+                });
+                await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters()
+                {
+                    TaskExeuctionInstanceId = taskExecutionInstanceId,
+                    Source = Dns.GetHostName(),
+                    Context = nameof(TaskExecutionReportConsumerService)
+                }, cancellationToken);
+
+            }
         }
         catch (Exception ex)
         {
             _exceptionCounter.AddOrUpdate(ex, taskExecutionInstanceId);
         }
-
-        return Disposable.Empty;
     }
 
     async ValueTask ProcessTaskExecutionReportAsync(
@@ -587,7 +568,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 case TaskExecutionStatus.Started:
                     if (taskExecutionInstance.Status != TaskExecutionStatus.Started)
                     {
-                        ScheduleTimeLimitTask(taskDefinitionSnapshot, taskExecutionInstance.Id);
+                        await ScheduleTimeLimitTask(taskDefinitionSnapshot, taskExecutionInstance.Id);
                     }
                     break;
                 case TaskExecutionStatus.Running:
@@ -630,14 +611,25 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 case TaskExecutionStatus.Finished:
                 case TaskExecutionStatus.Cancelled:
                     taskExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
-                    CancelTimeLimitTask(taskExecutionInstance.Id);
                     break;
             }
 
-            if (taskExecutionInstance.Status < report.Status && report.Status != TaskExecutionStatus.PenddingTimeout)
+            if (report.Status == TaskExecutionStatus.PenddingCancel)
             {
-                taskExecutionInstance.Status = report.Status;
+                taskExecutionInstance.Status = TaskExecutionStatus.PenddingCancel;
             }
+            else if (taskExecutionInstance.Status == TaskExecutionStatus.PenddingCancel && report.Status == TaskExecutionStatus.Cancelled)
+            {
+                taskExecutionInstance.Status = TaskExecutionStatus.Cancelled;
+            }
+            else
+            {
+                if (taskExecutionInstance.Status < report.Status && report.Status != TaskExecutionStatus.PenddingTimeout)
+                {
+                    taskExecutionInstance.Status = report.Status;
+                }
+            }
+
 
             if (report.Status == TaskExecutionStatus.PenddingTimeout)
             {
@@ -960,10 +952,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
             }
 
-            if (taskExecutionInstanceList.Count > 0)
-            {
-                await ScheduleTimeLimitTaskAsync(taskExecutionInstanceList, cancellationToken);
-            }
         }
     }
 

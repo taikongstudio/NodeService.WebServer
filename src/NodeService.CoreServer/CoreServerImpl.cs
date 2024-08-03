@@ -458,7 +458,6 @@ namespace NodeService.CoreServer
             builder.Services.AddSingleton<INodeSessionService, NodeSessionService>();
             builder.Services.AddSingleton(new BatchQueue<NodeHeartBeatSessionMessage>(TimeSpan.FromSeconds(3), 2048));
             builder.Services.AddSingleton(new BatchQueue<NodeStatusChangeRecordModel>(TimeSpan.FromSeconds(3), 1024));
-            builder.Services.AddSingleton<NodeHealthyCounterDictionary>();
 
             builder.Services.AddSingleton(new BatchQueue<DataQualityAlarmMessage>(TimeSpan.FromMinutes(30), 1024));
             builder.Services.AddSingleton(

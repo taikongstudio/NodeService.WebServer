@@ -163,7 +163,7 @@ public class TaskExecutionInstanceListSpecification : Specification<TaskExecutio
 )
     {
         Query.AsSplitQuery();
-        Query.Where(x => x.FireTimeUtc < dateTime && x.LogEntriesSaveCount > 0);
+        Query.Where(x => x.FireTimeUtc < dateTime && x.LogEntriesRecieveCount > 0);
     }
 
     public TaskExecutionInstanceListSpecification(

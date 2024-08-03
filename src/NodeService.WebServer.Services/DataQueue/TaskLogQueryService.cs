@@ -86,8 +86,34 @@ public class TaskLogQueryService
         _memoryCache = memoryCache;
     }
 
+    public async ValueTask<bool> DeleteAsync(
+        string taskExecutionInstanceId,
+    CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var taskInfoLog = await GetTaskInfoLogAsync(taskExecutionInstanceId, cancellationToken);
+            if (taskInfoLog == null)
+            {
+                return false;
+            }
+            if (taskInfoLog.Name.StartsWith("mongodb://"))
+            {
+                var taskLogFileId = taskInfoLog.Name["mongodb://".Length..];
+                _mongoGridFS.DeleteById(taskLogFileId);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+            _exceptionCounter.AddOrUpdate(ex, taskExecutionInstanceId);
+        }
+        return false;
+    }
 
-    public async ValueTask<TaskLogQueryServiceResult> QueryAsync(
+
+            public async ValueTask<TaskLogQueryServiceResult> QueryAsync(
       TaskLogQueryServiceParameters serviceParameters,
         CancellationToken cancellationToken = default)
     {

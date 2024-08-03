@@ -4,6 +4,7 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataQueue;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -16,6 +17,7 @@ public class TaskLogPersistenceService : BackgroundService
     readonly IMemoryCache _memoryCache;
     readonly ILogger<TaskLogPersistenceService> _logger;
     readonly IServiceProvider _serviceProvider;
+    private readonly TaskLogQueryService _taskLogQueryService;
     readonly ApplicationRepositoryFactory<TaskLogModel> _taskLogRepoFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceFactory;
     readonly ConcurrentDictionary<int, TaskLogStorageHandlerBase> _taskLogHandlers;
@@ -29,7 +31,8 @@ public class TaskLogPersistenceService : BackgroundService
         [FromKeyedServices(nameof(TaskLogPersistenceService))]BatchQueue<AsyncOperation<TaskLogUnit[]>> taskLogUnitBatchQueue,
         ExceptionCounter exceptionCounter,
         WebServerCounter webServerCounter,
-        IMemoryCache memoryCache)
+        IMemoryCache memoryCache,
+        TaskLogQueryService taskLogQueryService)
     {
         _logger = logger;
         _taskLogRepoFactory = taskLogRepoFactory;
@@ -40,6 +43,7 @@ public class TaskLogPersistenceService : BackgroundService
         _memoryCache = memoryCache;
         _taskLogHandlers = new ConcurrentDictionary<int, TaskLogStorageHandlerBase>();
         _serviceProvider = serviceProvider;
+        _taskLogQueryService = taskLogQueryService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -49,7 +53,7 @@ public class TaskLogPersistenceService : BackgroundService
 
     async Task ProcessExpiredTaskLogsAsync(CancellationToken cancellationToken = default)
     {
-        await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
+        //await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
         while (!cancellationToken.IsCancellationRequested)
         {
             try
@@ -57,7 +61,6 @@ public class TaskLogPersistenceService : BackgroundService
                 await foreach (var taskExecutionInstance in QueryExpiredTaskExecutionInstanceAsync(cancellationToken))
                 {
                     await DeleteTaskLogAsync(taskExecutionInstance, cancellationToken);
-                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 }
             }
             catch (Exception ex)
@@ -101,16 +104,13 @@ public class TaskLogPersistenceService : BackgroundService
 
         async Task DeleteTaskLogAsync(TaskExecutionInstanceModel taskExecutionInstance, CancellationToken cancellationToken = default)
         {
-            //await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
-            //var applicationDbContext = taskLogRepo.DbContext as ApplicationDbContext;
-            //int deleteCount = await applicationDbContext.TaskLogStorageDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
-            //if (deleteCount > 0)
-            //{
-            //    await applicationDbContext.TaskExecutionInstanceDbSet.Where(x => x.Id == taskExecutionInstance.Id)
-            //        .ExecuteUpdateAsync(x => x.SetProperty(x => x.LogEntriesSaveCount, 0),
-            //        cancellationToken);
-            //}
-            await Task.CompletedTask;
+            await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
+            var applicationDbContext = taskLogRepo.DbContext as ApplicationDbContext;
+            int deleteCount = await applicationDbContext.TaskLogStorageDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
+            await applicationDbContext.TaskExecutionInstanceDbSet.Where(x => x.Id == taskExecutionInstance.Id)
+                .ExecuteUpdateAsync(x => x.SetProperty(x => x.LogEntriesSaveCount, 0),
+                cancellationToken);
+            await _taskLogQueryService.DeleteAsync(taskExecutionInstance.Id);
         }
     }
 

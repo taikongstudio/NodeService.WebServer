@@ -423,9 +423,9 @@
                     TaskDefinition.Value.TaskTypeDesc = await ApiService.GetTaskTypeDescAsync(TaskDefinition.Value.TaskTypeDescId);
                 }
                 await OnSelectedTaskTypeDescChanged([TaskDefinition.Value.TaskTypeDesc]);
-                _selectedTaskDefinitionList = await TaskDefinition.Value.ChildTaskDefinitions.QueryTaskDefinitionListAsync(ApiService);
+                _selectedTaskDefinitionList = await TaskDefinition.Value.ChildTaskDefinitions.Select(x => x.Value).QueryTaskDefinitionListAsync(ApiService);
                 _isSelectedNodeLoading = true;
-                _selectedNodes = await TaskDefinition.Value.NodeList.QueryNodeListAsync(ApiService);
+                _selectedNodes = await TaskDefinition.Value.NodeList.Select(x => x.Value).QueryNodeListAsync(ApiService);
                 _isSelectedNodeLoading = false;
             }
         }

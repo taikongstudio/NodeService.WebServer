@@ -13,7 +13,7 @@ namespace NodeService.WebServer.UI.Extensions;
 
 public static class NodeListExtensions
 {
-    public static async Task<List<NodeInfoModel>> QueryNodeListAsync(this IEnumerable<StringEntry> stringEntries,
+    public static async Task<List<NodeInfoModel>> QueryNodeListAsync(this IEnumerable<string> stringEntries,
         ApiService apiService)
     {
         if (stringEntries == null || !stringEntries.Any()) return [];
@@ -28,7 +28,7 @@ public static class NodeListExtensions
             {
                 AreaTag = "*",
                 Status = NodeStatus.All,
-                IdList = idList.Select(x => x.Value).ToList(),
+                IdList = idList.ToList(),
                 PageIndex = queryPageIndex,
                 PageSize = queryPageSize
             });
@@ -41,12 +41,12 @@ public static class NodeListExtensions
         return nodeList;
     }
 
-    public static async Task<List<TaskDefinitionModel>> QueryTaskDefinitionListAsync(this IEnumerable<StringEntry> stringEntries,
+    public static async Task<List<TaskDefinitionModel>> QueryTaskDefinitionListAsync(this IEnumerable<string> stringEntries,
     ApiService apiService)
     {
         if (stringEntries == null || !stringEntries.Any()) return [];
         var nodeList = new List<TaskDefinitionModel>();
-        foreach (var id in stringEntries.Select(x => x.Value))
+        foreach (var id in stringEntries)
         {
             var rsp = await apiService.QueryTaskDefinitionAsync(id);
 

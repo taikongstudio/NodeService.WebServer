@@ -5,6 +5,7 @@
 @inject ConfirmService _confirmService
 @inject NavigationManager NavigationManager
 @using NodeService.WebServer.UI.Pages.Components
+@using NodeService.WebServer.UI.Pages.TaskFlows.Components
 @implements IDisposable
 
 <GridContent>
@@ -15,7 +16,8 @@
         @bind-Visible="@_versionSelectorDialogVisible"
         TItem="TaskFlowTemplateModel">
     </ConfigurationVersionSelectorDialog>
-
+    <InvokeTaskFlowDialog TaskFlowTemplate="@_taskFlowTemplate"
+                          @bind-Visible="@_invokeTaskFlowDialogVisible" />
     <Table
         Size="TableSize.Small"
         Loading="@_dataSource.IsLoading"
@@ -91,6 +93,9 @@
 
     string _configurationId;
     bool _versionSelectorDialogVisible;
+
+    bool _invokeTaskFlowDialogVisible;
+    TaskFlowTemplateModel _taskFlowTemplate;
 
     async Task ShowVersionSelectorDialog(string id)
     {
@@ -215,11 +220,8 @@
     {
         try
         {
-            var invokeTaskFlowParameters = new InvokeTaskFlowParameters()
-                {
-                    UserName = "WebUser"
-                };
-            await ApiService.InvokeTaskFlowAsync(taskFlowTemplate.Id, invokeTaskFlowParameters);
+            _taskFlowTemplate = taskFlowTemplate;
+            _invokeTaskFlowDialogVisible = true;
         }
         catch (Exception ex)
         {

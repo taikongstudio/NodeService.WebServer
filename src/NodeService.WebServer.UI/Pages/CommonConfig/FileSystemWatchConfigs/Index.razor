@@ -323,7 +323,7 @@
             _editModel = model;
             var selectedNodes = model.Value.NodeList.IsNullOrEmpty()
                 ? []
-                : await model.Value.NodeList.QueryNodeListAsync(ApiService);
+                : await model.Value.NodeList.Select(x => x.Value).QueryNodeListAsync(ApiService);
 
             _selectedNodes = selectedNodes;
 

@@ -91,7 +91,23 @@
                 </Text>
             </PropertyColumn>
             <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
-            <PropertyColumn Title="状态" Ellipsis Sortable Property="c => c.Status" DefaultSortOrder="@SortDirection.Ascending"></PropertyColumn>
+            <PropertyColumn Title="状态" Ellipsis Sortable Property="c => c.Status" DefaultSortOrder="@SortDirection.Ascending">
+                @switch (context.Status)
+                {
+                    case TaskFlowExecutionStatus.Unknown:
+                    <Text>未知</Text>
+                        break;
+                    case TaskFlowExecutionStatus.Running:
+                        <Text>运行中</Text>
+                        break;
+                    case TaskFlowExecutionStatus.Fault:
+                        <Text>错误</Text>
+                        break;
+                    case TaskFlowExecutionStatus.Finished:
+                        <Text>完成</Text>
+                        break;
+                }
+            </PropertyColumn>
             <PropertyColumn Title="创建时间" Ellipsis Sortable Property="c => c.CreationDateTime" DefaultSortOrder="@SortDirection.Descending"></PropertyColumn>
             <PropertyColumn Title="修改时间" Ellipsis Sortable Property="c => c.ModifiedDateTime" DefaultSortOrder="@SortDirection.Descending"></PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">

@@ -206,7 +206,7 @@
         {
             _editModel = model;
             _modalTitle = "编辑配置";
-            _selectedNodes = await _editModel.Value.NodeList.QueryNodeListAsync(ApiService);
+            _selectedNodes = await _editModel.Value.NodeList.Select(x => x.Value).QueryNodeListAsync(ApiService);
             var databaseConfig = await ApiService.GetDatabaseConfigAsync(_editModel.Value.DatabaseConfigId);
             if (databaseConfig == null)
             {

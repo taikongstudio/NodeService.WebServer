@@ -9,7 +9,7 @@
     }
 </CommonDialog>
 
-<Drawer Visible="@Visible" VisibleChanged="@VisibleChanged" OnClose="@OnDrawerClosed" Title="@("查看节点运行状态")" Width="600">
+<Drawer Visible="@Visible" VisibleChanged="@VisibleChanged" OnClose="@OnDrawerClosed" Title="@("查看节点运行状态")" Width="700">
     <Space Style="margin-bottom:16px" >
         <SpaceItem>
             <Button Shape="@ButtonShape.Circle" OnClick="() => RetryTaskAsync()" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo"></Button>
@@ -26,7 +26,6 @@
            Resizable
            Total="@_dataSourceList.Count"
            @bind-SelectedRows="@_selectedTaskExecutionNodeInfos"
-           PageIndex="1"
            RowKey="x => x.NodeInfoId"
            PageSize="10">
         <ColumnDefinitions>
@@ -36,6 +35,19 @@
                     <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.NodeInfoId">@context.NodeInfoId</div>
                 </Text>
             </PropertyColumn>
+
+            <PropertyColumn Title="节点名称" Sortable="true" Width="100" Property="c => c.NodeInfoId">
+                @if (_nodeInfoList==null)
+                {
+                    <Icon Type="loading" Spin/>
+                }
+                else
+                {
+                    @(_nodeInfoList?.FirstOrDefault(x => x.Id == context.NodeInfoId)?.Name)
+                }
+
+            </PropertyColumn>
+
             <PropertyColumn Title="状态" Ellipsis Sortable Width="100" Property="c => c.Status">
                 @switch (context.Status)
                 {
@@ -96,6 +108,7 @@
     IEnumerable<TaskExecutionNodeInfo> _selectedTaskExecutionNodeInfos = [];
     List<TaskExecutionNodeInfo> _dataSourceList = [];
     TaskActivationRecordModel _taskActivationRecord = new TaskActivationRecordModel();
+    List<NodeInfoModel> _nodeInfoList;
     string _taskExecutionInstanceId;
     bool _taskLogExecutionLogViewerVisible;
 
@@ -227,6 +240,10 @@
                 _taskActivationRecord.Value.TaskExecutionNodeList = taskActivationRecord.Value.TaskExecutionNodeList;
             }
             _dataSourceList = _taskActivationRecord.Value.TaskExecutionNodeList;
+            if (_nodeInfoList == null)
+            {
+                _nodeInfoList = await _taskActivationRecord.Value.TaskExecutionNodeList.Select(x => x.NodeInfoId).QueryNodeListAsync(ApiService);
+            }
             _isLoading = false;
         }
         catch (Exception ex)

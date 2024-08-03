@@ -173,7 +173,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             stopwatch.Start();
             await _nodeInfoQueryService.UpdateNodeInfoListAsync(nodeList, cancellationToken);
             _webServerCounter.HeartBeatUpdateNodeInfoListTimeSpan.Value += stopwatch.Elapsed;
-          stopwatch.Stop();
+            stopwatch.Stop();
         }
         catch (Exception ex)
         {
@@ -190,7 +190,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     async ValueTask RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
-       await using var repo =await _propertyBagRepositoryFactory.CreateRepositoryAsync();
+       await using var repo =await _propertyBagRepositoryFactory.CreateRepositoryAsync(cancellationToken);
         var propertyBag =
             await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
         if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value))
@@ -293,23 +293,26 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     nodeInfo.Profile.FoundInLims = true;
                     nodeInfo.Profile.LabArea = computerInfo.LabArea?.name;
                     nodeInfo.Profile.LabName = computerInfo.LabInfo?.name;
+                    nodeInfo.Profile.Manager = computerInfo.charge_name;
                 }
 
 
                 if (!string.IsNullOrEmpty(nodeInfo.Profile.IpAddress))
+                {
                     _nodeSettings.MatchAreaTag(nodeInfo);
+                }
 
                 analysisPropsResult = ProcessProps(nodeInfo, hearBeatResponse);
-                List<string> processList = [];
+                List<string> usageList = [];
                 if (analysisPropsResult.ServiceProcessListResult.Usages != null)
                 {
-                    processList.AddRange(analysisPropsResult.ServiceProcessListResult.Usages);
+                    usageList.AddRange(analysisPropsResult.ServiceProcessListResult.Usages);
                 }
                 if (analysisPropsResult.ProcessListResult.Usages != null)
                 {
-                    processList.AddRange(analysisPropsResult.ProcessListResult.Usages);
+                    usageList.AddRange(analysisPropsResult.ProcessListResult.Usages);
                 }
-                nodeInfo.Profile.Usages = string.Join<string>(",", processList.Distinct());
+                nodeInfo.Profile.Usages = string.Join<string>(",", usageList.Distinct());
                 await _objectCache.SetObjectAsync(analysisPropsResultKey, analysisPropsResult, cancellationToken);
             }
             if (nodeStatus == NodeStatus.Offline)
@@ -432,14 +435,21 @@ public class HeartBeatResponseConsumerService : BackgroundService
             {
                 var usagesList = nodeInfo.Profile.Usages?.Split(',') ?? [];
                 var usages = new HashSet<string>(usagesList);
-                foreach (var mapping in _nodeSettings.ProcessUsagesMapping)
+                foreach (var item in _nodeSettings.ProcessUsagesMapping)
                 {
-                    if (string.IsNullOrEmpty(mapping.Name)
-                        || string.IsNullOrEmpty(mapping.Value))
+                    if (string.IsNullOrEmpty(item.Name)
+                        || string.IsNullOrEmpty(item.Value))
+                    {
                         continue;
+                    }
+
                     foreach (var processInfo in processInfoList)
-                        if (processInfo.FileName.Contains(mapping.Name, StringComparison.OrdinalIgnoreCase))
-                            usages.Add(mapping.Value);
+                    {
+                        if (processInfo.FileName.Contains(item.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            usages.Add(item.Value);
+                        }
+                    }
                 }
                 analysisProcessListResult.Usages = usages;
             }
@@ -447,6 +457,11 @@ public class HeartBeatResponseConsumerService : BackgroundService
             {
                 foreach (var item in _nodeSettings.NodeStatusChangeRememberProcessList)
                 {
+                    if (string.IsNullOrEmpty(item.Name)
+                        || string.IsNullOrEmpty(item.Value))
+                    {
+                        continue;
+                    }
                     foreach (var processInfo in processInfoList)
                     {
                         if (processInfo.FileName.Contains(item.Name, StringComparison.OrdinalIgnoreCase))

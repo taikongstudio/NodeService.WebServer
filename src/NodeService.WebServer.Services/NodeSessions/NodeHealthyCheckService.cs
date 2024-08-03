@@ -143,7 +143,8 @@ public partial class NodeHealthyCheckService : BackgroundService
                     Solution = "建议校正计算机时间"
                 });
             }
-            await foreach (var usage in ShouldSendProcessNotFoundWarningAsync(nodeInfo))
+            var usageList = await ShouldSendProcessNotFoundWarningAsync(nodeInfo, cancellationToken);
+            foreach (var usage in usageList)
             {
                 nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
                 {
@@ -152,7 +153,7 @@ public partial class NodeHealthyCheckService : BackgroundService
                 });
             }
 
-            var computerInfo =await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(nodeInfo.Id, cancellationToken);
+            var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(nodeInfo.Id, cancellationToken);
             if (computerInfo != null)
             {
                 bool condition1 = computerInfo.Factory?.name == "博罗" && nodeInfo.Profile.FactoryName != "BL";
@@ -177,61 +178,67 @@ public partial class NodeHealthyCheckService : BackgroundService
         return nodeHeathyResult;
     }
 
-    private async IAsyncEnumerable<string> ShouldSendProcessNotFoundWarningAsync(
+    private async ValueTask<IEnumerable<string>> ShouldSendProcessNotFoundWarningAsync(
         NodeInfoModel nodeInfo,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default)
     {
-        if (nodeInfo.Status == NodeStatus.Online && nodeInfo.Profile.Usages != null)
+        List<string> usageList = [];
+        try
         {
-            IEnumerable<ProcessInfo> processInfoList = [];
-            var analysisPropsResultKey = $"NodePropsAnalysisResult:{nodeInfo.Id}";
-            var analysisPropsResult = await _objectCache.GetObjectAsync<AnalysisPropsResult>(analysisPropsResultKey, cancellationToken);
-            processInfoList = analysisPropsResult.ProcessListResult.StatusChangeProcessList;
-            if (processInfoList == null)
+            if (nodeInfo.Status == NodeStatus.Online && nodeInfo.Profile.Usages != null)
             {
-                processInfoList = await GetProcessListFromDbAsync(nodeInfo.Id, cancellationToken);
-            }
+                IEnumerable<ProcessInfo> processInfoList = [];
+                var analysisPropsResultKey = $"NodePropsAnalysisResult:{nodeInfo.Id}";
+                var analysisPropsResult = await _objectCache.GetObjectAsync<AnalysisPropsResult>(analysisPropsResultKey, cancellationToken);
+                processInfoList = analysisPropsResult.ProcessListResult.StatusChangeProcessList;
 
-            if (processInfoList == null || !processInfoList.Any())
-            {
-                yield break;
-            }
-
-            foreach (var usage in nodeInfo.Profile.Usages.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            {
-                var usageCount = 0;
-                var processExitsCount = 0;
-                foreach (var item in _nodeSettings.ProcessUsagesMapping)
+                if (processInfoList == null || !processInfoList.Any())
                 {
-                    if (string.IsNullOrEmpty(item.Name) || string.IsNullOrEmpty(item.Value))
+                    return usageList;
+                }
+
+                foreach (var usage in nodeInfo.Profile.Usages.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    var usageCount = 0;
+                    var processExitsCount = 0;
+                    foreach (var item in _nodeSettings.ProcessUsagesMapping)
                     {
-                        continue;
-                    }
-                    if (usage != item.Value)
-                    {
-                        continue;
-                    }
-                    usageCount++;
-                    if (processInfoList != null)
-                    {
-                        foreach (var processInfo in processInfoList)
+                        if (string.IsNullOrEmpty(item.Name) || string.IsNullOrEmpty(item.Value))
                         {
-                            if (processInfo.FileName.Contains(item.Name))
+                            continue;
+                        }
+                        if (usage != item.Value)
+                        {
+                            continue;
+                        }
+                        usageCount++;
+                        if (processInfoList != null)
+                        {
+                            foreach (var processInfo in processInfoList)
                             {
-                                processExitsCount++;
+                                if (processInfo.FileName.Contains(item.Name))
+                                {
+                                    processExitsCount++;
+                                }
                             }
                         }
                     }
-                }
 
-                if (usageCount > 0 && processExitsCount == 0)
-                {
-                    yield return usage;
-                }
+                    if (usageCount > 0 && processExitsCount == 0)
+                    {
+                        usageList.Add(usage);
+                    }
 
+                }
             }
         }
-        yield break;
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex, nodeInfo.Id);
+            _logger.LogError(ex.ToString());
+        }
+
+        return usageList;
     }
 
     private async ValueTask<IEnumerable<ProcessInfo>> GetProcessListFromDbAsync(string nodeInfoId, CancellationToken cancellationToken = default)
@@ -449,7 +456,7 @@ public partial class NodeHealthyCheckService : BackgroundService
                                 SetCellValue(cell, result.NodeInfo.Profile.LabName ?? string.Empty);
                                 break;
                             case 5:
-                                SetCellValue(cell, result.Manager ?? string.Empty);
+                                SetCellValue(cell, result.NodeInfo.Profile.Manager ?? string.Empty);
                                 break;
                             case 6:
                                 SetCellValue(cell, result.NodeInfo.Profile.IpAddress ?? string.Empty);

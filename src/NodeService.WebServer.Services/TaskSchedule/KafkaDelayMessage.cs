@@ -12,6 +12,8 @@
 
         public DateTime ScheduleDateTime { get; set; }
 
+        public TimeSpan Duration { get; set; }
+
         public Dictionary<string, string> Properties { get; set; } = [];
 
         public bool Handled { get; set; }

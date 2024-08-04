@@ -7,17 +7,17 @@ namespace NodeService.WebServer.Services.NodeSessions.MessageHandlers;
 
 public class TaskExecutionReportHandler : IMessageHandler
 {
-    readonly BatchQueue<TaskExecutionReportMessage> _batchQueue;
+    readonly IAsyncQueue<TaskExecutionReport> _reportQueue;
     readonly ILogger<HeartBeatResponseHandler> _logger;
     readonly WebServerCounter _webServerCounter;
 
     public TaskExecutionReportHandler(
-        BatchQueue<TaskExecutionReportMessage> batchQueue,
+        IAsyncQueue<TaskExecutionReport> batchQueue,
         ILogger<HeartBeatResponseHandler> logger,
         WebServerCounter webServerCounter
     )
     {
-        _batchQueue = batchQueue;
+        _reportQueue = batchQueue;
         _logger = logger;
         _webServerCounter = webServerCounter;
     }
@@ -34,11 +34,7 @@ public class TaskExecutionReportHandler : IMessageHandler
     public async ValueTask HandleAsync(IMessage message, CancellationToken cancellationToken = default)
     {
         _webServerCounter.TaskExecutionReportRecieveCount.Value++;
-        await _batchQueue.SendAsync(new TaskExecutionReportMessage
-        {
-            NodeSessionId = NodeSessionId,
-            Message = message as TaskExecutionReport
-        }, cancellationToken);
+        await _reportQueue.EnqueueAsync(message as TaskExecutionReport, cancellationToken);
     }
 
     public ValueTask InitAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)

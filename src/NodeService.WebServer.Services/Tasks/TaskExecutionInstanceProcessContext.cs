@@ -1,5 +1,4 @@
-﻿using NodeService.WebServer.Services.NodeSessions;
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -23,4 +22,8 @@ internal class TaskExecutionInstanceProcessContext
     public bool StatusChanged { get; set; }
 
     public bool MessageChanged { get; set; }
+
+    public bool BeginTimeChanged { get; set; }
+
+    public bool EndTimeChanged { get; set; }
 }

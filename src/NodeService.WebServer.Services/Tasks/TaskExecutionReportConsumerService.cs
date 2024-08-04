@@ -1,21 +1,17 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Confluent.Kafka;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.Data;
-using NodeService.Infrastructure.DataModels;
-using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.NodeFileSystem;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.TaskSchedule;
 using System.Buffers;
 using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
 using System.Net;
-using System.Reactive.Concurrency;
-using System.Reactive.Disposables;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -38,11 +34,13 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly BatchQueue<TaskLogUnit> _taskLogUnitBatchQueue;
     readonly BatchQueue<TaskActivateServiceParameters> _taskActivateQueue;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
-    readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
+    readonly IAsyncQueue<TaskExecutionReport> _taskExecutionReportBatchQueue;
     readonly JobScheduler _jobScheduler;
     readonly WebServerCounter _webServerCounter;
     readonly TaskActivationRecordExecutor _taskActivationRecordExecutor;
     private readonly IServiceProvider _serviceProvider;
+    private readonly KafkaOptions _kafkaOptions;
+    private ConsumerConfig _consumerConfig;
     public  const string SubType_ExecutionTimeLimit = "ExecutionTimeLimit";
     public const string SubType_Retry = "Retry";
 
@@ -51,7 +49,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
-        BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
+        IAsyncQueue<TaskExecutionReport> taskExecutionReportBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
         BatchQueue<TaskActivateServiceParameters> taskScheduleQueue,
         ILogger<TaskExecutionReportConsumerService> logger,
@@ -65,7 +63,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         IAsyncQueue<KafkaDelayMessage> delayMessageQueue,
         IDelayMessageBroadcast delayMessageBroadcast,
         TaskActivationRecordExecutor taskActivationRecordExecutor,
-        IServiceProvider serviceProvider
+        IServiceProvider serviceProvider,
+        IOptionsMonitor<KafkaOptions> kafkaOptionsMonitor
     )
     {
         _logger = logger;
@@ -88,6 +87,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _delayMessageBroadcast.AddHandler(nameof(TaskExecutionReportConsumerService), ProcessDelayMessage);
         _taskActivationRecordExecutor = taskActivationRecordExecutor;
         _serviceProvider = serviceProvider;
+        _kafkaOptions = kafkaOptionsMonitor.CurrentValue;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -148,36 +148,122 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     private async Task ProcessTaskExecutionReportAsync(CancellationToken cancellationToken = default)
     {
-        await foreach (var array in _taskExecutionReportBatchQueue.ReceiveAllAsync(cancellationToken))
+        try
         {
-            var stopwatch = new Stopwatch();
-            _webServerCounter.TaskExecutionReportQueueCount.Value = _taskExecutionReportBatchQueue.QueueCount;
-            if (array == null)
+            await Task.Yield();
+            _consumerConfig = new ConsumerConfig
             {
-                continue;
+                BootstrapServers = _kafkaOptions.BrokerList,
+                Acks = Acks.All,
+                SocketTimeoutMs = 60000,
+                EnableAutoCommit = false,// (the default)
+                EnableAutoOffsetStore = false,
+                GroupId = nameof(TaskLogKafkaConsumerService),
+                FetchMaxBytes = 1024 * 1024 * 10,
+                AutoOffsetReset = AutoOffsetReset.Earliest,
+            };
+            using var consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build();
+            consumer.Subscribe([_kafkaOptions.TaskExecutionReportTopic]);
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                TimeSpan elapsed = TimeSpan.Zero;
+                ImmutableArray<ConsumeResult<string, string>> consumeResults = [];
+                try
+                {
+                    var timeStamp = Stopwatch.GetTimestamp();
+
+                    consumeResults = await ConsumeAsync(consumer, 10000, TimeSpan.FromSeconds(3));
+                    if (consumeResults.IsDefaultOrEmpty)
+                    {
+                        continue;
+                    }
+
+                    _webServerCounter.TaskExecutionReportQueueCount.Value = _taskExecutionReportBatchQueue.AvailableCount;
+
+
+                    var reports = consumeResults.Select(x => JsonSerializer.Deserialize<TaskExecutionReport>(x.Message.Value)!)
+                                                .ToImmutableArray();
+
+                    reports = [.. reports.Distinct().OrderBy(static x => x.Id).ThenBy(static x => x.Status)];
+
+                    await ProcessTaskExecutionReportsAsync(reports, cancellationToken);
+
+                    consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
+
+                    elapsed = Stopwatch.GetElapsedTime(timeStamp);
+
+                }
+                catch (ConsumeException ex)
+                {
+                    _exceptionCounter.AddOrUpdate(ex);
+                    _logger.LogError(ex.ToString());
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _exceptionCounter.AddOrUpdate(ex);
+                    _logger.LogError(ex.ToString());
+                }
+                finally
+                {
+                    if (!consumeResults.IsDefaultOrEmpty && consumeResults.Length > 0)
+                    {
+                        _logger.LogInformation($"process {consumeResults.Length} messages,spent: {elapsed}, QueueCount:{_taskExecutionReportBatchQueue.AvailableCount}");
+                        _webServerCounter.TaskExecutionReportConsumeCount.Value += (uint)consumeResults.Length;
+                    }
+                    _webServerCounter.TaskExecutionReportTotalTimeSpan.Value += elapsed;
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+        }
+
+    }
+
+    Task<ImmutableArray<ConsumeResult<string, string>>> ConsumeAsync(IConsumer<string, string> consumer, int count, TimeSpan timeout)
+    {
+        return Task.Run<ImmutableArray<ConsumeResult<string, string>>>(() =>
+        {
+
+            var contextsBuilder = ImmutableArray.CreateBuilder<ConsumeResult<string, string>>();
             try
             {
-
-                stopwatch.Start();
-                var reports = array.Select(x => x.GetMessage()).ToArray();
-                await ProcessTaskExecutionReportsAsync(reports, cancellationToken);
-                stopwatch.Stop();
-
+                int nullCount = 0;
+                for (int i = 0; i < count; i++)
+                {
+                    var timeStamp = Stopwatch.GetTimestamp();
+                    var result = consumer.Consume(timeout);
+                    var consumeTimeSpan = Stopwatch.GetElapsedTime(timeStamp);
+                    timeout -= consumeTimeSpan;
+                    if (timeout <= TimeSpan.Zero)
+                    {
+                        break;
+                    }
+                    if (result == null)
+                    {
+                        if (nullCount == 3)
+                        {
+                            break;
+                        }
+                        nullCount++;
+                        continue;
+                    }
+                    contextsBuilder.Add(result);
+                    _logger.LogInformation($"Recieved {result.TopicPartitionOffset}");
+                }
             }
             catch (Exception ex)
             {
                 _exceptionCounter.AddOrUpdate(ex);
                 _logger.LogError(ex.ToString());
             }
-            finally
-            {
-                _logger.LogInformation($"process {array.Length} messages,spent: {stopwatch.Elapsed}, QueueCount:{_taskExecutionReportBatchQueue.QueueCount}");
-                _webServerCounter.TaskExecutionReportConsumeCount.Value += (uint)array.Length;
-                _webServerCounter.TaskExecutionReportTotalTimeSpan.Value += stopwatch.Elapsed;
-                stopwatch.Reset();
-            }
-        }
+
+            return contextsBuilder.ToImmutable();
+        });
     }
 
     static string? GetTaskId(TaskExecutionReport report)
@@ -192,10 +278,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         return ActivatorUtilities.CreateInstance<TaskActivationRecordProcessContext>(_serviceProvider, taskActivationRecordId, processContexts);
     }
 
-    async ValueTask ProcessTaskExecutionReportsAsync(TaskExecutionReport[] array, CancellationToken cancellationToken = default)
+    async ValueTask ProcessTaskExecutionReportsAsync(ImmutableArray<TaskExecutionReport> array, CancellationToken cancellationToken = default)
     {
-        var stopwatch = Stopwatch.StartNew();
-        await _taskActivationRecordExecutor.ExecutionAsync(async (token) =>
+        await _taskActivationRecordExecutor.ExecutionAsync(async (cancellationToken) =>
         {
             var processContexts = await CollectTaskExecutionProcessContextsAsync(array, cancellationToken);
             if (processContexts.IsDefaultOrEmpty)
@@ -222,11 +307,12 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 }, ProcessAsync);
             }
 
-            var taskActivationRecords = taskActivateRecordProcessContexts.Where(static x => x.TaskActivationRecord != null).Select(static x => x.TaskActivationRecord!);
-            await ProcessTaskFlowActiveRecordListAsync(taskActivationRecords, cancellationToken);
+            var taskActivationRecords = taskActivateRecordProcessContexts.Where(static x => x.HasChanged && x.TaskActivationRecord != null).Select(static x => x.TaskActivationRecord!).ToImmutableArray();
+            if (!taskActivationRecords.IsDefaultOrEmpty)
+            {
+                await ProcessTaskFlowActiveRecordListAsync(taskActivationRecords, cancellationToken);
+            }
         }, cancellationToken);
-        stopwatch.Stop();
-        var ellapsed = stopwatch.Elapsed;
     }
 
     async ValueTask ProcessAsync(TaskActivationRecordProcessContext processContext, CancellationToken cancellationToken = default)
@@ -234,7 +320,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         await processContext.ProcessAsync(cancellationToken);
     }
 
-    private async ValueTask<ImmutableArray<TaskExecutionInstanceProcessContext>> CollectTaskExecutionProcessContextsAsync(TaskExecutionReport[] array, CancellationToken cancellationToken)
+    private async ValueTask<ImmutableArray<TaskExecutionInstanceProcessContext>> CollectTaskExecutionProcessContextsAsync(
+        ImmutableArray<TaskExecutionReport> array,
+        CancellationToken cancellationToken)
     {
         var taskExecutionInstanceIdList = FilterNull(array.Select(GetTaskId).Distinct()).ToArray();
         var taskExecutionInstanceIdFilters = DataFilterCollection<string>.Includes(taskExecutionInstanceIdList);
@@ -329,16 +417,12 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 {
                     return;
                 }
-                _taskExecutionReportBatchQueue.Post(new TaskExecutionReportMessage()
+                _taskExecutionReportBatchQueue.TryWrite(new TaskExecutionReport()
                 {
-                    NodeSessionId = new Infrastructure.NodeSessions.NodeSessionId(taskExecutionInstance.NodeInfoId),
-                    Message = new TaskExecutionReport()
-                    {
-                        Id = taskExecutionInstanceId,
-                        Message = "pendding cancel",
-                        Status = TaskExecutionStatus.PenddingCancel,
-                        RequestId = Guid.NewGuid().ToString()
-                    }
+                    Id = taskExecutionInstanceId,
+                    Message = "pendding cancel",
+                    Status = TaskExecutionStatus.PenddingCancel,
+                    RequestId = Guid.NewGuid().ToString()
                 });
                 await _taskCancellationBatchQueue.SendAsync(new TaskCancellationParameters()
                 {

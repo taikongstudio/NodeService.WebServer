@@ -13,7 +13,7 @@ public class TaskCancellationQueueService : BackgroundService
     readonly ITaskPenddingContextManager _taskPenddingContextManager;
     readonly INodeSessionService _nodeSessionService;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
-    readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
+    readonly IAsyncQueue<TaskExecutionReport> _taskExecutionReportBatchQueue;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
     readonly IMemoryCache _memoryCache;
 
@@ -23,7 +23,7 @@ public class TaskCancellationQueueService : BackgroundService
         ITaskPenddingContextManager taskPenddingContextManager,
         INodeSessionService nodeSessionService,
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
-        BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
+        IAsyncQueue<TaskExecutionReport> taskExecutionReportBatchQueue,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepoFactory,
         IMemoryCache memoryCache)
     {
@@ -87,18 +87,14 @@ public class TaskCancellationQueueService : BackgroundService
                         }
                         else
                         {
-                            await _taskExecutionReportBatchQueue.SendAsync(
-                                new TaskExecutionReportMessage()
+                            await _taskExecutionReportBatchQueue.EnqueueAsync(
+                                new TaskExecutionReport()
                                 {
-                                    NodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId),
-                                    Message = new TaskExecutionReport()
-                                    {
-                                        Status = TaskExecutionStatus.Cancelled,
-                                        Id = taskExecutionInstance.Id,
-                                        Message = $"Cancelled by {taskCancellationParameters.Source} on {taskCancellationParameters.Context}"
-                                    }
+                                    Status = TaskExecutionStatus.Cancelled,
+                                    Id = taskExecutionInstance.Id,
+                                    Message = $"Cancelled by {taskCancellationParameters.Source} on {taskCancellationParameters.Context}"
                                 },
-                                cancellationToken);
+                            cancellationToken);
                         }
                     }
 

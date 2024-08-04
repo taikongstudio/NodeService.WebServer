@@ -1,23 +1,17 @@
-﻿using MathNet.Numerics.Statistics;
-using Microsoft.Extensions.Hosting;
-using NodeService.Infrastructure.DataModels;
-using NodeService.Infrastructure.Models;
+﻿using Microsoft.Extensions.Hosting;
+using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
+using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.NodeSessions;
+using NodeService.WebServer.Services.TaskSchedule;
 using OneOf;
-using System.Collections.Immutable;
-using System.Threading.Channels;
+using System.Net;
 
 namespace NodeService.WebServer.Services.Tasks;
 
-public readonly record struct TaskFlowInfo
-{
-    public string TaskFlowTemplateId { get; init; }
-    public string TaskFlowInstanceId { get; init; }
-    public string? ParentTaskFlowInstanceId { get; init; }
-}
 
 public readonly record struct RetryTaskParameters
 {
@@ -135,7 +129,7 @@ public class TaskActivateService : BackgroundService
     readonly ExceptionCounter _exceptionCounter;
     readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationQueue;
-    readonly BatchQueue<TaskExecutionReportMessage> _taskExecutionReportBatchQueue;
+    readonly IAsyncQueue<TaskExecutionReport> _taskExecutionReportBatchQueue;
     readonly BatchQueue<TaskActivateServiceParameters> _serviceParametersBatchQueue;
     readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
@@ -144,8 +138,12 @@ public class TaskActivateService : BackgroundService
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
     readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
-    readonly TaskActivationRecordExecutor _taskActivationRecordExecutionQueue;
+    readonly TaskActivationRecordExecutor _taskActivationRecordExecutor;
+    readonly IDelayMessageBroadcast _delayMessageBroadcast;
+    readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
+    readonly KafkaOptions _kafkaOptions;
 
+    private const string SubType_PendingContextCheck = "PendingContextCheck";
 
     public TaskActivateService(
         ILogger<TaskActivateService> logger,
@@ -158,17 +156,18 @@ public class TaskActivateService : BackgroundService
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
         ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
-        BatchQueue<TaskExecutionReportMessage> taskExecutionReportBatchQueue,
+        IAsyncQueue<TaskExecutionReport> taskExecutionReportBatchQueue,
         BatchQueue<TaskActivateServiceParameters> serviceParametersBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationQueue,
         ITaskPenddingContextManager taskPenddingContextManager,
         TaskFlowExecutor taskFlowExecutor,
         NodeInfoQueryService nodeInfoQueryService,
         ConfigurationQueryService configurationQueryService,
-        TaskActivationRecordExecutor taskActivationRecordExecutot)
+        TaskActivationRecordExecutor taskActivationRecordExecutor,
+        IDelayMessageBroadcast delayMessageBroadcast,
+        IAsyncQueue<KafkaDelayMessage> delayMessageQueue)
     {
         _logger = logger;
-        PenddingContextChannel = Channel.CreateUnbounded<TaskPenddingContext>();
         _priorityQueue = new PriorityQueue<TaskPenddingContext, TaskExecutionPriority>();
         _nodeSessionService = nodeSessionService;
         _taskDefinitionRepositoryFactory = taskDefinitionRepositoryFactory;
@@ -178,228 +177,277 @@ public class TaskActivateService : BackgroundService
         _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
         _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
         _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
-
         _taskExecutionReportBatchQueue = taskExecutionReportBatchQueue;
         _exceptionCounter = exceptionCounter;
         _serviceParametersBatchQueue = serviceParametersBatchQueue;
         _taskCancellationQueue = taskCancellationQueue;
         _taskPenddingContextManager = taskPenddingContextManager;
-
         _taskFlowExecutor = taskFlowExecutor;
         _nodeInfoQueryService = nodeInfoQueryService;
         _configurationQueryService = configurationQueryService;
-        PenddingActionBlock = new ActionBlock<TaskPenddingContext>(ProcessPenddingContextAsync,
-            new ExecutionDataflowBlockOptions
+        _taskActivationRecordExecutor = taskActivationRecordExecutor;
+        _delayMessageBroadcast = delayMessageBroadcast;
+        _delayMessageQueue = delayMessageQueue;
+        _delayMessageBroadcast.AddHandler(nameof(TaskActivateService), ProcessDelayMessage);
+    }
+
+    private async ValueTask ProcessDelayMessage(KafkaDelayMessage kafkaDelayMessage,CancellationToken cancellationToken=default)
+    {
+        switch (kafkaDelayMessage.SubType)
+        {
+            case SubType_PendingContextCheck:
+                await ProcessPenddingContextAsync(kafkaDelayMessage, cancellationToken);
+                break;
+            default:
+                break;
+        }
+
+
+    }
+
+    public async Task<bool> StopRunningTasksAsync(
+        string nodeId,
+        string taskDefinitionId,
+        IRepository<TaskExecutionInstanceModel> repository,
+        BatchQueue<TaskCancellationParameters> taskCancellationQueue, CancellationToken cancellationToken = default)
+    {
+        var queryResult = await QueryTaskExecutionInstancesAsync(repository,
+            new QueryTaskExecutionInstanceListParameters
             {
-                EnsureOrdered = true,
-                MaxDegreeOfParallelism = Environment.ProcessorCount / 2
+                NodeIdList = [nodeId],
+                TaskDefinitionIdList = [taskDefinitionId],
+                Status = TaskExecutionStatus.Running
             });
-        _taskActivationRecordExecutionQueue = taskActivationRecordExecutot;
+
+        if (queryResult.IsEmpty) return true;
+        foreach (var taskExecutionInstance in queryResult.Items)
+        {
+            await taskCancellationQueue.SendAsync(new TaskCancellationParameters(taskExecutionInstance.Id, nameof(TaskPenddingContext), Dns.GetHostName()), cancellationToken);
+        }
+        return true;
     }
 
-    public Channel<TaskPenddingContext> PenddingContextChannel { get; }
-    public ActionBlock<TaskPenddingContext> PenddingActionBlock { get; }
-
-    private async Task SchedulePenddingContextAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await PenddingContextChannel.Reader.WaitToReadAsync(cancellationToken);
-                while (PenddingContextChannel.Reader.TryRead(out var penddingContext))
-                {
-                    _priorityQueue.Enqueue(penddingContext, penddingContext.TaskActivationRecord.GetTaskDefinition().Priority);
-                }
-                while (_priorityQueue.Count > 0)
-                {
-                    while (PenddingActionBlock.InputCount < 128
-                           &&
-                           _priorityQueue.TryDequeue(out var penddingContext, out var _))
-                    {
-                        var nodeStatus = _nodeSessionService.GetNodeStatus(penddingContext.NodeSessionId);
-                        if (nodeStatus == NodeStatus.Online || penddingContext.CancellationToken.IsCancellationRequested)
-                        {
-                            PenddingActionBlock.Post(penddingContext);
-                        }
-                        else
-                        {
-                            bool isPenddingTimeOut = false;
-                            var timeSpan = DateTime.UtcNow - penddingContext.FireParameters.FireTimeUtc;
-                            if (penddingContext.TaskDefinition.PenddingLimitTimeSeconds == 0)
-                            {
-                                isPenddingTimeOut = true;
-                            }
-                            else if (penddingContext.TaskDefinition.PenddingLimitTimeSeconds > 0
-                                &&
-                                 timeSpan > TimeSpan.FromSeconds(penddingContext.TaskDefinition.PenddingLimitTimeSeconds))
-                            {
-                                isPenddingTimeOut = true;
-                            }
-
-                            if (isPenddingTimeOut)
-                            {
-                                await SendTaskExecutionReportAsync(
-                                        penddingContext.Id,
-                                        TaskExecutionStatus.PenddingTimeout,
-                                        $"Time out after waiting {penddingContext.TaskDefinition.PenddingLimitTimeSeconds} seconds");
-                                _logger.LogInformation($"{penddingContext.Id}:SendAsync PenddingTimeout");
-                                continue;
-                            }
-
-                            await PenddingContextChannel.Writer.WriteAsync(penddingContext, cancellationToken);
-                        }
-                    }
-
-                    await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
-        }
-
-    }
-
-    async ValueTask<bool> HasAnyActiveTaskAsync(TaskPenddingContext context, CancellationToken cancellationToken = default)
-    {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync(cancellationToken);
-            if (await context.WaitForRunningTasksAsync(taskExecutionInstanceRepo))
-            {
-                return true;
-            }
-            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-        }
-        return false;
-    }
-
-    async ValueTask<bool> StopAnyActiveTaskAsync(
-        TaskPenddingContext context,
-        BatchQueue<TaskCancellationParameters> batchQueue,
+    public async Task<bool> QueryRunningTasksAsync(
+        string nodeId,
+        string taskDefinitionId,
+        IRepository<TaskExecutionInstanceModel> repository,
         CancellationToken cancellationToken = default)
     {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync(cancellationToken);
-            if (await context.StopRunningTasksAsync(taskExecutionInstanceRepo, batchQueue))
+        var queryResult = await QueryTaskExecutionInstancesAsync(repository,
+            new QueryTaskExecutionInstanceListParameters
             {
-                return true;
-            }
-            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-        }
-        return false;
+                NodeIdList = [nodeId],
+                TaskDefinitionIdList = [taskDefinitionId],
+                Status = TaskExecutionStatus.Running
+            }, cancellationToken);
+        return queryResult.HasValue;
     }
 
-    private async Task ProcessPenddingContextAsync(TaskPenddingContext context)
+
+    public async Task<ListQueryResult<TaskExecutionInstanceModel>> QueryTaskExecutionInstancesAsync(
+        IRepository<TaskExecutionInstanceModel> repository,
+        QueryTaskExecutionInstanceListParameters queryParameters,
+        CancellationToken cancellationToken = default)
+    {
+        var queryResult = await repository.PaginationQueryAsync(new TaskExecutionInstanceListSpecification(
+                queryParameters.Keywords,
+                queryParameters.Status,
+                queryParameters.NodeIdList,
+                queryParameters.TaskDefinitionIdList,
+                queryParameters.TaskExecutionInstanceIdList,
+                queryParameters.SortDescriptions),
+            cancellationToken: cancellationToken);
+        return queryResult;
+    }
+
+    async ValueTask<TaskActivationRecordModel?> QueryTaskActiveRecordAsync(
+    string fireInstanceId,
+    CancellationToken cancellationToken = default)
+    {
+        await using var taskActiveRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
+        var taskActiveRecord = await taskActiveRecordRepo.GetByIdAsync(fireInstanceId, cancellationToken);
+        return taskActiveRecord;
+    }
+
+    async ValueTask ProcessPenddingContextAsync(KafkaDelayMessage delayMessage, CancellationToken cancellationToken = default)
     {
         var readyToRun = false;
         var penddingLimitTimeSeconds = 0;
+
+
         try
         {
-            var taskDefinition = context.TaskActivationRecord.GetTaskDefinition();
+            var timeSpan = delayMessage.ScheduleDateTime - DateTime.UtcNow;
+
+            var taskExecutionInstanceId = delayMessage.Id;
+            if (taskExecutionInstanceId == null)
+            {
+                return;
+            }
+
+            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync(cancellationToken);
+            var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
+            if (taskExecutionInstance == null)
+            {
+                return;
+            }
+            if (taskExecutionInstance.Status > TaskExecutionStatus.Triggered)
+            {
+                return;
+            }
+            if (timeSpan < TimeSpan.Zero)
+            {
+                timeSpan = TimeSpan.Zero;
+            }
+            using var cancellationTokenSource = new CancellationTokenSource(timeSpan);
+            cancellationToken = cancellationTokenSource.Token;
+            var taskActivationRecordId = taskExecutionInstance.FireInstanceId;
+            var nodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId);
+            var taskActivationRecord = await QueryTaskActiveRecordAsync(taskActivationRecordId, cancellationToken);
+            if (taskActivationRecord == null)
+            {
+                return;
+            }
+            var taskDefinition = taskActivationRecord.GetTaskDefinition();
             if (taskDefinition == null)
             {
                 return;
             }
-            penddingLimitTimeSeconds = taskDefinition.PenddingLimitTimeSeconds;
-            if (!context.CancellationToken.IsCancellationRequested)
+            var nodeStatus = _nodeSessionService.GetNodeStatus(nodeSessionId);
+            if (nodeStatus != NodeStatus.Online)
             {
-                _logger.LogInformation($"{context.Id}:Start init");
-                switch (taskDefinition.ExecutionStrategy)
+                bool isPenddingTimeOut = false;
+                timeSpan = DateTime.UtcNow - taskExecutionInstance.FireTimeUtc;
+                if (taskDefinition.PenddingLimitTimeSeconds == 0)
                 {
-                    case TaskExecutionStrategy.Concurrent:
-                        readyToRun = true;
-                        break;
-                    case TaskExecutionStrategy.Queue:
-                        readyToRun = await HasAnyActiveTaskAsync(context, context.CancellationToken);
-                        break;
-                    case TaskExecutionStrategy.Stop:
-                        readyToRun = await StopAnyActiveTaskAsync(context, _taskCancellationQueue);
-                        break;
-                    case TaskExecutionStrategy.Skip:
-                        return;
+                    isPenddingTimeOut = true;
+                }
+                else if (taskDefinition.PenddingLimitTimeSeconds > 0
+                    &&
+                     timeSpan > TimeSpan.FromSeconds(taskDefinition.PenddingLimitTimeSeconds))
+                {
+                    isPenddingTimeOut = true;
                 }
 
-                if (readyToRun)
+                if (isPenddingTimeOut)
                 {
-                    while (!context.CancellationToken.IsCancellationRequested)
-                    {
-                        if (context.NodeSessionService.GetNodeStatus(context.NodeSessionId) == NodeStatus.Online) break;
-                        await Task.Delay(TimeSpan.FromSeconds(5), context.CancellationToken);
-                    }
-
-                    var rsp = await _nodeSessionService.SendTaskExecutionEventAsync(
-                        context.NodeSessionId,
-                        context.TriggerEvent,
-                        context.CancellationToken);
-                    _logger.LogInformation($"{context.Id}:SendTaskExecutionEventAsync");
-                    await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
-                    {
-                        Message = new TaskExecutionReport
-                        {
-                            Id = context.Id,
-                            Status = TaskExecutionStatus.Triggered,
-                            Message = rsp.Message
-                        }
-                    });
-                    _logger.LogInformation($"{context.Id}:SendAsync Triggered");
-                    return;
+                    _taskPenddingContextManager.RemoveContext(delayMessage.Id, out _);
+                    await SendTaskExecutionReportAsync(
+                            delayMessage.Id,
+                            TaskExecutionStatus.PenddingTimeout,
+                            $"Time out after waiting {taskDefinition.PenddingLimitTimeSeconds} seconds");
+                    _logger.LogInformation($"{delayMessage.Id}:SendAsync PenddingTimeout");
+                    delayMessage.Handled = true;
                 }
+                return;
             }
 
+            penddingLimitTimeSeconds = taskDefinition.PenddingLimitTimeSeconds;
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+            _logger.LogInformation($"{delayMessage.Id}:Start init");
+            switch (taskDefinition.ExecutionStrategy)
+            {
+                case TaskExecutionStrategy.Concurrent:
+                    readyToRun = true;
+                    break;
+                case TaskExecutionStrategy.Queue:
+                    readyToRun = await QueryRunningTasksAsync(
+                        nodeSessionId.NodeId.Value,
+                        taskActivationRecord.TaskDefinitionId,
+                        taskExecutionInstanceRepo,
+                        cancellationToken);
+                    break;
+                case TaskExecutionStrategy.Stop:
+                    readyToRun = await StopRunningTasksAsync(
+                        nodeSessionId.NodeId.Value,
+                        taskActivationRecord.TaskDefinitionId,
+                        taskExecutionInstanceRepo,
+                        _taskCancellationQueue,
+                        cancellationToken);
+                    break;
+                case TaskExecutionStrategy.Skip:
+                    return;
+            }
+
+            if (readyToRun)
+            {
+                if (_nodeSessionService.GetNodeStatus(nodeSessionId) != NodeStatus.Online)
+                {
+                    return;
+                }
+
+                var rsp = await _nodeSessionService.SendTaskExecutionEventAsync(
+                    nodeSessionId,
+                   taskExecutionInstance.ToTriggerEvent(new TaskDefinitionModel()
+                   {
+                       Id = taskActivationRecord.TaskDefinitionId,
+                       Value = taskDefinition
+                   }, taskActivationRecord.EnvironmentVariables),
+                    cancellationToken);
+                _logger.LogInformation($"{delayMessage.Id}:SendTaskExecutionEventAsync");
+                await _taskExecutionReportBatchQueue.EnqueueAsync(new TaskExecutionReport
+                {
+                    Id = delayMessage.Id,
+                    Status = TaskExecutionStatus.Triggered,
+                    Message = rsp.Message
+                });
+                _logger.LogInformation($"{delayMessage.Id}:SendAsync Triggered");
+                delayMessage.Handled = true;
+                return;
+            }
         }
         catch (TaskCanceledException ex)
         {
-            _exceptionCounter.AddOrUpdate(ex, context.Id);
-            _logger.LogError($"{context.Id}:{ex}");
+            _exceptionCounter.AddOrUpdate(ex, delayMessage.Id);
+            _logger.LogError($"{delayMessage.Id}:{ex}");
         }
         catch (OperationCanceledException ex)
         {
-            if (ex.CancellationToken == context.CancellationToken)
+            if (ex.CancellationToken == cancellationToken)
             {
             }
 
-            _exceptionCounter.AddOrUpdate(ex, context.Id);
-            _logger.LogError($"{context.Id}:{ex}");
+            _exceptionCounter.AddOrUpdate(ex, delayMessage.Id);
+            _logger.LogError($"{delayMessage.Id}:{ex}");
         }
         catch (Exception ex)
         {
             var exString = ex.ToString();
-            _exceptionCounter.AddOrUpdate(ex, context.Id);
+            _exceptionCounter.AddOrUpdate(ex, delayMessage.Id);
             _logger.LogError(exString);
             await SendTaskExecutionReportAsync(
-                context.Id,
+                delayMessage.Id,
                 TaskExecutionStatus.Failed,
                 exString);
         }
         finally
         {
-            _taskPenddingContextManager.RemoveContext(context.Id, out _);
+            _taskPenddingContextManager.RemoveContext(delayMessage.Id, out _);
         }
-        if (context.CancellationToken.IsCancellationRequested)
+        if (cancellationToken.IsCancellationRequested)
         {
+            delayMessage.Handled = true;
             await SendTaskExecutionReportAsync(
-                context.Id,
+                delayMessage.Id,
                 TaskExecutionStatus.PenddingTimeout,
                 $"Time out after waiting {penddingLimitTimeSeconds} seconds");
-            _logger.LogInformation($"{context.Id}:SendAsync PenddingTimeout");
+            _logger.LogInformation($"{delayMessage.Id}:SendAsync PenddingTimeout");
         }
     }
 
-    public async Task SendTaskExecutionReportAsync(string taskExecutionInstanceId, TaskExecutionStatus status, string message)
+    public async Task SendTaskExecutionReportAsync(
+        string taskExecutionInstanceId,
+        TaskExecutionStatus status,
+        string message)
     {
-        await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage
+        await _taskExecutionReportBatchQueue.EnqueueAsync(new TaskExecutionReport
         {
-            Message = new TaskExecutionReport
-            {
-                Id = taskExecutionInstanceId,
-                Status = status,
-                Message = message
-            }
+            Id = taskExecutionInstanceId,
+            Status = status,
+            Message = message
         });
     }
 
@@ -437,11 +485,16 @@ TaskActivationRecordResult result,
             };
 
             await SendTaskExecutionReportAsync(taskExecutionInstance.Id, TaskExecutionStatus.Triggered, string.Empty);
-            if (_taskPenddingContextManager.AddContext(context))
+
+            await _delayMessageQueue.EnqueueAsync(new KafkaDelayMessage()
             {
-                context.EnsureInit();
-                await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
-            }
+                Id = taskExecutionInstance.Id,
+                Type = nameof(TaskActivateService),
+                SubType = SubType_PendingContextCheck,
+                CreateDateTime = DateTime.UtcNow,
+                Duration = TimeSpan.FromSeconds(5),
+                ScheduleDateTime = DateTime.UtcNow + TimeSpan.FromSeconds(taskDefinition.PenddingLimitTimeSeconds),
+            });
 
         }
     }
@@ -449,9 +502,7 @@ TaskActivationRecordResult result,
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        await Task.WhenAll(
-            SchedulePenddingContextAsync(cancellationToken),
-            ProcessTaskActivateServiceParametersAsync(cancellationToken));
+        await ProcessTaskActivateServiceParametersAsync(cancellationToken);
     }
 
     private async Task ProcessTaskActivateServiceParametersAsync(CancellationToken cancellationToken = default)
@@ -603,7 +654,9 @@ TaskActivationRecordResult result,
 
         foreach (var fireTaskParameters in fireTaskParameterList)
         {
-            var result = await _taskActivationRecordExecutionQueue.CreateTaskActiveRecordAsync(fireTaskParameters, cancellationToken);
+            var result = await _taskActivationRecordExecutor.CreateAsync(
+                fireTaskParameters,
+                cancellationToken);
             if (result.Index == 1)
             {
                 continue;

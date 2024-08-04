@@ -43,7 +43,11 @@
                 }
                 else
                 {
+                    <Badge Style="margin-right:5px" Status="@(GetNodeStatus(context.NodeInfoId).GetBadgeStatus())"></Badge>
+
                     @(_nodeInfoList?.FirstOrDefault(x => x.Id == context.NodeInfoId)?.Name)
+
+                    
                 }
 
             </PropertyColumn>
@@ -118,6 +122,22 @@
     bool IsRunning(TaskExecutionStatus taskExecutionStatus)
     {
         return taskExecutionStatus == TaskExecutionStatus.Running || taskExecutionStatus == TaskExecutionStatus.PenddingCancel;
+    }
+
+    NodeStatus GetNodeStatus(string nodeInfoId)
+    {
+        if (_nodeInfoList == null)
+        {
+            return NodeStatus.Offline;
+        }
+        foreach (var item in _nodeInfoList)
+        {
+            if (item.Id == nodeInfoId)
+            {
+                return item.Status;
+            }
+        }
+        return NodeStatus.Offline;
     }
 
     bool CanRetry(TaskExecutionStatus taskExecutionStatus)

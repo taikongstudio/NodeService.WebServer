@@ -3,14 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.Tasks;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Confluent.Kafka.ConfigPropertyNames;
 
 namespace NodeService.WebServer.Services.TaskSchedule
 {
@@ -74,21 +67,44 @@ namespace NodeService.WebServer.Services.TaskSchedule
                     {
                         while (_delayMessageQueue.TryPeek(out KafkaDelayMessage kafkaDelayMessage))
                         {
-                            await producer.ProduceAsync(_kafkaOptions.TaskDelayQueueMessageTopic, new Message<string, string>()
+                            var result = await producer.ProduceAsync(_kafkaOptions.TaskDelayQueueMessageTopic, new Message<string, string>()
                             {
                                 Key = kafkaDelayMessage.Type,
                                 Value = JsonSerializer.Serialize(kafkaDelayMessage)
                             }, cancellationToken);
-                            await _delayMessageQueue.DeuqueAsync(cancellationToken);
+                            if (result.Status == PersistenceStatus.Persisted)
+                            {
+                                await _delayMessageQueue.DeuqueAsync(cancellationToken);
+                            }
                         }
 
-                        var consumeResults = await ConsumeAsync(consumer, 10000, TimeSpan.FromSeconds(1));
+                        var consumeResults = await ConsumeAsync(consumer, 10000, TimeSpan.FromSeconds(3));
                         if (!consumeResults.IsDefaultOrEmpty)
                         {
                             foreach (var result in consumeResults)
                             {
                                 var delayMessage = JsonSerializer.Deserialize<KafkaDelayMessage>(result.Message.Value);
-                                if (delayMessage != null && DateTime.UtcNow > delayMessage.ScheduleDateTime)
+                                if (delayMessage is null)
+                                {
+                                    continue;
+                                }
+                                else if (delayMessage.Duration > TimeSpan.Zero)
+                                {
+                                    if (DateTime.UtcNow > delayMessage.CreateDateTime + delayMessage.Duration)
+                                    {
+                                        delayMessage.CreateDateTime = DateTime.UtcNow;
+                                        await _delayMessageBroadcast.BroadcastAsync(delayMessage, cancellationToken);
+                                        if (delayMessage.Handled)
+                                        {
+                                            continue;
+                                        }
+                                        if (DateTime.UtcNow < delayMessage.ScheduleDateTime)
+                                        {
+                                            await producer.ProduceAsync(_kafkaOptions.TaskDelayQueueMessageTopic, result.Message, cancellationToken);
+                                        }
+                                    }
+                                }
+                                else if (DateTime.UtcNow > delayMessage.ScheduleDateTime)
                                 {
                                     await _delayMessageBroadcast.BroadcastAsync(delayMessage, cancellationToken);
                                 }
@@ -120,7 +136,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
 
         Task<ImmutableArray<ConsumeResult<string, string>>> ConsumeAsync(IConsumer<string, string> consumer, int count, TimeSpan timeout)
         {
-            return Task.Run<ImmutableArray<ConsumeResult<string, string>>>(() =>
+            return Task.Run(() =>
             {
 
                 var contextsBuilder = ImmutableArray.CreateBuilder<ConsumeResult<string, string>>();

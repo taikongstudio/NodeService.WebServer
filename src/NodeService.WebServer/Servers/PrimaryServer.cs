@@ -26,13 +26,10 @@ using NodeService.WebServer.Services.TaskSchedule;
 using NodeService.WebServer.Services.VirtualFileSystem;
 using NodeService.WebServer.UI.Services;
 using OpenTelemetry.Metrics;
-using Quartz.Spi;
 using StackExchange.Redis;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
-using WatchDog;
 
 namespace NodeService.WebServer.Servers
 {
@@ -455,6 +452,7 @@ namespace NodeService.WebServer.Servers
 
             });
 
+            builder.Services.AddTaskServices();
 
             builder.Services.AddSingleton<IAsyncQueue<NotificationMessage>, AsyncQueue<NotificationMessage>>();
             builder.Services.AddSingleton<IAsyncQueue<ConfigurationChangedEvent>, AsyncQueue<ConfigurationChangedEvent>>();

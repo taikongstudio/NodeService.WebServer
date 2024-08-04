@@ -1,12 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using NodeService.Infrastructure.DataModels;
-using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.TaskSchedule;
-using System.Net;
-using System.Reactive.Concurrency;
-using System.Reactive.Disposables;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -65,6 +60,7 @@ internal class TaskActivationRecordProcessContext
 
     public IEnumerable<TaskExecutionInstanceProcessContext> ProcessContexts { get; init; } = [];
 
+    public bool HasChanged { get; private set; }
 
     public async ValueTask ProcessAsync(CancellationToken cancellationToken = default)
     {
@@ -85,7 +81,7 @@ internal class TaskActivationRecordProcessContext
             {
                 return;
             }
-
+            var changesCount = 0;
             foreach (var processContext in ProcessContexts)
             {
                 if (!await ProcessContextAsync(
@@ -96,6 +92,15 @@ internal class TaskActivationRecordProcessContext
                 {
                     continue;
                 }
+                if (processContext.StatusChanged || processContext.MessageChanged || processContext.BeginTimeChanged || processContext.EndTimeChanged)
+                {
+                    changesCount++;
+                }
+            }
+
+            if (changesCount == 0)
+            {
+                return;
             }
 
             TaskActivationRecord.Value.ResetCounters();
@@ -205,7 +210,7 @@ internal class TaskActivationRecordProcessContext
                 this.ProcessContexts.Select(static x => x.Instance),
                 cancellationToken);
             await SaveTaskActivationRecordAsync([TaskActivationRecord], cancellationToken);
-
+            HasChanged = true;
         }
         catch (Exception ex)
         {
@@ -230,29 +235,14 @@ internal class TaskActivationRecordProcessContext
             if (taskId == null) return false;
             bool statusChanged = false;
             bool messageChanged = false;
+            bool beginTimeChanged = false;
+            bool endTimeChanged = false;
 
             var stopwatchCollectLogEntries = new Stopwatch();
             var stopwatchProcessMessage = new Stopwatch();
 
             if (taskExecutionInstance.IsTerminatedStatus()) return false;
 
-            stopwatchCollectLogEntries.Restart();
-            foreach (var report in processContext.Reports)
-            {
-                if (report.LogEntries.Count > 0)
-                {
-                    _webServerCounter.TaskLogUnitRecieveCount.Value++;
-                    var taskLogUnit = new TaskLogUnit
-                    {
-                        Id = taskId,
-                        LogEntries = report.LogEntries.Select(Convert).ToArray()
-                    };
-                    await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);
-                    _logger.LogInformation($"Send task log unit:{taskId},{report.LogEntries.Count} enties");
-                }
-            }
-
-            stopwatchCollectLogEntries.Stop();
             _webServerCounter.TaskLogUnitCollectLogEntriesTimeSpan.Value += stopwatchCollectLogEntries.Elapsed;
 
 
@@ -300,20 +290,24 @@ internal class TaskActivationRecordProcessContext
                 messsage = taskExecutionInstance.Message;
                 diffCount++;
             }
-
+            
             if (executionBeginTime != taskExecutionInstance.ExecutionBeginTimeUtc)
             {
                 _logger.LogInformation($"{taskId} StatusChanged:{executionBeginTime}=>{taskExecutionInstance.ExecutionBeginTimeUtc}");
                 diffCount++;
+                beginTimeChanged = true;
             }
 
             if (executionEndTime != taskExecutionInstance.ExecutionEndTimeUtc)
             {
                 _logger.LogInformation($"{taskId} StatusChanged:{executionEndTime}=>{taskExecutionInstance.ExecutionEndTimeUtc}");
                 diffCount++;
+                endTimeChanged = true;
             }
             processContext.MessageChanged = messageChanged;
             processContext.StatusChanged = statusChanged;
+            processContext.BeginTimeChanged = beginTimeChanged;
+            processContext.EndTimeChanged = endTimeChanged;
             return true;
         }
         catch (Exception ex)
@@ -323,17 +317,6 @@ internal class TaskActivationRecordProcessContext
         }
         return false;
     }
-
-    private static LogEntry Convert(TaskExecutionLogEntry taskExecutionLogEntry)
-    {
-        return new LogEntry
-        {
-            DateTimeUtc = taskExecutionLogEntry.DateTime.ToDateTime().ToUniversalTime(),
-            Type = (int)taskExecutionLogEntry.Type,
-            Value = taskExecutionLogEntry.Value
-        };
-    }
-
     async ValueTask ProcessTaskExecutionReportAsync(
    TaskActivationRecordModel taskActivationRecord,
    TaskDefinition taskDefinitionSnapshot,

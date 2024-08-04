@@ -1,20 +1,8 @@
-﻿using MathNet.Numerics.Statistics;
-using NodeService.Infrastructure.DataModels;
-using NodeService.Infrastructure.Models;
-using NodeService.Infrastructure.NodeSessions;
+﻿using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataQueue;
-using NodeService.WebServer.Services.NodeSessions;
 using OneOf;
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.Tasks
 {
@@ -58,7 +46,9 @@ namespace NodeService.WebServer.Services.Tasks
             op.TrySetResult();
         }
 
-        public async ValueTask<OneOf<TaskActivationRecordResult, Exception>> CreateTaskActiveRecordAsync(FireTaskParameters fireTaskParameters, CancellationToken cancellationToken = default)
+        public async ValueTask<OneOf<TaskActivationRecordResult, Exception>> CreateAsync(
+            FireTaskParameters fireTaskParameters,
+            CancellationToken cancellationToken = default)
         {
             OneOf<TaskActivationRecordResult, Exception> result = default;
 
@@ -70,7 +60,9 @@ namespace NodeService.WebServer.Services.Tasks
             return result;
         }
 
-        private async ValueTask<OneOf<TaskActivationRecordResult, Exception>> CreateTaskActiveRecordCoreAsync(FireTaskParameters fireTaskParameters, CancellationToken cancellationToken = default)
+        async ValueTask<OneOf<TaskActivationRecordResult, Exception>> CreateTaskActiveRecordCoreAsync(
+            FireTaskParameters fireTaskParameters,
+            CancellationToken cancellationToken = default)
         {
             var taskDefinition = await GetTaskDefinitionAsync(
                 fireTaskParameters.TaskDefinitionId,
@@ -99,8 +91,8 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
         async ValueTask AddTaskExecutionInstanceListAsync(
-    IEnumerable<TaskExecutionInstanceModel> taskExecutionInstanceList,
-    CancellationToken cancellationToken = default)
+            IEnumerable<TaskExecutionInstanceModel> taskExecutionInstanceList,
+            CancellationToken cancellationToken = default)
         {
             await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
             await taskExecutionInstanceRepo.AddRangeAsync(taskExecutionInstanceList, cancellationToken);
@@ -112,14 +104,16 @@ namespace NodeService.WebServer.Services.Tasks
         {
             var op = new AsyncOperation<Func<ValueTask>>(async () =>
             {
-                await CallFunction(func, cancellationToken);
+                await CallFunctionAsync(func, cancellationToken);
 
             }, AsyncOperationKind.AddOrUpdate);
             await _executionQueue.SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
         }
 
-        private async ValueTask CallFunction(Func<CancellationToken, ValueTask> func, CancellationToken cancellationToken)
+        private async ValueTask CallFunctionAsync(
+            Func<CancellationToken, ValueTask> func,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -196,12 +190,16 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        ValueTask<List<NodeInfoModel>> QueryNodeListAsync(TaskDefinitionModel taskDefinition, CancellationToken cancellationToken = default)
+        ValueTask<List<NodeInfoModel>> QueryNodeListAsync(
+            TaskDefinitionModel taskDefinition,
+            CancellationToken cancellationToken = default)
         {
             return _nodeInfoQueryService.QueryNodeInfoListAsync(taskDefinition.NodeList.Select(static x => x.Value), true, cancellationToken);
         }
 
-        static (NodeId NodeId, NodeInfoModel NodeInfo) FindNodeInfo(IEnumerable<NodeInfoModel> nodeInfoList, string id)
+        static (NodeId NodeId, NodeInfoModel NodeInfo) FindNodeInfo(
+            IEnumerable<NodeInfoModel> nodeInfoList,
+            string id)
         {
             foreach (var nodeInfo in nodeInfoList)
             {
@@ -227,7 +225,7 @@ namespace NodeService.WebServer.Services.Tasks
                 Id = Guid.NewGuid().ToString(),
                 Name = $"{nodeName} {taskDefinition.Name}",
                 NodeInfoId = nodeSessionId.NodeId.Value,
-                Status = TaskExecutionStatus.Triggered,
+                Status = TaskExecutionStatus.Unknown,
                 FireTimeUtc = parameters.FireTimeUtc.DateTime,
                 Message = string.Empty,
                 FireType = "Server",
@@ -269,10 +267,10 @@ namespace NodeService.WebServer.Services.Tasks
 
 
         async ValueTask<OneOf<TaskActivationRecordResult, Exception>> ActivateRemoteNodeTasksAsync(
-       FireTaskParameters fireTaskParameters,
-       TaskDefinitionModel taskDefinition,
-       TaskFlowTaskKey taskFlowTaskKey = default,
-       CancellationToken cancellationToken = default)
+            FireTaskParameters fireTaskParameters,
+            TaskDefinitionModel taskDefinition,
+            TaskFlowTaskKey taskFlowTaskKey = default,
+            CancellationToken cancellationToken = default)
         {
             TaskActivationRecordModel? taskActivationRecord = null;
             try

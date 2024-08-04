@@ -1,24 +1,26 @@
 ﻿using NodeService.WebServer.Services.NodeSessions;
+using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.Tasks;
 
-class TaskExecutionInstanceProcessContext
+
+internal class TaskExecutionInstanceProcessContext
 {
     public TaskExecutionInstanceProcessContext(
-        TaskExecutionInstanceModel? taskExecutionInstance,
-        bool statusChanged,
-        bool messageChanged)
+        TaskExecutionInstanceModel taskExecutionInstance,
+        ImmutableArray<TaskExecutionReport> reports)
     {
-        TaskExecutionInstance = taskExecutionInstance;
-        StatusChanged = statusChanged;
-        MessageChanged = messageChanged;
+        Instance = taskExecutionInstance;
+        Reports = reports;
     }
 
-    public TaskExecutionInstanceModel? TaskExecutionInstance { get; set; }
+    public TaskExecutionInstanceModel Instance { get; set; }
+
+    public TaskActivationRecordModel TaskActivationRecord { get; set; }
+
+    public ImmutableArray<TaskExecutionReport> Reports { get; set; } = [];
 
     public bool StatusChanged { get; set; }
 
     public bool MessageChanged { get; set; }
-
-    public IEnumerable<TaskExecutionReportMessage> Messages { get; init; }
 }

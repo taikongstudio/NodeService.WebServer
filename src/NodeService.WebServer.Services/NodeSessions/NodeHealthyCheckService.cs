@@ -153,7 +153,10 @@ public partial class NodeHealthyCheckService : BackgroundService
                 });
             }
 
-            var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(nodeInfo.Id, cancellationToken);
+            var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(
+                nodeInfo.Id,
+                nodeInfo.Profile.LimsDataId,
+                cancellationToken);
             if (computerInfo != null)
             {
                 bool condition1 = computerInfo.Factory?.name == "博罗" && nodeInfo.Profile.FactoryName != "BL";

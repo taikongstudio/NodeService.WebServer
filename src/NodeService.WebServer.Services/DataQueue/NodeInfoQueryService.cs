@@ -43,22 +43,32 @@ namespace NodeService.WebServer.Services.DataQueue
             _exceptionCounter = exceptionCounter;
         }
 
-        public async ValueTask<dl_equipment_ctrl_computer?> Query_dl_equipment_ctrl_computer_Async(string nodeInfoId, CancellationToken cancellationToken = default)
+        public async ValueTask<dl_equipment_ctrl_computer?> Query_dl_equipment_ctrl_computer_Async(string nodeInfoId, string? limsDataId, CancellationToken cancellationToken = default)
         {
             try
             {
-                var nodeInfo = await QueryNodeInfoByIdAsync(nodeInfoId, false, cancellationToken);
-                if (nodeInfo == null)
-                {
-                    return null;
-                }
+                dl_equipment_ctrl_computer? result = null;
                 await using var dbContext = await _limsDbContextFactory.CreateDbContextAsync(cancellationToken);
-                var fullName = $"{nodeInfo.Name}.{nodeInfo.Profile.ComputerDomain}";
-                var result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.full_name == fullName).FirstOrDefaultAsync(cancellationToken);
-                if (result == null)
+
+                if (limsDataId == null)
                 {
-                    result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.name == nodeInfo.Name).FirstOrDefaultAsync(cancellationToken);
+                    var nodeInfo = await QueryNodeInfoByIdAsync(nodeInfoId, false, cancellationToken);
+                    if (nodeInfo == null)
+                    {
+                        return null;
+                    }
+                    var fullName = $"{nodeInfo.Name}.{nodeInfo.Profile.ComputerDomain}";
+                    result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.full_name == fullName).FirstOrDefaultAsync(cancellationToken);
+                    if (result == null)
+                    {
+                        result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.name == nodeInfo.Name).FirstOrDefaultAsync(cancellationToken);
+                    }
                 }
+                else
+                {
+                    result = await dbContext.dl_equipment_ctrl_computer.FindAsync(new object[] { limsDataId }, cancellationToken);
+                }
+
                 if (result != null)
                 {
                     if (result.area_id != null)

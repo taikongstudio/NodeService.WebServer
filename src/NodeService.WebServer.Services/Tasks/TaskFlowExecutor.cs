@@ -1,9 +1,12 @@
 ﻿using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Models;
+using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.TaskSchedule;
+using OneOf;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
@@ -23,7 +26,7 @@ namespace NodeService.WebServer.Services.Tasks
         readonly ActionBlock<AsyncOperation<Func<Task>>> _executionQueue;
         private readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
         private readonly IDelayMessageBroadcast _delayMessageBroadcast;
-
+        private ConfigurationQueryService _configurationQueryService;
         const string SubType_ExecutionTimeLimit = "ExecutionTimeLimit";
         const string SubTyoe_TaskFlowStageExecutionTimeLimit = "TaskFlowStageExecutionTimeLimit";
 
@@ -35,7 +38,8 @@ namespace NodeService.WebServer.Services.Tasks
             ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
             ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
             IAsyncQueue<KafkaDelayMessage> delayMessageQueue,
-            IDelayMessageBroadcast delayMessageBroadcast
+            IDelayMessageBroadcast delayMessageBroadcast,
+            ConfigurationQueryService configurationQueryService
             )
         {
             _logger = logger;
@@ -52,6 +56,7 @@ namespace NodeService.WebServer.Services.Tasks
             _delayMessageQueue = delayMessageQueue;
             _delayMessageBroadcast = delayMessageBroadcast;
             _delayMessageBroadcast.AddHandler(nameof(TaskFlowExecutor), ProcessDelayMessage);
+            _configurationQueryService = configurationQueryService;
         }
 
         async ValueTask ProcessDelayMessage(KafkaDelayMessage kafkaDelayMessage, CancellationToken cancellationToken = default)
@@ -113,16 +118,195 @@ namespace NodeService.WebServer.Services.Tasks
             op.TrySetResult();
         }
 
-        public async ValueTask ExecuteAsync(
-            TaskFlowExecutionInstanceModel taskFlowExecutionInstance,
+        async ValueTask<OneOf<TaskFlowExecutionInstanceModel?, Exception>> CreateTaskFlowExecutionInstance(FireTaskFlowParameters fireTaskFlowParameters, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                OneOf<TaskFlowExecutionInstanceModel?, Exception> oneOf = default;
+                var taskFlowTemplate = await GetTaskFlowTemplateAsync(fireTaskFlowParameters.TaskFlowTemplateId, cancellationToken);
+                if (taskFlowTemplate == null)
+                {
+                    oneOf = new Exception("invalid template id");
+                    return oneOf;
+                }
+                if (fireTaskFlowParameters.EnvironmentVariables != null && fireTaskFlowParameters.EnvironmentVariables.Count > 0)
+                {
+                    foreach (var item in fireTaskFlowParameters.EnvironmentVariables)
+                    {
+                        var entry = taskFlowTemplate.EnvironmentVariables.Find(x => x.Name == item.Name);
+                        if (entry == null)
+                        {
+                            taskFlowTemplate.EnvironmentVariables.Add(item);
+                        }
+                        else
+                        {
+                            entry.Value = item.Value;
+                        }
+                    }
+                }
+                var taskFlowExecutionInstance = new TaskFlowExecutionInstanceModel()
+                {
+                    Id = fireTaskFlowParameters.TaskFlowInstanceId,
+                    Name = taskFlowTemplate.Name,
+                    CreationDateTime = DateTime.UtcNow,
+                    ModifiedDateTime = DateTime.UtcNow,
+                    TaskFlowTemplateId = taskFlowTemplate.Id,
+                };
+                taskFlowExecutionInstance.Value.Id = fireTaskFlowParameters.TaskFlowInstanceId;
+                taskFlowExecutionInstance.Value.Name = taskFlowTemplate.Name;
+                taskFlowExecutionInstance.Value.CreationDateTime = DateTime.UtcNow;
+                taskFlowExecutionInstance.Value.ModifiedDateTime = DateTime.UtcNow;
+                taskFlowExecutionInstance.Value.TaskFlowTemplateId = taskFlowTemplate.Id;
+                taskFlowExecutionInstance.Value.TaskFlowTemplateJson = JsonSerializer.Serialize(taskFlowTemplate);
+                foreach (var taskFlowStageTemplate in taskFlowTemplate.Value.TaskStages)
+                {
+                    var taskFlowStageExecutionInstance = new TaskFlowStageExecutionInstance()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = taskFlowStageTemplate.Name,
+                        CreationDateTime = DateTime.UtcNow,
+                        ModifiedDateTime = DateTime.UtcNow,
+                        TaskFlowStageTemplateId = taskFlowStageTemplate.Id
+                    };
+                    taskFlowExecutionInstance.Value.TaskStages.Add(taskFlowStageExecutionInstance);
+                    foreach (var taskFlowGroupTemplate in taskFlowStageTemplate.TaskGroups)
+                    {
+                        var taskFlowGroupExeuctionInstance = new TaskFlowGroupExecutionInstance()
+                        {
+                            Id = Guid.NewGuid().ToString(),
+                            Name = taskFlowGroupTemplate.Name,
+                            CreationDateTime = DateTime.UtcNow,
+                            ModifiedDateTime = DateTime.UtcNow,
+                            TaskFlowGroupTemplateId = taskFlowGroupTemplate.Id
+                        };
+                        taskFlowStageExecutionInstance.TaskGroups.Add(taskFlowGroupExeuctionInstance);
+                        foreach (var taskFlowTaskTemplate in taskFlowGroupTemplate.Tasks)
+                        {
+                            var taskFlowTaskExecutionInstance = new TaskFlowTaskExecutionInstance()
+                            {
+                                Id = Guid.NewGuid().ToString(),
+                                Name = taskFlowTaskTemplate.Name,
+                                CreationDateTime = DateTime.UtcNow,
+                                ModifiedDateTime = DateTime.UtcNow,
+                                Status = TaskExecutionStatus.Unknown,
+                                TaskFlowTaskTemplateId = taskFlowTaskTemplate.Id,
+                                TaskDefinitionId = taskFlowTaskTemplate.TaskDefinitionId,
+                            };
+                            taskFlowGroupExeuctionInstance.Tasks.Add(taskFlowTaskExecutionInstance);
+                        }
+                    }
+                }
+
+                await ExecuteTaskFlowAsync(taskFlowExecutionInstance, cancellationToken);
+
+                await using var taskFlowExeuctionInstanceRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync();
+                await taskFlowExeuctionInstanceRepo.AddAsync(taskFlowExecutionInstance, cancellationToken);
+                return taskFlowExecutionInstance;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                _exceptionCounter.AddOrUpdate(ex);
+                return ex;
+            }
+
+        }
+
+        async ValueTask<TaskFlowTemplateModel?> GetTaskFlowTemplateAsync(
+string taskFlowTemplateId,
+CancellationToken cancellationToken = default)
+        {
+            var list = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskFlowTemplateModel>([taskFlowTemplateId], cancellationToken);
+            return list.Items?.FirstOrDefault();
+        }
+
+        public async ValueTask CreateAsync(
+            FireTaskFlowParameters fireTaskFlowParameters,
             CancellationToken cancellationToken = default)
         {
             var op = new AsyncOperation<Func<Task>>(async () =>
             {
-                await ExecuteTaskFlowAsync(taskFlowExecutionInstance);
+                var taskFlowExecutionInstance = await CreateTaskFlowExecutionInstance(fireTaskFlowParameters, cancellationToken);
             }, AsyncOperationKind.AddOrUpdate);
             await _executionQueue.SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
+        }
+
+        public async ValueTask ExecuteAsync(
+            string taskFlowInstanceId,
+            ImmutableArray<TaskActivationRecordModel> taskActivationRecords,
+            CancellationToken cancellationToken = default)
+        {
+            var op = new AsyncOperation<Func<Task>>(async () =>
+            {
+                await ExecuteTaskFlowAsync(taskFlowInstanceId, taskActivationRecords, cancellationToken);
+            }, AsyncOperationKind.AddOrUpdate);
+            await _executionQueue.SendAsync(op, cancellationToken);
+            await op.WaitAsync(cancellationToken);
+        }
+
+        private async Task ExecuteTaskFlowAsync(string taskFlowInstanceId, ImmutableArray<TaskActivationRecordModel> taskActivationRecords, CancellationToken cancellationToken)
+        {
+            await using var taskFlowExecutionInstanceRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
+            var taskFlowExecutionInstance = await taskFlowExecutionInstanceRepo.GetByIdAsync(taskFlowInstanceId, cancellationToken);
+            if (taskFlowExecutionInstance == null)
+            {
+                return;
+            }
+            foreach (var activationRecord in taskActivationRecords)
+            {
+                var taskStage = taskFlowExecutionInstance.TaskStages.FirstOrDefault(x => x.Id == activationRecord.TaskFlowStageId);
+                if (taskStage == null)
+                {
+                    continue;
+                }
+                var taskGroup = taskStage.TaskGroups.FirstOrDefault(x => x.Id == activationRecord.TaskFlowGroupId);
+                if (taskGroup == null)
+                {
+                    continue;
+                }
+                var taskFlowTaskExecutionInstance = taskGroup.Tasks.FirstOrDefault(x => x.Id == activationRecord.TaskFlowTaskId);
+                if (taskFlowTaskExecutionInstance == null)
+                {
+                    continue;
+                }
+                switch (activationRecord.Status)
+                {
+                    case TaskExecutionStatus.Unknown:
+                        taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Unknown;
+                        break;
+                    case TaskExecutionStatus.Triggered:
+                    case TaskExecutionStatus.Pendding:
+                    case TaskExecutionStatus.Started:
+                    case TaskExecutionStatus.Running:
+                        taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Running;
+                        taskFlowTaskExecutionInstance.FinishedCount = activationRecord.Value.FinishedCount;
+                        taskFlowTaskExecutionInstance.TotalCount = activationRecord.Value.TotalCount;
+                        break;
+                    case TaskExecutionStatus.Failed:
+                    case TaskExecutionStatus.PenddingTimeout:
+                    case TaskExecutionStatus.Cancelled:
+                        taskFlowTaskExecutionInstance.Status = activationRecord.Status;
+                        taskFlowTaskExecutionInstance.FinishedCount = activationRecord.Value.FinishedCount;
+                        taskFlowTaskExecutionInstance.TotalCount = activationRecord.Value.TotalCount;
+                        break;
+                    case TaskExecutionStatus.Finished:
+                        taskFlowTaskExecutionInstance.Status = TaskExecutionStatus.Finished;
+                        taskFlowTaskExecutionInstance.FinishedCount = activationRecord.Value.FinishedCount;
+                        taskFlowTaskExecutionInstance.TotalCount = activationRecord.Value.TotalCount;
+                        break;
+                    case TaskExecutionStatus.MaxCount:
+                        break;
+                    default:
+                        break;
+                }
+                taskFlowTaskExecutionInstance.TaskActiveRecordId = activationRecord.Id;
+            }
+            taskFlowExecutionInstance.Value = taskFlowExecutionInstance.Value with { };
+
+            await ExecuteTaskFlowAsync(taskFlowExecutionInstance, cancellationToken);
+
+            await taskFlowExecutionInstanceRepo.UpdateAsync(taskFlowExecutionInstance, cancellationToken);
         }
 
         public async ValueTask SwitchStageAsync(string taskFlowExecutionInstanceId, int stageIndex, CancellationToken cancellationToken = default)
@@ -233,6 +417,7 @@ namespace NodeService.WebServer.Services.Tasks
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Running;
                 }
                 taskFlowExecutionInstance.ModifiedDateTime = DateTime.UtcNow;
+
             }
             catch (Exception ex)
             {
@@ -331,7 +516,7 @@ namespace NodeService.WebServer.Services.Tasks
                 }
                 finally
                 {
-                    parameters.Disposable.Dispose();
+
                 }
             }, AsyncOperationKind.AddOrUpdate);
             await _executionQueue.SendAsync(op, cancellationToken);

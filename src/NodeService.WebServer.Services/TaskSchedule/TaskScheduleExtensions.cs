@@ -28,6 +28,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
             services.AddHostedService<KafkaDelayMessageQueueService>();
             services.AddSingleton<JobScheduler>();
             services.AddSingleton<TaskFlowExecutor>();
+            services.AddSingleton<TaskActivationRecordExecutor>();
             services.AddSingleton<ISchedulerFactory>(new StdSchedulerFactory());
             services.AddSingleton<IAsyncQueue<TaskExecutionEventRequest>, AsyncQueue<TaskExecutionEventRequest>>();
             services.AddSingleton<IAsyncQueue<NodeHealthyCheckFireEvent>, AsyncQueue<NodeHealthyCheckFireEvent>>();
@@ -38,7 +39,6 @@ namespace NodeService.WebServer.Services.TaskSchedule
             services.AddKeyedSingleton(nameof(TaskLogPersistenceService), new BatchQueue<AsyncOperation<TaskLogUnit[]>>(TimeSpan.FromSeconds(5), 2048));
             services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
             services.AddSingleton(new BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(TimeSpan.FromSeconds(15), 2048));
-            services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(TimeSpan.FromSeconds(3), 1024));
             services.AddSingleton(new BatchQueue<TaskExecutionReportMessage>(TimeSpan.FromSeconds(3), 1024));
 
 

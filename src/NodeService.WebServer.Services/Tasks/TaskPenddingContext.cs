@@ -11,9 +11,11 @@ public class TaskPenddingContext : IAsyncDisposable
 {
     private CancellationTokenSource _cancelTokenSource;
 
-    public TaskPenddingContext(string id)
+    public TaskPenddingContext(string id, TaskActivationRecordModel taskActivationRecord, TaskDefinition taskDefinition)
     {
         Id = id;
+        TaskDefinition = taskDefinition;
+        TaskActivationRecord = taskActivationRecord;
     }
 
     public string Id { get; }
@@ -22,7 +24,9 @@ public class TaskPenddingContext : IAsyncDisposable
 
     public required NodeSessionId NodeSessionId { get; init; }
 
-    public required TaskDefinitionModel TaskDefinition { get; init; }
+    public TaskActivationRecordModel  TaskActivationRecord { get; private set; }
+
+    public TaskDefinition TaskDefinition { get; private set; }
 
     public required TaskExecutionEventRequest TriggerEvent { get; init; }
 
@@ -46,7 +50,7 @@ public class TaskPenddingContext : IAsyncDisposable
                 new QueryTaskExecutionInstanceListParameters
                 {
                     NodeIdList = [NodeSessionId.NodeId.Value],
-                    TaskDefinitionIdList = [TaskDefinition.Id],
+                    TaskDefinitionIdList = [TaskActivationRecord.TaskDefinitionId],
                     Status = TaskExecutionStatus.Running
                 });
 
@@ -67,7 +71,7 @@ public class TaskPenddingContext : IAsyncDisposable
                 new QueryTaskExecutionInstanceListParameters
                 {
                     NodeIdList = [NodeSessionId.NodeId.Value],
-                    TaskDefinitionIdList = [TaskDefinition.Id],
+                    TaskDefinitionIdList = [TaskActivationRecord.TaskDefinitionId],
                     Status = TaskExecutionStatus.Running
                 });
 
@@ -88,7 +92,7 @@ public class TaskPenddingContext : IAsyncDisposable
         if (_cancelTokenSource == null)
         {
             _cancelTokenSource = new CancellationTokenSource();
-            var penddingTimeLimitSeconds = TimeSpan.FromSeconds(TaskDefinition.PenddingLimitTimeSeconds);
+            var penddingTimeLimitSeconds = TimeSpan.FromSeconds(TaskActivationRecord.GetTaskDefinition().PenddingLimitTimeSeconds);
             _cancelTokenSource.CancelAfter(penddingTimeLimitSeconds);
             CancellationToken = _cancelTokenSource.Token;
         }
@@ -100,7 +104,7 @@ public class TaskPenddingContext : IAsyncDisposable
             new QueryTaskExecutionInstanceListParameters
             {
                 NodeIdList = [NodeSessionId.NodeId.Value],
-                TaskDefinitionIdList = [TaskDefinition.Id],
+                TaskDefinitionIdList = [TaskActivationRecord.TaskDefinitionId],
                 Status = TaskExecutionStatus.Running
             }, CancellationToken);
         return queryResult.HasValue;

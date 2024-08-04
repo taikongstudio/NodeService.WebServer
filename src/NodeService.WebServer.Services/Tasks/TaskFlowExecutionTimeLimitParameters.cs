@@ -13,7 +13,5 @@
         public string TaskFlowInstanceId { get; set; }
 
         public string TaskFlowStageInstanceId { get; set; }
-
-        public IDisposable Disposable { get; set; }
     }
 }

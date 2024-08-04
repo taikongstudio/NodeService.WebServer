@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using MathNet.Numerics.Statistics;
+using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Models;
 using NodeService.Infrastructure.NodeSessions;
@@ -6,6 +7,7 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
 using OneOf;
+using System.Collections.Immutable;
 using System.Threading.Channels;
 
 namespace NodeService.WebServer.Services.Tasks;
@@ -142,6 +144,8 @@ public class TaskActivateService : BackgroundService
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
     readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
+    readonly TaskActivationRecordExecutor _taskActivationRecordExecutionQueue;
+
 
     public TaskActivateService(
         ILogger<TaskActivateService> logger,
@@ -160,7 +164,8 @@ public class TaskActivateService : BackgroundService
         ITaskPenddingContextManager taskPenddingContextManager,
         TaskFlowExecutor taskFlowExecutor,
         NodeInfoQueryService nodeInfoQueryService,
-        ConfigurationQueryService configurationQueryService)
+        ConfigurationQueryService configurationQueryService,
+        TaskActivationRecordExecutor taskActivationRecordExecutot)
     {
         _logger = logger;
         PenddingContextChannel = Channel.CreateUnbounded<TaskPenddingContext>();
@@ -189,6 +194,7 @@ public class TaskActivateService : BackgroundService
                 EnsureOrdered = true,
                 MaxDegreeOfParallelism = Environment.ProcessorCount / 2
             });
+        _taskActivationRecordExecutionQueue = taskActivationRecordExecutot;
     }
 
     public Channel<TaskPenddingContext> PenddingContextChannel { get; }
@@ -203,7 +209,7 @@ public class TaskActivateService : BackgroundService
                 await PenddingContextChannel.Reader.WaitToReadAsync(cancellationToken);
                 while (PenddingContextChannel.Reader.TryRead(out var penddingContext))
                 {
-                    _priorityQueue.Enqueue(penddingContext, penddingContext.TaskDefinition.Priority);
+                    _priorityQueue.Enqueue(penddingContext, penddingContext.TaskActivationRecord.GetTaskDefinition().Priority);
                 }
                 while (_priorityQueue.Count > 0)
                 {
@@ -291,12 +297,19 @@ public class TaskActivateService : BackgroundService
     private async Task ProcessPenddingContextAsync(TaskPenddingContext context)
     {
         var readyToRun = false;
+        var penddingLimitTimeSeconds = 0;
         try
         {
+            var taskDefinition = context.TaskActivationRecord.GetTaskDefinition();
+            if (taskDefinition == null)
+            {
+                return;
+            }
+            penddingLimitTimeSeconds = taskDefinition.PenddingLimitTimeSeconds;
             if (!context.CancellationToken.IsCancellationRequested)
             {
                 _logger.LogInformation($"{context.Id}:Start init");
-                switch (context.TaskDefinition.ExecutionStrategy)
+                switch (taskDefinition.ExecutionStrategy)
                 {
                     case TaskExecutionStrategy.Concurrent:
                         readyToRun = true;
@@ -372,7 +385,7 @@ public class TaskActivateService : BackgroundService
             await SendTaskExecutionReportAsync(
                 context.Id,
                 TaskExecutionStatus.PenddingTimeout,
-                $"Time out after waiting {context.TaskDefinition.PenddingLimitTimeSeconds} seconds");
+                $"Time out after waiting {penddingLimitTimeSeconds} seconds");
             _logger.LogInformation($"{context.Id}:SendAsync PenddingTimeout");
         }
     }
@@ -390,357 +403,47 @@ public class TaskActivateService : BackgroundService
         });
     }
 
-    async ValueTask ActivateRemoteNodeTasksAsync(
-        FireTaskParameters fireTaskParameters,
-        TaskDefinitionModel taskDefinition,
-        TaskFlowTaskKey taskFlowTaskKey = default,
+
+    async ValueTask ProcessTaskActivationRecordResultAsync(
+TaskActivationRecordResult result,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var taskExecutionInstanceList = new List<KeyValuePair<NodeSessionId, TaskExecutionInstanceModel>>();
-
-            if (fireTaskParameters.RetryTasks)
-            {
-                await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
-                var taskActivationRecord = await taskActivationRecordRepo.GetByIdAsync(fireTaskParameters.FireInstanceId, cancellationToken);
-                if (taskActivationRecord == null)
-                {
-                    return;
-                }
-                if (taskActivationRecord.Status == TaskExecutionStatus.Finished)
-                {
-                    return;
-                }
-                var nodeInfoList = await QueryNodeListAsync(taskDefinition, cancellationToken);
-
-                foreach (var taskExecutionNodeInfo in taskActivationRecord.Value.TaskExecutionNodeList)
-                {
-                    if (taskExecutionNodeInfo.Status == TaskExecutionStatus.Finished)
-                    {
-                        continue;
-                    }
-                    var lastInstance = taskExecutionNodeInfo.Instances.LastOrDefault();
-                    if (lastInstance == null)
-                    {
-                        continue;
-                    }
-
-                    bool canRetry = lastInstance.Status switch
-                    {
-                        TaskExecutionStatus.Failed or TaskExecutionStatus.PenddingTimeout or TaskExecutionStatus.Failed => true,
-                        _ => false
-                    };
-
-                    if (!canRetry)
-                    {
-                        continue;
-                    }
-                    var nodeInfoFindResult = FindNodeInfo(nodeInfoList, taskExecutionNodeInfo.NodeInfoId);
-                    if (nodeInfoFindResult == default)
-                    {
-                        continue;
-                    }
-
-                    var nodeEntries = taskDefinition.NodeList.Where(x => x.Value == taskExecutionNodeInfo.NodeInfoId);
-                    if (!nodeEntries.Any())
-                    {
-                        continue;
-                    }
-
-                    BuildTaskExecutionInstanceList(
-                        taskExecutionInstanceList,
-                        fireTaskParameters,
-                        taskDefinition,
-                        taskFlowTaskKey,
-                        nodeEntries,
-                        [nodeInfoFindResult.NodeInfo],
-                        cancellationToken);
-
-                    foreach (var nodeEntry in nodeEntries)
-                    {
-                        AddTaskExecutionNodeInstances(taskExecutionInstanceList, nodeEntry, taskExecutionNodeInfo);
-                    }
-
-                }
-
-                await AddTaskExecutionInstanceListAsync(
-                        taskExecutionInstanceList.Select(static x => x.Value),
-                        cancellationToken);
-
-                await taskActivationRecordRepo.UpdateAsync(taskActivationRecord, cancellationToken);
-                await ProcessTaskExecutionInstanceListAsync(
-                                    fireTaskParameters,
-                                    taskDefinition,
-                                    taskExecutionInstanceList,
-                                    cancellationToken);
-            }
-            else
-            {
-                if (fireTaskParameters.NodeList != null && fireTaskParameters.NodeList.Count > 0)
-                {
-                    taskDefinition.NodeList = fireTaskParameters.NodeList;
-                }
-                if (fireTaskParameters.EnvironmentVariables != null && fireTaskParameters.EnvironmentVariables.Count > 0)
-                {
-                    foreach (var item in fireTaskParameters.EnvironmentVariables)
-                    {
-                        var entry = taskDefinition.Value.EnvironmentVariables.Find(x => x.Name == item.Name);
-                        if (entry == null)
-                        {
-                            taskDefinition.Value.EnvironmentVariables.Add(item);
-                        }
-                        else
-                        {
-                            entry.Value = item.Value;
-                        }
-                    }
-                }
-                var nodeInfoList = await QueryNodeListAsync(taskDefinition, cancellationToken);
-
-                BuildTaskExecutionInstanceList(
-                    taskExecutionInstanceList,
-                    fireTaskParameters,
-                    taskDefinition,
-                    taskFlowTaskKey,
-                    taskDefinition.NodeList,
-                    nodeInfoList,
-                    cancellationToken);
-
-                await AddTaskExecutionInstanceListAsync(
-                    taskExecutionInstanceList.Select(static x => x.Value),
-                    cancellationToken);
-
-                List<TaskExecutionNodeInfo> taskExecutionNodeList = [];
-
-                foreach (var nodeEntry in taskDefinition.NodeList)
-                {
-                    if (nodeEntry == null || nodeEntry.Value == null)
-                    {
-                        continue;
-                    }
-                    var taskExecutionNodeInfo = new TaskExecutionNodeInfo(fireTaskParameters.FireInstanceId, nodeEntry.Value);
-                    AddTaskExecutionNodeInstances(taskExecutionInstanceList, nodeEntry, taskExecutionNodeInfo);
-                    taskExecutionNodeList.Add(taskExecutionNodeInfo);
-                }
-
-                var taskActivationRecord = new TaskActivationRecordModel
-                {
-                    CreationDateTime = DateTime.UtcNow,
-                    ModifiedDateTime = DateTime.UtcNow,
-                    Id = fireTaskParameters.FireInstanceId,
-                    TaskDefinitionId = taskDefinition.Id,
-                    Name = taskDefinition.Name,
-                    TaskDefinitionJson = JsonSerializer.Serialize(taskDefinition.Value),
-                    TaskExecutionNodeList = taskExecutionNodeList,
-                    TotalCount = taskExecutionNodeList.Count,
-                    Status = TaskExecutionStatus.Unknown,
-                    TaskFlowTemplateId = taskFlowTaskKey.TaskFlowTemplateId,
-                    TaskFlowTaskId = taskFlowTaskKey.TaskFlowTaskId,
-                    TaskFlowInstanceId = taskFlowTaskKey.TaskFlowInstanceId,
-                    TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId,
-                    TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId,
-                    NodeList = [.. taskDefinition.NodeList],
-                    EnvironmentVariables = fireTaskParameters.EnvironmentVariables
-                };
-                await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
-                await taskActivationRecordRepo.AddAsync(taskActivationRecord, cancellationToken);
-                await ProcessTaskExecutionInstanceListAsync(
-                                    fireTaskParameters,
-                                    taskDefinition,
-                                    taskExecutionInstanceList,
-                                    cancellationToken);
-            }
-
-            _logger.LogInformation($"Task initialized {fireTaskParameters.FireInstanceId}");
-        }
-        catch (Exception ex)
-        {
-            _exceptionCounter.AddOrUpdate(ex);
-            _logger.LogError(ex.ToString());
-        }
-    }
-
-    static void AddTaskExecutionNodeInstances(
-        List<KeyValuePair<NodeSessionId, TaskExecutionInstanceModel>> taskExecutionInstanceList,
-        StringEntry? nodeEntry,
-        TaskExecutionNodeInfo taskExecutionNodeInfo)
-    {
-        foreach (var item in taskExecutionInstanceList)
-        {
-            if (item.Key.NodeId.Value == nodeEntry.Value)
-            {
-                taskExecutionNodeInfo.Instances.Add(new TaskExecutionInstanceInfo()
-                {
-                    TaskExecutionInstanceId = item.Value.Id,
-                    Status = TaskExecutionStatus.Unknown,
-                    Message = item.Value.Message,
-                });
-                break;
-            }
-        }
-    }
-
-    void BuildTaskExecutionInstanceList(
-        List<KeyValuePair<NodeSessionId, TaskExecutionInstanceModel>> taskExecutionInstanceList,
-        FireTaskParameters fireTaskParameters,
-        TaskDefinitionModel taskDefinition,
-        TaskFlowTaskKey taskFlowTaskKey,
-        IEnumerable<StringEntry> nodeList,
-        IEnumerable<NodeInfoModel> nodeInfoList,
-        CancellationToken cancellationToken)
-    {
-        foreach (var nodeEntry in nodeList)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(nodeEntry.Value)) continue;
-                var nodeFindResult = FindNodeInfo(nodeInfoList, nodeEntry.Value);
-
-                if (nodeFindResult.NodeId.IsNullOrEmpty) continue;
-
-                var nodeSessionIdList = _nodeSessionService.EnumNodeSessions(nodeFindResult.NodeId).ToArray();
-
-                if (nodeSessionIdList.Length == 0)
-                {
-                    var nodeSessionId = new NodeSessionId(nodeFindResult.NodeId.Value);
-                    nodeSessionIdList = [nodeSessionId];
-                }
-                foreach (var nodeSessionId in nodeSessionIdList)
-                {
-                    var taskExecutionInstance = BuildTaskExecutionInstance(
-                        nodeFindResult.NodeInfo,
-                        taskDefinition,
-                        nodeSessionId,
-                        fireTaskParameters,
-                        taskFlowTaskKey);
-                    taskExecutionInstanceList.Add(KeyValuePair.Create(nodeSessionId, taskExecutionInstance));
-                }
-            }
-            catch (Exception ex)
-            {
-                _exceptionCounter.AddOrUpdate(ex);
-                _logger.LogError(ex.ToString());
-            }
-        }
-    }
-
-    async ValueTask ProcessTaskExecutionInstanceListAsync(
-        FireTaskParameters fireTaskParameters,
-        TaskDefinitionModel taskDefinition,
-        List<KeyValuePair<NodeSessionId, TaskExecutionInstanceModel>> taskExecutionInstanceList,
-        CancellationToken cancellationToken = default)
-    {
-        foreach (var kv in taskExecutionInstanceList)
+        var taskDefinition = result.TaskActivationRecord.GetTaskDefinition();
+        foreach (var kv in result.Instances)
         {
             var taskExecutionInstance = kv.Value;
-            if (taskDefinition.Value.TaskTypeDesc.Value.FullName == "NodeService.ServiceHost.Tasks.ExecuteBatchScriptTask")
+            if (taskDefinition.TaskTypeDesc.Value.FullName == "NodeService.ServiceHost.Tasks.ExecuteBatchScriptTask")
             {
-                if (taskDefinition.Value.Options.TryGetValue("Scripts", out var scriptsObject) && scriptsObject is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
+                if (taskDefinition.Options.TryGetValue("Scripts", out var scriptsObject) && scriptsObject is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
                 {
                     var scriptsString = jsonElement.GetString();
-                    foreach (var item in taskDefinition.Value.EnvironmentVariables)
+                    foreach (var item in taskDefinition.EnvironmentVariables)
                     {
                         scriptsString = scriptsString.Replace($"$({item.Name})", item.Value);
                     }
-                    taskDefinition.Value.Options["Scripts"] = scriptsString;
+                    taskDefinition.Options["Scripts"] = scriptsString;
                 }
             }
-            var context = new TaskPenddingContext(taskExecutionInstance.Id)
+            var context = new TaskPenddingContext(taskExecutionInstance.Id, result.TaskActivationRecord, taskDefinition)
             {
                 NodeSessionService = _nodeSessionService,
                 NodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId),
-                TriggerEvent = taskExecutionInstance.ToTriggerEvent(taskDefinition, fireTaskParameters.EnvironmentVariables),
-                FireParameters = fireTaskParameters,
-                TaskDefinition = taskDefinition
+                TriggerEvent = taskExecutionInstance.ToTriggerEvent(new TaskDefinitionModel()
+                {
+                    Value = taskDefinition,
+                    Id = result.TaskActivationRecord.TaskDefinitionId,
+                }, result.FireTaskParameters.EnvironmentVariables),
+                FireParameters = result.FireTaskParameters,
             };
 
+            await SendTaskExecutionReportAsync(taskExecutionInstance.Id, TaskExecutionStatus.Triggered, string.Empty);
             if (_taskPenddingContextManager.AddContext(context))
             {
                 context.EnsureInit();
                 await PenddingContextChannel.Writer.WriteAsync(context, cancellationToken);
             }
-            await SendTaskExecutionReportAsync(taskExecutionInstance.Id, TaskExecutionStatus.Triggered, string.Empty);
+
         }
-    }
-
-    async ValueTask AddTaskExecutionInstanceListAsync(
-        IEnumerable<TaskExecutionInstanceModel> taskExecutionInstanceList,
-        CancellationToken cancellationToken = default)
-    {
-        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync(cancellationToken);
-        await taskExecutionInstanceRepo.AddRangeAsync(taskExecutionInstanceList, cancellationToken);
-    }
-
-     ValueTask<List<NodeInfoModel>> QueryNodeListAsync(TaskDefinitionModel taskDefinition, CancellationToken cancellationToken = default)
-    {
-        return _nodeInfoQueryService.QueryNodeInfoListAsync(taskDefinition.NodeList.Select(static x => x.Value), true, cancellationToken);
-    }
-
-    static (NodeId NodeId, NodeInfoModel NodeInfo) FindNodeInfo(IEnumerable<NodeInfoModel> nodeInfoList, string id)
-    {
-        foreach (var nodeInfo in nodeInfoList)
-        {
-            if (nodeInfo.Id == id)
-            {
-                return (new NodeId(nodeInfo.Id), nodeInfo);
-            }
-        }
-
-        return default;
-    }
-
-    TaskExecutionInstanceModel BuildTaskExecutionInstance(
-        NodeInfoModel nodeInfo,
-        TaskDefinitionModel taskDefinition,
-        NodeSessionId nodeSessionId,
-        FireTaskParameters parameters,
-        TaskFlowTaskKey taskFlowTaskKey = default)
-    {
-        var nodeName = _nodeSessionService.GetNodeName(nodeSessionId) ?? nodeInfo.Name;
-        var taskExecutionInstance = new TaskExecutionInstanceModel
-        {
-            Id = Guid.NewGuid().ToString(),
-            Name = $"{nodeName} {taskDefinition.Name}",
-            NodeInfoId = nodeSessionId.NodeId.Value,
-            Status = TaskExecutionStatus.Triggered,
-            FireTimeUtc = parameters.FireTimeUtc.DateTime,
-            Message = string.Empty,
-            FireType = "Server",
-            TriggerSource = parameters.TriggerSource,
-            TaskDefinitionId = taskDefinition.Id,
-            ParentId = parameters.ParentTaskExecutionInstanceId,
-            FireInstanceId = parameters.FireInstanceId
-        };
-        switch (taskDefinition.ExecutionStrategy)
-        {
-            case TaskExecutionStrategy.Concurrent:
-                taskExecutionInstance.Message = $"{nodeName}: triggered";
-                break;
-            case TaskExecutionStrategy.Queue:
-                taskExecutionInstance.Message = $"{nodeName}: waiting for any task";
-                break;
-            case TaskExecutionStrategy.Skip:
-                taskExecutionInstance.Message = $"{nodeName}: start job";
-                break;
-            case TaskExecutionStrategy.Stop:
-                taskExecutionInstance.Message = $"{nodeName}: waiting for kill all job";
-                break;
-        }
-
-        if (parameters.NextFireTimeUtc != null)
-            taskExecutionInstance.NextFireTimeUtc = parameters.NextFireTimeUtc.Value.UtcDateTime;
-        if (parameters.PreviousFireTimeUtc != null)
-            taskExecutionInstance.NextFireTimeUtc = parameters.PreviousFireTimeUtc.Value.UtcDateTime;
-        if (parameters.ScheduledFireTimeUtc != null)
-            taskExecutionInstance.ScheduledFireTimeUtc = parameters.ScheduledFireTimeUtc.Value.UtcDateTime;
-
-        taskExecutionInstance.TaskFlowTemplateId = taskFlowTaskKey.TaskFlowTemplateId;
-        taskExecutionInstance.TaskFlowInstanceId = taskFlowTaskKey.TaskFlowInstanceId;
-        taskExecutionInstance.TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId;
-        taskExecutionInstance.TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId;
-        taskExecutionInstance.TaskFlowTaskId = taskFlowTaskKey.TaskFlowTaskId;
-        return taskExecutionInstance;
     }
 
 
@@ -885,166 +588,28 @@ public class TaskActivateService : BackgroundService
         IEnumerable<FireTaskFlowParameters> fireTaskFlowParameterList,
         CancellationToken cancellationToken = default)
     {
-
-
-        foreach (var fireTaskFlowParametersGroup in fireTaskFlowParameterList.GroupBy(static x => x.TaskFlowTemplateId))
+        foreach (var fireTaskFlowParameters in fireTaskFlowParameterList)
         {
-            var taskFlowTemplateId = fireTaskFlowParametersGroup.Key;
-            var taskFlowTemplate = await GetTaskFlowTemplateAsync(taskFlowTemplateId, cancellationToken);
-            if (taskFlowTemplate == null)
-            {
-                continue;
-            }
-            List<TaskFlowExecutionInstanceModel> taskFlowExecutionInstances = [];
-            foreach (var fireTaskFlowParameters in fireTaskFlowParametersGroup)
-            {
-                CreateTaskFlowExecutionInstance(taskFlowTemplate, taskFlowExecutionInstances, fireTaskFlowParameters);
-            }
-            foreach (var taskFlowExecutionInstance in taskFlowExecutionInstances)
-            {
-                await _taskFlowExecutor.ExecuteAsync(taskFlowExecutionInstance, cancellationToken);
-            }
-            await using var taskFlowExeuctionInstanceRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync();
-            await taskFlowExeuctionInstanceRepo.AddRangeAsync(taskFlowExecutionInstances, cancellationToken);
+            await _taskFlowExecutor.CreateAsync(fireTaskFlowParameters, cancellationToken);
         }
-
     }
 
-    static void CreateTaskFlowExecutionInstance(
-        TaskFlowTemplateModel taskFlowTemplate,
-        List<TaskFlowExecutionInstanceModel> taskFlowExecutionInstances,
-        FireTaskFlowParameters fireTaskFlowParameters)
-    {
-        if (fireTaskFlowParameters.EnvironmentVariables != null && fireTaskFlowParameters.EnvironmentVariables.Count > 0)
-        {
-            foreach (var item in fireTaskFlowParameters.EnvironmentVariables)
-            {
-                var entry = taskFlowTemplate.EnvironmentVariables.Find(x => x.Name == item.Name);
-                if (entry == null)
-                {
-                    taskFlowTemplate.EnvironmentVariables.Add(item);
-                }
-                else
-                {
-                    entry.Value = item.Value;
-                }
-            }
-        }
-        var taskFlowExecutionInstance = new TaskFlowExecutionInstanceModel()
-        {
-            Id = fireTaskFlowParameters.TaskFlowInstanceId,
-            Name = taskFlowTemplate.Name,
-            CreationDateTime = DateTime.UtcNow,
-            ModifiedDateTime = DateTime.UtcNow,
-            TaskFlowTemplateId = taskFlowTemplate.Id,
-        };
-        taskFlowExecutionInstance.Value.Id = fireTaskFlowParameters.TaskFlowInstanceId;
-        taskFlowExecutionInstance.Value.Name = taskFlowTemplate.Name;
-        taskFlowExecutionInstance.Value.CreationDateTime = DateTime.UtcNow;
-        taskFlowExecutionInstance.Value.ModifiedDateTime = DateTime.UtcNow;
-        taskFlowExecutionInstance.Value.TaskFlowTemplateId = taskFlowTemplate.Id;
-        taskFlowExecutionInstance.Value.TaskFlowTemplateJson = JsonSerializer.Serialize(taskFlowTemplate);
-        foreach (var taskFlowStageTemplate in taskFlowTemplate.Value.TaskStages)
-        {
-            var taskFlowStageExecutionInstance = new TaskFlowStageExecutionInstance()
-            {
-                Id = Guid.NewGuid().ToString(),
-                Name = taskFlowStageTemplate.Name,
-                CreationDateTime = DateTime.UtcNow,
-                ModifiedDateTime = DateTime.UtcNow,
-                TaskFlowStageTemplateId = taskFlowStageTemplate.Id
-            };
-            taskFlowExecutionInstance.Value.TaskStages.Add(taskFlowStageExecutionInstance);
-            foreach (var taskFlowGroupTemplate in taskFlowStageTemplate.TaskGroups)
-            {
-                var taskFlowGroupExeuctionInstance = new TaskFlowGroupExecutionInstance()
-                {
-                    Id = Guid.NewGuid().ToString(),
-                    Name = taskFlowGroupTemplate.Name,
-                    CreationDateTime = DateTime.UtcNow,
-                    ModifiedDateTime = DateTime.UtcNow,
-                    TaskFlowGroupTemplateId = taskFlowGroupTemplate.Id
-                };
-                taskFlowStageExecutionInstance.TaskGroups.Add(taskFlowGroupExeuctionInstance);
-                foreach (var taskFlowTaskTemplate in taskFlowGroupTemplate.Tasks)
-                {
-                    var taskFlowTaskExecutionInstance = new TaskFlowTaskExecutionInstance()
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        Name = taskFlowTaskTemplate.Name,
-                        CreationDateTime = DateTime.UtcNow,
-                        ModifiedDateTime = DateTime.UtcNow,
-                        Status = TaskExecutionStatus.Unknown,
-                        TaskFlowTaskTemplateId = taskFlowTaskTemplate.Id,
-                        TaskDefinitionId = taskFlowTaskTemplate.TaskDefinitionId,
-                    };
-                    taskFlowGroupExeuctionInstance.Tasks.Add(taskFlowTaskExecutionInstance);
-                }
-            }
-        }
-        taskFlowExecutionInstances.Add(taskFlowExecutionInstance);
-    }
+
 
     async Task ProcessFireTaskParametersAsync(
-        IEnumerable<FireTaskParameters> fireTaskParameterList, 
+        IEnumerable<FireTaskParameters> fireTaskParameterList,
         CancellationToken cancellationToken)
     {
 
-        foreach (var fireTaskParameterGroup in fireTaskParameterList.GroupBy(static x => x.TaskDefinitionId))
+        foreach (var fireTaskParameters in fireTaskParameterList)
         {
-            var taskDefinitionId = fireTaskParameterGroup.Key;
-            var taskDefinition = await GetTaskDefinitionAsync(
-                taskDefinitionId,
-                cancellationToken);
-            if (taskDefinition == null)
+            var result = await _taskActivationRecordExecutionQueue.CreateTaskActiveRecordAsync(fireTaskParameters, cancellationToken);
+            if (result.Index == 1)
             {
                 continue;
             }
-            foreach (var fireTaskParameters in fireTaskParameterGroup)
-            {
-
-                if (taskDefinition == null || string.IsNullOrEmpty(taskDefinition.TaskTypeDescId))
-                    continue;
-
-                taskDefinition.TaskTypeDesc = await GetTaskTypeDescAsync(taskDefinition.TaskTypeDescId, cancellationToken);
-                if (taskDefinition.TaskTypeDesc == null)
-                {
-                    continue;
-                }
-
-                await ActivateRemoteNodeTasksAsync(
-                     fireTaskParameters,
-                     taskDefinition,
-                     fireTaskParameters.TaskFlowTaskKey,
-                     cancellationToken);
-            }
-
+            await ProcessTaskActivationRecordResultAsync(result.AsT0, cancellationToken);
         }
-
-
     }
 
-    async ValueTask<TaskTypeDescConfigModel?> GetTaskTypeDescAsync(
-        string taskTypeDescId,
-        CancellationToken cancellationToken = default)
-    {
-        var list = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskTypeDescConfigModel>([taskTypeDescId], cancellationToken);
-        return list.Items?.FirstOrDefault();
-    }
-
-    async ValueTask<TaskDefinitionModel?> GetTaskDefinitionAsync(
-        string taskDefinitionId,
-        CancellationToken cancellationToken = default)
-    {
-        var list = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskDefinitionModel>([taskDefinitionId], cancellationToken);
-        return list.Items?.FirstOrDefault();
-    }
-
-    async ValueTask<TaskFlowTemplateModel?> GetTaskFlowTemplateAsync(
-    string taskFlowTemplateId,
-    CancellationToken cancellationToken = default)
-    {
-        var list = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskFlowTemplateModel>([taskFlowTemplateId], cancellationToken);
-        return list.Items?.FirstOrDefault();
-    }
 }

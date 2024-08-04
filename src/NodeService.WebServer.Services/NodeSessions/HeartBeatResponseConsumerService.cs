@@ -282,6 +282,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
                 var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(
                     nodeInfo.Id,
+                    nodeInfo.Profile.LimsDataId,
                     cancellationToken);
 
                 if (computerInfo == null)
@@ -290,6 +291,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 }
                 else
                 {
+                    if (nodeInfo.Profile.LimsDataId == null)
+                    {
+                        nodeInfo.Profile.LimsDataId = computerInfo.id;
+                    }
                     nodeInfo.Profile.FoundInLims = true;
                     nodeInfo.Profile.LabArea = computerInfo.LabArea?.name;
                     nodeInfo.Profile.LabName = computerInfo.LabInfo?.name;

@@ -78,6 +78,9 @@
                     case TaskExecutionStatus.PenddingTimeout:
                         <Text>等待超时</Text>
                         break;
+                    case TaskExecutionStatus.PenddingCancel:
+                        <Text>等待取消</Text>
+                        break;
                 }
             </PropertyColumn>
             <PropertyColumn Title="消息" Ellipsis Sortable Property="c => c.Instances">
@@ -114,14 +117,16 @@
 
     bool IsRunning(TaskExecutionStatus taskExecutionStatus)
     {
-        return taskExecutionStatus == TaskExecutionStatus.Running;
+        return taskExecutionStatus == TaskExecutionStatus.Running || taskExecutionStatus == TaskExecutionStatus.PenddingCancel;
     }
 
     bool CanRetry(TaskExecutionStatus taskExecutionStatus)
     {
-        return  taskExecutionStatus == TaskExecutionStatus.Failed
+        return taskExecutionStatus == TaskExecutionStatus.Failed
           ||
-          taskExecutionStatus == TaskExecutionStatus.PenddingTimeout;
+          taskExecutionStatus == TaskExecutionStatus.PenddingTimeout
+          ||
+          taskExecutionStatus == TaskExecutionStatus.PenddingCancel;
     }
 
 

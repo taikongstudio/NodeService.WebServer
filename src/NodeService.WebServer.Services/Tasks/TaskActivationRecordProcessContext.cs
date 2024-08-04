@@ -399,6 +399,8 @@ internal class TaskActivationRecordProcessContext
                 case TaskExecutionStatus.Cancelled:
                     taskExecutionInstance.ExecutionEndTimeUtc = DateTime.UtcNow;
                     break;
+                case TaskExecutionStatus.PenddingCancel:
+                    break;
             }
 
             if (report.Status == TaskExecutionStatus.PenddingCancel)

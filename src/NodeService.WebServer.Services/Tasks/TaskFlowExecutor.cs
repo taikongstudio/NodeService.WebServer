@@ -416,6 +416,10 @@ CancellationToken cancellationToken = default)
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Running;
                 }
+                else if (taskFlowExecutionInstance.Value.TaskStages.Any(x => x.Status == TaskFlowExecutionStatus.Fault))
+                {
+                    taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Fault;
+                }
                 taskFlowExecutionInstance.ModifiedDateTime = DateTime.UtcNow;
 
             }
@@ -476,6 +480,10 @@ CancellationToken cancellationToken = default)
                     taskFlowStageExecutionInstance.Status = TaskFlowExecutionStatus.Running;
                     taskFlowStageExecutionInstance.CreationDateTime = DateTime.UtcNow;
                 }
+            }
+            else if (taskFlowStageExecutionInstance.TaskGroups.Any(x => x.Status == TaskFlowExecutionStatus.Fault))
+            {
+                taskFlowStageExecutionInstance.Status = TaskFlowExecutionStatus.Fault;
             }
         }
 
@@ -565,7 +573,14 @@ CancellationToken cancellationToken = default)
             }
             else if (taskFlowGroupExecutionInstance.Tasks.Any(x => x.Status != TaskExecutionStatus.Finished))
             {
-                taskFlowGroupExecutionInstance.Status = TaskFlowExecutionStatus.Running;
+                if (taskFlowGroupExecutionInstance.Tasks.Any(x => x.Status == TaskExecutionStatus.Cancelled || x.Status == TaskExecutionStatus.Failed || x.Status == TaskExecutionStatus.PenddingTimeout))
+                {
+                    taskFlowGroupExecutionInstance.Status = TaskFlowExecutionStatus.Fault;
+                }
+                else
+                {
+                    taskFlowGroupExecutionInstance.Status = TaskFlowExecutionStatus.Running;
+                }
             }
         }
 

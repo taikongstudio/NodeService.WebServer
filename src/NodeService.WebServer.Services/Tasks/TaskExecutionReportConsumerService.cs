@@ -329,7 +329,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 {
                     return;
                 }
-                await _taskExecutionReportBatchQueue.SendAsync(new TaskExecutionReportMessage()
+                _taskExecutionReportBatchQueue.Post(new TaskExecutionReportMessage()
                 {
                     NodeSessionId = new Infrastructure.NodeSessions.NodeSessionId(taskExecutionInstance.NodeInfoId),
                     Message = new TaskExecutionReport()
@@ -475,6 +475,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 }
 
                 await ProcessTaskExecutionInstanceListAsync(taskExeuctionInstances, cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 if (listQueryResult.Items.Count() < pageSize)
                 {
                     break;
@@ -516,6 +517,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         foreach (var taskExecutionInstanceGroup in taskExecutionInstances.GroupBy(static x => x.FireInstanceId))
         {
+            await Task.Delay(TimeSpan.FromMilliseconds(1000), cancellationToken);
             var taskFireInstanceId = taskExecutionInstanceGroup.Key;
             if (taskFireInstanceId == null) continue;
             var taskActiveRecord = await QueryTaskActiveRecordAsync(taskFireInstanceId, cancellationToken);

@@ -181,9 +181,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
                     _webServerCounter.TaskExecutionReportQueueCount.Value = _taskExecutionReportBatchQueue.AvailableCount;
 
-
-                    var reports = consumeResults.Select(x => JsonSerializer.Deserialize<TaskExecutionReport>(x.Message.Value)!)
-                                                .ToImmutableArray();
+                    var reports = consumeResults.Select(static x => JsonSerializer.Deserialize<TaskExecutionReport>(x.Message.Value)!).ToImmutableArray();
 
                     reports = [.. reports.Distinct().OrderBy(static x => x.Id).ThenBy(static x => x.Status)];
 

@@ -72,6 +72,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                                 Key = kafkaDelayMessage.Type,
                                 Value = JsonSerializer.Serialize(kafkaDelayMessage)
                             }, cancellationToken);
+
                             if (result.Status == PersistenceStatus.Persisted)
                             {
                                 await _delayMessageQueue.DeuqueAsync(cancellationToken);
@@ -81,37 +82,26 @@ namespace NodeService.WebServer.Services.TaskSchedule
                         var consumeResults = await ConsumeAsync(consumer, 10000, TimeSpan.FromSeconds(3));
                         if (!consumeResults.IsDefaultOrEmpty)
                         {
-                            foreach (var result in consumeResults)
+                            var consumeContexts = consumeResults.Select(x => new KafkaDelayMessageConsumeContext()
                             {
-                                var delayMessage = JsonSerializer.Deserialize<KafkaDelayMessage>(result.Message.Value);
-                                if (delayMessage is null)
+                                Result = x,
+                                Producer = producer
+                            }).ToImmutableArray();
+
+                            if (Debugger.IsAttached)
+                            {
+                                foreach (var consumeContext in consumeContexts)
                                 {
-                                    continue;
+                                    await ProcessConsumeContextAsync(consumeContext, cancellationToken);
                                 }
-                                else if (delayMessage.Duration > TimeSpan.Zero)
+                            }
+                            else
+                            {
+                                await Parallel.ForEachAsync(consumeContexts, new ParallelOptions()
                                 {
-                                    if (DateTime.UtcNow > delayMessage.CreateDateTime + delayMessage.Duration)
-                                    {
-                                        delayMessage.CreateDateTime = DateTime.UtcNow;
-                                        await _delayMessageBroadcast.BroadcastAsync(delayMessage, cancellationToken);
-                                        if (delayMessage.Handled)
-                                        {
-                                            continue;
-                                        }
-                                        if (DateTime.UtcNow < delayMessage.ScheduleDateTime)
-                                        {
-                                            await producer.ProduceAsync(_kafkaOptions.TaskDelayQueueMessageTopic, result.Message, cancellationToken);
-                                        }
-                                    }
-                                }
-                                else if (DateTime.UtcNow > delayMessage.ScheduleDateTime)
-                                {
-                                    await _delayMessageBroadcast.BroadcastAsync(delayMessage, cancellationToken);
-                                }
-                                else
-                                {
-                                    await producer.ProduceAsync(_kafkaOptions.TaskDelayQueueMessageTopic, result.Message, cancellationToken);
-                                }
+                                    CancellationToken = cancellationToken,
+                                    MaxDegreeOfParallelism = 4
+                                }, ProcessConsumeContextAsync);
                             }
 
                             consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
@@ -133,6 +123,80 @@ namespace NodeService.WebServer.Services.TaskSchedule
 
         }
 
+        async ValueTask ProcessConsumeContextAsync(
+            KafkaDelayMessageConsumeContext consumeContext,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                bool produceMessage = false;
+                var result = consumeContext.Result;
+                var delayMessage = JsonSerializer.Deserialize<KafkaDelayMessage>(result.Message.Value);
+                if (delayMessage is null)
+                {
+                    return;
+                }
+                else if (delayMessage.Duration > TimeSpan.Zero)
+                {
+                    if (DateTime.UtcNow > delayMessage.CreateDateTime + delayMessage.Duration)
+                    {
+                        delayMessage.CreateDateTime = DateTime.UtcNow;
+                        await _delayMessageBroadcast.BroadcastAsync(
+                            delayMessage,
+                            cancellationToken);
+                        if (delayMessage.Handled)
+                        {
+                            return;
+                        }
+                        if (DateTime.UtcNow < delayMessage.ScheduleDateTime)
+                        {
+                            produceMessage = true;
+                        }
+                    }
+                }
+                else if (DateTime.UtcNow > delayMessage.ScheduleDateTime)
+                {
+                    await _delayMessageBroadcast.BroadcastAsync(
+                        delayMessage,
+                        cancellationToken);
+                }
+                else
+                {
+                    produceMessage = true;
+                }
+                if (produceMessage)
+                {
+                LRetry:
+                    try
+                    {
+                        await consumeContext.Producer.ProduceAsync(
+                            _kafkaOptions.TaskDelayQueueMessageTopic,
+                            result.Message,
+                            cancellationToken);
+                    }
+                    catch (ProduceException<string, string> ex)
+                    {
+                        _exceptionCounter.AddOrUpdate(ex);
+                        _logger.LogError(ex.ToString());
+                        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                        goto LRetry;
+                    }
+                    catch (Exception ex)
+                    {
+                        _exceptionCounter.AddOrUpdate(ex);
+                        _logger.LogError(ex.ToString());
+                    }
+
+                }
+            }
+
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+
+        }
 
         Task<ImmutableArray<ConsumeResult<string, string>>> ConsumeAsync(IConsumer<string, string> consumer, int count, TimeSpan timeout)
         {

@@ -298,7 +298,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     nodeInfo.Profile.FoundInLims = true;
                     nodeInfo.Profile.LabArea = computerInfo.LabArea?.name;
                     nodeInfo.Profile.LabName = computerInfo.LabInfo?.name;
-                    nodeInfo.Profile.Manager = computerInfo.charge_name;
+                    nodeInfo.Profile.Manager = computerInfo.manager_name;
                 }
 
 

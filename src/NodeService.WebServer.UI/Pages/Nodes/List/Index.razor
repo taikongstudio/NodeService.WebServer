@@ -53,11 +53,11 @@
                 </AntDesign.Col>
                 <AntDesign.Col Span="24">
                     <Text>实验室区域</Text>
-                    <Input @bind-Value="@_editingNodeInfoModel.LabArea" Placeholder="请输入实验室区域" TValue="string"/>
+                    <Input Disabled @bind-Value="@_editingNodeInfoModel.LabArea" Placeholder="请输入实验室区域" TValue="string"/>
                 </AntDesign.Col>
                 <AntDesign.Col Span="24">
                     <Text>实验室名称</Text>
-                    <Input @bind-Value="@_editingNodeInfoModel.LabName" Placeholder="请输入实验室名称" TValue="string"/>
+                        <Input Disabled @bind-Value="@_editingNodeInfoModel.LabName" Placeholder="请输入实验室名称" TValue="string" />
                 </AntDesign.Col>
             </Row>
             <br/>
@@ -291,7 +291,7 @@
                     </AntDesign.Tooltip>
 
                 </PropertyColumn>
-                <PropertyColumn Title="用途" Sortable="true" Ellipsis Width="100" Property="c => c.Profile.Usages">
+                <PropertyColumn Title="用途" Sortable="true"  Property="c => c.Profile.Usages">
                     @(string.IsNullOrEmpty(context.Profile.Usages) ? "（空）" : context.Profile.Usages)
                 </PropertyColumn>
                 <PropertyColumn Title="备注" Sortable="true" Ellipsis Width="100" Property="c => c.Profile.Remarks">

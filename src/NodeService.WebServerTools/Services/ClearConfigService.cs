@@ -27,6 +27,9 @@ internal class ClearConfigService : BackgroundService
         var dbContext = _dbContextFactory.CreateDbContext();
         var ftpUploadConfigs = await dbContext.NodeInfoDbSet.ToListAsync();
 
+        var count = dbContext.NodeUsageConfigurationDbSet.ExecuteDelete();
+                await dbContext.SaveChangesAsync();
+
         Dictionary<string, List<NodeInfoModel>> usageDict = new Dictionary<string, List<NodeInfoModel>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var item in ftpUploadConfigs)
@@ -35,13 +38,23 @@ internal class ClearConfigService : BackgroundService
             {
                 continue;
             }
+            string factoryCode = "BL";
+            if (item.Profile.IpAddress.StartsWith("172."))
+            {
+                factoryCode = "GM";
+            }
+            else if (item.Profile.IpAddress.StartsWith("10."))
+            {
+                factoryCode = "BL";
+            }
             var uages = item.Profile.Usages.Split(",", StringSplitOptions.RemoveEmptyEntries);
             foreach (var usage in uages)
             {
-                if (!usageDict.TryGetValue(usage,out var list))
+                var key = $"{factoryCode}-{usage}";
+                if (!usageDict.TryGetValue(key, out var list))
                 {
                     list = new List<NodeInfoModel>();
-                    usageDict.Add(usage, list);
+                    usageDict.Add(key, list);
                 }
                 list.Add(item);
             }
@@ -55,6 +68,7 @@ internal class ClearConfigService : BackgroundService
                 Name = item.Key,
                 CreationDateTime = DateTime.UtcNow,
                 ModifiedDateTime = DateTime.UtcNow,
+                FactoryName = item.Key.Split("-")[0]
             };
             nodeUsageConfigurationModel.Value.Nodes.AddRange(item.Value.Select(x => new NodeUsageInfo()
             {
@@ -64,6 +78,6 @@ internal class ClearConfigService : BackgroundService
             dbContext.NodeUsageConfigurationDbSet.Add(nodeUsageConfigurationModel);
         }
 
-        var count = await dbContext.SaveChangesAsync();
+        var count1 = await dbContext.SaveChangesAsync();
     }
 }

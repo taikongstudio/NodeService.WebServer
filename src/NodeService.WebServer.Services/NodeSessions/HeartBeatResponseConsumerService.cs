@@ -593,6 +593,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     {
                         continue;
                     }
+                    if (nodeUsageConfiguration.FactoryName != AreaTags.Any && nodeUsageConfiguration.FactoryName != nodeInfo.Profile.FactoryName)
+                    {
+                        continue;
+                    }
                     var detectedCount = 0;
                     foreach (var serviceProcessInfo in serviceProcessInfoList)
                     {

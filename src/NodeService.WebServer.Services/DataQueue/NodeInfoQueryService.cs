@@ -66,7 +66,7 @@ namespace NodeService.WebServer.Services.DataQueue
                 }
                 else
                 {
-                    result = await dbContext.dl_equipment_ctrl_computer.FindAsync(new object[] { limsDataId }, cancellationToken);
+                    result = await dbContext.dl_equipment_ctrl_computer.FindAsync([limsDataId], cancellationToken);
                 }
 
                 if (result != null)

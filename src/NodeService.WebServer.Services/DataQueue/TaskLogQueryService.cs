@@ -330,15 +330,15 @@ public class TaskLogQueryService
 
     async ValueTask<TaskLogModel?> GetTaskInfoLogAsync(string taskExecutionInstanceId, CancellationToken cancellationToken = default)
     {
-        await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync();
+        await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
         var taskInfoLog = await taskLogRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
         return taskInfoLog;
     }
 
-    async ValueTask<TaskExecutionInstanceModel?> GetTaskExecutionInstanceAsync(string taskId, CancellationToken cancellationToken = default)
+    async ValueTask<TaskExecutionInstanceModel?> GetTaskExecutionInstanceAsync(string taskExecutionInstanceId, CancellationToken cancellationToken = default)
     {
         await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
-        var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskId, cancellationToken);
+        var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
         return taskExecutionInstance;
     }
 }

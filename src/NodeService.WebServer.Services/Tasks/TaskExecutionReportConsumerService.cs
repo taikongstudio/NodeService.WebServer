@@ -22,8 +22,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly TaskFlowExecutor _taskFlowExecutor;
     readonly ConfigurationQueryService _configurationQueryService;
     readonly ITaskPenddingContextManager _taskPenddingContextManager;
-    private readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
-    private readonly IDelayMessageBroadcast _delayMessageBroadcast;
+    readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
+    readonly IDelayMessageBroadcast _delayMessageBroadcast;
     readonly ILogger<TaskExecutionReportConsumerService> _logger;
     readonly IMemoryCache _memoryCache;
 
@@ -267,7 +267,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     static string? GetTaskId(TaskExecutionReport report)
     {
         if (report == null) return null;
-        if (report.Properties.TryGetValue("TaskId", out var id)) return id;
         return report.Id;
     }
 
@@ -288,7 +287,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
             var taskActivateRecordProcessContexts = processContexts.GroupBy(static x => x.Instance.FireInstanceId)
             .Where(static x => x.Key != null)
-            .Select(x => CreateProcessContext(x.Key, x)).ToImmutableArray();
+            .Select(x => CreateProcessContext(x.Key!, x)).ToImmutableArray();
             if (Debugger.IsAttached)
             {
                 foreach (var context in taskActivateRecordProcessContexts)
@@ -322,8 +321,8 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         ImmutableArray<TaskExecutionReport> array,
         CancellationToken cancellationToken)
     {
-        var taskExecutionInstanceIdList = FilterNull(array.Select(GetTaskId).Distinct()).ToArray();
-        var taskExecutionInstanceIdFilters = DataFilterCollection<string>.Includes(taskExecutionInstanceIdList);
+        var taskExecutionInstanceIdList = array.Select(GetTaskId).Distinct().ToArray();
+        var taskExecutionInstanceIdFilters = DataFilterCollection<string>.Includes(taskExecutionInstanceIdList!);
         var taskExecutionInstanceList = await GetTaskExeuctionInstanceListAsync(taskExecutionInstanceIdFilters, cancellationToken);
 
         var builder = ImmutableArray.CreateBuilder<TaskExecutionInstanceProcessContext>(taskExecutionInstanceIdList.Length);
@@ -377,28 +376,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
         return list;
     }
-
-
-    static IEnumerable<string> FilterNull(IEnumerable<string?> taskIdList)
-    {
-        if (taskIdList==null)
-        {
-            yield break;
-        }
-        foreach (var item in taskIdList)
-        {
-            if (item == null)
-            {
-                continue;
-            }
-            yield return item;
-        }
-        yield break;
-    }
-
-
-
-
 
 
     async ValueTask ProcessExcutionTimeLimitAsync(

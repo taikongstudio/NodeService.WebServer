@@ -525,6 +525,7 @@ CancellationToken cancellationToken = default)
                     }
                     taskFlowExecutionInstance.Value = taskFlowExecutionInstance.Value with { };
                     await this.ExecuteTaskFlowAsync(taskFlowExecutionInstance, cancellationToken);
+                    taskFlowExecutionInstance.ModifiedDateTime = DateTime.UtcNow;
                     await taskFlowRepo.UpdateAsync(taskFlowExecutionInstance, cancellationToken);
                 }
                 catch (Exception ex)

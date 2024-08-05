@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data;
 using System;
 using System.Collections.Generic;
@@ -24,11 +25,43 @@ internal class ClearConfigService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         var dbContext = _dbContextFactory.CreateDbContext();
-        var ftpUploadConfigs = await dbContext.TaskFlowTemplateDbSet.ToListAsync();
+        var ftpUploadConfigs = await dbContext.NodeInfoDbSet.ToListAsync();
+
+        Dictionary<string, List<NodeInfoModel>> usageDict = new Dictionary<string, List<NodeInfoModel>>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var item in ftpUploadConfigs)
         {
-            item.Value.TaskStages[0].TaskGroups[0].Tasks[0].TriggerType = Infrastructure.DataModels.TaskTriggerType.Manual;
-            dbContext.Update(item);
+            if (item.Profile.Usages == null)
+            {
+                continue;
+            }
+            var uages = item.Profile.Usages.Split(",", StringSplitOptions.RemoveEmptyEntries);
+            foreach (var usage in uages)
+            {
+                if (!usageDict.TryGetValue(usage,out var list))
+                {
+                    list = new List<NodeInfoModel>();
+                    usageDict.Add(usage, list);
+                }
+                list.Add(item);
+            }
+        }
+
+        foreach (var item in usageDict)
+        {
+            NodeUsageConfigurationModel nodeUsageConfigurationModel = new NodeUsageConfigurationModel()
+            {
+                Id = Guid.NewGuid().ToString(),
+                Name = item.Key,
+                CreationDateTime = DateTime.UtcNow,
+                ModifiedDateTime = DateTime.UtcNow,
+            };
+            nodeUsageConfigurationModel.Value.Nodes.AddRange(item.Value.Select(x => new NodeUsageInfo()
+            {
+                Name = x.Name,
+                NodeInfoId = x.Id
+            }));
+            dbContext.NodeUsageConfigurationDbSet.Add(nodeUsageConfigurationModel);
         }
 
         var count = await dbContext.SaveChangesAsync();

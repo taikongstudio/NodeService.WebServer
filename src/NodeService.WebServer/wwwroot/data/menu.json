@@ -30,7 +30,7 @@
     "children": [
       {
         "path": "/Nodes/List",
-        "name": "节点列表",
+        "name": "列表",
         "key": "Nodes.List"
       },
       {
@@ -47,6 +47,11 @@
         "path": "/Nodes/Settings",
         "name": "节点设置",
         "key": "Nodes.Settings"
+      },
+      {
+        "path": "/CommonConfig/NodeUsages",
+        "name": "用途管理",
+        "key": "CommonConfig.NodeUsages"
       }
     ]
   },

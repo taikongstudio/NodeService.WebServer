@@ -439,5 +439,23 @@ public partial class ApplicationDbContext
                     ownedNavigationBuilder.ToJson();
                 });
         });
+
+        modelBuilder.Entity<NodeUsageConfigurationModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder.Property(x => x.Nodes)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<NodeUsageInfo>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<NodeUsageInfo>());
+                    ownedNavigationBuilder.Property(x => x.ServiceProcessDetections)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<NodeUsageServiceProcessDetectionEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<NodeUsageServiceProcessDetectionEntry>());
+                });
+        });
     }
 }

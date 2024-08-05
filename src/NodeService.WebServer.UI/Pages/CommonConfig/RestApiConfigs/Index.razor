@@ -75,7 +75,11 @@
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
-            <PropertyColumn Title="标志" Ellipsis Sortable Property="c => c.Id"></PropertyColumn>
+            <PropertyColumn Title="标志" Sortable="true" Width="100" Property="c => c.Id">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
+                </Text>
+            </PropertyColumn>
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="描述" Property="c => c.Description"></PropertyColumn>
             <PropertyColumn Title="请求路径" Sortable="true" Property="c => c.RequestUri"></PropertyColumn>

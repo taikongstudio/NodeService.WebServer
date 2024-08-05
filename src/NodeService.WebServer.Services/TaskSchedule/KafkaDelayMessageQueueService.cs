@@ -159,6 +159,10 @@ namespace NodeService.WebServer.Services.TaskSchedule
                     await _delayMessageBroadcast.BroadcastAsync(
                         delayMessage,
                         cancellationToken);
+                    if (delayMessage.Handled)
+                    {
+                        return;
+                    }
                 }
                 else
                 {

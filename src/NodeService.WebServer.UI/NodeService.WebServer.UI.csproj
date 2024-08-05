@@ -63,6 +63,9 @@
         <Content Update="Layouts\TaskDiagramLayout.razor">
           <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
         </Content>
+        <Content Update="Pages\CommonConfig\NodeUsageConfigs\Index.razor">
+          <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+        </Content>
         <Content Update="Pages\Notifications\Components\DataQualityCheck.razor">
             <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
         </Content>

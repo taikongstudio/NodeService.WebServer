@@ -317,5 +317,13 @@ public partial class ApplicationDbContext
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<NodeFileInfo>(v, (JsonSerializerOptions)null));
         });
+
+        modelBuilder.Entity<NodeUsageConfigurationModel>(builder =>
+        {
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<NodeUsageConfiguration>(v, (JsonSerializerOptions)null));
+        });
     }
 }

@@ -110,7 +110,10 @@ public partial class ConfigurationController : Controller
         var rsp = new ApiResponse();
         try
         {
-            var result = await _configurationQueryService.AddOrUpdateConfigurationAsync<T>(model, cancellationToken);
+            var result = await _configurationQueryService.AddOrUpdateConfigurationAsync<T>(
+                model,
+                false,
+                cancellationToken);
             if (changesFunc != null)
             {
                 await changesFunc.Invoke(result, cancellationToken);
@@ -120,6 +123,8 @@ public partial class ConfigurationController : Controller
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.ToString();
         }
         return rsp;
 

@@ -1,0 +1,223 @@
+﻿@if (IsEditable)
+{
+    <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Plus" OnClick="AddNewItem" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+    <Button Shape="@ButtonShape.Circle" Danger Icon="@IconType.Outline.Delete" OnClick="RemoveSelectedItems" Type="primary" Style="margin-top:4px;margin-left:4px;margin-bottom:4px;">
+    </Button>
+}
+
+<Table
+    Context="mappingEntry"
+    TItem="NodeUsageServiceProcessDetectionEntry"
+    DataSource="@ItemsSource"
+    Size="TableSize.Small"
+    Resizable
+    SelectedRows="SelectedItems"
+    SelectedRowsChanged="@OnSelectedItemsChanged"
+    RowKey="x => x.Id">
+    <Selection Key="@mappingEntry.Id" Type="checkbox"/>
+    <PropertyColumn Hidden="@IsDetectionTypeHidden" Width="200" Title="@DetectionTypeTitle" Property="c => c.DetectionType" Sortable>
+        @if (mappingEntry.IsEditing && IsDetectionTypeEditable)
+        {
+            if (DetectionTypeList != null && DetectionTypeList.Any())
+            {
+                <Select DataSource="@DetectionTypeList"
+                        @bind-Value="@mappingEntry.DetectionType"
+                        TItem="EnumModel<NodeUsageServiceProcessDetectionType>"
+                        AutoFocus
+                        TItemValue="NodeUsageServiceProcessDetectionType"
+                        LabelName="@nameof(EnumModel<NodeUsageServiceProcessDetectionType>.Name)"
+                        ValueName="@nameof(EnumModel<NodeUsageServiceProcessDetectionType>.Value)"/>
+            }
+        }
+        else
+        {
+            <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@(FindDetectionTypeName(mappingEntry.DetectionType))</div>
+        }
+    </PropertyColumn>
+    <PropertyColumn Hidden="@IsValueHidden" Title="@ValueTitle" Property="c => c.Value" Sortable>
+        @if (mappingEntry.IsEditing && IsValueEditable)
+        {
+            <AntDesign.Input Value="@mappingEntry.Value" OnChange="(string value) => OnValueChanged(mappingEntry, value)" />
+        }
+        else
+        {
+        <div class="editable-cell-value-wrap" @onclick="() => mappingEntry.BeginEdit()" style="padding-right:24px">@($"{mappingEntry.Value}")</div>
+           
+        }
+    </PropertyColumn>
+
+    @if (IsEditable)
+    {
+        <ActionColumn Fixed="right" Width="100" Title="操作">
+            <Space>
+                @if (IsDetectionTypeEditable || IsValueEditable)
+                {
+                    @if (mappingEntry.IsEditing)
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Save" OnClick="() => mappingEntry.EndEdit()"></Button>
+                        </SpaceItem>
+                    }
+                    else
+                    {
+                        <SpaceItem>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Edit" OnClick="() => mappingEntry.BeginEdit()"></Button>
+                        </SpaceItem>
+                    }
+                }
+
+                <SpaceItem>
+                    <Button Shape="@ButtonShape.Circle" Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Delete" OnClick="() => RemoveSelectedItem(mappingEntry)"></Button>
+                </SpaceItem>
+
+            </Space>
+        </ActionColumn>
+    }
+
+</Table>
+
+
+@code {
+
+    [Parameter] public IList<NodeUsageServiceProcessDetectionEntry> ItemsSource { get; set; }
+
+
+    public IEnumerable<NodeUsageServiceProcessDetectionEntry> SelectedItems { get; set; } = [];
+
+
+    [Parameter] public EventCallback<IEnumerable<NodeUsageServiceProcessDetectionEntry>> SelectedItemsChanged { get; set; }
+
+    [Parameter] public EventCallback<AddingNewItemEventArgs<NodeUsageServiceProcessDetectionEntry>> AddingNewItem { get; set; }
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<NodeUsageServiceProcessDetectionEntry, string>> ValueChanged { get; set; }
+
+
+    [Parameter] public EventCallback<ValueChangedEventArgs<NodeUsageServiceProcessDetectionEntry, NodeUsageServiceProcessDetectionType>> DetectionTypeChanged { get; set; }
+
+    [Parameter] public string DetectionTypeTitle { get; set; } = "检测类型";
+
+    [Parameter] public string ValueTitle { get; set; } = "值";
+
+
+    [Parameter] public bool IsDetectionTypeEditable { get; set; } = true;
+
+
+    [Parameter] public bool IsValueEditable { get; set; } = true;
+
+    [Parameter] public bool IsDetectionTypeHidden { get; set; } = false;
+
+    [Parameter] public bool IsValueHidden { get; set; } = false;
+
+    [Parameter] public bool IsEditable { get; set; } = true;
+
+    [Parameter] public IEnumerable<EnumModel<NodeUsageServiceProcessDetectionType>> DetectionTypeList { get; set; } = [];
+
+
+    [Parameter] public IEnumerable<NodeUsageServiceProcessDetectionEntry> ValueList { get; set; } = [];
+
+    void RemoveSelectedItem(NodeUsageServiceProcessDetectionEntry value)
+    {
+        ItemsSource.Remove(value);
+    }
+
+    protected override Task OnParametersSetAsync()
+    {
+        if (!IsEditable)
+        {
+            IsDetectionTypeEditable = false;
+            IsValueEditable = false;
+        }
+
+        return base.OnParametersSetAsync();
+    }
+
+    protected override void OnInitialized()
+    {
+        DetectionTypeList =
+        [
+            new EnumModel<NodeUsageServiceProcessDetectionType>()
+            {
+                Name = "进程文件名称",
+                Value = NodeUsageServiceProcessDetectionType.FileName
+            },
+            new EnumModel<NodeUsageServiceProcessDetectionType>()
+            {
+                Name = "进程名称",
+                Value = NodeUsageServiceProcessDetectionType.ProcessName
+            },
+            new EnumModel<NodeUsageServiceProcessDetectionType>()
+            {
+                Name = "服务名称",
+                Value = NodeUsageServiceProcessDetectionType.ServiceName
+            },
+        ];
+        base.OnInitialized();
+    }
+
+    private string FindDetectionTypeName(NodeUsageServiceProcessDetectionType type)
+    {
+        return DetectionTypeList.FirstOrDefault(x => x.Value == type)?.Name ?? type.ToString();
+    }
+
+    async Task OnSelectedItemsChanged(IEnumerable<NodeUsageServiceProcessDetectionEntry> items)
+    {
+        SelectedItems = items;
+        await SelectedItemsChanged.InvokeAsync(items);
+    }
+
+    public void RemoveSelectedItems()
+    {
+        foreach (var item in SelectedItems)
+        {
+            ItemsSource.Remove(item);
+        }
+
+        SelectedItems = [];
+    }
+
+    async Task AddNewItem()
+    {
+        var entry = new NodeUsageServiceProcessDetectionEntry();
+        var e = new AddingNewItemEventArgs<NodeUsageServiceProcessDetectionEntry>(entry);
+        await AddingNewItem.InvokeAsync(e);
+        if (e.Handled)
+        {
+            return;
+        }
+
+        ItemsSource.Add(entry);
+        entry.BeginEdit();
+    }
+
+
+    async Task OnValueChanged(NodeUsageServiceProcessDetectionEntry detectionEntry, string value)
+    {
+        var e = new ValueChangedEventArgs<NodeUsageServiceProcessDetectionEntry, string>(detectionEntry, value);
+        if (ValueChanged.HasDelegate)
+        {
+            await ValueChanged.InvokeAsync(e);
+        }
+
+        if (!e.Handled)
+        {
+            detectionEntry.Value = value;
+        }
+    }
+
+    async Task OnDetectionTypeChanged(NodeUsageServiceProcessDetectionEntry detectionEntry, NodeUsageServiceProcessDetectionType value)
+    {
+        var e = new ValueChangedEventArgs<NodeUsageServiceProcessDetectionEntry, NodeUsageServiceProcessDetectionType>(detectionEntry, value);
+        if (DetectionTypeChanged.HasDelegate)
+        {
+            await DetectionTypeChanged.InvokeAsync(e);
+        }
+
+        if (!e.Handled)
+        {
+            detectionEntry.DetectionType = value;
+        }
+    }
+
+
+}

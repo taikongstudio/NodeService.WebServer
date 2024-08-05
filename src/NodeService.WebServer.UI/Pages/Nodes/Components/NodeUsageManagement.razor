@@ -1,0 +1,83 @@
+﻿
+<div>
+    <Text>用途：</Text>
+    @foreach (var item in usageTags)
+    {
+        <Tag @key="item" Closable OnClick="()=>OnUsageClick(item)" OnClose="()=>OnRemoveAsync(item)">@item</Tag>
+    }
+    @if (inputVisible)
+    {
+        <Input @ref="_inputRef" Style="width: 78px" Size="small" @bind-Value="_inputValue" OnBlur="HandleInputConfirm" OnPressEnter="HandleInputConfirm" AutoFocus />
+    }
+    else
+    {
+        <Tag Class="site-tag-plus" OnClick="@(() => inputVisible = !inputVisible)">
+            <Icon Type="plus" />增加新用途
+        </Tag>
+    }
+</div>
+
+<NodeSelector Mode="SelectionMode.Multiple" SelectedItems="@_currentTagSelectedNodes" SelectedItemsChanged="@OnTagSelectedNodesChanged" />
+
+@code {
+    private bool inputVisible { get; set; } = false;
+    string _inputValue;
+    Input<string> _inputRef;
+    List<string> usageTags { get; set; } = new List<string>();
+
+    IEnumerable<NodeInfoModel> _currentTagSelectedNodes;
+
+    protected override Task OnInitializedAsync()
+    {
+
+        return base.OnInitializedAsync();
+    }
+
+    void ValueChange(ChangeEventArgs value)
+    {
+        if (value.Value is null)
+        {
+            return;
+        }
+        usageTags.Add(value.Value.ToString());
+    }
+
+    async Task OnRemoveAsync(string item)
+    {
+        usageTags.Remove(item);
+    }
+
+    async Task HandleInputConfirm()
+    {
+        if (string.IsNullOrEmpty(_inputValue))
+        {
+            CancelInput();
+            return;
+        }
+
+        string res = usageTags.Find(s => s == _inputValue);
+
+        if (string.IsNullOrEmpty(res))
+        {
+            usageTags.Add(_inputValue);
+        }
+
+        CancelInput();
+    }
+
+    void CancelInput()
+    {
+        this._inputValue = "";
+        this.inputVisible = false;
+    }
+
+    async Task OnUsageClick(string item)
+    {
+
+    }
+
+    async Task OnTagSelectedNodesChanged(IEnumerable<NodeInfoModel> nodes)
+    {
+        
+    }
+}

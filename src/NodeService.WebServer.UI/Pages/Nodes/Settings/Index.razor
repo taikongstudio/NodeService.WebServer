@@ -1,5 +1,6 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Nodes.Settings
 @page "/Nodes/Settings"
+@using NodeService.WebServer.UI.Pages.Nodes.Components
 @inject ApiService ApiService;
 @inject IMessageService _message
 @inject NotificationService _notice
@@ -47,6 +48,9 @@
                 ValueTitle="进程名称"
                 IsValueHidden
                 ItemsSource="@_nodeSettings.NodeStatusChangeRememberProcessList" />
+        </TabPane>
+        <TabPane Tab="用途管理" Key="6">
+            <NodeUsageManagement/>
         </TabPane>
     </Tabs>
 

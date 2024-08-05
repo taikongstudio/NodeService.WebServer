@@ -174,6 +174,7 @@ public class ConfigurationQueryService
 
     public async ValueTask<ConfigurationSaveChangesResult> AddOrUpdateConfigurationAsync<T>(
         T entity,
+        bool updateConfigurationRecord = false,
         CancellationToken cancellationToken = default)
                 where T : JsonRecordBase
     {
@@ -205,10 +206,21 @@ public class ConfigurationQueryService
             }
             if (changesCount > 0)
             {
-                await AddConfigurationVersionRecordAsync(
-                    entityFromDb,
-                    configurationRepo.DbContext,
-                    cancellationToken);
+                if (updateConfigurationRecord)
+                {
+                    await UpdateConfigurationVersionRecordAsync(
+                        entityFromDb,
+                        configurationRepo.DbContext,
+                        cancellationToken);
+                }
+                else
+                {
+                    await AddConfigurationVersionRecordAsync(
+                        entityFromDb,
+                        configurationRepo.DbContext,
+                        cancellationToken);
+                }
+
                 await _objectCache.SetEntityAsync(entityFromDb, cancellationToken);
             }
         }, cancellationToken);
@@ -260,6 +272,28 @@ public class ConfigurationQueryService
             Value = new ConfigurationVersionRecord() { FullName = typeof(T).FullName, Json = json }
         };
         await configurationRepo.AddAsync(configVersion, cancellationToken);
+    }
+
+    async ValueTask UpdateConfigurationVersionRecordAsync<T>(
+    T entity,
+    DbContext dbContext,
+    CancellationToken cancellationToken = default) where T : JsonRecordBase
+    {
+        var configurationRepo = new EFRepository<ConfigurationVersionRecordModel, DbContext>(dbContext);
+
+        var configurationVersion = await configurationRepo.DbContext.Set<ConfigurationVersionRecordModel>()
+            .Where(x => x.ConfigurationId == entity.Id && x.IsCurrent)
+            .FirstOrDefaultAsync(cancellationToken: cancellationToken);
+
+        if (configurationVersion == null)
+        {
+            return;
+        }
+
+        var json = JsonSerializer.Serialize(entity.JsonClone<T>());
+        configurationVersion.Value.Json = json;
+        configurationRepo.DbContext.Set<ConfigurationVersionRecordModel>().Update(configurationVersion);
+        await configurationRepo.SaveChangesAsync(cancellationToken);
     }
 
     public async ValueTask<ConfigurationSaveChangesResult> DeleteConfigurationAsync<T>(

@@ -66,6 +66,7 @@ namespace NodeService.WebServer.Services.Tasks
                 case SubType_ExecutionTimeLimit:
                     {
                         await ProcessTaskFlowExecutionTimeLimitReachedAsync(kafkaDelayMessage.Id, cancellationToken);
+                        kafkaDelayMessage.Handled = true;
                     }
                     break;
                 case SubTyoe_TaskFlowStageExecutionTimeLimit:
@@ -74,6 +75,7 @@ namespace NodeService.WebServer.Services.Tasks
                         await ProcessTaskFlowStageExecutionTimeLimitReachedAsync(
                             new TaskFlowExecutionTimeLimitParameters(kafkaDelayMessage.Id, stageId),
                             cancellationToken);
+                        kafkaDelayMessage.Handled = true;
                     }
                     break;
                 default:
@@ -379,18 +381,19 @@ CancellationToken cancellationToken = default)
                 {
                     return;
                 }
+                var currentStageIndex = taskFlowExecutionInstance.Value.CurrentStageIndex;
                 do
                 {
-                    var taskFlowStageExecutionInstance = taskFlowExecutionInstance.TaskStages.ElementAtOrDefault(taskFlowExecutionInstance.Value.CurrentStageIndex);
+                    var taskFlowStageExecutionInstance = taskFlowExecutionInstance.TaskStages.ElementAtOrDefault(currentStageIndex);
                     if (taskFlowStageExecutionInstance == null)
                     {
-                        taskFlowExecutionInstance.Value.CurrentStageIndex = taskFlowExecutionInstance.TaskStages.Count - 1;
+                        currentStageIndex = taskFlowExecutionInstance.TaskStages.Count - 1;
                         break;
                     }
                     var taskStageTemplate = taskFlowTemplate.Value.TaskStages.FirstOrDefault(x => x.Id == taskFlowStageExecutionInstance.TaskFlowStageTemplateId);
                     if (taskFlowStageExecutionInstance.IsTerminatedStatus())
                     {
-                        MoveToNextStage(taskFlowExecutionInstance);
+                        currentStageIndex++;
                         continue;
                     }
                     await ExecuteTaskStageAsync(
@@ -401,13 +404,13 @@ CancellationToken cancellationToken = default)
                     taskFlowStageExecutionInstance.RetryTasks = false;
                     if (taskFlowStageExecutionInstance.Status == TaskFlowExecutionStatus.Finished)
                     {
-                        MoveToNextStage(taskFlowExecutionInstance);
+                        currentStageIndex++;
                         continue;
                     }
                     break;
                 }
                 while (true);
-
+                taskFlowExecutionInstance.Value.CurrentStageIndex = currentStageIndex;
                 if (taskFlowExecutionInstance.TaskStages.All(x => x.Status == TaskFlowExecutionStatus.Finished))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Finished;
@@ -512,7 +515,7 @@ CancellationToken cancellationToken = default)
                     }
                     if (taskFlowExecutionInstance.Value.CurrentStageIndex < taskFlowExecutionInstance.Value.TaskStages.Count - 1)
                     {
-                        MoveToNextStage(taskFlowExecutionInstance);
+                        taskFlowExecutionInstance.Value.CurrentStageIndex++;
                     }
                     await taskFlowRepo.SaveChangesAsync(cancellationToken);
                     await this.ExecuteTaskFlowAsync(taskFlowExecutionInstance, cancellationToken);
@@ -530,11 +533,6 @@ CancellationToken cancellationToken = default)
             await _executionQueue.SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
             return Disposable.Empty;
-        }
-
-         void MoveToNextStage(TaskFlowExecutionInstanceModel taskFlowExecutionInstance)
-        {
-            taskFlowExecutionInstance.Value.CurrentStageIndex++;
         }
 
         async ValueTask ExecuteTaskGroupAsync(

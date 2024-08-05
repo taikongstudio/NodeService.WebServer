@@ -106,6 +106,8 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<NodeFileSystemInfoModel> NodeFileSystemInfoDbSetDbSet { get; set; }
 
+    public DbSet<NodeUsageConfigurationModel> NodeUsageConfigurationDbSet { get; set; }
+
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
                                     DynamicallyAccessedMemberTypes.NonPublicConstructors |

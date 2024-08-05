@@ -199,6 +199,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         {
             try
             {
+                item.Value = item.Value with { };
                 await _configurationQueryService.AddOrUpdateConfigurationAsync(
                     item,
                     true,
@@ -228,7 +229,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
         var nodeUsageConfigQueryResult = await _configurationQueryService.QueryConfigurationByQueryParametersAsync<NodeUsageConfigurationModel>(new PaginationQueryParameters()
         {
             PageIndex = 1,
-            PageSize = int.MaxValue - 1
+            PageSize = int.MaxValue - 1,
+            QueryStrategy = QueryStrategy.QueryPreferred
         }, cancellationToken);
         if (nodeUsageConfigQueryResult.HasValue)
         {
@@ -609,6 +611,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     else if (detectedCount == 0 && nodeUsageConfiguration.Value.DynamicDetect)
                     {
                         nodeUsageConfiguration.Value.Nodes.RemoveAll(x => x.NodeInfoId == nodeInfo.Id);
+                        nodeUsageConfiguration.Value.Nodes = [.. nodeUsageConfiguration.Value.Nodes];
                     }
                 }
                 analisisProcessListResult.Usages = usages;

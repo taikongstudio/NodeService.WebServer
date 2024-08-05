@@ -1,16 +1,10 @@
 ﻿using NodeService.Infrastructure.DataModels;
-using NodeService.Infrastructure.Models;
-using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.TaskSchedule;
 using OneOf;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
-using System.Threading;
 
 namespace NodeService.WebServer.Services.Tasks
 {
@@ -23,7 +17,7 @@ namespace NodeService.WebServer.Services.Tasks
         readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
         readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
         readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
-        readonly ActionBlock<AsyncOperation<Func<Task>>> _executionQueue;
+        readonly ConcurrentDictionary<int, ActionBlock<AsyncOperation<Func<Task>>>> _executionQueueDict;
         private readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
         private readonly IDelayMessageBroadcast _delayMessageBroadcast;
         private ConfigurationQueryService _configurationQueryService;
@@ -48,15 +42,27 @@ namespace NodeService.WebServer.Services.Tasks
             _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
             _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
             _taskActivationRecordRepoFactory = taskActivationRecordRepoFactory;
-            _executionQueue = new ActionBlock<AsyncOperation<Func<Task>>>(ExecutionTaskAsync, new ExecutionDataflowBlockOptions()
+            _executionQueueDict = new ConcurrentDictionary<int, ActionBlock<AsyncOperation<Func<Task>>>>();
+            for (var startIndex = '0'; startIndex < 'z'; startIndex++)
             {
-                EnsureOrdered = true,
-                MaxDegreeOfParallelism = 1
-            });
+                var key = Math.DivRem(startIndex, 10, out int result);
+                _executionQueueDict.GetOrAdd(key, new ActionBlock<AsyncOperation<Func<Task>>>(ExecutionTaskAsync, new ExecutionDataflowBlockOptions()
+                {
+                    EnsureOrdered = true,
+                    MaxDegreeOfParallelism = 1
+                }));
+            }
+
             _delayMessageQueue = delayMessageQueue;
             _delayMessageBroadcast = delayMessageBroadcast;
             _delayMessageBroadcast.AddHandler(nameof(TaskFlowExecutor), ProcessDelayMessage);
             _configurationQueryService = configurationQueryService;
+        }
+
+        ActionBlock<AsyncOperation<Func<Task>>> GetActionBlock(string id)
+        {
+            var key = Math.DivRem(id[0], 10, out int result);
+            return _executionQueueDict[key];
         }
 
         async ValueTask ProcessDelayMessage(KafkaDelayMessage kafkaDelayMessage, CancellationToken cancellationToken = default)
@@ -110,7 +116,7 @@ namespace NodeService.WebServer.Services.Tasks
                 }
 
             }, AsyncOperationKind.AddOrUpdate);
-            await _executionQueue.SendAsync(op, cancellationToken);
+            await GetActionBlock(taskFlowExecutionInstanceId).SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
         }
 
@@ -230,20 +236,20 @@ CancellationToken cancellationToken = default)
             {
                 var taskFlowExecutionInstance = await CreateTaskFlowExecutionInstance(fireTaskFlowParameters, cancellationToken);
             }, AsyncOperationKind.AddOrUpdate);
-            await _executionQueue.SendAsync(op, cancellationToken);
+            await GetActionBlock(fireTaskFlowParameters.TaskFlowTemplateId).SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
         }
 
         public async ValueTask ExecuteAsync(
-            string taskFlowInstanceId,
+            string taskFlowExecutionInstanceId,
             ImmutableArray<TaskActivationRecordModel> taskActivationRecords,
             CancellationToken cancellationToken = default)
         {
             var op = new AsyncOperation<Func<Task>>(async () =>
             {
-                await ExecuteTaskFlowAsync(taskFlowInstanceId, taskActivationRecords, cancellationToken);
+                await ExecuteTaskFlowAsync(taskFlowExecutionInstanceId, taskActivationRecords, cancellationToken);
             }, AsyncOperationKind.AddOrUpdate);
-            await _executionQueue.SendAsync(op, cancellationToken);
+            await GetActionBlock(taskFlowExecutionInstanceId).SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
         }
 
@@ -320,7 +326,7 @@ CancellationToken cancellationToken = default)
                     stageIndex,
                     cancellationToken);
             }, AsyncOperationKind.AddOrUpdate);
-            await _executionQueue.SendAsync(op, cancellationToken);
+            await GetActionBlock(taskFlowExecutionInstanceId).SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
         }
 
@@ -490,7 +496,7 @@ CancellationToken cancellationToken = default)
             }
         }
 
-        async Task<IDisposable> ProcessTaskFlowStageExecutionTimeLimitReachedAsync(
+        async ValueTask ProcessTaskFlowStageExecutionTimeLimitReachedAsync(
             TaskFlowExecutionTimeLimitParameters parameters,
             CancellationToken cancellationToken)
         {
@@ -499,7 +505,7 @@ CancellationToken cancellationToken = default)
                 try
                 {
                     await using var taskFlowRepo = await _taskFlowExecutionInstanceRepoFactory.CreateRepositoryAsync(cancellationToken);
-                    var taskFlowExecutionInstance = await taskFlowRepo.GetByIdAsync(parameters.TaskFlowInstanceId, cancellationToken);
+                    var taskFlowExecutionInstance = await taskFlowRepo.GetByIdAsync(parameters.TaskFlowExecutionInstanceId, cancellationToken);
                     if (taskFlowExecutionInstance == null)
                     {
                         return;
@@ -517,8 +523,9 @@ CancellationToken cancellationToken = default)
                     {
                         taskFlowExecutionInstance.Value.CurrentStageIndex++;
                     }
-                    await taskFlowRepo.SaveChangesAsync(cancellationToken);
+                    taskFlowExecutionInstance.Value = taskFlowExecutionInstance.Value with { };
                     await this.ExecuteTaskFlowAsync(taskFlowExecutionInstance, cancellationToken);
+                    await taskFlowRepo.UpdateAsync(taskFlowExecutionInstance, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -530,9 +537,8 @@ CancellationToken cancellationToken = default)
 
                 }
             }, AsyncOperationKind.AddOrUpdate);
-            await _executionQueue.SendAsync(op, cancellationToken);
+            await GetActionBlock(parameters.TaskFlowExecutionInstanceId).SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
-            return Disposable.Empty;
         }
 
         async ValueTask ExecuteTaskGroupAsync(

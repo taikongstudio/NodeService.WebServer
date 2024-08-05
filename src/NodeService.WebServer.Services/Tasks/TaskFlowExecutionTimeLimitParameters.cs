@@ -6,11 +6,11 @@
             string taskFlowInstanceId,
             string taskFlowStageInstanceId)
         {
-            TaskFlowInstanceId = taskFlowInstanceId;
+            TaskFlowExecutionInstanceId = taskFlowInstanceId;
             TaskFlowStageInstanceId = taskFlowStageInstanceId;
         }
 
-        public string TaskFlowInstanceId { get; set; }
+        public string TaskFlowExecutionInstanceId { get; set; }
 
         public string TaskFlowStageInstanceId { get; set; }
     }

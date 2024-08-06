@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.TaskSchedule;
 using System;
@@ -22,10 +23,14 @@ namespace NodeService.WebServer.Services.Tasks
             services.AddKeyedSingleton(nameof(TaskLogPersistenceService), new BatchQueue<AsyncOperation<TaskLogUnit[]>>(TimeSpan.FromSeconds(5), 2048));
             services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
             services.AddSingleton(new BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(TimeSpan.FromSeconds(15), 2048));
-        services.AddSingleton<TaskFlowExecutor>();
+            services.AddSingleton<TaskFlowExecutor>();
             services.AddSingleton<TaskActivationRecordExecutor>();
             services.AddSingleton<IAsyncQueue<TaskExecutionReport>, AsyncQueue<TaskExecutionReport>>();
             services.AddHostedService<TaskExecutionReportKafkaProducerService>();
+            services.AddSingleton<IAsyncQueue<TaskObservationEvent>, AsyncQueue<TaskObservationEvent>>();
+            services.AddHostedService<TaskObservationEventKafkaProducerService>();
+            services.AddSingleton<IAsyncQueue<TaskObservationEventKafkaConsumerFireEvent>, AsyncQueue<TaskObservationEventKafkaConsumerFireEvent>>();
+            services.AddHostedService<TaskObservationEventKafkaConsumerService>();
             return services;
         }
 

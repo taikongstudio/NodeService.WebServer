@@ -12,7 +12,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
     public partial class TaskScheduleService
     {
 
-        private async ValueTask ProcessNodeHealthyCheckScheduleParametersAsync(
+        private async ValueTask ProcessTaskObservationScheduleParametersAsync(
             AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult> op,
             CancellationToken cancellationToken)
         {
@@ -21,14 +21,14 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 case AsyncOperationKind.None:
                     break;
                 case AsyncOperationKind.AddOrUpdate:
-                    await ScheduleNodeHealthyCheckAsync(
-                        op.Argument.Parameters.AsT2,
+                    await ScheduleTaskObservationAsync(
+                        op.Argument.Parameters.AsT3,
                         cancellationToken);
                     break;
                 case AsyncOperationKind.Delete:
                     await DeleteAllTaskScheduleAsync(
-                        op.Argument.Parameters.AsT2.ConfigurationId,
-                        nameof(FireNodeHeathyCheckJob));
+                        op.Argument.Parameters.AsT3.ConfigurationId,
+                        nameof(FireTaskObservationJob));
                     break;
                 case AsyncOperationKind.Query:
                     break;
@@ -37,62 +37,62 @@ namespace NodeService.WebServer.Services.TaskSchedule
             }
         }
 
-        async ValueTask ScheduleNodeHealthyCheckAsync(
-            NodeHealthyCheckScheduleParameters parameters,
+        async ValueTask ScheduleTaskObservationAsync(
+            TaskObservationScheduleParameters parameters,
             CancellationToken cancellationToken)
         {
             if (parameters.ConfigurationId == null) return;
             await using var repository = await _propertyBagRepoFactory.CreateRepositoryAsync(cancellationToken);
             var propertyBag =await repository.FirstOrDefaultAsync(new PropertyBagSpecification(parameters.ConfigurationId), cancellationToken);
-            var nodeHealthyCheckConfiguration = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(propertyBag["Value"] as string);
-            if (nodeHealthyCheckConfiguration == null || !nodeHealthyCheckConfiguration.IsEnabled)
+            var taskObservationConfiguration = JsonSerializer.Deserialize<TaskObservationConfiguration>(propertyBag["Value"] as string);
+            if (taskObservationConfiguration == null || !taskObservationConfiguration.IsEnabled)
             {
-                await DeleteAllTaskScheduleAsync(parameters.ConfigurationId, nameof(FireNodeHeathyCheckJob));
+                await DeleteAllTaskScheduleAsync(parameters.ConfigurationId, nameof(FireTaskObservationJob));
                 return;
             }
-            if (nodeHealthyCheckConfiguration.DailyTimes.Count == 0)
+            if (taskObservationConfiguration.DailyTimes.Count == 0)
             {
-                await DeleteAllTaskScheduleAsync(parameters.ConfigurationId, nameof(FireNodeHeathyCheckJob));
+                await DeleteAllTaskScheduleAsync(parameters.ConfigurationId, nameof(FireTaskObservationJob));
                 return;
             }
 
             var taskSchedulerKey = new TaskSchedulerKey(
                 parameters.ConfigurationId,
                 TriggerSource.Schedule,
-                nameof(FireNodeHeathyCheckJob));
+                nameof(FireTaskObservationJob));
 
             if (_taskSchedulerDictionary.TryGetValue(taskSchedulerKey, out var asyncDisposable))
             {
                 await asyncDisposable.DisposeAsync();
-                if (!nodeHealthyCheckConfiguration.IsEnabled)
+                if (!taskObservationConfiguration.IsEnabled)
                 {
-                    await DeleteAllTaskScheduleAsync(parameters.ConfigurationId, nameof(FireNodeHeathyCheckJob));
+                    await DeleteAllTaskScheduleAsync(parameters.ConfigurationId, nameof(FireTaskObservationJob));
                     return;
                 }
 
-                var newAsyncDisposable = await ScheduleNodeHealthyCheckAsync(
+                var newAsyncDisposable = await ScheduleTaskObservationAsync(
                     taskSchedulerKey,
-                    nodeHealthyCheckConfiguration,
+                    taskObservationConfiguration,
                     cancellationToken);
                 _taskSchedulerDictionary.TryUpdate(taskSchedulerKey, newAsyncDisposable, asyncDisposable);
             }
             else
             {
-                asyncDisposable = await ScheduleNodeHealthyCheckAsync(
+                asyncDisposable = await ScheduleTaskObservationAsync(
                     taskSchedulerKey,
-                    nodeHealthyCheckConfiguration,
+                    taskObservationConfiguration,
                     cancellationToken);
                 _taskSchedulerDictionary.TryAdd(taskSchedulerKey, asyncDisposable);
             }
         }
 
-        async ValueTask<IAsyncDisposable> ScheduleNodeHealthyCheckAsync(
+        async ValueTask<IAsyncDisposable> ScheduleTaskObservationAsync(
             TaskSchedulerKey taskSchedulerKey,
-            NodeHealthyCheckConfiguration configuration,
+            TaskObservationConfiguration configuration,
             CancellationToken cancellationToken = default)
         {
             var triggers = configuration.DailyTimes.Select(TimeOnlyToTrigger).ToArray().AsReadOnly();
-            var asyncDisposable = await _jobScheduler.ScheduleAsync<FireNodeHeathyCheckJob>(taskSchedulerKey,
+            var asyncDisposable = await _jobScheduler.ScheduleAsync<FireTaskObservationJob>(taskSchedulerKey,
                 triggers,
                 new Dictionary<string, object?>() { { "Id", taskSchedulerKey.Key } },
                 cancellationToken
@@ -100,13 +100,13 @@ namespace NodeService.WebServer.Services.TaskSchedule
             return asyncDisposable;
         }
 
-        private async ValueTask ScheduleNodeHealthyCheckAsync(CancellationToken cancellationToken = default)
+        private async ValueTask ScheduleTaskObservationAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 var taskScheduleServiceParameters = new TaskScheduleServiceParameters(new NodeHealthyCheckScheduleParameters()
                 {
-                    ConfigurationId = nameof(NotificationSources.NodeHealthyCheck)
+                    ConfigurationId = nameof(NotificationSources.TaskObservation)
                 });
                 var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(
                     taskScheduleServiceParameters,
@@ -120,7 +120,6 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 _logger.LogError(ex.ToString());
             }
         }
-
 
     }
 }

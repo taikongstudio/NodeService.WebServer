@@ -179,7 +179,8 @@ public partial class ConfigurationController
 
     [HttpPost("/api/CommonConfig/NotificationSource/DataQualityCheck/Update")]
     public async Task<ApiResponse> UpdateDataQualityCheckConfigurationAsync(
-        [FromBody] DataQualityCheckConfiguration model, CancellationToken cancellationToken = default)
+        [FromBody] DataQualityCheckConfiguration model,
+        CancellationToken cancellationToken = default)
     {
         var rsp = new ApiResponse();
         try
@@ -189,7 +190,51 @@ public partial class ConfigurationController
             var propertyBag =
                 await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.DataQualityCheck));
             propertyBag["Value"] = JsonSerializer.Serialize(model);
-            await repo.SaveChangesAsync();
+            await repo.SaveChangesAsync(cancellationToken);
+
+        }
+        catch (Exception ex)
+        {
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.ToString();
+        }
+
+        return rsp;
+    }
+
+    [HttpGet("/api/CommonConfig/NotificationSource/TaskObservation")]
+    public async Task<ApiResponse<TaskObservationConfiguration>> QueryTaskObservationConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        var rsp = new ApiResponse<TaskObservationConfiguration>();
+        try
+        {
+
+            var result = await _configurationQueryService.QueryTaskObservationConfigurationAsync(cancellationToken);
+            rsp.SetResult(result);
+        }
+        catch (Exception ex)
+        {
+            rsp.ErrorCode = ex.HResult;
+            rsp.Message = ex.ToString();
+        }
+
+        return rsp;
+    }
+
+    [HttpPost("/api/CommonConfig/NotificationSource/TaskObservation/Update")]
+    public async Task<ApiResponse> UpdateTaskObservationConfigurationAsync(
+        [FromBody] TaskObservationConfiguration entity,
+        CancellationToken cancellationToken = default)
+    {
+        var rsp = new ApiResponse();
+        try
+        {
+            await _configurationQueryService.UpdateTaskObservationConfigurationAsync(entity, cancellationToken);
+            var queue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
+            var parameters = new TaskScheduleServiceParameters(new TaskObservationScheduleParameters(NotificationSources.TaskObservation));
+            var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(parameters, AsyncOperationKind.AddOrUpdate);
+            await queue.EnqueueAsync(op, cancellationToken);
+            await op.WaitAsync(cancellationToken);
         }
         catch (Exception ex)
         {

@@ -7,7 +7,6 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.NodeSessions;
 using NodeService.WebServer.Services.TaskSchedule;
 using System.Buffers;
 using System.Collections.Immutable;
@@ -41,6 +40,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     private readonly IServiceProvider _serviceProvider;
     private readonly KafkaOptions _kafkaOptions;
     private ConsumerConfig _consumerConfig;
+    private TaskObservationConfiguration _taskObservationConfiguration;
     public  const string SubType_ExecutionTimeLimit = "ExecutionTimeLimit";
     public const string SubType_Retry = "Retry";
 
@@ -88,6 +88,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _taskActivationRecordExecutor = taskActivationRecordExecutor;
         _serviceProvider = serviceProvider;
         _kafkaOptions = kafkaOptionsMonitor.CurrentValue;
+        _taskObservationConfiguration = new TaskObservationConfiguration();
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -173,11 +174,13 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 {
                     var timeStamp = Stopwatch.GetTimestamp();
 
-                    consumeResults = await ConsumeAsync(consumer, 10000, TimeSpan.FromSeconds(3));
+                    consumeResults = await consumer.ConsumeAsync(10000, TimeSpan.FromSeconds(3));
                     if (consumeResults.IsDefaultOrEmpty)
                     {
                         continue;
                     }
+
+                    _taskObservationConfiguration = await _configurationQueryService.QueryTaskObservationConfigurationAsync(cancellationToken);
 
                     _webServerCounter.TaskExecutionReportQueueCount.Value = _taskExecutionReportBatchQueue.AvailableCount;
 
@@ -222,48 +225,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     }
 
-    Task<ImmutableArray<ConsumeResult<string, string>>> ConsumeAsync(IConsumer<string, string> consumer, int count, TimeSpan timeout)
-    {
-        return Task.Run<ImmutableArray<ConsumeResult<string, string>>>(() =>
-        {
-
-            var contextsBuilder = ImmutableArray.CreateBuilder<ConsumeResult<string, string>>();
-            try
-            {
-                int nullCount = 0;
-                for (int i = 0; i < count; i++)
-                {
-                    var timeStamp = Stopwatch.GetTimestamp();
-                    var result = consumer.Consume(timeout);
-                    var consumeTimeSpan = Stopwatch.GetElapsedTime(timeStamp);
-                    timeout -= consumeTimeSpan;
-                    if (timeout <= TimeSpan.Zero)
-                    {
-                        break;
-                    }
-                    if (result == null)
-                    {
-                        if (nullCount == 3)
-                        {
-                            break;
-                        }
-                        nullCount++;
-                        continue;
-                    }
-                    contextsBuilder.Add(result);
-                    _logger.LogInformation($"Recieved {result.TopicPartitionOffset}");
-                }
-            }
-            catch (Exception ex)
-            {
-                _exceptionCounter.AddOrUpdate(ex);
-                _logger.LogError(ex.ToString());
-            }
-
-            return contextsBuilder.ToImmutable();
-        });
-    }
-
     static string? GetTaskId(TaskExecutionReport report)
     {
         if (report == null) return null;
@@ -272,14 +233,14 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     TaskActivationRecordProcessContext CreateProcessContext(string taskActivationRecordId, IEnumerable<TaskExecutionInstanceProcessContext> processContexts)
     {
-        return ActivatorUtilities.CreateInstance<TaskActivationRecordProcessContext>(_serviceProvider, taskActivationRecordId, processContexts);
+        return ActivatorUtilities.CreateInstance<TaskActivationRecordProcessContext>(_serviceProvider, taskActivationRecordId, processContexts, _taskObservationConfiguration);
     }
 
-    async ValueTask ProcessTaskExecutionReportsAsync(ImmutableArray<TaskExecutionReport> array, CancellationToken cancellationToken = default)
+    async ValueTask ProcessTaskExecutionReportsAsync(ImmutableArray<TaskExecutionReport> reports, CancellationToken cancellationToken = default)
     {
         await _taskActivationRecordExecutor.ExecutionAsync(async (cancellationToken) =>
         {
-            var processContexts = await CollectTaskExecutionProcessContextsAsync(array, cancellationToken);
+            var processContexts = await CreateTaskExecutionProcessContextListAsync(reports, cancellationToken);
             if (processContexts.IsDefaultOrEmpty)
             {
                 return;
@@ -317,7 +278,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         await processContext.ProcessAsync(cancellationToken);
     }
 
-    private async ValueTask<ImmutableArray<TaskExecutionInstanceProcessContext>> CollectTaskExecutionProcessContextsAsync(
+    private async ValueTask<ImmutableArray<TaskExecutionInstanceProcessContext>> CreateTaskExecutionProcessContextListAsync(
         ImmutableArray<TaskExecutionReport> array,
         CancellationToken cancellationToken)
     {

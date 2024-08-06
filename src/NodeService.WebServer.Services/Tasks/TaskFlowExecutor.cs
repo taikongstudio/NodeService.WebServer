@@ -1,4 +1,5 @@
 ﻿using NodeService.Infrastructure.DataModels;
+using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.TaskSchedule;
@@ -235,7 +236,7 @@ CancellationToken cancellationToken = default)
             var op = new AsyncOperation<Func<Task>>(async () =>
             {
                 var taskFlowExecutionInstance = await CreateTaskFlowExecutionInstance(fireTaskFlowParameters, cancellationToken);
-            }, AsyncOperationKind.AddOrUpdate);
+            }, AsyncOperationKind.None);
             await GetActionBlock(fireTaskFlowParameters.TaskFlowTemplateId).SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
         }
@@ -248,7 +249,7 @@ CancellationToken cancellationToken = default)
             var op = new AsyncOperation<Func<Task>>(async () =>
             {
                 await ExecuteTaskFlowAsync(taskFlowExecutionInstanceId, taskActivationRecords, cancellationToken);
-            }, AsyncOperationKind.AddOrUpdate);
+            }, AsyncOperationKind.None);
             await GetActionBlock(taskFlowExecutionInstanceId).SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
         }
@@ -317,20 +318,23 @@ CancellationToken cancellationToken = default)
             await taskFlowExecutionInstanceRepo.UpdateAsync(taskFlowExecutionInstance, cancellationToken);
         }
 
-        public async ValueTask SwitchStageAsync(string taskFlowExecutionInstanceId, int stageIndex, CancellationToken cancellationToken = default)
+        public async ValueTask SwitchStageAsync(
+            string taskFlowExecutionInstanceId,
+            int stageIndex,
+            CancellationToken cancellationToken = default)
         {
             var op = new AsyncOperation<Func<Task>>(async () =>
             {
-                await ResetTaskFlowStageIndexAsync(
+                await SwitchStageIndexAsync(
                     taskFlowExecutionInstanceId,
                     stageIndex,
                     cancellationToken);
-            }, AsyncOperationKind.AddOrUpdate);
+            }, AsyncOperationKind.None);
             await GetActionBlock(taskFlowExecutionInstanceId).SendAsync(op, cancellationToken);
             await op.WaitAsync(cancellationToken);
         }
 
-        async ValueTask ResetTaskFlowStageIndexAsync(
+        async ValueTask SwitchStageIndexAsync(
             string taskFlowExecutionInstanceId,
             int stageIndex,
             CancellationToken cancellationToken = default)
@@ -417,15 +421,15 @@ CancellationToken cancellationToken = default)
                 }
                 while (true);
                 taskFlowExecutionInstance.Value.CurrentStageIndex = currentStageIndex;
-                if (taskFlowExecutionInstance.TaskStages.All(x => x.Status == TaskFlowExecutionStatus.Finished))
+                if (taskFlowExecutionInstance.TaskStages.All(static x => x.Status == TaskFlowExecutionStatus.Finished))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Finished;
                 }
-                else if (taskFlowExecutionInstance.Value.TaskStages.Any(x => x.Status != TaskFlowExecutionStatus.Finished))
+                else if (taskFlowExecutionInstance.Value.TaskStages.Any(static x => x.Status != TaskFlowExecutionStatus.Finished))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Running;
                 }
-                else if (taskFlowExecutionInstance.Value.TaskStages.Any(x => x.Status == TaskFlowExecutionStatus.Fault))
+                else if (taskFlowExecutionInstance.Value.TaskStages.Any(static x => x.Status == TaskFlowExecutionStatus.Fault))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Fault;
                 }
@@ -462,38 +466,51 @@ CancellationToken cancellationToken = default)
             {
                 taskFlowStageExecutionInstance.Status = TaskFlowExecutionStatus.Finished;
             }
-            else if (taskFlowStageExecutionInstance.TaskGroups.All(x => x.Status == TaskFlowExecutionStatus.Finished))
+            else if (taskFlowStageExecutionInstance.TaskGroups.All(static x => x.Status == TaskFlowExecutionStatus.Finished))
             {
                 taskFlowStageExecutionInstance.Status = TaskFlowExecutionStatus.Finished;
             }
-            else if (taskFlowStageExecutionInstance.TaskGroups.Any(x => x.Status != TaskFlowExecutionStatus.Finished))
+            else if (taskFlowStageExecutionInstance.TaskGroups.Any(static x => x.Status != TaskFlowExecutionStatus.Finished))
             {
                 if (taskFlowStageExecutionInstance.Status != TaskFlowExecutionStatus.Running
                     || (taskFlowStageExecutionInstance.Status == TaskFlowExecutionStatus.Running
                     && taskFlowStageExecutionInstance.RetryTasks))
                 {
-                    var stageTemplate = taskFlowTemplate.Value.FindStageTemplate(taskFlowStageExecutionInstance.TaskFlowStageTemplateId);
-                    if (stageTemplate != null && stageTemplate.ExecutionTimeLimitSeconds > 0)
+                    var taskFlowStageTemplate = taskFlowTemplate.Value.FindStageTemplate(taskFlowStageExecutionInstance.TaskFlowStageTemplateId);
+                    if (taskFlowStageTemplate != null && taskFlowStageTemplate.ExecutionTimeLimitSeconds > 0)
                     {
-                        var kafkaDelayMessage = new KafkaDelayMessage()
-                        {
-                            Type = nameof(TaskFlowExecutor),
-                            SubType = SubTyoe_TaskFlowStageExecutionTimeLimit,
-                            Id = taskFlowExecutionInstance.Id,
-                            ScheduleDateTime = DateTime.UtcNow + TimeSpan.FromSeconds(stageTemplate.ExecutionTimeLimitSeconds),
-                            CreateDateTime = DateTime.UtcNow,
-                        };
-                        await _delayMessageQueue.EnqueueAsync(kafkaDelayMessage, cancellationToken);
-                        kafkaDelayMessage.Properties["StageId"] = taskFlowStageExecutionInstance.Id;
+                        await ScheduleTaskFlowStageExecutionTimeLimitAsync(
+                            taskFlowExecutionInstance.Id,
+                            taskFlowStageExecutionInstance.Id,
+                            taskFlowStageTemplate.ExecutionTimeLimitSeconds,
+                            cancellationToken);
                     }
                     taskFlowStageExecutionInstance.Status = TaskFlowExecutionStatus.Running;
                     taskFlowStageExecutionInstance.CreationDateTime = DateTime.UtcNow;
                 }
             }
-            else if (taskFlowStageExecutionInstance.TaskGroups.Any(x => x.Status == TaskFlowExecutionStatus.Fault))
+            else if (taskFlowStageExecutionInstance.TaskGroups.Any(static x => x.Status == TaskFlowExecutionStatus.Fault))
             {
                 taskFlowStageExecutionInstance.Status = TaskFlowExecutionStatus.Fault;
             }
+        }
+
+        async ValueTask ScheduleTaskFlowStageExecutionTimeLimitAsync(
+            string taskFlowExecutionInstanceId,
+            string taskFlowStageExecutionInstanceId,
+            int executionTimeLimitSeconds,
+            CancellationToken cancellationToken = default)
+        {
+            var kafkaDelayMessage = new KafkaDelayMessage()
+            {
+                Type = nameof(TaskFlowExecutor),
+                SubType = SubTyoe_TaskFlowStageExecutionTimeLimit,
+                Id = taskFlowExecutionInstanceId,
+                ScheduleDateTime = DateTime.UtcNow + TimeSpan.FromSeconds(executionTimeLimitSeconds),
+                CreateDateTime = DateTime.UtcNow,
+            };
+            kafkaDelayMessage.Properties["StageId"] = taskFlowStageExecutionInstanceId;
+            await _delayMessageQueue.EnqueueAsync(kafkaDelayMessage, cancellationToken);
         }
 
         async ValueTask ProcessTaskFlowStageExecutionTimeLimitReachedAsync(

@@ -289,7 +289,7 @@ public partial class NodeHealthyCheckService : BackgroundService
             stream);
 
 
-        var content = _nodeHealthyCheckConfiguration.ContentFormat.Replace("{0}", string.Empty);
+        var content = _nodeHealthyCheckConfiguration.Content;
 
         await using var repo = await _notificationRepositoryFactory.CreateRepositoryAsync(cancellationToken);
 

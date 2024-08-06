@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.TaskSchedule;
@@ -20,6 +21,8 @@ internal class TaskActivationRecordProcessContext
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
     readonly BatchQueue<TaskActivateServiceParameters> _taskActivationQueue;
     private readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
+    private readonly IAsyncQueue<TaskObservationEvent> _taskObservationEventQueue;
+    private readonly TaskObservationConfiguration _taskObservationConfiguration;
 
     public TaskActivationRecordProcessContext(
         ILogger<TaskActivationRecordProcessContext> logger,
@@ -34,8 +37,10 @@ internal class TaskActivationRecordProcessContext
         ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
+        IAsyncQueue<TaskObservationEvent> taskObservationEventQueue,
         string taskActivationRecordId,
-        IEnumerable<TaskExecutionInstanceProcessContext> processContexts
+        IEnumerable<TaskExecutionInstanceProcessContext> processContexts,
+        TaskObservationConfiguration taskObservationConfiguration
         )
     {
         TaskActivationRecordId = taskActivationRecordId;
@@ -52,6 +57,8 @@ internal class TaskActivationRecordProcessContext
         _taskActivationRecordRepoFactory = taskActivationRecordRepoFactory;
         _taskActivationQueue = taskActivateQueue;
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
+        _taskObservationEventQueue = taskObservationEventQueue;
+        _taskObservationConfiguration = taskObservationConfiguration;
     }
 
     public string TaskActivationRecordId { get; set; }
@@ -252,23 +259,27 @@ internal class TaskActivationRecordProcessContext
             var executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
 
             stopwatchProcessMessage.Restart();
-            foreach (var messageStatusGroup in processContext.Reports.GroupBy(static x => x.Status).OrderBy(static x => x.Key))
+            foreach (var reportStatusGroup in processContext.Reports.GroupBy(static x => x.Status).OrderBy(static x => x.Key))
             {
 
-                var status = messageStatusGroup.Key;
-                foreach (var reportMessage in messageStatusGroup)
+                var status = reportStatusGroup.Key;
+                foreach (var report in reportStatusGroup)
                 {
-                    if (reportMessage == null) continue;
+                    if (report == null) continue;
+                    await CreateTasKObservationEventAsync(
+                        taskExecutionInstance,
+                        report,
+                        cancellationToken);
                     await ProcessTaskExecutionReportAsync(
                         taskActivationRecord,
                         taskDefinition,
                         taskExecutionInstance,
-                        reportMessage,
+                        report,
                         cancellationToken);
                 }
 
 
-                _logger.LogInformation($"process {status} {messageStatusGroup.Count()} messages,spent:{stopwatchProcessMessage.Elapsed}");
+                _logger.LogInformation($"process {status} {reportStatusGroup.Count()} messages,spent:{stopwatchProcessMessage.Elapsed}");
 
             }
             stopwatchProcessMessage.Stop();
@@ -317,6 +328,38 @@ internal class TaskActivationRecordProcessContext
         }
         return false;
     }
+
+    private async ValueTask CreateTasKObservationEventAsync(TaskExecutionInstanceModel taskExecutionInstance, TaskExecutionReport report, CancellationToken cancellationToken)
+    {
+        if (taskExecutionInstance.Status != report.Status)
+        {
+            if (_taskObservationConfiguration != null && _taskObservationConfiguration.TaskObservations != null)
+            {
+                foreach (var item in _taskObservationConfiguration.TaskObservations)
+                {
+                    if (!item.IsEnabled)
+                    {
+                        continue;
+                    }
+                    if (item.Status != report.Status)
+                    {
+                        continue;
+                    }
+                    await _taskObservationEventQueue.EnqueueAsync(new TaskObservationEvent()
+                    {
+                        Id = taskExecutionInstance.Id,
+                        Name = taskExecutionInstance.Name,
+                        Status = (int)report.Status,
+                        Context = taskExecutionInstance.NodeInfoId,
+                        Message = report.Message,
+                        Type = nameof(TaskExecutionInstanceModel),
+                        CreationDateTime = DateTime.UtcNow,
+                    }, cancellationToken);
+                }
+            }
+        }
+    }
+
     async ValueTask ProcessTaskExecutionReportAsync(
    TaskActivationRecordModel taskActivationRecord,
    TaskDefinition taskDefinitionSnapshot,

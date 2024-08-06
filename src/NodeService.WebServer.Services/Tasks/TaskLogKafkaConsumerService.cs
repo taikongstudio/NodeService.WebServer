@@ -34,7 +34,6 @@ namespace NodeService.WebServer.Services.Tasks
         private BatchQueue<AsyncOperation<TaskLogUnit[]>> _taskLogUnitQueue;
         private readonly WebServerCounter _webServerCounter;
         private ConsumerConfig _consumerConfig;
-        private IConsumer<string, string> _consumer;
 
         private List<ConsumeContext> _nullList;
         private TimeSpan _timeSpanConsume;
@@ -80,134 +79,142 @@ namespace NodeService.WebServer.Services.Tasks
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
                 };
-                using (_consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build())
+                using var consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build();
+                consumer.Subscribe([_kafkaOptions.TaskLogTopic]);
+                ImmutableArray<ConsumeResult<string, string>> prefecthList = [];
+                _scaleFactor = 1d;
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    _consumer.Subscribe([_kafkaOptions.TaskLogTopic]);
-                    ImmutableArray<ConsumeContext> prefecthList = [];
-                    _scaleFactor = 1d;
-                    while (!cancellationToken.IsCancellationRequested)
+                    try
                     {
-                        try
+
+                        _timeSpanDeserialize = TimeSpan.Zero;
+                        _timeSpanProcess = TimeSpan.Zero;
+                        _timeSpanCommit = TimeSpan.Zero;
+
+                        prefecthList = !prefecthList.IsDefaultOrEmpty ? prefecthList : await consumer.ConsumeAsync((int)(100 * _scaleFactor), TimeSpan.FromMilliseconds(500));
+
+                        if (prefecthList.IsDefaultOrEmpty)
                         {
-
-                            _timeSpanDeserialize = TimeSpan.Zero;
-                            _timeSpanProcess = TimeSpan.Zero;
-                            _timeSpanCommit = TimeSpan.Zero;
-
-                            var contexts = !prefecthList.IsDefaultOrEmpty ? prefecthList : await ConsumeAsync((int)(100 * _scaleFactor), 500);
-
-                            if (contexts.IsDefaultOrEmpty)
-                            {
-                                continue;
-                            }
-                            prefecthList = [];
-
-                            var stopwatch = Stopwatch.StartNew();
-                            await Parallel.ForEachAsync(contexts, DeserializeAsync);
-
-                            stopwatch.Stop();
-                            _timeSpanDeserialize = stopwatch.Elapsed;
-
-                            stopwatch.Restart();
-
-                            var consumeContextGroups = contexts.GroupBy(GroupConsumeContext)
-                                                               .Select(CreateConsumeContextGroup)
-                                                               .ToArray();
-
-                            var forEachConsumeTask = Parallel.ForEachAsync(
-                                consumeContextGroups,
-                                ProcessConsumeContextGroupAsync);
-
-                            var pefetchTask = ConsumeAsync((int)(100 * _scaleFactor), 500);
-
-                            _webServerCounter.KafkaTaskLogConsumeTotalTimeSpan.Value += _timeSpanConsume;
-                            if (_timeSpanConsume > _webServerCounter.KafkaTaskLogConsumeMaxTimeSpan.Value)
-                            {
-                                _webServerCounter.KafkaTaskLogConsumeMaxTimeSpan.Value = _timeSpanConsume;
-                            }
-
-                            await Task.WhenAll(pefetchTask, forEachConsumeTask);
-                            prefecthList = pefetchTask.Result;
-
-                            _webServerCounter.KafkaTaskLogConsumePrefetchCount.Value = prefecthList.Length;
-                            if (prefecthList.Length > _webServerCounter.KafkaTaskLogConsumeMaxPrefetchCount.Value)
-                            {
-                                _webServerCounter.KafkaTaskLogConsumeMaxPrefetchCount.Value = prefecthList.Length;
-                            }
-
-                            _maxConsumeContextGroupProcessTime = consumeContextGroups.Max(x => x.ProcessTimeSpan);
-
-
-
-                            if (_maxConsumeContextGroupProcessTime > _webServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan.Value)
-                            {
-                                _webServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan.Value = _maxConsumeContextGroupProcessTime;
-                            }
-                            _webServerCounter.KafkaTaskLogConsumeContextGroupAvgTimeSpan.Value = TimeSpan.FromMicroseconds(consumeContextGroups.Average(x => x.ProcessTimeSpan.TotalMicroseconds));
-
-                           _scaleFactor = Math.Max(_maxConsumeContextGroupProcessTime / _timeSpanConsume, 1);
-
-                            if (prefecthList.IsDefaultOrEmpty)
-                            {
-                                _scaleFactor = 1;
-                            }
-
-                            if (_scaleFactor > 100)
-                            {
-                                _scaleFactor = 100;
-                            }
-
-                            _webServerCounter.KafkaTaskLogConsumeScaleFactor.Value = TimeSpan.FromSeconds(_scaleFactor);
-
-                            stopwatch.Stop();
-
-                            _timeSpanProcess = stopwatch.Elapsed;
-
-                            stopwatch.Restart();
-
-                            _consumer.Commit(contexts.Select(static x => x.Result.TopicPartitionOffset));
-                            _webServerCounter.KafkaTaskLogConsumeCount.Value += contexts.Length;
-
-                            foreach (var item in contexts)
-                            {
-                                var value = _webServerCounter.ConsumePartitionOffsetDictionary.GetOrAdd(item.Result.Partition.Value, new PartitionOffsetValue()
-                                {
-
-                                });
-                                value.Partition.Value = item.Result.Partition.Value;
-                                value.Offset.Value = item.Result.Offset.Value;
-                            }
-
-
-
-
-                            stopwatch.Stop();
-                            _timeSpanCommit = stopwatch.Elapsed;
-
+                            continue;
                         }
-                        catch (ConsumeException ex)
+
+                        var contexts = prefecthList.Select(static (x, i) => new ConsumeContext()
                         {
-                            _exceptionCounter.AddOrUpdate(ex);
-                            _logger.LogError(ex.ToString());
-                        }
-                        catch (KafkaException ex)
-                        {
-                            _exceptionCounter.AddOrUpdate(ex);
-                            _logger.LogError(ex.ToString());
-                        }
-                        catch (Exception ex)
-                        {
-                            _exceptionCounter.AddOrUpdate(ex);
-                            _logger.LogError(ex.ToString());
-                        }
-                        finally
-                        {
+                            Index = i,
+                            Result = x
+                        }).ToImmutableArray();
 
+                        prefecthList = [];
+
+                        var stopwatch = Stopwatch.StartNew();
+
+
+
+                        await Parallel.ForEachAsync(contexts, DeserializeAsync);
+
+                        stopwatch.Stop();
+                        _timeSpanDeserialize = stopwatch.Elapsed;
+
+                        stopwatch.Restart();
+
+                        var consumeContextGroups = contexts.GroupBy(GroupConsumeContext)
+                                                           .Select(CreateConsumeContextGroup)
+                                                           .ToArray();
+
+                        var forEachConsumeTask = Parallel.ForEachAsync(
+                            consumeContextGroups,
+                            ProcessConsumeContextGroupAsync);
+
+                        var pefetchTask = consumer.ConsumeAsync((int)(100 * _scaleFactor), TimeSpan.FromMilliseconds(500));
+
+                        _webServerCounter.KafkaTaskLogConsumeTotalTimeSpan.Value += _timeSpanConsume;
+                        if (_timeSpanConsume > _webServerCounter.KafkaTaskLogConsumeMaxTimeSpan.Value)
+                        {
+                            _webServerCounter.KafkaTaskLogConsumeMaxTimeSpan.Value = _timeSpanConsume;
                         }
+
+                        await Task.WhenAll(pefetchTask, forEachConsumeTask);
+                        prefecthList = pefetchTask.Result;
+
+
+
+                        _webServerCounter.KafkaTaskLogConsumePrefetchCount.Value = prefecthList.Length;
+                        if (prefecthList.Length > _webServerCounter.KafkaTaskLogConsumeMaxPrefetchCount.Value)
+                        {
+                            _webServerCounter.KafkaTaskLogConsumeMaxPrefetchCount.Value = prefecthList.Length;
+                        }
+
+                        _maxConsumeContextGroupProcessTime = consumeContextGroups.Max(x => x.ProcessTimeSpan);
+
+
+
+                        if (_maxConsumeContextGroupProcessTime > _webServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan.Value)
+                        {
+                            _webServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan.Value = _maxConsumeContextGroupProcessTime;
+                        }
+                        _webServerCounter.KafkaTaskLogConsumeContextGroupAvgTimeSpan.Value = TimeSpan.FromMicroseconds(consumeContextGroups.Average(x => x.ProcessTimeSpan.TotalMicroseconds));
+
+                        _scaleFactor = Math.Max(_maxConsumeContextGroupProcessTime / _timeSpanConsume, 1);
+
+                        if (prefecthList.IsDefaultOrEmpty)
+                        {
+                            _scaleFactor = 1;
+                        }
+
+                        if (_scaleFactor > 100)
+                        {
+                            _scaleFactor = 100;
+                        }
+
+                        _webServerCounter.KafkaTaskLogConsumeScaleFactor.Value = TimeSpan.FromSeconds(_scaleFactor);
+
+                        stopwatch.Stop();
+
+                        _timeSpanProcess = stopwatch.Elapsed;
+
+                        stopwatch.Restart();
+
+                        consumer.Commit(contexts.Select(static x => x.Result.TopicPartitionOffset));
+                        _webServerCounter.KafkaTaskLogConsumeCount.Value += contexts.Length;
+
+                        foreach (var item in contexts)
+                        {
+                            var value = _webServerCounter.ConsumePartitionOffsetDictionary.GetOrAdd(item.Result.Partition.Value, new PartitionOffsetValue()
+                            {
+
+                            });
+                            value.Partition.Value = item.Result.Partition.Value;
+                            value.Offset.Value = item.Result.Offset.Value;
+                        }
+
+
+
+
+                        stopwatch.Stop();
+                        _timeSpanCommit = stopwatch.Elapsed;
+
+                    }
+                    catch (ConsumeException ex)
+                    {
+                        _exceptionCounter.AddOrUpdate(ex);
+                        _logger.LogError(ex.ToString());
+                    }
+                    catch (KafkaException ex)
+                    {
+                        _exceptionCounter.AddOrUpdate(ex);
+                        _logger.LogError(ex.ToString());
+                    }
+                    catch (Exception ex)
+                    {
+                        _exceptionCounter.AddOrUpdate(ex);
+                        _logger.LogError(ex.ToString());
+                    }
+                    finally
+                    {
 
                     }
 
-                    _consumer.Close();
                 }
             }
             catch (Exception ex)
@@ -216,48 +223,6 @@ namespace NodeService.WebServer.Services.Tasks
                 _logger.LogError(ex.ToString());
             }
 
-
-
-
-            Task<ImmutableArray<ConsumeContext>> ConsumeAsync(int count, int timeout)
-            {
-                return Task.Run<ImmutableArray<ConsumeContext>>(() =>
-                {
-                    _timeSpanConsume = TimeSpan.Zero;
-                    var timeStamp = Stopwatch.GetTimestamp();
-                    var contextsBuilder = ImmutableArray.CreateBuilder<ConsumeContext>();
-                    try
-                    {
-                        int nullCount = 0;
-                        for (int i = 0; i < count; i++)
-                        {
-                            var result = _consumer.Consume(timeout);
-                            if (result == null)
-                            {
-                                if (nullCount == 3)
-                                {
-                                    break;
-                                }
-                                nullCount++;
-                                continue;
-                            }
-                            contextsBuilder.Add(new ConsumeContext()
-                            {
-                                Index = i,
-                                Result = result
-                            });
-                            _logger.LogInformation($"Recieved {result.TopicPartitionOffset}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _exceptionCounter.AddOrUpdate(ex);
-                        _logger.LogError(ex.ToString());
-                    }
-                    _timeSpanConsume = Stopwatch.GetElapsedTime(timeStamp);
-                    return contextsBuilder.ToImmutable();
-                });
-            }
         }
 
         static string? GroupConsumeContext(ConsumeContext consumeContext)

@@ -19,5 +19,10 @@ public readonly record struct TaskScheduleServiceParameters
         Parameters = parameters;
     }
 
-    public OneOf<TaskDefinitionScheduleParameters, TaskFlowScheduleParameters, NodeHealthyCheckScheduleParameters> Parameters { get; init; }
+    public TaskScheduleServiceParameters(TaskObservationScheduleParameters parameters)
+    {
+        Parameters = parameters;
+    }
+
+    public OneOf<TaskDefinitionScheduleParameters, TaskFlowScheduleParameters, NodeHealthyCheckScheduleParameters,TaskObservationScheduleParameters> Parameters { get; init; }
 }

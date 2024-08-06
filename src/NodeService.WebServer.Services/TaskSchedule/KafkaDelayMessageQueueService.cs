@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.TaskSchedule
 {
-    public class KafkaDelayMessageQueueService:BackgroundService
+    public class KafkaDelayMessageQueueService : BackgroundService
     {
         ILogger<KafkaDelayMessageQueueService> _logger;
         readonly IDelayMessageBroadcast _delayMessageBroadcast;
@@ -50,7 +50,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
             };
         }
 
-        protected override async Task ExecuteAsync(CancellationToken  cancellationToken)
+        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -79,7 +79,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                             }
                         }
 
-                        var consumeResults = await ConsumeAsync(consumer, 10000, TimeSpan.FromSeconds(3));
+                        var consumeResults = await consumer.ConsumeAsync(10000, TimeSpan.FromSeconds(3));
                         if (!consumeResults.IsDefaultOrEmpty)
                         {
                             var consumeContexts = consumeResults.Select(x => new KafkaDelayMessageConsumeContext()
@@ -202,46 +202,5 @@ namespace NodeService.WebServer.Services.TaskSchedule
 
         }
 
-        Task<ImmutableArray<ConsumeResult<string, string>>> ConsumeAsync(IConsumer<string, string> consumer, int count, TimeSpan timeout)
-        {
-            return Task.Run(() =>
-            {
-
-                var contextsBuilder = ImmutableArray.CreateBuilder<ConsumeResult<string, string>>();
-                try
-                {
-                    int nullCount = 0;
-                    for (int i = 0; i < count; i++)
-                    {
-                        var timeStamp = Stopwatch.GetTimestamp();
-                        var result = consumer.Consume(timeout);
-                        var consumeTimeSpan = Stopwatch.GetElapsedTime(timeStamp);
-                        timeout -= consumeTimeSpan;
-                        if (timeout <= TimeSpan.Zero)
-                        {
-                            break;
-                        }
-                        if (result == null)
-                        {
-                            if (nullCount == 3)
-                            {
-                                break;
-                            }
-                            nullCount++;
-                            continue;
-                        }
-                        contextsBuilder.Add(result);
-                        _logger.LogInformation($"Recieved {result.TopicPartitionOffset}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _exceptionCounter.AddOrUpdate(ex);
-                    _logger.LogError(ex.ToString());
-                }
-
-                return contextsBuilder.ToImmutable();
-            });
-        }
     }
 }

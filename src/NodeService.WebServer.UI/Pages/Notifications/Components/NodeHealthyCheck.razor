@@ -10,7 +10,7 @@
       OnFinish="NodeHealthyHandleEditFormFinished"
       OnFinishFailed="NodeHealthyHandleEditFormFailed"
       @ref="@_editForm">
-    <FormItem Label="启动" >
+    <FormItem Label="启用" >
         <AntDesign.Switch @bind-Value="@context.IsEnabled" />
     </FormItem>
     <FormItem Label="离线检测间隔（分钟）" Help="离线时间超出此时间会被告警">
@@ -23,8 +23,8 @@
         <Input @bind-Value="@context.Subject"/>
     </FormItem>
 
-    <FormItem Required Label="内容格式">
-        <TextArea @bind-Value="@context.ContentFormat" />
+    <FormItem Required Label="内容">
+        <TextArea @bind-Value="@context.Content" />
     </FormItem>
     <FormItem Label="配置类型">
 

@@ -1,0 +1,188 @@
+﻿@inject ApiService ApiService
+@inject NotificationService _notice
+@inject IMessageService _message
+
+<Form Model="@_editModel" Size="@AntSizeLDSType.Default"
+      LabelColSpan="4"
+      Loading="_loading"
+      Layout="@FormLayout.Horizontal"
+      WrapperColSpan="20"
+      OnFinish="HandleEditFormFinished"
+      OnFinishFailed="HandleEditFormFailed"
+      @ref="@_editForm">
+    <FormItem Label="启用">
+        <AntDesign.Switch @bind-Value="@context.IsEnabled" />
+    </FormItem>
+    <FormItem Label="任务监控">
+        <Table Context="TaskObservation" TItem="TaskObservationModel" DataSource="@context.TaskObservations" @bind-SelectedRows="@_selectedTaskObservations">
+            <Selection Key="@TaskObservation.Id" Type="checkbox" />
+            <PropertyColumn Property="c=>c.IsEnabled" />
+            <PropertyColumn Property="c=>c.Status" />
+        </Table>
+    </FormItem>
+    <FormItem Label="任务流监控">
+        <Table Context="TaskFlowObservation" TItem="TaskFlowObservationModel" DataSource="@context.TaskFlowObservations" @bind-SelectedRows="@_selectedTaskFlowObservations">
+            <Selection Key="@TaskFlowObservation.Id" Type="checkbox" />
+            <PropertyColumn Property="c=>c.IsEnabled" />
+            <PropertyColumn Property="c=>c.Status" />
+        </Table>
+    </FormItem>
+    <FormItem Label="通知时间">
+        <TimeOnlyTable ItemsSource="@context.DailyTimes" />
+    </FormItem>
+    <FormItem Required Label="主题">
+        <Input @bind-Value="@context.Subject" />
+    </FormItem>
+
+    <FormItem Required Label="内容">
+        <TextArea @bind-Value="@context.Content" />
+    </FormItem>
+    <FormItem Label="配置类型">
+
+        <NotificationConfigSelector Mode="SelectionMode.Multiple" @bind-SelectedItems="_selectedNotificationConfigs" />
+    </FormItem>
+
+    <FormItem WrapperColOffset="4" WrapperColSpan="20">
+        <Button Type="@ButtonType.Primary" HtmlType="submit">
+            保存
+        </Button>
+    </FormItem>
+
+</Form>
+
+@code {
+    bool _editFormSubmitting = false;
+    bool _loading = false;
+    string _selectedNotificationId;
+    IEnumerable<TaskObservationModel> _selectedTaskObservations = [];
+    IEnumerable<TaskFlowObservationModel> _selectedTaskFlowObservations = [];
+
+    object GetTaskStatusObservationKey(TaskObservationModel model)
+    {
+        return model;
+    }
+
+    object GetTaskFlowStatusObservationKey(TaskFlowObservationModel model)
+    {
+        return model;
+    }
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        await QueryTaskObservationConfigurationAsync();
+        _loading = false;
+        await base.OnInitializedAsync();
+    }
+
+    Form<TaskObservationConfiguration> _editForm;
+
+    TaskObservationConfiguration _editModel = new();
+    IEnumerable<NotificationConfigModel> _selectedNotificationConfigs = [];
+
+    async Task QueryTaskObservationConfigurationAsync()
+    {
+        try
+        {
+            var rsp = await ApiService.QueryTaskObservationConfigurationAsync();
+            if (rsp.ErrorCode == 0)
+            {
+                _editModel = rsp.Result;
+                _selectedTaskObservations = _editModel.TaskObservations.Where(x => x.IsEnabled).ToArray();
+                _selectedTaskFlowObservations = _editModel.TaskFlowObservations.Where(x => x.IsEnabled).ToArray();
+                _selectedNotificationConfigs = await InitSelectedNotificationConfigAsync(rsp.Result.Configurations);
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = rsp.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.Message
+                });
+        }
+    }
+
+    async Task<IEnumerable<NotificationConfigModel>> InitSelectedNotificationConfigAsync(IEnumerable<StringEntry> items)
+    {
+        var list = new List<NotificationConfigModel>();
+        foreach (var item in items)
+        {
+            var rsp = await ApiService.QueryNotificationConfigAsync(item.Value);
+            if (rsp.ErrorCode == 0)
+            {
+                list.Add(rsp.Result);
+            }
+        }
+
+        return list;
+    }
+
+    void HandleEditFormFailed(EditContext editContext)
+    {
+        _editFormSubmitting = false;
+    }
+
+
+    async void HandleEditFormFinished(EditContext editContext)
+    {
+        try
+        {
+            _editModel.Configurations.Clear();
+            _editModel.Configurations.AddRange(
+                _selectedNotificationConfigs.Select(x =>
+                    new StringEntry
+                        {
+                            Name = x.Name,
+                            Value = x.Id
+                        }));
+            foreach (var item in _editModel.TaskObservations)
+            {
+                item.IsEnabled = _selectedTaskObservations.Any(x => x.Status == item.Status);
+            }
+
+            foreach (var item in _editModel.TaskFlowObservations)
+            {
+                item.IsEnabled = _selectedTaskFlowObservations.Any(x => x.Status == item.Status);
+            }
+
+            var rsp = await ApiService.UpdateTaskObservationConfigurationAsync(_editModel);
+            if (rsp.ErrorCode == 0)
+            {
+                await _message.Info("保存成功");
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = rsp.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.Message
+                });
+        }
+        finally
+        {
+            _editFormSubmitting = true;
+        }
+    }
+
+
+}

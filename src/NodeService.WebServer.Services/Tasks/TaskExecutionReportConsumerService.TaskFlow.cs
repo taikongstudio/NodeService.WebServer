@@ -18,11 +18,6 @@ namespace NodeService.WebServer.Services.Tasks
             IEnumerable<TaskActivationRecordModel> taskActivationRecordList,
             CancellationToken cancellationToken = default)
         {
-            if (!taskActivationRecordList.Any())
-            {
-                return;
-            }
-            List<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceList = [];
             foreach (var taskActiveRecordGroup in taskActivationRecordList.GroupBy(GetTaskFlowInstanceId))
             {
                 if (taskActiveRecordGroup.Key == null)

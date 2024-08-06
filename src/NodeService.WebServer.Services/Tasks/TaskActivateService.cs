@@ -7,116 +7,9 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.TaskSchedule;
-using OneOf;
 using System.Net;
 
 namespace NodeService.WebServer.Services.Tasks;
-
-
-public readonly record struct RetryTaskParameters
-{
-    public RetryTaskParameters(string taskExecutionInstanceId)
-    {
-        TaskExecutionInstanceId = taskExecutionInstanceId;
-    }
-
-    public string TaskExecutionInstanceId { get; init; }
-}
-
-public record struct FireTaskParameters
-{
-    public string TaskDefinitionId { get; init; }
-    public string FireInstanceId { get; init; }
-    public TriggerSource TriggerSource { get; init; }
-    public DateTimeOffset? NextFireTimeUtc { get; init; }
-    public DateTimeOffset? PreviousFireTimeUtc { get; init; }
-    public DateTimeOffset? ScheduledFireTimeUtc { get; init; }
-    public DateTimeOffset FireTimeUtc { get; init; }
-
-    public string? ParentTaskExecutionInstanceId { get; init; }
-
-    public List<StringEntry> NodeList { get; init; }
-
-    public List<StringEntry> EnvironmentVariables { get; init; }
-
-    public TaskFlowTaskKey TaskFlowTaskKey { get; init; }
-
-    public bool RetryTasks { get; set; }
-
-    public static FireTaskParameters BuildRetryTaskParameters(
-        string taskActiveRecordId,
-        string taskDefinitionId,
-        string fireInstanceId,
-        List<StringEntry> nodeList,
-        List<StringEntry> envVars,
-        TaskFlowTaskKey taskFlowTaskKey = default)
-    {
-        return new FireTaskParameters
-        {
-            FireTimeUtc = DateTime.UtcNow,
-            TriggerSource = TriggerSource.Manual,
-            FireInstanceId = fireInstanceId,
-            TaskDefinitionId = taskDefinitionId,
-            ScheduledFireTimeUtc = DateTime.UtcNow,
-            NodeList = nodeList,
-            EnvironmentVariables = envVars,
-            TaskFlowTaskKey = taskFlowTaskKey,
-            RetryTasks = true,
-        };
-    }
-}
-
-public readonly struct FireTaskFlowParameters
-{
-    public string TaskFlowTemplateId { get; init; }
-    public string TaskFlowInstanceId { get; init; }
-    public string? TaskFlowParentInstanceId { get; init; }
-    public TriggerSource TriggerSource { get; init; }
-    public DateTimeOffset? NextFireTimeUtc { get; init; }
-    public DateTimeOffset? PreviousFireTimeUtc { get; init; }
-    public DateTimeOffset? ScheduledFireTimeUtc { get; init; }
-    public DateTimeOffset FireTimeUtc { get; init; }
-
-    public List<StringEntry> EnvironmentVariables { get; init; }
-}
-
-public readonly record struct SwitchStageParameters
-{
-    public SwitchStageParameters(string taskFlowExecutionInstanceId, int stageIndex)
-    {
-        TaskFlowExecutionInstanceId = taskFlowExecutionInstanceId;
-        StageIndex = stageIndex;
-    }
-
-    public string TaskFlowExecutionInstanceId { get; init; }
-
-    public int StageIndex { get; init; }
-}
-
-public readonly struct TaskActivateServiceParameters
-{
-    public TaskActivateServiceParameters(FireTaskParameters fireTaskParameters)
-    {
-        this.Parameters = fireTaskParameters;
-    }
-
-    public TaskActivateServiceParameters(FireTaskFlowParameters fireTaskFlowParameters)
-    {
-        this.Parameters = fireTaskFlowParameters;
-    }
-
-    public TaskActivateServiceParameters(RetryTaskParameters retryTaskParameters)
-    {
-        Parameters = retryTaskParameters;
-    }
-    public TaskActivateServiceParameters(SwitchStageParameters  switchTaskFlowStageParameters)
-    {
-        Parameters = switchTaskFlowStageParameters;
-    }
-
-    public OneOf<FireTaskParameters, FireTaskFlowParameters, RetryTaskParameters, SwitchStageParameters> Parameters { get; init; }
-
-}
 
 public class TaskActivateService : BackgroundService
 {
@@ -211,13 +104,12 @@ public class TaskActivateService : BackgroundService
         IRepository<TaskExecutionInstanceModel> repository,
         BatchQueue<TaskCancellationParameters> taskCancellationQueue, CancellationToken cancellationToken = default)
     {
-        var queryResult = await QueryTaskExecutionInstancesAsync(repository,
-            new QueryTaskExecutionInstanceListParameters
+        var queryResult = await QueryTaskExecutionInstancesAsync(repository, new QueryTaskExecutionInstanceListParameters
             {
                 NodeIdList = [nodeId],
                 TaskDefinitionIdList = [taskDefinitionId],
                 Status = TaskExecutionStatus.Running
-            });
+            }, cancellationToken);
 
         if (queryResult.IsEmpty) return true;
         foreach (var taskExecutionInstance in queryResult.Items)
@@ -293,6 +185,7 @@ public class TaskActivateService : BackgroundService
             }
             if (taskExecutionInstance.Status > TaskExecutionStatus.Triggered)
             {
+                delayMessage.Handled = true;
                 return;
             }
             if (timeSpan < TimeSpan.Zero)
@@ -435,6 +328,7 @@ public class TaskActivateService : BackgroundService
                 TaskExecutionStatus.PenddingTimeout,
                 $"Time out after waiting {penddingLimitTimeSeconds} seconds");
             _logger.LogInformation($"{delayMessage.Id}:SendAsync PenddingTimeout");
+            delayMessage.Handled = true;
         }
     }
 
@@ -452,38 +346,19 @@ public class TaskActivateService : BackgroundService
     }
 
 
-    async ValueTask ProcessTaskActivationRecordResultAsync(
-TaskActivationRecordResult result,
+    async ValueTask ProcessTaskActivationRecordCreateResultAsync(
+        TaskActivationRecordResult result,
         CancellationToken cancellationToken = default)
     {
         var taskDefinition = result.TaskActivationRecord.GetTaskDefinition();
+        if (taskDefinition == null)
+        {
+            return;
+        }
         foreach (var kv in result.Instances)
         {
             var taskExecutionInstance = kv.Value;
-            if (taskDefinition.TaskTypeDesc.Value.FullName == "NodeService.ServiceHost.Tasks.ExecuteBatchScriptTask")
-            {
-                if (taskDefinition.Options.TryGetValue("Scripts", out var scriptsObject) && scriptsObject is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.String)
-                {
-                    var scriptsString = jsonElement.GetString();
-                    foreach (var item in taskDefinition.EnvironmentVariables)
-                    {
-                        scriptsString = scriptsString.Replace($"$({item.Name})", item.Value);
-                    }
-                    taskDefinition.Options["Scripts"] = scriptsString;
-                }
-            }
-            var context = new TaskPenddingContext(taskExecutionInstance.Id, result.TaskActivationRecord, taskDefinition)
-            {
-                NodeSessionService = _nodeSessionService,
-                NodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId),
-                TriggerEvent = taskExecutionInstance.ToTriggerEvent(new TaskDefinitionModel()
-                {
-                    Value = taskDefinition,
-                    Id = result.TaskActivationRecord.TaskDefinitionId,
-                }, result.FireTaskParameters.EnvironmentVariables),
-                FireParameters = result.FireTaskParameters,
-            };
-
+            TaskActivateServiceHelpers.ApplyEnvironmentVariables(taskDefinition);
             await SendTaskExecutionReportAsync(taskExecutionInstance.Id, TaskExecutionStatus.Triggered, string.Empty);
 
             await _delayMessageQueue.EnqueueAsync(new KafkaDelayMessage()
@@ -494,11 +369,10 @@ TaskActivationRecordResult result,
                 CreateDateTime = DateTime.UtcNow,
                 Duration = TimeSpan.FromSeconds(5),
                 ScheduleDateTime = DateTime.UtcNow + TimeSpan.FromSeconds(taskDefinition.PenddingLimitTimeSeconds),
-            });
+            }, cancellationToken);
 
         }
     }
-
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
@@ -513,7 +387,10 @@ TaskActivationRecordResult result,
             {
                 try
                 {
-
+                    if (array == null)
+                    {
+                        continue;
+                    }
                     foreach (var serviceParametersGroup in array.GroupBy(static x=>x.Parameters.Index))
                     {
                         switch (serviceParametersGroup.Key)
@@ -568,17 +445,17 @@ TaskActivationRecordResult result,
         IEnumerable<SwitchStageParameters> switchTaskFlowStageParameterList,
         CancellationToken cancellationToken)
     {
-        foreach (var rerunTaskFlowParametersGroup in switchTaskFlowStageParameterList.GroupBy(static x => x.TaskFlowExecutionInstanceId))
+        foreach (var switchStageParametersGroup in switchTaskFlowStageParameterList.GroupBy(static x => x.TaskFlowExecutionInstanceId))
         {
-            var taskFlowExecutionInstanceId = rerunTaskFlowParametersGroup.Key;
-            var lastRerunTaskFlowParameters = rerunTaskFlowParametersGroup.LastOrDefault();
-            if (lastRerunTaskFlowParameters == default)
+            var taskFlowExecutionInstanceId = switchStageParametersGroup.Key;
+            var lastSwitchTaskFlowStageParameters = switchStageParametersGroup.LastOrDefault();
+            if (lastSwitchTaskFlowStageParameters == default)
             {
                 continue;
             }
             await _taskFlowExecutor.SwitchStageAsync(
                 taskFlowExecutionInstanceId,
-                lastRerunTaskFlowParameters.StageIndex,
+                lastSwitchTaskFlowStageParameters.StageIndex,
                 cancellationToken);
         }
     }
@@ -587,8 +464,8 @@ TaskActivationRecordResult result,
         IEnumerable<RetryTaskParameters> retryTaskParameterList,
         CancellationToken cancellationToken = default)
     {
-        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync();
-        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync();
+        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync(cancellationToken);
+        await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
         foreach (var retryTaskFlowParametersGroup in retryTaskParameterList.GroupBy(static x => x.TaskExecutionInstanceId))
         {
             var taskExecutionInstanceId = retryTaskFlowParametersGroup.Key;
@@ -661,7 +538,7 @@ TaskActivationRecordResult result,
             {
                 continue;
             }
-            await ProcessTaskActivationRecordResultAsync(result.AsT0, cancellationToken);
+            await ProcessTaskActivationRecordCreateResultAsync(result.AsT0, cancellationToken);
         }
     }
 

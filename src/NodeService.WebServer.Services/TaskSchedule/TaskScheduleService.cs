@@ -76,6 +76,9 @@ public partial  class TaskScheduleService : BackgroundService
                     case 2:
                         await ProcessNodeHealthyCheckScheduleParametersAsync(op, cancellationToken);
                         break;
+                    case 3:
+                        await ProcessTaskObservationScheduleParametersAsync(op, cancellationToken);
+                        break;
                     default:
                         break;
                 }
@@ -100,4 +103,17 @@ public partial  class TaskScheduleService : BackgroundService
         }
     }
 
+    ITrigger TimeOnlyToTrigger(TimeOnlyModel timeOnlyModel)
+    {
+        return TriggerBuilder.Create()
+            .WithSchedule(CronScheduleBuilder.DailyAtHourAndMinute(timeOnlyModel.Time.Hour, timeOnlyModel.Time.Minute))
+            .Build();
+    }
+
+    ITrigger IntervalToTrigger(int minutes)
+    {
+        return TriggerBuilder.Create()
+            .WithDailyTimeIntervalSchedule(builder => builder.WithInterval(minutes, IntervalUnit.Minute))
+            .Build();
+    }
 }

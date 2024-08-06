@@ -1,10 +1,12 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.Infrastructure.Data;
+using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using OneOf;
+using System.Threading;
 
 namespace NodeService.WebServer.Services.DataQueue;
 
@@ -399,6 +401,49 @@ public class ConfigurationQueryService
             VersionRecord = parameters.Value,
             Type = ConfigurationChangedType.Delete,
         };
+    }
+
+    public async ValueTask<TaskObservationConfiguration?> QueryTaskObservationConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await _objectCache.GetObjectAsync<TaskObservationConfiguration?>(
+            NotificationSources.TaskObservation,
+            cancellationToken);
+
+        if (result != null)
+        {
+            return result;
+        }
+
+        var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+        await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+        var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.TaskObservation), cancellationToken);
+        if (propertyBag == null)
+        {
+            result = new TaskObservationConfiguration();
+            result.InitDefaults();
+            propertyBag = new PropertyBag();
+            propertyBag.Add("Id", NotificationSources.TaskObservation);
+            propertyBag.Add("Value", JsonSerializer.Serialize(result));
+            propertyBag["CreatedDate"] = DateTime.UtcNow;
+            await repo.AddAsync(propertyBag, cancellationToken);
+        }
+        else
+        {
+            result = JsonSerializer.Deserialize<TaskObservationConfiguration>(propertyBag["Value"] as string);
+        }
+        return result;
+    }
+
+    public async ValueTask UpdateTaskObservationConfigurationAsync(
+        TaskObservationConfiguration taskObservationConfiguration,
+        CancellationToken cancellationToken = default)
+    {
+        var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+        await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+        var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.TaskObservation));
+        propertyBag["Value"] = JsonSerializer.Serialize(taskObservationConfiguration);
+        await repo.SaveChangesAsync(cancellationToken);
+        await _objectCache.SetObjectAsync(NotificationSources.TaskObservation, taskObservationConfiguration, cancellationToken);
     }
 
 

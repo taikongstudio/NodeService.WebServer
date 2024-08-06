@@ -150,4 +150,6 @@ public class WebServerCounter
     public ConcurrentDictionary<int, PartitionOffsetValue> ConsumePartitionOffsetDictionary { get; set; } = new();
 
     public CounterLongValue TaskExecutionReportProduceRetryCount { get; set; } = new();
+
+    public CounterLongValue TaskObservationProduceRetryCount { get; set; } = new();
 }

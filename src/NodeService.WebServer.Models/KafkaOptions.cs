@@ -19,5 +19,7 @@ namespace NodeService.WebServer.Models
         public string TaskDelayQueueMessageTopic { get; set; }
 
         public string TaskActivationCheckTopic { get; set; }
+
+        public string TaskObservationEventTopic { get; set; }
     }
 }

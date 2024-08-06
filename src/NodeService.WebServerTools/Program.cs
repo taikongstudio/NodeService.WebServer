@@ -34,8 +34,8 @@ internal class Program
     private static void Configure(HostApplicationBuilder builder)
     {
         ConfigureDbContext(builder);
-        //builder.Services.AddHostedService<ClearConfigService>();
-        builder.Services.AddHostedService<TestConfigService>();
+        builder.Services.AddHostedService<ClearConfigService>();
+        //builder.Services.AddHostedService<TestConfigService>();
         builder.Services.AddSingleton<HttpClient>(sp =>
         {
             return new HttpClient

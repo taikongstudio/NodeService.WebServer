@@ -35,7 +35,7 @@ public class HeartBeatResponseHandler : IMessageHandler
             await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
             {
                 Message = null,
-                NodeSessionId = NodeSessionId
+                NodeSessionId = NodeSessionId,
             });
         }
 
@@ -73,7 +73,8 @@ public class HeartBeatResponseHandler : IMessageHandler
             CreationDateTime = DateTime.UtcNow,
             NodeId = NodeSessionId.NodeId.Value,
             Status = NodeStatus.Online,
-            Message = $"Online"
+            Message = $"Online",
+            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty
         }, cancellationToken);
     }
 }

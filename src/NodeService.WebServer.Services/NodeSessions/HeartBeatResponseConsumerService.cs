@@ -73,14 +73,19 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
         await foreach (var array in _hearBeatSessionMessageBatchQueue.ReceiveAllAsync(cancellationToken))
         {
-            var stopwatch = new Stopwatch();
+            if (array == null)
+            {
+                continue;
+            }
+            var processTimeSpan = TimeSpan.Zero;
+            var timeStamp = Stopwatch.GetTimestamp();
             var count = array.Length;
             try
             {
-                stopwatch.Start();
                 await ProcessHeartBeatMessagesAsync(array, cancellationToken);
+                processTimeSpan = Stopwatch.GetElapsedTime(timeStamp);
                 _webServerCounter.HeartBeatQueueCount.Value = _hearBeatSessionMessageBatchQueue.QueueCount;
-                _webServerCounter.HeartBeatTotalProcessTimeSpan.Value += stopwatch.Elapsed;
+                _webServerCounter.HeartBeatTotalProcessTimeSpan.Value += processTimeSpan;
                 _webServerCounter.HeartBeatMessageConsumeCount.Value += (uint)count;
             }
             catch (Exception ex)
@@ -90,9 +95,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             }
             finally
             {
-                _logger.LogInformation(
-                    $"process {count} messages, spent:{stopwatch.Elapsed}, QueueCount:{_hearBeatSessionMessageBatchQueue.QueueCount}");
-                stopwatch.Reset();
+                _logger.LogInformation($"process {count} messages, spent:{processTimeSpan}, QueueCount:{_hearBeatSessionMessageBatchQueue.QueueCount}");
             }
         }
     }
@@ -195,19 +198,41 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     async ValueTask SaveNodeUsageConfigurationAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var item in _nodeUsageConfigList)
+        foreach (var nodeUsageConfig in _nodeUsageConfigList)
         {
             try
             {
-                item.Value = item.Value with { };
+                var queryResult = await _configurationQueryService.QueryConfigurationByIdListAsync<NodeUsageConfigurationModel>([nodeUsageConfig.Id], cancellationToken);
+                if (!queryResult.HasValue)
+                {
+                    continue;
+                }
+                var nodeUsageConfigFromDb = queryResult.Items.FirstOrDefault();
+                if (nodeUsageConfigFromDb == null)
+                {
+                    continue;
+                }
+                if (!nodeUsageConfigFromDb.IsEnabled && !nodeUsageConfig.Value.AutoDetect)
+                {
+                    continue;
+                }
+                nodeUsageConfig.Name = nodeUsageConfigFromDb.Name;
+                nodeUsageConfig.FactoryName = nodeUsageConfigFromDb.FactoryName;
+                nodeUsageConfig.Value = nodeUsageConfig.Value with
+                {
+                    AutoDetect = nodeUsageConfigFromDb.Value.AutoDetect,
+                    DynamicDetect = nodeUsageConfigFromDb.Value.DynamicDetect,
+                    Nodes = nodeUsageConfigFromDb.Value.Nodes.Union(nodeUsageConfig.Value.Nodes).ToList(),
+                    ServiceProcessDetections = nodeUsageConfigFromDb.Value.ServiceProcessDetections,
+                };
                 await _configurationQueryService.AddOrUpdateConfigurationAsync(
-                    item,
+                    nodeUsageConfig,
                     true,
                     cancellationToken);
             }
             catch (Exception ex)
             {
-                _exceptionCounter.AddOrUpdate(ex, item.Id);
+                _exceptionCounter.AddOrUpdate(ex, nodeUsageConfig.Id);
                 _logger.LogError(ex.ToString());
             }
         }
@@ -371,6 +396,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     CreationDateTime = DateTime.UtcNow,
                     NodeId = hearBeatMessage.NodeSessionId.NodeId.Value,
                     Status = NodeStatus.Offline,
+                    IpAddress = hearBeatResponse.Properties["IpAddress"],
                     Message = $"Offline",
                 };
                 if (analysisPropsResult == default)
@@ -498,7 +524,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     var detectedCount = 0;
                     foreach (var processInfo in processInfoList)
                     {
-                        var isDetected = DetectProcess(nodeUsageConfiguration, processInfo);
+                        var isDetected = nodeUsageConfiguration.DetectProcess(processInfo);
                         if (isDetected)
                         {
                             detectedCount++;
@@ -507,7 +533,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     }
                     if (detectedCount > 0)
                     {
-                        AddToConfigurationNodeList(nodeInfo, nodeUsageConfiguration);
+                        nodeUsageConfiguration.AddToConfigurationNodeList(nodeInfo);
                     }
                     else if (detectedCount == 0 && nodeUsageConfiguration.Value.DynamicDetect)
                     {
@@ -545,35 +571,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
         return analysisProcessListResult;
     }
 
-    private static bool DetectProcess(NodeUsageConfigurationModel nodeUsageConfiguration, ProcessInfo processInfo)
-    {
-        var isDetected = false;
-        foreach (var detection in nodeUsageConfiguration.ServiceProcessDetections)
-        {
-            switch (detection.DetectionType)
-            {
-                case NodeUsageServiceProcessDetectionType.FileName:
-                    if (processInfo.FileName.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isDetected = true;
-                    }
-                    break;
-                case NodeUsageServiceProcessDetectionType.ProcessName:
-                    if (processInfo.FileName.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isDetected = true;
-                    }
-                    break;
-                case NodeUsageServiceProcessDetectionType.ServiceName:
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        return isDetected;
-    }
-
     private AnalysisServiceProcessListResult AnalysisNodeServiceProcessInfoList(NodeInfoModel nodeInfo, ServiceProcessInfo[] serviceProcessInfoList)
     {
         var analisisProcessListResult = new AnalysisServiceProcessListResult();
@@ -600,17 +597,17 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     var detectedCount = 0;
                     foreach (var serviceProcessInfo in serviceProcessInfoList)
                     {
-                        var isDetected = DetectServiceProcess(nodeUsageConfiguration, serviceProcessInfo);
+                        var isDetected = nodeUsageConfiguration.DetectServiceProcess(serviceProcessInfo);
                         if (isDetected)
                         {
                             detectedCount++;
                             usages.Add(nodeUsageConfiguration.Name);
-                            AddToConfigurationNodeList(nodeInfo, nodeUsageConfiguration);
+                            nodeUsageConfiguration.AddToConfigurationNodeList(nodeInfo);
                         }
                     }
                     if (detectedCount > 0)
                     {
-                        AddToConfigurationNodeList(nodeInfo, nodeUsageConfiguration);
+                        nodeUsageConfiguration.AddToConfigurationNodeList(nodeInfo);
                     }
                     else if (detectedCount == 0 && nodeUsageConfiguration.Value.DynamicDetect)
                     {
@@ -644,70 +641,5 @@ public class HeartBeatResponseConsumerService : BackgroundService
         return analisisProcessListResult;
     }
 
-    private static bool DetectServiceProcess(NodeUsageConfigurationModel nodeUsageConfiguration, ServiceProcessInfo serviceProcessInfo)
-    {
-        var isDetected = false;
-        foreach (var detection in nodeUsageConfiguration.ServiceProcessDetections)
-        {
-            switch (detection.DetectionType)
-            {
-                case NodeUsageServiceProcessDetectionType.FileName:
-                    if (serviceProcessInfo.PathName.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isDetected = true;
-                    }
-                    break;
-                case NodeUsageServiceProcessDetectionType.ProcessName:
 
-                    break;
-                case NodeUsageServiceProcessDetectionType.ServiceName:
-                    if (serviceProcessInfo.Name.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
-                    {
-                        isDetected = true;
-                    }
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        return isDetected;
-    }
-
-    private static void AddToConfigurationNodeList(NodeInfoModel nodeInfo, NodeUsageConfigurationModel nodeUsageConfiguration)
-    {
-        if (nodeInfo == null)
-        {
-            return;
-        }
-        if (nodeUsageConfiguration == null)
-        {
-            return;
-        }
-        if (nodeUsageConfiguration.Nodes == null)
-        {
-            return;
-        }
-        lock (nodeUsageConfiguration.Nodes)
-        {
-            NodeUsageInfo? nodeUsageInfo = null;
-            foreach (var item in nodeUsageConfiguration.Nodes)
-            {
-                if (item.NodeInfoId == nodeInfo.Id)
-                {
-                    nodeUsageInfo = item;
-                    break;
-                }
-            }
-            if (nodeUsageInfo == null)
-            {
-                nodeUsageInfo = new NodeUsageInfo()
-                {
-                    Name = nodeInfo.Name,
-                    NodeInfoId = nodeInfo.Id
-                };
-                nodeUsageConfiguration.Nodes.Add(nodeUsageInfo);
-            }
-        }
-    }
 }

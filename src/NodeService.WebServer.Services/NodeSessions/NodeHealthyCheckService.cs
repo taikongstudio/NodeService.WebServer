@@ -5,16 +5,10 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQueue;
-using NPOI.HSSF.UserModel;
 using NPOI.HSSF.Util;
-using NPOI.SS.Formula.Functions;
 using NPOI.SS.UserModel;
-using NPOI.SS.Util;
-using NPOI.Util;
 using NPOI.XSSF.UserModel;
-
-using System.Data;
-using System.Threading;
+using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -24,6 +18,7 @@ public partial class NodeHealthyCheckService : BackgroundService
     readonly ExceptionCounter _exceptionCounter;
     readonly NodeInfoQueryService _nodeInfoQueryService;
     private readonly ObjectCache _objectCache;
+    private readonly ConfigurationQueryService _configurationQueryService;
     readonly ILogger<NodeHealthyCheckService> _logger;
     readonly INodeSessionService _nodeSessionService;
     readonly IAsyncQueue<NotificationMessage> _notificationQueue;
@@ -33,6 +28,7 @@ public partial class NodeHealthyCheckService : BackgroundService
     readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
     NodeSettings _nodeSettings;
     NodeHealthyCheckConfiguration _nodeHealthyCheckConfiguration;
+    ImmutableArray<NodeUsageConfigurationModel> _nodeUsageConfigurations;
 
     public NodeHealthyCheckService(
         ILogger<NodeHealthyCheckService> logger,
@@ -44,7 +40,8 @@ public partial class NodeHealthyCheckService : BackgroundService
         ApplicationRepositoryFactory<NotificationConfigModel> notificationRepositoryFactory,
         NodeInfoQueryService  nodeInfoQueryService,
         ExceptionCounter exceptionCounter,
-        ObjectCache objectCache
+        ObjectCache objectCache,
+        ConfigurationQueryService configurationQueryService
     )
     {
         _logger = logger;
@@ -57,6 +54,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         _exceptionCounter = exceptionCounter;
         _nodeInfoQueryService = nodeInfoQueryService;
         _objectCache = objectCache;
+        _configurationQueryService = configurationQueryService;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -83,14 +81,14 @@ public partial class NodeHealthyCheckService : BackgroundService
         {
             await RefreshNodeHelthyCheckConfigurationAsync(cancellationToken);
             await RefreshNodeSettingsAsync(cancellationToken);
-
+            await RefreshNodeUsagesConfigurationListAsync(cancellationToken);
             if (_nodeHealthyCheckConfiguration == null)
             {
                 return;
             }
 
             List<NodeHeathyResult> resultList = [];
-            await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
+            await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync(cancellationToken);
             var nodeInfoList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.All,
@@ -200,38 +198,27 @@ public partial class NodeHealthyCheckService : BackgroundService
                     return usageList;
                 }
 
-                foreach (var usage in nodeInfo.Profile.Usages.Split(",", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                foreach (var  nodeUsageConfiguration in _nodeUsageConfigurations)
                 {
-                    var usageCount = 0;
-                    var processExitsCount = 0;
-                    foreach (var item in _nodeSettings.ProcessUsagesMapping)
+                    var foundNode = false;
+                    foreach (var item in nodeUsageConfiguration.Value.Nodes)
                     {
-                        if (string.IsNullOrEmpty(item.Name) || string.IsNullOrEmpty(item.Value))
+                        if (item.NodeInfoId==nodeInfo.Id)
                         {
-                            continue;
-                        }
-                        if (usage != item.Value)
-                        {
-                            continue;
-                        }
-                        usageCount++;
-                        if (processInfoList != null)
-                        {
-                            foreach (var processInfo in processInfoList)
-                            {
-                                if (processInfo.FileName.Contains(item.Name))
-                                {
-                                    processExitsCount++;
-                                }
-                            }
+                            foundNode = true;
+                            break;
                         }
                     }
-
-                    if (usageCount > 0 && processExitsCount == 0)
+                    if (!foundNode)
                     {
-                        usageList.Add(usage);
+                        continue;
                     }
-
+                    if (!analysisPropsResult.ProcessInfoList.Any(nodeUsageConfiguration.DetectProcess)
+                        ||
+                        !analysisPropsResult.ServiceProcessInfoList.Any(nodeUsageConfiguration.DetectServiceProcess))
+                    {
+                        usageList.Add(nodeUsageConfiguration.Name);
+                    }
                 }
             }
         }
@@ -338,6 +325,19 @@ public partial class NodeHealthyCheckService : BackgroundService
         else
             _nodeSettings = JsonSerializer.Deserialize<NodeSettings>(value as string);
 
+    }
+
+    private async ValueTask RefreshNodeUsagesConfigurationListAsync(CancellationToken cancellationToken = default)
+    {
+        var queryResult = await _configurationQueryService.QueryConfigurationByQueryParametersAsync<NodeUsageConfigurationModel>(
+            new PaginationQueryParameters()
+            {
+                PageIndex = 1,
+                PageSize = int.MaxValue - 1,
+                QueryStrategy = QueryStrategy.QueryPreferred
+            },
+            cancellationToken);
+        _nodeUsageConfigurations = queryResult.HasValue ? queryResult.Items.ToImmutableArray() : [];
     }
 
 

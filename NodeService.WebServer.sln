@@ -29,8 +29,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeService.CoreServer", "s
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Servers", "Servers", "{F4B3E5E5-4420-4F2A-81B5-9F122024268C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeService.WebClient", "src\NodeService.WebClient\NodeService.WebClient.csproj", "{802A042C-CA6A-4984-9306-EFD1DA32DBAF}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -135,14 +133,6 @@ Global
 		{9C463072-90F5-483A-AC6B-42E9D2454599}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9C463072-90F5-483A-AC6B-42E9D2454599}.Release|x64.ActiveCfg = Release|Any CPU
 		{9C463072-90F5-483A-AC6B-42E9D2454599}.Release|x64.Build.0 = Release|Any CPU
-		{802A042C-CA6A-4984-9306-EFD1DA32DBAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{802A042C-CA6A-4984-9306-EFD1DA32DBAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{802A042C-CA6A-4984-9306-EFD1DA32DBAF}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{802A042C-CA6A-4984-9306-EFD1DA32DBAF}.Debug|x64.Build.0 = Debug|Any CPU
-		{802A042C-CA6A-4984-9306-EFD1DA32DBAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{802A042C-CA6A-4984-9306-EFD1DA32DBAF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{802A042C-CA6A-4984-9306-EFD1DA32DBAF}.Release|x64.ActiveCfg = Release|Any CPU
-		{802A042C-CA6A-4984-9306-EFD1DA32DBAF}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -150,7 +140,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{5AFAB3C0-9285-4E2B-893D-66A5A8D1C184} = {F4B3E5E5-4420-4F2A-81B5-9F122024268C}
 		{9C463072-90F5-483A-AC6B-42E9D2454599} = {F4B3E5E5-4420-4F2A-81B5-9F122024268C}
-		{802A042C-CA6A-4984-9306-EFD1DA32DBAF} = {F4B3E5E5-4420-4F2A-81B5-9F122024268C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {5C071CC7-5DA1-440C-AC60-05ECA31C0F11}

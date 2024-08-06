@@ -397,7 +397,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     CreationDateTime = DateTime.UtcNow,
                     NodeId = hearBeatMessage.NodeSessionId.NodeId.Value,
                     Status = NodeStatus.Offline,
-                    IpAddress = hearBeatResponse.Properties["IpAddress"],
+                    IpAddress = hearBeatMessage.IpAddress,
                     Message = $"Offline",
                 };
                 if (analysisPropsResult == default)

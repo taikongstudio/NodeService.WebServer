@@ -66,6 +66,20 @@ namespace NodeService.WebServer.Extensions
             };
         }
 
+        public static bool IsFaultStatus(this TaskExecutionInstanceModel taskExecutionInstance)
+        {
+            if (taskExecutionInstance == null)
+            {
+                return false;
+            }
+            return taskExecutionInstance.Status switch
+            {
+                TaskExecutionStatus.Failed
+                or TaskExecutionStatus.PenddingTimeout => true,
+                _ => false,
+            };
+        }
+
         private static TaskExecutionEventRequest ToEvent(this TaskExecutionInstanceModel taskExecutionInstance)
         {
             var req = new TaskExecutionEventRequest

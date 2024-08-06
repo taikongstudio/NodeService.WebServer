@@ -14,6 +14,8 @@ public abstract record class NodeSessionMessage
 
     public string HostName { get; init; }
 
+    public string IpAddress { get; init; }
+
     public INodeMessage Message { get; init; }
 }
 

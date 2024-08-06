@@ -375,38 +375,8 @@ public partial class NodeHealthyCheckService : BackgroundService
             //创建工作薄  
             IWorkbook wb = new XSSFWorkbook();
 
-            ICellStyle style1 = wb.CreateCellStyle();//样式
-            style1.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Left;//文字水平对齐方式
-            style1.VerticalAlignment = NPOI.SS.UserModel.VerticalAlignment.Center;//文字垂直对齐方式
-                                                                                  //设置边框
-            style1.BorderBottom = NPOI.SS.UserModel.BorderStyle.Thin;
-            style1.BorderLeft = NPOI.SS.UserModel.BorderStyle.Thin;
-            style1.BorderRight = NPOI.SS.UserModel.BorderStyle.Thin;
-            style1.BorderTop = NPOI.SS.UserModel.BorderStyle.Thin;
-            style1.WrapText = true;//自动换行
-
-            ICellStyle style2 = wb.CreateCellStyle();//样式
-            IFont font1 = wb.CreateFont();//字体
-            font1.FontName = "Microsoft YaHei";
-            font1.Color = HSSFColor.Red.Index;//字体颜色
-            font1.Boldweight = (short)FontBoldWeight.Normal;//字体加粗样式
-            style2.SetFont(font1);//样式里的字体设置具体的字体样式
-                                  //设置背景色
-            style2.FillForegroundColor = NPOI.HSSF.Util.HSSFColor.Yellow.Index;
-            style2.FillPattern = FillPattern.SolidForeground;
-            style2.FillBackgroundColor = NPOI.HSSF.Util.HSSFColor.Yellow.Index;
-            style2.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Left;//文字水平对齐方式
-            style2.VerticalAlignment = NPOI.SS.UserModel.VerticalAlignment.Center;//文字垂直对齐方式
-
-            ICellStyle dateStyle = wb.CreateCellStyle();//样式
-            dateStyle.Alignment = NPOI.SS.UserModel.HorizontalAlignment.Left;//文字水平对齐方式
-            dateStyle.VerticalAlignment = NPOI.SS.UserModel.VerticalAlignment.Center;//文字垂直对齐方式
-                                                                                     //设置数据显示格式
-            IDataFormat dataFormatCustom = wb.CreateDataFormat();
-            dateStyle.DataFormat = dataFormatCustom.GetFormat("yyyy-MM-dd HH:mm:ss");
-
             //创建一个表单
-            ISheet sheet = wb.CreateSheet("Sheet0");
+            ISheet sheet = wb.CreateSheet("上位机异常监控");
             //设置列宽
             int[] columnWidth = { 20, 20, 20, 20, 20, 20, 20, 50, 50 };
             for (int i = 0; i < columnWidth.Length; i++)
@@ -428,7 +398,7 @@ public partial class NodeHealthyCheckService : BackgroundService
             }
 
 
-            var rowIndex = 0;
+            var rowIndex = 1;
             for (int dataIndex = 0; dataIndex < nodeHeathyResults.Count; dataIndex++)
             {
                 var result = nodeHeathyResults[dataIndex];
@@ -444,7 +414,6 @@ public partial class NodeHealthyCheckService : BackgroundService
                         {
                             case 0:
                                 SetCellValue(cell, result.NodeInfo.Profile.ServerUpdateTimeUtc);
-                                cell.CellStyle = dateStyle;
                                 break;
                             case 1:
                                 SetCellValue(cell, result.NodeInfo.Profile.Name ?? string.Empty);

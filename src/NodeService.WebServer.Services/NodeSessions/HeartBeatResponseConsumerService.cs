@@ -216,6 +216,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 {
                     continue;
                 }
+                nodeUsageConfig.IsEnabled = nodeUsageConfigFromDb.IsEnabled;
                 nodeUsageConfig.Name = nodeUsageConfigFromDb.Name;
                 nodeUsageConfig.FactoryName = nodeUsageConfigFromDb.FactoryName;
                 nodeUsageConfig.Value = nodeUsageConfig.Value with
@@ -509,7 +510,9 @@ public class HeartBeatResponseConsumerService : BackgroundService
         {
             if (_nodeSettings.ProcessUsagesMapping != null && processInfoList != null)
             {
-                var usagesList = nodeInfo.Profile.Usages?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
+                var usagesList = nodeInfo.Profile.Usages?.Split(
+                    ',',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
                 var usages = new HashSet<string>(usagesList);
                 foreach (var nodeUsageConfiguration in _nodeUsageConfigList)
                 {
@@ -578,7 +581,9 @@ public class HeartBeatResponseConsumerService : BackgroundService
         {
             if (_nodeSettings.ProcessUsagesMapping != null && serviceProcessInfoList != null)
             {
-                var usagesList = nodeInfo.Profile.Usages?.Split(',') ?? [];
+                var usagesList = nodeInfo.Profile.Usages?.Split(
+                    ',',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [];
                 var usages = new HashSet<string>(usagesList);
                 foreach (var nodeUsageConfiguration in _nodeUsageConfigList)
                 {

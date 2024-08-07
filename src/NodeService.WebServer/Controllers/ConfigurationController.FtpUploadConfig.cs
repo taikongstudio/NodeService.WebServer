@@ -5,10 +5,43 @@ namespace NodeService.WebServer.Controllers;
 public partial class ConfigurationController
 {
     [HttpPost("/api/CommonConfig/FtpUpload/AddOrUpdate")]
-    public Task<ApiResponse> AddOrUpdateAsync([FromBody] FtpUploadConfigModel model,CancellationToken cancellationToken=default)
+    public Task<ApiResponse> AddOrUpdateAsync([FromBody] FtpUploadConfigModel model, CancellationToken cancellationToken = default)
     {
         model.FtpConfig = null;
-        return AddOrUpdateConfigurationAsync(model, cancellationToken: cancellationToken);
+        return AddOrUpdateConfigurationAsync(model, FtpUploadConfigurationVersionChanged, cancellationToken: cancellationToken);
+    }
+
+    async ValueTask FtpUploadConfigurationVersionChanged(
+        ConfigurationSaveChangesResult result,
+        CancellationToken cancellationToken = default)
+    {
+        switch (result.Type)
+        {
+            case ConfigurationChangedType.None:
+                break;
+            case ConfigurationChangedType.Add:
+            case ConfigurationChangedType.Update:
+                var newValue = result.NewValue as FtpUploadConfigModel;
+                var oldValue = result.OldValue as FtpUploadConfigModel;
+                var newVersionRecord = await _configurationQueryService.GetCurrentConfigurationVersionAsync(newValue.FtpConfigId, cancellationToken);
+                await _configurationQueryService.AddConfigurationVersionReferenceAsync<FtpConfigModel>(
+                    newValue.FtpConfigId,
+                    newVersionRecord.Version,
+                    cancellationToken);
+                if (result.Type == ConfigurationChangedType.Update)
+                {
+                    var oldVersionRecord = await _configurationQueryService.GetCurrentConfigurationVersionAsync(oldValue.FtpConfigId, cancellationToken);
+                    await _configurationQueryService.ReleaseConfigurationVersionReferenceAsync<FtpConfigModel>(
+                        oldValue.FtpConfigId,
+                        oldVersionRecord.Version,
+                        cancellationToken);
+                }
+                break;
+            case ConfigurationChangedType.Delete:
+                break;
+            default:
+                break;
+        }
     }
 
     [HttpGet("/api/CommonConfig/FtpUpload/List")]

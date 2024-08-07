@@ -143,11 +143,14 @@ public partial class NodeHealthyCheckService : BackgroundService
             if (_nodeHealthyCheckConfiguration.CheckProcessService)
             {
                 var usageList = await ShouldSendProcessNotFoundWarningAsync(nodeInfo, cancellationToken);
-                nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
+                if (usageList.Any())
                 {
-                    Exception = $"相关进程未开启",
-                    Solution = $"建议启动\"{string.Join(";", usageList)}\"相关软件或服务"
-                });
+                    nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
+                    {
+                        Exception = $"相关进程未开启",
+                        Solution = $"建议启动\"{string.Join(";", usageList)}\"相关软件或服务"
+                    });
+                }
             }
 
             var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(

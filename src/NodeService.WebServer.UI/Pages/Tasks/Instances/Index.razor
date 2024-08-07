@@ -129,39 +129,7 @@
                 }
             </PropertyColumn>
             <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
-                @switch (context.Status)
-                {
-                    case TaskExecutionStatus.Unknown:
-                        <Text>未知</Text>
-                        break;
-                    case TaskExecutionStatus.Triggered:
-                        <Text>已触发</Text>
-                        break;
-                    case TaskExecutionStatus.Pendding:
-                        <Text>等待节点响应</Text>
-                        break;
-                    case TaskExecutionStatus.Started:
-                        <Text>已启动</Text>
-                        break;
-                    case TaskExecutionStatus.Running:
-                        <Text>运行中</Text>
-                        break;
-                    case TaskExecutionStatus.Finished:
-                        <Text>完成</Text>
-                        break;
-                    case TaskExecutionStatus.Cancelled:
-                        <Text>已取消</Text>
-                        break;
-                    case TaskExecutionStatus.Failed:
-                        <Text>失败</Text>
-                        break;
-                    case TaskExecutionStatus.PenddingTimeout:
-                        <Text>等待超时</Text>
-                        break;
-                    case TaskExecutionStatus.PenddingCancel:
-                        <Text>等待取消响应</Text>
-                        break;
-                }
+                <Text>@context.Status.GetDisplayName()</Text>
             </PropertyColumn>
             <PropertyColumn Title="触发时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
             <PropertyColumn Title="开始时间" Ellipsis SorterMultiple="2" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>
@@ -239,16 +207,15 @@
 
     protected override void OnInitialized()
     {
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Unknown, Name = "全部" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Triggered, Name = "已触发" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Pendding, Name = "等待节点响应" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Started, Name = "已启动" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Running, Name = "运行中" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Failed, Name = "失败" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Finished, Name = "完成" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.Cancelled, Name = "已取消" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.PenddingTimeout, Name = "等待超时" });
-        _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel { Value = TaskExecutionStatus.PenddingCancel, Name = "等待取消响应" });
+        for (var i = TaskExecutionStatus.Unknown; i < TaskExecutionStatus.PenddingCancel + 1; i++)
+        {
+            _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel
+                {
+                    Value = TaskExecutionStatus.Unknown,
+                    Name = i.GetDisplayName()
+                });
+        }
+
         _dataSource = new RoutedPaginationDataSource<TaskExecutionInstanceModel, QueryTaskExecutionInstanceListParameters>(NavigationManager.BaseUri, ApiService.QueryTaskExecutionInstancesAsync, StateHasChanged);
         _dataSource.ExceptionHandler = OnExepction;
         base.OnInitialized();

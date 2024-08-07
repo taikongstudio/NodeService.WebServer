@@ -1,6 +1,7 @@
 ﻿using Confluent.Kafka;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using NPOI.SS.UserModel;
@@ -20,6 +21,7 @@ namespace NodeService.WebServer.Services.Tasks
         readonly ConfigurationQueryService _configurationQueryService;
         private readonly NodeInfoQueryService _nodeInfoQueryService;
         private ConsumerConfig _consumerConfig;
+        NodeSettings _nodeSettings;
 
         public TaskObservationEventKafkaConsumerService(
             ILogger<TaskObservationEventKafkaConsumerService> logger,
@@ -39,6 +41,7 @@ namespace NodeService.WebServer.Services.Tasks
             _notificationQueue = notificationQueue;
             _configurationQueryService = configurationQueryService;
             _nodeInfoQueryService = nodeInfoQueryService;
+            _nodeSettings = new NodeSettings();
         }
 
         protected override async Task ExecuteAsync(CancellationToken  cancellationToken=default)
@@ -125,31 +128,27 @@ namespace NodeService.WebServer.Services.Tasks
                 }
                 var status = item.Type switch
                 {
-                    "TaskExecutionInstanceModel" => ((TaskExecutionStatus)item.Status).ToString(),
-                    "TaskFlowExecutionInstanceModel" => ((TaskFlowExecutionStatus)item.Status).ToString(),
+                    "TaskExecutionInstanceModel" => ((TaskExecutionStatus)item.Status).GetDisplayName(),
+                    "TaskFlowExecutionInstanceModel" => ((TaskFlowExecutionStatus)item.Status).GetDisplayName(),
                     _ => "Unknown"
                 };
-                var nodeName = string.Empty;
+
+                NodeInfoModel? nodeInfo = null;
                 if (item.Type == "TaskExecutionInstanceModel")
                 {
-                    var nodeInfo = await _nodeInfoQueryService.QueryNodeInfoByIdAsync(
+                    nodeInfo = await _nodeInfoQueryService.QueryNodeInfoByIdAsync(
                         item.Context,
                         true,
                         cancellationToken);
-                    if (nodeInfo != null)
-                    {
-                        nodeName = nodeInfo.Name;
-                    }
                 }
                 checkResultList.Add(new TaskObservationCheckResult()
                 {
                     Id = item.Id,
                     Name = item.Name,
-                    Context = nodeName,
+                    NodeInfo = nodeInfo,
                     CreationDateTime = item.CreationDateTime.ToString(),
                     Message = item.Message,
-                    Status = status,
-                    Solution = GetSolution(status, item.Message)
+                    Status = status
                 });
             }
             if (checkResultList.Count == 0)
@@ -170,33 +169,83 @@ namespace NodeService.WebServer.Services.Tasks
                 return;
             }
 
-            if (!TryWriteToExcel(checkResultList, out var stream) || stream == null)
+            var notificationConfigQueryResult = await _configurationQueryService.QueryConfigurationByIdListAsync<NotificationConfigModel>(taskObservationConfiguration.Configurations.Select(static x => x.Value), cancellationToken);
+            var notificationConfigList = notificationConfigQueryResult.Items;
+
+
+            foreach (var checkResultGroup in checkResultList.GroupBy(static x => x.NodeInfo?.Profile.FactoryName ?? AreaTags.Any))
             {
-                return;
+                var factoryCode = checkResultGroup.Key;
+                string factoryName = "全部区域";
+                var areaEntry = _nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == factoryCode);
+                if (areaEntry != null)
+                {
+                    factoryName = areaEntry.Name ?? "全部区域";
+                }
+                foreach (var notificationConfig in notificationConfigList)
+                {
+                    if (notificationConfig.Value.FactoryName != factoryCode)
+                    {
+                        continue;
+                    }
+                    var subject = taskObservationConfiguration.Subject
+                        .Replace("$(FactoryName)", factoryName)
+                        .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
+
+                    List<EmailAttachment> attachments = [];
+                    foreach (var testInfoGroup in checkResultGroup.GroupBy(static x => x.NodeInfo?.Profile.TestInfo ?? string.Empty))
+                    {
+                        var bizType = testInfoGroup.Key;
+                        if (string.IsNullOrEmpty(bizType))
+                        {
+                            bizType = "未分类";
+                        }
+                        foreach (var item in testInfoGroup)
+                        {
+                            foreach (var messsageTemplate in taskObservationConfiguration.MessageTemplates)
+                            {
+                                if (string.IsNullOrEmpty(messsageTemplate.Name))
+                                {
+                                    continue;
+                                }
+                                if (item.Message != null && item.Message.Contains(messsageTemplate.Name))
+                                {
+                                    item.Solution = messsageTemplate.Value;
+                                    break;
+                                }
+                            }
+                            if (string.IsNullOrEmpty(item.Solution))
+                            {
+                                item.Solution = "<未配置此消息的模板文本>";
+                            }
+                        }
+                        if (!TryWriteToExcel([.. testInfoGroup], out var stream) || stream == null)
+                        {
+                            continue;
+                        }
+                        var attachmentName = taskObservationConfiguration.AttachmentSubject
+                            .Replace("$(FactoryName)", factoryName)
+                            .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"))
+                            .Replace("$(BusinessType)", bizType);
+                        var emailAttachment = new EmailAttachment(
+                            $"{attachmentName}.xlsx",
+                            "application",
+                            "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            stream);
+                        attachments.Add(emailAttachment);
+                    }
+                    var content = taskObservationConfiguration.Content.Replace("$(FactoryName)", factoryName)
+                            .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
+                    var emailContent = new EmailContent(
+                        subject,
+                        content,
+                        [.. attachments]);
+                    await _notificationQueue.EnqueueAsync(
+                        new NotificationMessage(emailContent, notificationConfig.Value),
+                        cancellationToken);
+                }
             }
 
-            var emailAttachment = new EmailAttachment(
-                $"{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.xlsx",
-                "application",
-                "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                stream);
-
-            var content = taskObservationConfiguration.Content;
-
-           var configurationListQueryResult = await _configurationQueryService.QueryConfigurationByIdListAsync<NotificationConfigModel>(taskObservationConfiguration.Configurations.Select(static x=>x.Value!), cancellationToken);
-
-            if (!configurationListQueryResult.HasValue)
-            {
-                return;
-            }
-            foreach (var notificationConfig in configurationListQueryResult.Items)
-            {
-                if (notificationConfig == null || !notificationConfig.IsEnabled) continue;
-                await _notificationQueue.EnqueueAsync(
-                        new NotificationMessage(new EmailContent(taskObservationConfiguration.Subject, content, [emailAttachment]),
-                        notificationConfig.Value),
-                    cancellationToken);
-            }
         }
 
         string GetSolution(string status, string message)
@@ -231,7 +280,7 @@ namespace NodeService.WebServer.Services.Tasks
                 //测试数据
 
                 IRow headerRow = sheet.CreateRow(0);
-                var headers = new string[] { "任务Id", "上位机名称", "任务名称", "任务启动时间", "任务状态", "任务消息", "建议处理措施" };
+                var headers = new string[] { "任务Id", "上位机名称", "业务类型", "实验室名称", "测试区域", "上位机负责人", "IP地址", "任务名称", "任务启动时间", "任务状态", "任务消息", "建议处理措施" };
                 {
                     for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
                     {
@@ -257,22 +306,37 @@ namespace NodeService.WebServer.Services.Tasks
                                 SetCellValue(cell, result.Id);
                                 break;
                             case 1:
-                                SetCellValue(cell, result.Context ?? string.Empty);
+                                SetCellValue(cell, result.NodeInfo?.Profile.Name ?? string.Empty);
                                 break;
                             case 2:
-                                SetCellValue(cell, result.Name ?? string.Empty);
-                                break;
-                            case 3:
-                                SetCellValue(cell, result.CreationDateTime ?? string.Empty);
+                                SetCellValue(cell, result.NodeInfo?.Profile.TestInfo ?? string.Empty);
                                 break;
                             case 4:
-                                SetCellValue(cell, result.Status ?? string.Empty);
+                                SetCellValue(cell, result.NodeInfo?.Profile.LabName ?? string.Empty);
+                                break;
+                            case 3:
+                                SetCellValue(cell, result.NodeInfo?.Profile.LabArea ?? string.Empty);
                                 break;
                             case 5:
-                                SetCellValue(cell, result.Message ?? string.Empty);
+                                SetCellValue(cell, result.NodeInfo?.Profile.Manager ?? string.Empty);
                                 break;
                             case 6:
-                                SetCellValue(cell, result.Solution ?? string.Empty);
+                                SetCellValue(cell, result.NodeInfo?.Profile.IpAddress ?? string.Empty);
+                                break;
+                            case 7:
+                                SetCellValue(cell, result.Name);
+                                break;
+                            case 8:
+                                SetCellValue(cell, result.CreationDateTime);
+                                break;
+                            case 9:
+                                SetCellValue(cell, result.Status);
+                                break;
+                            case 10:
+                                SetCellValue(cell, result.Message);
+                                break;
+                            case 11:
+                                SetCellValue(cell, result.Solution);
                                 break;
                             default:
                                 break;
@@ -313,7 +377,7 @@ namespace NodeService.WebServer.Services.Tasks
             }
             else if (obj is DateTime dateTimeValue)
             {
-                cell.SetCellValue(dateTimeValue);
+                cell.SetCellValue(dateTimeValue.ToString("yyyy/MM/dd HH:mm:ss"));
             }
             else if (obj is bool boolValue)
             {

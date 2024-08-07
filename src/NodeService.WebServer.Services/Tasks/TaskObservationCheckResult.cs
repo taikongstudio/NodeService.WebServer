@@ -10,7 +10,7 @@ namespace NodeService.WebServer.Services.Tasks
     {
         public string Id { get; set; }
 
-        public string Context { get; set; }
+        public NodeInfoModel? NodeInfo { get; set; }
 
         public string Name { get; set; }
 

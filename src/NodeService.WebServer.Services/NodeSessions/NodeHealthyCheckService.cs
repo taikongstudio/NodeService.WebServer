@@ -7,7 +7,6 @@ using NodeService.WebServer.Services.Counters;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System.Collections.Immutable;
-using System.Reactive.Subjects;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -132,12 +131,20 @@ public partial class NodeHealthyCheckService : BackgroundService
                     Solution = "检查上位机是否处于运行状态",
                 });
             }
+            if (IsNodeScrapped(nodeInfo))
+            {
+                nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
+                {
+                    Exception = $"守护程序离线超过{_nodeHealthyCheckConfiguration.ScrappMinutes}分钟",
+                    Solution = $"检查上位机是否处于运行状态，如上位机已报废，请前往{_nodeHealthyCheckConfiguration.ScrappUrl}登记报废状态",
+                });
+            }
             if (ShouldSendTimeDiffWarning(nodeInfo))
             {
                 nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
                 {
                     Exception = $"上位机时间与服务器时间误差大于{_nodeSettings.TimeDiffWarningSeconds}秒",
-                    Solution = "建议校正计算机时间"
+                    Solution = "建议校正上位机时间"
                 });
             }
             if (_nodeHealthyCheckConfiguration.CheckProcessService)
@@ -246,6 +253,14 @@ public partial class NodeHealthyCheckService : BackgroundService
                &&
                DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc >
                TimeSpan.FromMinutes(_nodeHealthyCheckConfiguration.OfflineMinutes);
+    }
+
+    private bool IsNodeScrapped(NodeInfoModel nodeInfo)
+    {
+        return nodeInfo.Status == NodeStatus.Offline
+               &&
+               DateTime.UtcNow - nodeInfo.Profile.ServerUpdateTimeUtc >
+               TimeSpan.FromMinutes(_nodeHealthyCheckConfiguration.ScrappMinutes);
     }
 
     private bool ShouldSendTimeDiffWarning(NodeInfoModel nodeInfo)

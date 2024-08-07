@@ -27,6 +27,9 @@
             <PropertyColumn Property="c=>c.Status" Title="状态"/>
         </Table>
     </FormItem>
+    <FormItem Label="消息模板">
+        <StringEntryTable ItemsSource="@context.MessageTemplates" NameTitle="消息过滤" ValueTitle="预设文本"/>
+    </FormItem>
     <FormItem Label="通知时间">
         <TimeOnlyTable ItemsSource="@context.DailyTimes" />
     </FormItem>

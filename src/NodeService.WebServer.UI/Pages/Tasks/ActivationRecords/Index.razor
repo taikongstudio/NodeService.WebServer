@@ -84,36 +84,7 @@
             </PropertyColumn>
             <PropertyColumn Title="任务组名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
-                @switch (context.Status)
-                {
-                    case TaskExecutionStatus.Unknown:
-                        <Text>未知</Text>
-                        break;
-                    case TaskExecutionStatus.Triggered:
-                        <Text>已触发</Text>
-                        break;
-                    case TaskExecutionStatus.Pendding:
-                        <Text>等待节点响应</Text>
-                        break;
-                    case TaskExecutionStatus.Started:
-                        <Text>已启动</Text>
-                        break;
-                    case TaskExecutionStatus.Running:
-                        <Text>运行中</Text>
-                        break;
-                    case TaskExecutionStatus.Finished:
-                        <Text>完成</Text>
-                        break;
-                    case TaskExecutionStatus.Cancelled:
-                        <Text>已取消</Text>
-                        break;
-                    case TaskExecutionStatus.Failed:
-                        <Text>失败</Text>
-                        break;
-                    case TaskExecutionStatus.PenddingTimeout:
-                        <Text>等待超时</Text>
-                        break;
-                }
+                <Text>@context.Status.GetDisplayName()</Text>
             </PropertyColumn>
             <PropertyColumn Title="创建时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.CreationDateTime"></PropertyColumn>
             <PropertyColumn Title="进度"  Sortable Property="c => c.Value.FinishedCount" >
@@ -122,22 +93,7 @@
             <ActionColumn Fixed="right" Width="200" Title="操作">
                 <CellRender Context="cellData">
                     <Space>
-                        @switch (context.Status)
-                        {
-                            case TaskExecutionStatus.PenddingTimeout:
-                                <SpaceItem>
-                                </SpaceItem>
-                                break;
-                            case TaskExecutionStatus.Failed:
-                                <SpaceItem>
-                                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.PlayCircle"></Button>
-                                </SpaceItem>
-                                break;
-                            case TaskExecutionStatus.Running:
-                                <SpaceItem>
-                               </SpaceItem>
-                                break;
-                        }
+
                     </Space>
                 </CellRender>
             </ActionColumn>
@@ -206,36 +162,7 @@
                             }
                         </PropertyColumn>
                         <PropertyColumn Title="状态" SorterMultiple="0" SorterCompare="(a, b) => a - b" Sortable="true" DefaultSortOrder="SortDirection.Ascending" Property="c => c.Status">
-                            @switch (TaskExecutionInstanceContext.Status)
-                            {
-                                case TaskExecutionStatus.Unknown:
-                                    <Text>未知</Text>
-                                    break;
-                                case TaskExecutionStatus.Triggered:
-                                    <Text>已触发</Text>
-                                    break;
-                                case TaskExecutionStatus.Pendding:
-                                    <Text>等待节点响应</Text>
-                                    break;
-                                case TaskExecutionStatus.Started:
-                                    <Text>已启动</Text>
-                                    break;
-                                case TaskExecutionStatus.Running:
-                                    <Text>运行中</Text>
-                                    break;
-                                case TaskExecutionStatus.Finished:
-                                    <Text>完成</Text>
-                                    break;
-                                case TaskExecutionStatus.Cancelled:
-                                    <Text>已取消</Text>
-                                    break;
-                                case TaskExecutionStatus.Failed:
-                                    <Text>失败</Text>
-                                    break;
-                                case TaskExecutionStatus.PenddingTimeout:
-                                    <Text>等待超时</Text>
-                                    break;
-                            }
+                            <Text>@TaskExecutionInstanceContext.Status.GetDisplayName()</Text>
                         </PropertyColumn>
                         <PropertyColumn Title="触发时间" Ellipsis SorterMultiple="1" SorterCompare="(a, b) => DateTime.Compare(a, b)" Sortable="true" DefaultSortOrder="SortDirection.Descending" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.FireTimeUtc"></PropertyColumn>
                         <PropertyColumn Title="开始时间" Ellipsis SorterMultiple="2" Sortable="true" Format="@NodePropertyModel.DateTimeFormatString" Property="c => c.ExecutionBeginTimeUtc"></PropertyColumn>

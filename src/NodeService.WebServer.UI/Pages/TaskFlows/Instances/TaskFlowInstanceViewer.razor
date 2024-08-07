@@ -113,24 +113,26 @@
     TaskFlowExecutionInstanceModel _taskFlowInstance = new TaskFlowExecutionInstanceModel();
     TaskFlowDesignModel _taskFlowDesign = new TaskFlowDesignModel();
     bool _isSettingsDrawVisible;
-    System.Threading.Timer _timer;
     RenderFragment customDot = @<Icon Type="loading" Theme="outline" />;
-    
+    PeriodicTimer _timer;
+
     [Parameter] public string TaskFlowInstanceId { get; set; }
 
     protected override void OnInitialized()
     {
-        _timer = new System.Threading.Timer(OnTick, null,100, 3000);
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+        _ = Task.Run(async () =>
+        {
+            while (await _timer.WaitForNextTickAsync())
+            {
+                await QueryTaskFlowInstanceAsync();
+            }
+        });
         base.OnInitialized();
     }
 
-    async void OnTick(object? state)
-    {
-        if (!string.IsNullOrEmpty(TaskFlowInstanceId))
-        {
-            await QueryTaskFlowInstanceAsync();
-        }
-    }
+    
+
 
     async Task QueryTaskFlowInstanceAsync()
     {
@@ -158,11 +160,6 @@
     {
         _isSettingsDrawVisible = true;
         await Task.CompletedTask;
-    }
-
-    async Task RerunAsync()
-    {
-        
     }
 
     int CalcActiveTaskStage()

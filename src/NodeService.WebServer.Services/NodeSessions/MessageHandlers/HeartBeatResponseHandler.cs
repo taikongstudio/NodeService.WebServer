@@ -29,6 +29,7 @@ public class HeartBeatResponseHandler : IMessageHandler
 
     public async ValueTask DisposeAsync()
     {
+        EnsureRemoteIpAddress();
         if (NodeSessionId != NodeSessionId.Empty)
         {
             _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Offline);
@@ -44,6 +45,7 @@ public class HeartBeatResponseHandler : IMessageHandler
 
     public async ValueTask HandleAsync(IMessage message, CancellationToken cancellationToken = default)
     {
+        EnsureRemoteIpAddress();
         _nodeSessionService.UpdateNodeStatus(NodeSessionId, NodeStatus.Online);
         _nodeSessionService.UpdateNodeIpAddress(NodeSessionId, _remoteIpAddress);
         var hostName = _nodeSessionService.GetNodeName(NodeSessionId);
@@ -61,12 +63,17 @@ public class HeartBeatResponseHandler : IMessageHandler
 
     }
 
-    public async ValueTask InitAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)
+    private void EnsureRemoteIpAddress()
     {
         if (_remoteIpAddress == null)
         {
             _remoteIpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
         }
+    }
+
+    public async ValueTask InitAsync(NodeSessionId nodeSessionId, CancellationToken cancellationToken = default)
+    {
+        EnsureRemoteIpAddress();
         NodeSessionId = nodeSessionId;
         await _nodeStatusChangeRecordBatchQueue.SendAsync(new NodeStatusChangeRecordModel()
         {

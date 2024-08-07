@@ -48,7 +48,9 @@ namespace NodeService.WebServer.Extensions
                 switch (detection.DetectionType)
                 {
                     case NodeUsageServiceProcessDetectionType.FileName:
-                        if (serviceProcessInfo.PathName.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
+                        if (serviceProcessInfo.PathName != null && serviceProcessInfo.PathName.Contains(
+                            detection.Value,
+                            StringComparison.OrdinalIgnoreCase))
                         {
                             isDetected = true;
                         }
@@ -57,7 +59,9 @@ namespace NodeService.WebServer.Extensions
 
                         break;
                     case NodeUsageServiceProcessDetectionType.ServiceName:
-                        if (serviceProcessInfo.Name.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
+                        if (serviceProcessInfo.Name != null && serviceProcessInfo.Name.Contains(
+                            detection.Value,
+                            StringComparison.OrdinalIgnoreCase))
                         {
                             isDetected = true;
                         }

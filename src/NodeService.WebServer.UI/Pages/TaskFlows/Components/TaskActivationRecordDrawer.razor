@@ -52,7 +52,7 @@
 
             </PropertyColumn>
 
-            <PropertyColumn Title="状态" Ellipsis Sortable Width="100" Property="c => c.Status">
+            <PropertyColumn Title="状态" Ellipsis Sortable Width="100" Property="c => c.Status" DefaultSortOrder="@SortDirection.Descending">
                 @switch (context.Status)
                 {
                     case TaskExecutionStatus.Unknown:

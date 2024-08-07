@@ -86,7 +86,7 @@
            TItem="NodeUsageConfigurationModel"
            DataSource="@_dataSource.ItemsSource"
            Resizable 
-           OnChange="OnTableChange"
+           OnChange="@OnTableChange"
            PageIndex="@_dataSource.PageIndex"
            PageSize="@_dataSource.PageSize"
            Total="@_dataSource.TotalCount"
@@ -119,7 +119,7 @@
                 </Text>
             </PropertyColumn>
             <PropertyColumn Title="区域" Sortable Property="c => c.FactoryName">
-                <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x=>x.Tag==context.FactoryName)?.Name</Text>
+                <Text>@(_nodeSettings.IpAddressMappings.FirstOrDefault(x=>x.Tag==context.FactoryName)?.Name??"全部区域")</Text>
             </PropertyColumn>
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="节点"  Width="300" Property="c => c.Value.Nodes">
@@ -208,18 +208,6 @@
         }
     }
 
-    protected override async void OnInitialized()
-    {
-        _dataSource = new RoutedPaginationDataSource<NodeUsageConfigurationModel, PaginationQueryParameters>(
-            NavigationManager.BaseUri,
-            ApiService.QueryNodeUsageConfigListAsync,
-            StateHasChanged);
-        _dataSource.ExceptionHandler = OnExepction;
-        _dataSource.ItemInitializer = InitAsync;
-        await QueryNodeSettingsAsync();
-        base.OnInitialized();
-    }
-
     ValueTask InitAsync(NodeUsageConfigurationModel? entity, CancellationToken cancellationToken = default)
     {
         if (entity != null)
@@ -244,13 +232,21 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _dataSource = new RoutedPaginationDataSource<NodeUsageConfigurationModel, PaginationQueryParameters>(
+            NavigationManager.BaseUri,
+            ApiService.QueryNodeUsageConfigListAsync,
+            StateHasChanged);
+        _dataSource.ExceptionHandler = OnExepction;
+        _dataSource.ItemInitializer = InitAsync;
         await _dataSource.RequestAsync();
+        await QueryNodeSettingsAsync();
         await base.OnInitializedAsync();
     }
 
 
     async Task ShowEditForm(NodeUsageConfigurationModel? model = null)
     {
+        await QueryNodeSettingsAsync();
         _editFormVisible = true;
         if (model == null)
         {
@@ -267,6 +263,10 @@
             _loadingSelectedItems = true;
             _selectedNodes = await _editModel.Value.Nodes.Select(x => x.NodeInfoId).QueryNodeListAsync(ApiService);
             _loadingSelectedItems = false;
+        }
+        if (_editModel.FactoryName == null)
+        {
+            _editModel.FactoryName = "*";
         }
     }
 
@@ -410,7 +410,7 @@
         _dataSource.Dispose();
     }
 
-    async Task OnSelectedAreaTagChanged(NodeUsageConfigurationModel nodeUsageConfiguration, StringEntry entry)
+    void OnSelectedAreaTagChanged(NodeUsageConfigurationModel nodeUsageConfiguration, StringEntry entry)
     {
         if (entry == null)
         {

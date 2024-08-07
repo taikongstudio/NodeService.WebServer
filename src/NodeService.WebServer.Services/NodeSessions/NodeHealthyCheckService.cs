@@ -7,6 +7,7 @@ using NodeService.WebServer.Services.Counters;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System.Collections.Immutable;
+using System.Reactive.Subjects;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -139,13 +140,13 @@ public partial class NodeHealthyCheckService : BackgroundService
                     Solution = "建议校正计算机时间"
                 });
             }
-            var usageList = await ShouldSendProcessNotFoundWarningAsync(nodeInfo, cancellationToken);
-            foreach (var usage in usageList)
+            if (_nodeHealthyCheckConfiguration.CheckProcessService)
             {
+                var usageList = await ShouldSendProcessNotFoundWarningAsync(nodeInfo, cancellationToken);
                 nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
                 {
                     Exception = $"相关进程未开启",
-                    Solution = $"建议启动\"{usage}\"相关软件或服务"
+                    Solution = $"建议启动\"{string.Join(";", usageList)}\"相关软件或服务"
                 });
             }
 
@@ -255,32 +256,71 @@ public partial class NodeHealthyCheckService : BackgroundService
          List<NodeHeathyCheckResult> resultList,
         CancellationToken cancellationToken = default)
     {
-
-        if (!TryWriteToExcel(resultList, out var stream) || stream == null)
-        {
-            return;
-        }
-
-        var emailAttachment = new EmailAttachment(
-            $"{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.xlsx",
-            "application",
-            "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            stream);
-
-
-        var content = _nodeHealthyCheckConfiguration.Content;
-
         await using var repo = await _notificationRepositoryFactory.CreateRepositoryAsync(cancellationToken);
-
+        List<NotificationConfigModel> notificationConfigList = [];
         foreach (var entry in _nodeHealthyCheckConfiguration.Configurations)
         {
-
+            if (entry.Value == null)
+            {
+                continue;
+            }
             var notificationConfig = await repo.GetByIdAsync(entry.Value, cancellationToken);
             if (notificationConfig == null || !notificationConfig.IsEnabled) continue;
-            await _notificationQueue.EnqueueAsync(
-                    new NotificationMessage(new EmailContent(_nodeHealthyCheckConfiguration.Subject, content, [emailAttachment]),
-                    notificationConfig.Value),
-                cancellationToken);
+            notificationConfigList.Add(notificationConfig);
+        }
+
+        foreach (var group in resultList.GroupBy(static x => x.NodeInfo.Profile.FactoryName ?? AreaTags.Any))
+        {
+            var factoryCode = group.Key;
+            string factoryName = "全部区域";
+            var areaEntry = _nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == factoryCode);
+            if (areaEntry != null)
+            {
+                factoryName = areaEntry.Name ?? "全部区域";
+            }
+            foreach (var notificationConfig in notificationConfigList)
+            {
+                if (notificationConfig.Value.FactoryName != factoryCode)
+                {
+                    continue;
+                }
+                var subject = _nodeHealthyCheckConfiguration.Subject
+                    .Replace("$(FactoryName)", factoryName)
+                    .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
+
+                List<EmailAttachment> attachments = [];
+                foreach (var testInfoGroup in group.GroupBy(static x => x.NodeInfo.Profile.TestInfo ?? string.Empty))
+                {
+                    var bizType = testInfoGroup.Key;
+                    if (string.IsNullOrEmpty(bizType))
+                    {
+                        bizType = "未分类";
+                    }
+                    if (!TryWriteToExcel([.. testInfoGroup], out var stream) || stream == null)
+                    {
+                        continue;
+                    }
+                    var attachmentName = _nodeHealthyCheckConfiguration.AttachmentSubject
+                        .Replace("$(FactoryName)", factoryName)
+                        .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"))
+                        .Replace("$(BusinessType)", bizType);
+                    var emailAttachment = new EmailAttachment(
+                        $"{attachmentName}.xlsx",
+                        "application",
+                        "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        stream);
+                    attachments.Add(emailAttachment);
+                }
+                var content = _nodeHealthyCheckConfiguration.Content.Replace("$(FactoryName)", factoryName)
+                        .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
+                var emailContent = new EmailContent(
+                    subject,
+                    content,
+                    [.. attachments]);
+                await _notificationQueue.EnqueueAsync(
+                    new NotificationMessage(emailContent, notificationConfig.Value),
+                    cancellationToken);
+            }
         }
     }
 
@@ -311,7 +351,7 @@ public partial class NodeHealthyCheckService : BackgroundService
     }
 
 
-    private async Task RefreshNodeHelthyCheckConfigurationAsync(CancellationToken cancellationToken = default)
+    private async ValueTask RefreshNodeHelthyCheckConfigurationAsync(CancellationToken cancellationToken = default)
     {
         await using var propertyBagRepo = await _propertyBagRepositoryFactory.CreateRepositoryAsync();
         await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
@@ -337,7 +377,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    public bool TryWriteToExcel(List<NodeHeathyCheckResult> nodeHeathyResults, out Stream? stream)
+    public bool TryWriteToExcel(ImmutableArray<NodeHeathyCheckResult> nodeHeathyResults, out Stream? stream)
     {  
         stream = null;
         try
@@ -358,7 +398,7 @@ public partial class NodeHealthyCheckService : BackgroundService
             //测试数据
 
             IRow headerRow = sheet.CreateRow(0);
-            var headers = new string[] { "最后在线时间", "上位机名称", "测试区域", "实验室区域", "实验室名称", "上位机负责人", "IP地址", "异常消息", "建议处理措施" };
+            var headers = new string[] { "最后在线时间", "上位机名称", "业务类型", "实验室名称", "测试区域", "上位机负责人", "IP地址", "异常消息", "建议处理措施" };
             {
                 for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
                 {
@@ -369,7 +409,7 @@ public partial class NodeHealthyCheckService : BackgroundService
 
 
             var rowIndex = 1;
-            for (int dataIndex = 0; dataIndex < nodeHeathyResults.Count; dataIndex++)
+            for (int dataIndex = 0; dataIndex < nodeHeathyResults.Length; dataIndex++)
             {
                 var result = nodeHeathyResults[dataIndex];
 
@@ -391,11 +431,11 @@ public partial class NodeHealthyCheckService : BackgroundService
                             case 2:
                                 SetCellValue(cell, result.NodeInfo.Profile.TestInfo ?? string.Empty);
                                 break;
-                            case 3:
-                                SetCellValue(cell, result.NodeInfo.Profile.LabArea ?? string.Empty);
-                                break;
                             case 4:
                                 SetCellValue(cell, result.NodeInfo.Profile.LabName ?? string.Empty);
+                                break;
+                            case 3:
+                                SetCellValue(cell, result.NodeInfo.Profile.LabArea ?? string.Empty);
                                 break;
                             case 5:
                                 SetCellValue(cell, result.NodeInfo.Profile.Manager ?? string.Empty);
@@ -450,7 +490,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         }
         else if (obj is DateTime dateTimeValue)
         {
-            cell.SetCellValue(dateTimeValue);
+            cell.SetCellValue(dateTimeValue.ToString("yyyy/MM/dd HH:mm:ss"));
         }
         else if (obj is bool boolValue)
         {

@@ -32,10 +32,35 @@
     </FormItem>
     <FormItem Required Label="主题">
         <Input @bind-Value="@context.Subject" />
+        <div>
+            插入占位符:
+            @foreach (var item in _placeholders)
+            {
+                <Button OnClick="()=>context.Subject+=item.Name">@item.Name@item.Value</Button>
+            }
+        </div>
+    </FormItem>
+
+    <FormItem Required Label="附件名称格式">
+        <Input @bind-Value="@context.AttachmentSubject" />
+        <div>
+            插入占位符:
+            @foreach (var item in _placeholders.Skip(1))
+            {
+                <Button OnClick="()=>context.AttachmentSubject+=item.Name">@item.Name@item.Value</Button>
+            }
+        </div>
     </FormItem>
 
     <FormItem Required Label="内容">
         <TextArea @bind-Value="@context.Content" />
+        <div>
+            插入占位符:
+            @foreach (var item in _placeholders.Skip(1))
+            {
+                <Button OnClick="()=>context.Content+=item.Name">@item.Name@item.Value</Button>
+            }
+        </div>
     </FormItem>
     <FormItem Label="配置类型">
 
@@ -57,20 +82,17 @@
     IEnumerable<TaskObservationModel> _selectedTaskObservations = [];
     IEnumerable<TaskFlowObservationModel> _selectedTaskFlowObservations = [];
 
-    object GetTaskStatusObservationKey(TaskObservationModel model)
-    {
-        return model;
-    }
-
-    object GetTaskFlowStatusObservationKey(TaskFlowObservationModel model)
-    {
-        return model;
-    }
-
-
+    List<StringEntry> _placeholders = [];
 
     protected override async Task OnInitializedAsync()
     {
+        _loading = true;
+        _placeholders = new List<StringEntry>
+        {
+            new StringEntry("$(BusinessType)","业务类型"),
+            new StringEntry("$(FactoryName)","厂区"),
+            new StringEntry("$(DateTime)","日期"),
+        };
         _loading = true;
         await QueryTaskObservationConfigurationAsync();
         _loading = false;

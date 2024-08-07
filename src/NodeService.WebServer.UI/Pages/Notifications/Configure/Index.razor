@@ -25,6 +25,18 @@
             <FormItem Label="启用">
                 <Switch @bind-Value="@context.IsEnabled"/>
             </FormItem>
+            <FormItem Label="区域">
+                <Select DataSource="@_nodeSettings.IpAddressMappings"
+                        Value="@context.FactoryName"
+                        OnSelectedItemChanged="(StringEntry value)=>OnSelectedAreaTagChanged(context,value)"
+                        TItem="StringEntry"
+                        Style="width:200px"
+                        TItemValue="string"
+                        Size="middle"
+                        DefaultActiveFirstOption
+                        LabelName="@nameof(StringEntry.Name)"
+                        ValueName="@nameof(StringEntry.Tag)" />
+            </FormItem>
             <FormItem Label="配置类型">
                 <Select DataSource="@_types"
                         Value="@_editModel.ConfigurationType"
@@ -49,11 +61,11 @@
     </Modal>
 
     <Table Size="TableSize.Small"
-           Loading="_dataSource.IsLoading"
+           Loading="@_dataSource.IsLoading"
            EnableVirtualization="false"
            TItem="NotificationConfigModel"
            Resizable
-           OnChange="OnTableChange"
+           OnChange="@OnTableChange"
            DataSource="@_dataSource.ItemsSource"
            PageIndex="@_dataSource.PageIndex"
            PageSize="@_dataSource.PageSize"
@@ -86,6 +98,9 @@
                     <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
                 </Text>
             </PropertyColumn>
+            <PropertyColumn Title="厂区" Sortable Property="c => c.Value.FactoryName">
+                <Text>@(_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.FactoryName)?.Name ?? "全部区域")</Text>
+            </PropertyColumn>
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="创建时间" Sortable="true" Property="c => c.CreationDateTime"></PropertyColumn>
             <PropertyColumn Title="修改时间" Sortable="true" Property="c => c.ModifiedDateTime"></PropertyColumn>
@@ -108,14 +123,6 @@
                 </CellRender>
             </ActionColumn>
         </ColumnDefinitions>
-        <ExpandTemplate>
-            <Tabs Animated>
-                <TabPane Tab="参数" Key="1">
-
-
-                </TabPane>
-            </Tabs>
-        </ExpandTemplate>
     </Table>
 </GridContent>
 
@@ -135,10 +142,20 @@
 
     Form<NotificationConfigModel> _editForm;
     NotificationConfigModel _editModel = new();
+    NodeSettings _nodeSettings = new();
 
     RoutedPaginationDataSource<NotificationConfigModel, PaginationQueryParameters> _dataSource;
 
-    protected override void OnInitialized()
+    async Task OnExepction(Exception ex)
+    {
+        await _notice.Open(new NotificationConfig
+        {
+            Message = "加载失败",
+            Description = ex.ToString()
+        });
+    }
+
+    protected override async Task OnInitializedAsync()
     {
         _types = new List<NotificationConfigurationTypeModel>
         {
@@ -163,41 +180,60 @@
             NavigationManager.BaseUri,
             ApiService.QueryNotificationConfigListAsync,
             StateHasChanged);
-
+        await QueryNodeSettingsAsync();
         _dataSource.ExceptionHandler = OnExepction;
-        base.OnInitialized();
-    }
-
-    async Task OnExepction(Exception ex)
-    {
-        await _notice.Open(new NotificationConfig
-        {
-            Message = "加载失败",
-            Description = ex.ToString()
-        });
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
         await _dataSource.RequestAsync();
         await base.OnInitializedAsync();
     }
 
-    void ShowEditForm(NotificationConfigModel? model = null)
+    async Task QueryNodeSettingsAsync()
     {
+        try
+        {
+            var apiResponse = await ApiService.QueryNodeSettingsAsync();
+            if (apiResponse.ErrorCode == 0)
+            {
+                _nodeSettings = apiResponse.Result ?? new NodeSettings();
+            }
+            else
+            {
+                await _notice.Open(new NotificationConfig
+                    {
+                        Message = "错误提示",
+                        Description = apiResponse.Message
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    async Task ShowEditForm(NotificationConfigModel? model = null)
+    {
+        await QueryNodeSettingsAsync();
         _editFormVisible = true;
         if (model == null)
         {
             _editModel = new NotificationConfigModel
-            {
-                Id = Guid.NewGuid().ToString()
-            };
+                {
+                    Id = Guid.NewGuid().ToString()
+                };
             _modalTitle = "编辑配置";
         }
         else
         {
             _editModel = model;
             _modalTitle = "新建配置";
+        }
+        if (_editModel.Value.FactoryName == null)
+        {
+            _editModel.Value.FactoryName = "*";
         }
     }
 
@@ -341,6 +377,15 @@
     public void Dispose()
     {
         _dataSource.Dispose();
+    }
+
+    void OnSelectedAreaTagChanged(NotificationConfigModel notificationConfiguration, StringEntry entry)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+        notificationConfiguration.FactoryName = entry.Tag;
     }
 
 }

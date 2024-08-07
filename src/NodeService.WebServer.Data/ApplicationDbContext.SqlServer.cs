@@ -279,6 +279,10 @@ public partial class ApplicationDbContext
                         .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
                         .Metadata
                         .SetValueComparer(GetEnumerableComparer<StringEntry>());
+                    ownedNavigationBuilder.Property(x => x.UsageList)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<StringEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<StringEntry>());
                 });
         });
 

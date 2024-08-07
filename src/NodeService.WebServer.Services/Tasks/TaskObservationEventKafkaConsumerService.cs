@@ -1,15 +1,11 @@
 ﻿using Confluent.Kafka;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataQueue;
-using NodeService.WebServer.Services.NodeSessions;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System.Collections.Immutable;
-using System.Threading;
 
 namespace NodeService.WebServer.Services.Tasks
 {
@@ -22,6 +18,7 @@ namespace NodeService.WebServer.Services.Tasks
         readonly IAsyncQueue<TaskObservationEventKafkaConsumerFireEvent> _fireEventQueue;
         readonly IAsyncQueue<NotificationMessage> _notificationQueue;
         readonly ConfigurationQueryService _configurationQueryService;
+        private readonly NodeInfoQueryService _nodeInfoQueryService;
         private ConsumerConfig _consumerConfig;
 
         public TaskObservationEventKafkaConsumerService(
@@ -31,7 +28,8 @@ namespace NodeService.WebServer.Services.Tasks
             IOptionsMonitor<KafkaOptions> kafkaOptionsMonitor,
             IAsyncQueue<TaskObservationEventKafkaConsumerFireEvent> fireEventQueue,
             IAsyncQueue<NotificationMessage> notificationQueue,
-            ConfigurationQueryService configurationQueryService)
+            ConfigurationQueryService configurationQueryService,
+            NodeInfoQueryService nodeInfoQueryService)
         {
             _kafkaOptions = kafkaOptionsMonitor.CurrentValue;
             _webServerCounter = webServerCounter;
@@ -40,6 +38,7 @@ namespace NodeService.WebServer.Services.Tasks
             _fireEventQueue = fireEventQueue;
             _notificationQueue = notificationQueue;
             _configurationQueryService = configurationQueryService;
+            _nodeInfoQueryService = nodeInfoQueryService;
         }
 
         protected override async Task ExecuteAsync(CancellationToken  cancellationToken=default)
@@ -130,11 +129,23 @@ namespace NodeService.WebServer.Services.Tasks
                     "TaskFlowExecutionInstanceModel" => ((TaskFlowExecutionStatus)item.Status).ToString(),
                     _ => "Unknown"
                 };
+                var nodeName = string.Empty;
+                if (item.Type == "TaskExecutionInstanceModel")
+                {
+                    var nodeInfo = await _nodeInfoQueryService.QueryNodeInfoByIdAsync(
+                        item.Context,
+                        true,
+                        cancellationToken);
+                    if (nodeInfo != null)
+                    {
+                        nodeName = nodeInfo.Name;
+                    }
+                }
                 checkResultList.Add(new TaskObservationCheckResult()
                 {
                     Id = item.Id,
                     Name = item.Name,
-                    Context = item.Context,
+                    Context = nodeName,
                     CreationDateTime = item.CreationDateTime.ToString(),
                     Message = item.Message,
                     Status = status,

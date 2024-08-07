@@ -16,15 +16,43 @@
     <FormItem Label="离线检测间隔（分钟）" Help="离线时间超出此时间会被告警">
         <AntDesign.InputNumber @bind-Value="@context.OfflineMinutes"/>
     </FormItem>
+    <FormItem Label="检测上位机服务与进程">
+        <AntDesign.Switch @bind-Value="@context.CheckProcessService" />
+    </FormItem>
     <FormItem Label="通知时间">
         <TimeOnlyTable ItemsSource="@context.DailyTimes" />
     </FormItem>
     <FormItem Required Label="主题">
         <Input @bind-Value="@context.Subject"/>
+        <div>
+            插入占位符:
+            @foreach (var item in _placeholders.Skip(1))
+            {
+                <Button OnClick="()=>context.Subject+=item.Name">@item.Name@item.Value</Button>
+            }
+        </div>
+    </FormItem>
+
+    <FormItem Required Label="附件格式">
+        <Input @bind-Value="@context.AttachmentSubject" />
+        <div>
+            插入占位符:
+            @foreach (var item in _placeholders)
+            {
+                <Button OnClick="()=>context.AttachmentSubject+=item.Name">@item.Name@item.Value</Button>
+            }
+        </div>
     </FormItem>
 
     <FormItem Required Label="内容">
         <TextArea @bind-Value="@context.Content" />
+        <div>
+            插入占位符:
+            @foreach (var item in _placeholders.Skip(1))
+            {
+                <Button OnClick="()=>context.Content+=item.Name">@item.Name@item.Value</Button>
+            }
+        </div>
     </FormItem>
     <FormItem Label="配置类型">
 
@@ -44,13 +72,23 @@
     bool _loading = false;
     string _selectedNotificationId;
 
+    List<StringEntry> _placeholders = [];
+
     protected override async Task OnInitializedAsync()
     {
-        await base.OnInitializedAsync();
         _loading = true;
+        _placeholders = new List<StringEntry>
+        {
+            new StringEntry("$(BusinessType)","业务类型"),
+            new StringEntry("$(FactoryName)","厂区"),
+            new StringEntry("$(DateTime)","日期"),
+        };
         await QueryNodeHealthyConfigurationAsync();
         _loading = false;
+        await base.OnInitializedAsync();
     }
+
+
 
     Form<NodeHealthyCheckConfiguration> _editForm;
 
@@ -65,6 +103,10 @@
             if (rsp.ErrorCode == 0)
             {
                 _editModel = rsp.Result;
+                if (_editModel.Subject == null)
+                {
+                    _editModel.Subject = string.Empty;
+                }
                 _selectedNotificationConfigs = await InitSelectedNotificationConfigAsync(rsp.Result.Configurations);
             }
             else

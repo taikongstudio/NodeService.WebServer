@@ -5,6 +5,7 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.TaskSchedule;
 using OneOf;
 using System.Threading;
 
@@ -421,11 +422,22 @@ public class ConfigurationQueryService
         {
             result = new TaskObservationConfiguration();
             result.InitDefaults();
-            propertyBag = new PropertyBag();
-            propertyBag.Add("Id", NotificationSources.TaskObservation);
-            propertyBag.Add("Value", JsonSerializer.Serialize(result));
+            propertyBag = new PropertyBag
+            {
+                { "Id", NotificationSources.TaskObservation },
+                { "Value", JsonSerializer.Serialize(result) }
+            };
             propertyBag["CreatedDate"] = DateTime.UtcNow;
-            await repo.AddAsync(propertyBag, cancellationToken);
+            bool fix = false;
+            if (fix)
+            {
+                await repo.UpdateAsync(propertyBag, cancellationToken);
+            }
+            else
+            {
+                await repo.AddAsync(propertyBag, cancellationToken);
+            }
+
         }
         else
         {
@@ -435,16 +447,73 @@ public class ConfigurationQueryService
     }
 
     public async ValueTask UpdateTaskObservationConfigurationAsync(
-        TaskObservationConfiguration taskObservationConfiguration,
+        TaskObservationConfiguration entity,
         CancellationToken cancellationToken = default)
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
         await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
-        var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.TaskObservation));
-        propertyBag["Value"] = JsonSerializer.Serialize(taskObservationConfiguration);
+        var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.TaskObservation), cancellationToken);
+        propertyBag["Value"] = JsonSerializer.Serialize(entity);
         await repo.SaveChangesAsync(cancellationToken);
-        await _objectCache.SetObjectAsync(NotificationSources.TaskObservation, taskObservationConfiguration, cancellationToken);
+        await _objectCache.SetObjectAsync(NotificationSources.TaskObservation, entity, cancellationToken);
+        var queue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
+        var parameters = new TaskScheduleServiceParameters(new TaskObservationScheduleParameters(NotificationSources.TaskObservation));
+        var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(parameters, AsyncOperationKind.AddOrUpdate);
+        await queue.EnqueueAsync(op, cancellationToken);
+        await op.WaitAsync(cancellationToken);
     }
 
+    public async ValueTask<NodeHealthyCheckConfiguration> QueryNodeHealthyCheckConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await _objectCache.GetObjectAsync<NodeHealthyCheckConfiguration?>(
+            NotificationSources.NodeHealthyCheck,
+            cancellationToken);
+
+        if (result != null)
+        {
+            return result;
+        }
+
+        var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+        await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+        var propertyBag =
+            await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck), cancellationToken);
+        if (propertyBag == null)
+        {
+            result = new NodeHealthyCheckConfiguration();
+            propertyBag = new PropertyBag
+            {
+                { "Id", NotificationSources.NodeHealthyCheck },
+                { "Value", JsonSerializer.Serialize(result) }
+            };
+            propertyBag["CreatedDate"] = DateTime.UtcNow;
+            await repo.AddAsync(propertyBag, cancellationToken);
+        }
+        else
+        {
+            result = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(propertyBag["Value"] as string);
+        }
+        return result;
+    }
+
+    public async ValueTask UpdateNodeHealthyCheckConfigurationAsync(
+    NodeHealthyCheckConfiguration  entity,
+    CancellationToken cancellationToken = default)
+    {
+        var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+        await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+        var propertyBag = await repo.FirstOrDefaultAsync(
+            new PropertyBagSpecification(NotificationSources.NodeHealthyCheck),
+            cancellationToken);
+        propertyBag["Value"] = JsonSerializer.Serialize(entity);
+        await repo.SaveChangesAsync(cancellationToken);
+        await _objectCache.SetObjectAsync(NotificationSources.NodeHealthyCheck, entity, cancellationToken);
+        var queue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
+        var parameters = new TaskScheduleServiceParameters(new NodeHealthyCheckScheduleParameters(NotificationSources.NodeHealthyCheck));
+        var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(parameters, AsyncOperationKind.AddOrUpdate);
+        await queue.EnqueueAsync(op, cancellationToken);
+        await op.WaitAsync(cancellationToken);
+
+    }
 
 }

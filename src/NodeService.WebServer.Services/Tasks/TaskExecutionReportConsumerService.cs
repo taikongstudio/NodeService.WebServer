@@ -20,21 +20,14 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly ExceptionCounter _exceptionCounter;
     readonly TaskFlowExecutor _taskFlowExecutor;
     readonly ConfigurationQueryService _configurationQueryService;
-    readonly ITaskPenddingContextManager _taskPenddingContextManager;
-    readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
     readonly IDelayMessageBroadcast _delayMessageBroadcast;
     readonly ILogger<TaskExecutionReportConsumerService> _logger;
-    readonly IMemoryCache _memoryCache;
-
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
-    readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
-    readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
     readonly BatchQueue<TaskLogUnit> _taskLogUnitBatchQueue;
     readonly BatchQueue<TaskActivateServiceParameters> _taskActivateQueue;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
     readonly IAsyncQueue<TaskExecutionReport> _taskExecutionReportBatchQueue;
-    readonly JobScheduler _jobScheduler;
     readonly WebServerCounter _webServerCounter;
     readonly TaskActivationRecordExecutor _taskActivationRecordExecutor;
     private readonly IServiceProvider _serviceProvider;
@@ -59,7 +52,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         WebServerCounter webServerCounter,
         ExceptionCounter exceptionCounter,
         TaskFlowExecutor taskFlowExecutor,
-        ITaskPenddingContextManager taskPenddingContextManager,
         IAsyncQueue<KafkaDelayMessage> delayMessageQueue,
         IDelayMessageBroadcast delayMessageBroadcast,
         TaskActivationRecordExecutor taskActivationRecordExecutor,
@@ -70,19 +62,13 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _logger = logger;
         _taskExecutionInstanceRepoFactory = taskExecutionInstanceRepositoryFactory;
         _taskActivationRecordRepoFactory = taskActivationRecordRepoFactory;
-        _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
-        _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
         _taskExecutionReportBatchQueue = taskExecutionReportBatchQueue;
         _taskActivateQueue = taskScheduleQueue;
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
-        _jobScheduler = taskScheduler;
-        _memoryCache = memoryCache;
         _webServerCounter = webServerCounter;
         _exceptionCounter = exceptionCounter;
         _taskFlowExecutor = taskFlowExecutor;
         _configurationQueryService = configurationQueryService;
-        _taskPenddingContextManager = taskPenddingContextManager;
-        _delayMessageQueue = delayMessageQueue;
         _delayMessageBroadcast = delayMessageBroadcast;
         _delayMessageBroadcast.AddHandler(nameof(TaskExecutionReportConsumerService), ProcessDelayMessage);
         _taskActivationRecordExecutor = taskActivationRecordExecutor;

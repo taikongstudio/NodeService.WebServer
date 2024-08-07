@@ -45,25 +45,25 @@
             }
 
             <Row Gutter="24">
-                <AntDesign.Col Span="24">
-                    <Text>测试分类</Text>
-                    <Input @bind-Value="@_editingNodeInfoModel.TestInfo" Placeholder="请输入测试分类"
-                           TValue="string">
-                    </Input>
+            <AntDesign.Col Span="24">
+            <Text>测试分类</Text>
+            <Input @bind-Value="@_editingNodeInfoModel.TestInfo" Placeholder="请输入测试分类"
+                   TValue="string">
+            </Input>
                 </AntDesign.Col>
                 <AntDesign.Col Span="24">
                     <Text>实验室区域</Text>
-                    <Input Disabled @bind-Value="@_editingNodeInfoModel.LabArea" Placeholder="请输入实验室区域" TValue="string"/>
+                    <AntDesign.Input Disabled @bind-Value="@_editingNodeInfoModel.LabArea" Placeholder="请输入实验室区域" TValue="string"/>
                 </AntDesign.Col>
                 <AntDesign.Col Span="24">
                     <Text>实验室名称</Text>
-                        <Input Disabled @bind-Value="@_editingNodeInfoModel.LabName" Placeholder="请输入实验室名称" TValue="string" />
+                        <AntDesign.Input Disabled @bind-Value="@_editingNodeInfoModel.LabName" Placeholder="请输入实验室名称" TValue="string" />
                 </AntDesign.Col>
             </Row>
             <br/>
             <AntDesign.Col Span="24">
                 <Text>用途</Text>
-                <Input @bind-Value="@_editingNodeInfoModel.Usages" Placeholder="请输入用途" TValue="string"/>
+                <AntDesign.Input @bind-Value="@_editingNodeInfoModel.Usages" Placeholder="请输入用途" TValue="string"/>
             </AntDesign.Col>
             <Row>
                 <AntDesign.Col Span="24">
@@ -98,15 +98,15 @@
           OnFinish="OnEditFormFinish"
           OnFinishFailed="OnEditFormFinishFailed"
           @ref="@_editForm">
-            <FormItem Required Label="设备名称">
+        <FormItem Required Label="设备名称">
             <Input @bind-Value="@context.Name"/>
         </FormItem>
-            @if (context.Profile != null)
-            {
-                <FormItem Required Label="制造商名称">
-                    <Input @bind-Value="@context.Profile.Manufacturer" />
-                </FormItem>
-            }
+        @if (context.Profile != null)
+        {
+            <FormItem Required Label="制造商名称">
+                <Input @bind-Value="@context.Profile.Manufacturer"/>
+            </FormItem>
+        }
         <FormItem Label="配置类型">
             <Select DataSource="@_nodeDeviceTypes"
                     Value="@context.DeviceType"
@@ -204,7 +204,7 @@
                 </GridRow>
             </TitleTemplate>
             <ColumnDefinitions>
-                <PropertyColumn Title="标志" Sortable="true" Width="100"   Property="c => c.Id">
+                <PropertyColumn Title="标志" Sortable="true" Width="100" Property="c => c.Id">
                     <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
                         <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
                     </Text>
@@ -234,15 +234,15 @@
                             break;
                     }
                     @if (context.DeviceType == NodeDeviceType.Computer)
-                        {
-                            <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
-                        }
-                        else
-                        {
-                            <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link" OnClick="() => ShowEditNodeDeviceFormAsync(context)">
-                                @context.Name
-                            </Button>
-                        }
+                    {
+                        <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
+                    }
+                    else
+                    {
+                        <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link" OnClick="() => ShowEditNodeDeviceFormAsync(context)">
+                            @context.Name
+                        </Button>
+                    }
 
                 </PropertyColumn>
                 <PropertyColumn
@@ -267,31 +267,37 @@
                             @if (context.PingReplyInfo != null)
                             {
                                 <Text>延迟:@context.PingReplyInfo.RoundtripTime</Text>
-                                <br />
+                                <br/>
                                 <Text>状态:@context.PingReplyInfo.Status</Text>
-                                <br />
+                                <br/>
                                 <Text>时间:@context.PingReplyInfo.DateTime</Text>
                             }
                         </TitleTemplate>
                         <ChildContent>
                             @if (context.PingReplyInfo == null)
                             {
-                                    <Tag Icon="warning"><Text Copyable>@context.Profile.IpAddress</Text></Tag>
+                                <Tag Icon="warning">
+                                    <Text Copyable>@context.Profile.IpAddress</Text>
+                                </Tag>
                             }
                             else if (context.PingReplyInfo.Status == System.Net.NetworkInformation.IPStatus.Success)
                             {
-                                    <Tag Icon="wifi"><Text Copyable>@context.Profile.IpAddress</Text></Tag>
+                                <Tag Icon="wifi">
+                                    <Text Copyable>@context.Profile.IpAddress</Text>
+                                </Tag>
                             }
                             else
                             {
-                                    <Tag Icon="disconnect"><Text Copyable>@context.Profile.IpAddress</Text></Tag>
+                                <Tag Icon="disconnect">
+                                    <Text Copyable>@context.Profile.IpAddress</Text>
+                                </Tag>
                             }
                         </ChildContent>
 
                     </AntDesign.Tooltip>
 
                 </PropertyColumn>
-                <PropertyColumn Title="用途" Sortable="true"  Property="c => c.Profile.Usages">
+                <PropertyColumn Title="用途" Sortable="true" Property="c => c.Profile.Usages">
                     @(string.IsNullOrEmpty(context.Profile.Usages) ? "（空）" : context.Profile.Usages)
                 </PropertyColumn>
                 <PropertyColumn Title="备注" Sortable="true" Ellipsis Width="100" Property="c => c.Profile.Remarks">
@@ -492,7 +498,7 @@
     {
         _typographyEllipsisConfig = new TypographyEllipsisConfig()
         {
-             Rows=1,
+            Rows = 1,
         };
         _nodeDeviceTypes =
         [

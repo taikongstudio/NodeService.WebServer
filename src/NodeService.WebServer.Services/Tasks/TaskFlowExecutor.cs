@@ -19,9 +19,10 @@ namespace NodeService.WebServer.Services.Tasks
         readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
         readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
         readonly ConcurrentDictionary<int, ActionBlock<AsyncOperation<Func<Task>>>> _executionQueueDict;
-        private readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
-        private readonly IDelayMessageBroadcast _delayMessageBroadcast;
+        readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
+        readonly IDelayMessageBroadcast _delayMessageBroadcast;
         private ConfigurationQueryService _configurationQueryService;
+        readonly IAsyncQueue<TaskObservationEvent> _eventQueue;
         const string SubType_ExecutionTimeLimit = "ExecutionTimeLimit";
         const string SubTyoe_TaskFlowStageExecutionTimeLimit = "TaskFlowStageExecutionTimeLimit";
 
@@ -34,7 +35,8 @@ namespace NodeService.WebServer.Services.Tasks
             ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
             IAsyncQueue<KafkaDelayMessage> delayMessageQueue,
             IDelayMessageBroadcast delayMessageBroadcast,
-            ConfigurationQueryService configurationQueryService
+            ConfigurationQueryService configurationQueryService,
+            IAsyncQueue<TaskObservationEvent> eventQueue
             )
         {
             _logger = logger;
@@ -58,6 +60,7 @@ namespace NodeService.WebServer.Services.Tasks
             _delayMessageBroadcast = delayMessageBroadcast;
             _delayMessageBroadcast.AddHandler(nameof(TaskFlowExecutor), ProcessDelayMessage);
             _configurationQueryService = configurationQueryService;
+            _eventQueue = eventQueue;
         }
 
         ActionBlock<AsyncOperation<Func<Task>>> GetActionBlock(string id)
@@ -421,17 +424,25 @@ CancellationToken cancellationToken = default)
                 }
                 while (true);
                 taskFlowExecutionInstance.Value.CurrentStageIndex = currentStageIndex;
+                bool statusChanged = false;
                 if (taskFlowExecutionInstance.TaskStages.All(static x => x.Status == TaskFlowExecutionStatus.Finished))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Finished;
+                    statusChanged = true;
                 }
                 else if (taskFlowExecutionInstance.Value.TaskStages.Any(static x => x.Status != TaskFlowExecutionStatus.Finished))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Running;
+                    statusChanged = true;
                 }
                 else if (taskFlowExecutionInstance.Value.TaskStages.Any(static x => x.Status == TaskFlowExecutionStatus.Fault))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Fault;
+                    statusChanged = true;
+                }
+                if (statusChanged)
+                {
+                    await SendTaskObservationEventAsync(taskFlowExecutionInstance, cancellationToken);
                 }
                 taskFlowExecutionInstance.ModifiedDateTime = DateTime.UtcNow;
 
@@ -443,6 +454,21 @@ CancellationToken cancellationToken = default)
             }
 
         }
+
+        private async Task SendTaskObservationEventAsync(TaskFlowExecutionInstanceModel taskFlowExecutionInstance, CancellationToken cancellationToken)
+        {
+            await _eventQueue.EnqueueAsync(new TaskObservationEvent()
+            {
+                Id = taskFlowExecutionInstance.Id,
+                Context = string.Empty,
+                CreationDateTime = taskFlowExecutionInstance.CreationDateTime,
+                Message = taskFlowExecutionInstance.Message,
+                Name = taskFlowExecutionInstance.Name,
+                Status = (int)taskFlowExecutionInstance.Status,
+                Type = "TaskFlowExecutionInstance"
+            }, cancellationToken);
+        }
+
         async ValueTask ExecuteTaskStageAsync(
             TaskFlowTemplateModel taskFlowTemplate,
             TaskFlowExecutionInstanceModel taskFlowExecutionInstance,
@@ -659,10 +685,10 @@ CancellationToken cancellationToken = default)
                             {
                                 FireTimeUtc = DateTime.UtcNow,
                                 TriggerSource = TriggerSource.Manual,
-                                FireInstanceId = fireInstanceId,
+                                TaskActivationRecordId = fireInstanceId,
                                 TaskDefinitionId = taskFlowTaskExecutionInstance.TaskDefinitionId,
                                 ScheduledFireTimeUtc = DateTime.UtcNow,
-                                EnvironmentVariables = taskFlowTemplate.Value.EnvironmentVariables,
+                                EnvironmentVariables = [.. taskFlowTemplate.Value.EnvironmentVariables],
                                 TaskFlowTaskKey = new TaskFlowTaskKey(
                                      taskFlowExecutionInstance.Value.TaskFlowTemplateId,
                                      taskFlowExecutionInstance.Value.Id,
@@ -691,10 +717,10 @@ CancellationToken cancellationToken = default)
                             {
                                 FireTimeUtc = DateTime.UtcNow,
                                 TriggerSource = TriggerSource.Manual,
-                                FireInstanceId = fireInstanceId,
+                                TaskActivationRecordId = fireInstanceId,
                                 TaskDefinitionId = taskFlowTaskExecutionInstance.TaskDefinitionId,
                                 ScheduledFireTimeUtc = DateTime.UtcNow,
-                                EnvironmentVariables = taskFlowTemplate.Value.EnvironmentVariables,
+                                EnvironmentVariables = [.. taskFlowTemplate.Value.EnvironmentVariables],
                                 RetryTasks = true,
                                 TaskFlowTaskKey = new TaskFlowTaskKey(
                                      taskFlowExecutionInstance.Value.TaskFlowTemplateId,

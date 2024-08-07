@@ -4,8 +4,6 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataQueue;
-using NPOI.HSSF.Util;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System.Collections.Immutable;
@@ -37,7 +35,6 @@ public partial class NodeHealthyCheckService : BackgroundService
         IAsyncQueue<NodeHealthyCheckFireEvent> fireEventQueue,
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
-        ApplicationRepositoryFactory<NotificationConfigModel> notificationRepositoryFactory,
         NodeInfoQueryService  nodeInfoQueryService,
         ExceptionCounter exceptionCounter,
         ObjectCache objectCache,
@@ -50,7 +47,6 @@ public partial class NodeHealthyCheckService : BackgroundService
         _fireEventQueue = fireEventQueue;
         _propertyBagRepositoryFactory = propertyBagRepositoryFactory;
         _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
-        _notificationRepositoryFactory = notificationRepositoryFactory;
         _exceptionCounter = exceptionCounter;
         _nodeInfoQueryService = nodeInfoQueryService;
         _objectCache = objectCache;
@@ -87,7 +83,7 @@ public partial class NodeHealthyCheckService : BackgroundService
                 return;
             }
 
-            List<NodeHeathyResult> resultList = [];
+            List<NodeHeathyCheckResult> resultList = [];
             await using var nodeInfoRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync(cancellationToken);
             var nodeInfoList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
                     AreaTags.Any,
@@ -114,11 +110,11 @@ public partial class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    private async ValueTask<NodeHeathyResult> GetNodeHealthyResultAsync(
+    private async ValueTask<NodeHeathyCheckResult> GetNodeHealthyResultAsync(
         NodeInfoModel nodeInfo,
         CancellationToken cancellationToken = default)
     {
-        var nodeHeathyResult = new NodeHeathyResult()
+        var nodeHeathyResult = new NodeHeathyCheckResult()
         {
             NodeInfo = nodeInfo,
         };
@@ -273,7 +269,7 @@ public partial class NodeHealthyCheckService : BackgroundService
 
 
     async ValueTask SendNodeHealthyCheckNotificationAsync(
-         List<NodeHeathyResult> resultList,
+         List<NodeHeathyCheckResult> resultList,
         CancellationToken cancellationToken = default)
     {
 
@@ -302,15 +298,6 @@ public partial class NodeHealthyCheckService : BackgroundService
                     new NotificationMessage(new EmailContent(_nodeHealthyCheckConfiguration.Subject, content, [emailAttachment]),
                     notificationConfig.Value),
                 cancellationToken);
-
-            await _notificationQueue.EnqueueAsync(
-            new NotificationMessage(new LarkContent()
-            {
-                Subject = $"{_nodeHealthyCheckConfiguration.Subject} {DateTime.Now:yyyy-MM-dd}",
-                Entries = []
-            },
-                notificationConfig.Value),
-            cancellationToken);
         }
     }
 
@@ -367,7 +354,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    public bool TryWriteToExcel(List<NodeHeathyResult> nodeHeathyResults, out Stream? stream)
+    public bool TryWriteToExcel(List<NodeHeathyCheckResult> nodeHeathyResults, out Stream? stream)
     {  
         stream = null;
         try

@@ -10,7 +10,6 @@ public class TaskCancellationQueueService : BackgroundService
 {
     readonly ILogger<TaskCancellationQueueService> _logger;
     readonly ExceptionCounter _exceptionCounter;
-    readonly ITaskPenddingContextManager _taskPenddingContextManager;
     readonly INodeSessionService _nodeSessionService;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
     readonly IAsyncQueue<TaskExecutionReport> _taskExecutionReportBatchQueue;
@@ -20,7 +19,6 @@ public class TaskCancellationQueueService : BackgroundService
     public TaskCancellationQueueService(
         ILogger<TaskCancellationQueueService> logger,
         ExceptionCounter exceptionCounter,
-        ITaskPenddingContextManager taskPenddingContextManager,
         INodeSessionService nodeSessionService,
         BatchQueue<TaskCancellationParameters> taskCancellationBatchQueue,
         IAsyncQueue<TaskExecutionReport> taskExecutionReportBatchQueue,
@@ -29,7 +27,6 @@ public class TaskCancellationQueueService : BackgroundService
     {
         _logger = logger;
         _exceptionCounter = exceptionCounter;
-        _taskPenddingContextManager = taskPenddingContextManager;
         _nodeSessionService = nodeSessionService;
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
         _taskExecutionReportBatchQueue = taskExecutionReportBatchQueue;
@@ -59,19 +56,11 @@ public class TaskCancellationQueueService : BackgroundService
                                                 taskCancellationParameters.TaskExeuctionInstanceId,
                                                 cancellationToken);
                     if (taskExecutionInstance == null) continue;
-                    if (taskExecutionInstance.Status != TaskExecutionStatus.PenddingCancel && taskExecutionInstance.Status >= TaskExecutionStatus.Cancelled) continue;
-                    if (_taskPenddingContextManager.TryGetContext(
-                            taskCancellationParameters.TaskExeuctionInstanceId,
-                            out var context)
-                        &&
-                        context != null)
-                    {
-                        await context.CancelAsync();
-                    }
+                    if (taskExecutionInstance.Status is not TaskExecutionStatus.PenddingCancel and >= TaskExecutionStatus.Cancelled) continue;
                     if (taskExecutionInstance.Status >= TaskExecutionStatus.Started)
                     {
-                        var nodeSessions = _nodeSessionService.EnumNodeSessions(new NodeId(taskExecutionInstance.NodeInfoId), NodeStatus.Online);
-                        if (nodeSessions.Any())
+                        var nodeSessions = _nodeSessionService.EnumNodeSessions(new NodeId(taskExecutionInstance.NodeInfoId), NodeStatus.Online).ToArray();
+                        if (nodeSessions.Length != 0)
                         {
                             var req = taskExecutionInstance.ToCancelEvent(taskCancellationParameters);
                             _memoryCache.Set($"{nameof(TaskCancellationQueueService)}:{taskExecutionInstance.Id}", taskCancellationParameters, TimeSpan.FromHours(1));

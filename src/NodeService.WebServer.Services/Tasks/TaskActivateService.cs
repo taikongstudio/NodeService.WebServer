@@ -7,6 +7,7 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.TaskSchedule;
+using System.Collections.Immutable;
 using System.Net;
 
 namespace NodeService.WebServer.Services.Tasks;
@@ -15,22 +16,13 @@ public class TaskActivateService : BackgroundService
 {
     readonly ILogger<TaskActivateService> _logger;
     readonly INodeSessionService _nodeSessionService;
-    readonly ITaskPenddingContextManager _taskPenddingContextManager;
     readonly TaskFlowExecutor _taskFlowExecutor;
-    readonly NodeInfoQueryService _nodeInfoQueryService;
-    readonly ConfigurationQueryService _configurationQueryService;
     readonly ExceptionCounter _exceptionCounter;
-    readonly PriorityQueue<TaskPenddingContext, TaskExecutionPriority> _priorityQueue;
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationQueue;
     readonly IAsyncQueue<TaskExecutionReport> _taskExecutionReportBatchQueue;
     readonly BatchQueue<TaskActivateServiceParameters> _serviceParametersBatchQueue;
-    readonly ApplicationRepositoryFactory<TaskDefinitionModel> _taskDefinitionRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
-    readonly ApplicationRepositoryFactory<TaskTypeDescConfigModel> _taskTypeDescConfigRepositoryFactory;
-    readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
-    readonly ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> _taskFlowExecutionInstanceRepoFactory;
-    readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskFlowTemplateRepoFactory;
     readonly TaskActivationRecordExecutor _taskActivationRecordExecutor;
     readonly IDelayMessageBroadcast _delayMessageBroadcast;
     readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
@@ -52,7 +44,6 @@ public class TaskActivateService : BackgroundService
         IAsyncQueue<TaskExecutionReport> taskExecutionReportBatchQueue,
         BatchQueue<TaskActivateServiceParameters> serviceParametersBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationQueue,
-        ITaskPenddingContextManager taskPenddingContextManager,
         TaskFlowExecutor taskFlowExecutor,
         NodeInfoQueryService nodeInfoQueryService,
         ConfigurationQueryService configurationQueryService,
@@ -61,30 +52,23 @@ public class TaskActivateService : BackgroundService
         IAsyncQueue<KafkaDelayMessage> delayMessageQueue)
     {
         _logger = logger;
-        _priorityQueue = new PriorityQueue<TaskPenddingContext, TaskExecutionPriority>();
         _nodeSessionService = nodeSessionService;
-        _taskDefinitionRepositoryFactory = taskDefinitionRepositoryFactory;
         _taskExecutionInstanceRepositoryFactory = taskExecutionInstanceRepositoryFactory;
         _taskActivationRecordRepoFactory = taskActivationRepositoryFactory;
-        _taskTypeDescConfigRepositoryFactory = taskTypeDescConfigRepositoryFactory;
-        _nodeInfoRepositoryFactory = nodeInfoRepositoryFactory;
-        _taskFlowExecutionInstanceRepoFactory = taskFlowExecutionInstanceRepoFactory;
-        _taskFlowTemplateRepoFactory = taskFlowTemplateRepoFactory;
         _taskExecutionReportBatchQueue = taskExecutionReportBatchQueue;
         _exceptionCounter = exceptionCounter;
         _serviceParametersBatchQueue = serviceParametersBatchQueue;
         _taskCancellationQueue = taskCancellationQueue;
-        _taskPenddingContextManager = taskPenddingContextManager;
         _taskFlowExecutor = taskFlowExecutor;
-        _nodeInfoQueryService = nodeInfoQueryService;
-        _configurationQueryService = configurationQueryService;
         _taskActivationRecordExecutor = taskActivationRecordExecutor;
         _delayMessageBroadcast = delayMessageBroadcast;
         _delayMessageQueue = delayMessageQueue;
         _delayMessageBroadcast.AddHandler(nameof(TaskActivateService), ProcessDelayMessage);
     }
 
-    private async ValueTask ProcessDelayMessage(KafkaDelayMessage kafkaDelayMessage,CancellationToken cancellationToken=default)
+    private async ValueTask ProcessDelayMessage(
+        KafkaDelayMessage kafkaDelayMessage,
+        CancellationToken cancellationToken = default)
     {
         switch (kafkaDelayMessage.SubType)
         {
@@ -98,11 +82,12 @@ public class TaskActivateService : BackgroundService
 
     }
 
-    public async Task<bool> StopRunningTasksAsync(
+    public async ValueTask<bool> StopRunningTasksAsync(
         string nodeId,
         string taskDefinitionId,
         IRepository<TaskExecutionInstanceModel> repository,
-        BatchQueue<TaskCancellationParameters> taskCancellationQueue, CancellationToken cancellationToken = default)
+        BatchQueue<TaskCancellationParameters> taskCancellationQueue,
+        CancellationToken cancellationToken = default)
     {
         var queryResult = await QueryTaskExecutionInstancesAsync(repository, new QueryTaskExecutionInstanceListParameters
             {
@@ -114,7 +99,10 @@ public class TaskActivateService : BackgroundService
         if (queryResult.IsEmpty) return true;
         foreach (var taskExecutionInstance in queryResult.Items)
         {
-            await taskCancellationQueue.SendAsync(new TaskCancellationParameters(taskExecutionInstance.Id, nameof(TaskPenddingContext), Dns.GetHostName()), cancellationToken);
+            await taskCancellationQueue.SendAsync(
+                new TaskCancellationParameters(taskExecutionInstance.Id, nameof(TaskActivateService),
+                    Dns.GetHostName()),
+                cancellationToken);
         }
         return true;
     }
@@ -197,11 +185,7 @@ public class TaskActivateService : BackgroundService
             var taskActivationRecordId = taskExecutionInstance.FireInstanceId;
             var nodeSessionId = new NodeSessionId(taskExecutionInstance.NodeInfoId);
             var taskActivationRecord = await QueryTaskActiveRecordAsync(taskActivationRecordId, cancellationToken);
-            if (taskActivationRecord == null)
-            {
-                return;
-            }
-            var taskDefinition = taskActivationRecord.GetTaskDefinition();
+            var taskDefinition = taskActivationRecord?.GetTaskDefinition();
             if (taskDefinition == null)
             {
                 return;
@@ -211,20 +195,18 @@ public class TaskActivateService : BackgroundService
             {
                 bool isPenddingTimeOut = false;
                 timeSpan = DateTime.UtcNow - taskExecutionInstance.FireTimeUtc;
-                if (taskDefinition.PenddingLimitTimeSeconds == 0)
+                switch (taskDefinition.PenddingLimitTimeSeconds)
                 {
-                    isPenddingTimeOut = true;
-                }
-                else if (taskDefinition.PenddingLimitTimeSeconds > 0
-                    &&
-                     timeSpan > TimeSpan.FromSeconds(taskDefinition.PenddingLimitTimeSeconds))
-                {
-                    isPenddingTimeOut = true;
+                    case 0:
+                    case > 0 
+                    when
+                        timeSpan > TimeSpan.FromSeconds(taskDefinition.PenddingLimitTimeSeconds):
+                        isPenddingTimeOut = true;
+                        break;
                 }
 
                 if (isPenddingTimeOut)
                 {
-                    _taskPenddingContextManager.RemoveContext(delayMessage.Id, out _);
                     await SendTaskExecutionReportAsync(
                             delayMessage.Id,
                             TaskExecutionStatus.PenddingTimeout,
@@ -299,10 +281,6 @@ public class TaskActivateService : BackgroundService
         }
         catch (OperationCanceledException ex)
         {
-            if (ex.CancellationToken == cancellationToken)
-            {
-            }
-
             _exceptionCounter.AddOrUpdate(ex, delayMessage.Id);
             _logger.LogError($"{delayMessage.Id}:{ex}");
         }
@@ -315,14 +293,10 @@ public class TaskActivateService : BackgroundService
                 delayMessage.Id,
                 TaskExecutionStatus.Failed,
                 exString);
-        }
-        finally
-        {
-            _taskPenddingContextManager.RemoveContext(delayMessage.Id, out _);
+            return;
         }
         if (cancellationToken.IsCancellationRequested)
         {
-            delayMessage.Handled = true;
             await SendTaskExecutionReportAsync(
                 delayMessage.Id,
                 TaskExecutionStatus.PenddingTimeout,
@@ -332,7 +306,7 @@ public class TaskActivateService : BackgroundService
         }
     }
 
-    public async Task SendTaskExecutionReportAsync(
+     async ValueTask SendTaskExecutionReportAsync(
         string taskExecutionInstanceId,
         TaskExecutionStatus status,
         string message)
@@ -498,13 +472,12 @@ public class TaskActivateService : BackgroundService
             {
                 continue;
             }
-            var nodes = taskExecutionRecord.Value.NodeList.Where(x => x.Value == taskExecutionInstance.NodeInfoId).ToList();
+            var nodes = taskExecutionRecord.Value.NodeList.Where(x => x.Value == taskExecutionInstance.NodeInfoId).ToImmutableArray();
             var fireTaskParameters = FireTaskParameters.BuildRetryTaskParameters(
                 taskExecutionRecord.Id,
                 taskExecutionRecord.TaskDefinitionId,
-                taskExecutionInstance.FireInstanceId,
                 nodes,
-                taskExecutionRecord.Value.EnvironmentVariables,
+                [.. taskExecutionRecord.Value.EnvironmentVariables],
                 taskExecutionInstance.GetTaskFlowTaskKey());
             await _serviceParametersBatchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
 

@@ -1,4 +1,5 @@
-﻿using NodeService.Infrastructure.Concurrent;
+﻿using System.Collections.Immutable;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.Tasks;
@@ -33,11 +34,11 @@ public partial class ConfigurationController
             {
                 FireTimeUtc = DateTime.UtcNow,
                 TriggerSource = TriggerSource.Manual,
-                FireInstanceId = fireInstanceId,
+                TaskActivationRecordId = fireInstanceId,
                 TaskDefinitionId = taskDefinitionId,
                 ScheduledFireTimeUtc = DateTime.UtcNow,
-                NodeList = invokeTaskParameters.NodeList,
-                EnvironmentVariables = invokeTaskParameters.EnvironmentVariables
+                NodeList = [..invokeTaskParameters.NodeList],
+                EnvironmentVariables = [..invokeTaskParameters.EnvironmentVariables]
             }), cancellationToken);
             apiResponse.SetResult(new InvokeTaskResult()
             {

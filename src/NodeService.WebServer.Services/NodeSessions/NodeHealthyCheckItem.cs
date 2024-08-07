@@ -8,7 +8,7 @@ public class NodeHealthyCheckItem
 
 }
 
-public class NodeHeathyResult
+public class NodeHeathyCheckResult
 {
     public NodeInfoModel NodeInfo { get; set; }
 

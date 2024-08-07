@@ -16,15 +16,15 @@
     <FormItem Label="任务监控">
         <Table Context="TaskObservation" TItem="TaskObservationModel" DataSource="@context.TaskObservations" @bind-SelectedRows="@_selectedTaskObservations">
             <Selection Key="@TaskObservation.Id" Type="checkbox" />
-            <PropertyColumn Property="c=>c.IsEnabled" />
-            <PropertyColumn Property="c=>c.Status" />
+            <PropertyColumn Property="c=>c.IsEnabled" Title="启用" />
+            <PropertyColumn Property="c=>c.Status" Title="状态" />
         </Table>
     </FormItem>
     <FormItem Label="任务流监控">
         <Table Context="TaskFlowObservation" TItem="TaskFlowObservationModel" DataSource="@context.TaskFlowObservations" @bind-SelectedRows="@_selectedTaskFlowObservations">
             <Selection Key="@TaskFlowObservation.Id" Type="checkbox" />
-            <PropertyColumn Property="c=>c.IsEnabled" />
-            <PropertyColumn Property="c=>c.Status" />
+            <PropertyColumn Property="c=>c.IsEnabled" Title="启用"/>
+            <PropertyColumn Property="c=>c.Status" Title="状态"/>
         </Table>
     </FormItem>
     <FormItem Label="通知时间">

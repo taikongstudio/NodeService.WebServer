@@ -21,7 +21,6 @@ namespace NodeService.WebServer.Services.Tasks
             services.AddSingleton(new BatchQueue<TaskCancellationParameters>(TimeSpan.FromSeconds(1), 64));
             services.AddKeyedSingleton(nameof(TaskLogKafkaProducerService), new BatchQueue<TaskLogUnit>(TimeSpan.FromSeconds(1), 2048));
             services.AddKeyedSingleton(nameof(TaskLogPersistenceService), new BatchQueue<AsyncOperation<TaskLogUnit[]>>(TimeSpan.FromSeconds(5), 2048));
-            services.AddSingleton<ITaskPenddingContextManager, TaskPenddingContextManager>();
             services.AddSingleton(new BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>>(TimeSpan.FromSeconds(15), 2048));
             services.AddSingleton<TaskFlowExecutor>();
             services.AddSingleton<TaskActivationRecordExecutor>();

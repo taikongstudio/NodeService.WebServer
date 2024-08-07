@@ -4,8 +4,11 @@
     <projectFile profileName="NodeService.Infrastructure.SourceGenerator">../NodeService.Infrastructure/src/NodeService.Infrastructure.SourceGenerator/NodeService.Infrastructure.SourceGenerator.csproj</projectFile>
     <projectFile profileName="Profile">../NodeService.Infrastructure/src/NodeService.Infrastructure.SourceGenerator/NodeService.Infrastructure.SourceGenerator.csproj</projectFile>
     <projectFile profileName="NodeService.Infrastructure">../NodeService.Infrastructure/src/NodeService.Infrastructure/NodeService.Infrastructure.csproj</projectFile>
+    <projectFile profileName="NodeService.CoreServer">src/NodeService.CoreServer/NodeService.CoreServer.csproj</projectFile>
+    <projectFile profileName="NodeService.WebServer.Services">src/NodeService.WebServer.Services/NodeService.WebServer.Services.csproj</projectFile>
     <projectFile profileName="IIS Express">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
     <projectFile profileName="NodeService.WebServer">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
+    <projectFile pubXmlPath="src/NodeService.WebServer/Properties/PublishProfiles/10.201.76.21.pubxml">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
     <projectFile pubXmlPath="src/NodeService.WebServer/Properties/PublishProfiles/172.27.242.223.pubxml">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
     <projectFile pubXmlPath="src/NodeService.WebServer/Properties/PublishProfiles/43.163.8.23.pubxml">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
     <projectFile>src/NodeService.WebServerTools/NodeService.WebServerTools.csproj</projectFile>
@@ -14,7 +17,27 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="b04395b7-eb82-4cab-a9bf-7f5c3a791308" name="Changes" comment="" />
+    <list default="true" id="b04395b7-eb82-4cab-a9bf-7f5c3a791308" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.NodeService.WebServer/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.NodeService.WebServer/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/DataQueue/ConfigurationQueryService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/DataQueue/ConfigurationQueryService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeSessions/NodeHealthyCheckItem.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeSessions/NodeHealthyCheckItem.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeSessions/NodeHealthyCheckService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeSessions/NodeHealthyCheckService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/TaskSchedule/Jobs/FireTaskJob.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/TaskSchedule/Jobs/FireTaskJob.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/FireTaskParameters.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/FireTaskParameters.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivateService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivateService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivationRecordExecutor.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivationRecordExecutor.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivationRecordProcessContext.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivationRecordProcessContext.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskCancellationQueueService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskCancellationQueueService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionReportConsumerService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionReportConsumerService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExtensions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExtensions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskFlowExecutor.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskFlowExecutor.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskObservationEventKafkaConsumerService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskObservationEventKafkaConsumerService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskPenddingContext.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskPenddingContextManager.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Nodes/List/Index.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Nodes/List/Index.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/ConfigurationController.NotificationConfig.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/ConfigurationController.NotificationConfig.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/ConfigurationController.TaskDefinition.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/ConfigurationController.TaskDefinition.cs" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -43,7 +66,7 @@
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.keymap&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.C#&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
   &quot;keyToStringList&quot;: {
@@ -55,6 +78,10 @@
   }
 }</component>
   <component name="RunManager" selected=".NET Launch Settings Profile.NodeService.WebServer">
+    <configuration name="NodeService.WebServer: 10.201.76.21" type="DotNetMsBuildPublish" factoryName="Publish to IIS">
+      <riderPublish configuration="Release" platform="Any CPU" publish_profile="10.201.76.21.pubxml" pubxml_path="$PROJECT_DIR$/src/NodeService.WebServer/Properties/PublishProfiles/10.201.76.21.pubxml" uuid_high="6555749847264480811" uuid_low="-8557570855246118524" />
+      <method v="2" />
+    </configuration>
     <configuration name="NodeService.WebServer: 172.27.242.223" type="DotNetMsBuildPublish" factoryName="Publish to IIS">
       <riderPublish configuration="Release" platform="Any CPU" publish_profile="172.27.242.223.pubxml" pubxml_path="$PROJECT_DIR$/src/NodeService.WebServer/Properties/PublishProfiles/172.27.242.223.pubxml" uuid_high="6555749847264480811" uuid_low="-8557570855246118524" />
       <method v="2" />
@@ -77,6 +104,21 @@
       <option name="PROJECT_WORKING_DIRECTORY_TRACKING" value="1" />
       <option name="PROJECT_KIND" value="DotNetCore" />
       <option name="PROJECT_TFM" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
+    <configuration name="NodeService.CoreServer" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.CoreServer/NodeService.CoreServer.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="NodeService.CoreServer" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
       <method v="2">
         <option name="Build" />
       </method>
@@ -156,6 +198,21 @@
         <option name="Build" />
       </method>
     </configuration>
+    <configuration name="NodeService.WebServer.Services" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeService.WebServer.Services.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="NodeService.WebServer.Services" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -170,6 +227,9 @@
       <workItem from="1717379570283" duration="3437000" />
       <workItem from="1718547068386" duration="1353000" />
       <workItem from="1718693429910" duration="1056000" />
+      <workItem from="1722961164043" duration="773000" />
+      <workItem from="1722961956973" duration="291000" />
+      <workItem from="1722996445005" duration="1714000" />
     </task>
     <servers />
   </component>

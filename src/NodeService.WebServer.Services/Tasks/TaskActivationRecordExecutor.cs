@@ -72,7 +72,7 @@ namespace NodeService.WebServer.Services.Tasks
                 return default;
             }
 
-            if (taskDefinition == null || string.IsNullOrEmpty(taskDefinition.TaskTypeDescId))
+            if (string.IsNullOrEmpty(taskDefinition.TaskTypeDescId))
             {
                 return default;
             }
@@ -127,9 +127,9 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
         static void AddTaskExecutionNodeInstances(
-    List<KeyValuePair<NodeSessionId, TaskExecutionInstanceModel>> taskExecutionInstanceList,
-    StringEntry? nodeEntry,
-    TaskExecutionNodeInfo taskExecutionNodeInfo)
+            List<KeyValuePair<NodeSessionId, TaskExecutionInstanceModel>> taskExecutionInstanceList,
+            StringEntry? nodeEntry,
+            TaskExecutionNodeInfo taskExecutionNodeInfo)
         {
             foreach (var item in taskExecutionInstanceList)
             {
@@ -232,7 +232,7 @@ namespace NodeService.WebServer.Services.Tasks
                 TriggerSource = parameters.TriggerSource,
                 TaskDefinitionId = taskDefinition.Id,
                 ParentId = parameters.ParentTaskExecutionInstanceId,
-                FireInstanceId = parameters.FireInstanceId
+                FireInstanceId = parameters.TaskActivationRecordId
             };
             switch (taskDefinition.ExecutionStrategy)
             {
@@ -280,7 +280,7 @@ namespace NodeService.WebServer.Services.Tasks
                 if (fireTaskParameters.RetryTasks)
                 {
                     await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
-                    taskActivationRecord = await taskActivationRecordRepo.GetByIdAsync(fireTaskParameters.FireInstanceId, cancellationToken);
+                    taskActivationRecord = await taskActivationRecordRepo.GetByIdAsync(fireTaskParameters.TaskActivationRecordId, cancellationToken);
                     if (taskActivationRecord == null)
                     {
                         return new Exception("invalid fire instance id");
@@ -303,7 +303,7 @@ namespace NodeService.WebServer.Services.Tasks
                             continue;
                         }
 
-                        bool canRetry = lastInstance.Status switch
+                        var canRetry = lastInstance.Status switch
                         {
                             TaskExecutionStatus.Failed or TaskExecutionStatus.PenddingTimeout or TaskExecutionStatus.Failed => true,
                             _ => false
@@ -319,8 +319,9 @@ namespace NodeService.WebServer.Services.Tasks
                             continue;
                         }
 
-                        var nodeEntries = taskDefinition.NodeList.Where(x => x.Value == taskExecutionNodeInfo.NodeInfoId);
-                        if (!nodeEntries.Any())
+                        var nodeEntries = taskDefinition.NodeList
+                            .Where(x => x.Value == taskExecutionNodeInfo.NodeInfoId).ToArray();
+                        if (nodeEntries.Length == 0)
                         {
                             continue;
                         }
@@ -336,6 +337,11 @@ namespace NodeService.WebServer.Services.Tasks
 
                         foreach (var nodeEntry in nodeEntries)
                         {
+                            if (nodeEntry is null)
+                            {
+                                continue;
+                            }
+
                             AddTaskExecutionNodeInstances(taskExecutionInstanceList, nodeEntry, taskExecutionNodeInfo);
                         }
 
@@ -350,11 +356,11 @@ namespace NodeService.WebServer.Services.Tasks
                 }
                 else
                 {
-                    if (fireTaskParameters.NodeList != null && fireTaskParameters.NodeList.Count > 0)
+                    if (fireTaskParameters.NodeList.Length > 0)
                     {
-                        taskDefinition.NodeList = fireTaskParameters.NodeList;
+                        taskDefinition.NodeList = [.. fireTaskParameters.NodeList];
                     }
-                    if (fireTaskParameters.EnvironmentVariables != null && fireTaskParameters.EnvironmentVariables.Count > 0)
+                    if (fireTaskParameters.EnvironmentVariables.Length > 0)
                     {
                         foreach (var item in fireTaskParameters.EnvironmentVariables)
                         {
@@ -388,11 +394,11 @@ namespace NodeService.WebServer.Services.Tasks
 
                     foreach (var nodeEntry in taskDefinition.NodeList)
                     {
-                        if (nodeEntry == null || nodeEntry.Value == null)
+                        if (nodeEntry?.Value == null)
                         {
                             continue;
                         }
-                        var taskExecutionNodeInfo = new TaskExecutionNodeInfo(fireTaskParameters.FireInstanceId, nodeEntry.Value);
+                        var taskExecutionNodeInfo = new TaskExecutionNodeInfo(fireTaskParameters.TaskActivationRecordId, nodeEntry.Value);
                         AddTaskExecutionNodeInstances(taskExecutionInstanceList, nodeEntry, taskExecutionNodeInfo);
                         taskExecutionNodeList.Add(taskExecutionNodeInfo);
                     }
@@ -401,7 +407,7 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         CreationDateTime = DateTime.UtcNow,
                         ModifiedDateTime = DateTime.UtcNow,
-                        Id = fireTaskParameters.FireInstanceId,
+                        Id = fireTaskParameters.TaskActivationRecordId,
                         TaskDefinitionId = taskDefinition.Id,
                         Name = taskDefinition.Name,
                         TaskDefinitionJson = JsonSerializer.Serialize(taskDefinition.Value),
@@ -414,7 +420,7 @@ namespace NodeService.WebServer.Services.Tasks
                         TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId,
                         TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId,
                         NodeList = [.. taskDefinition.NodeList],
-                        EnvironmentVariables = fireTaskParameters.EnvironmentVariables
+                        EnvironmentVariables = [.. fireTaskParameters.EnvironmentVariables]
                     };
                     await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
                     await taskActivationRecordRepo.AddAsync(taskActivationRecord, cancellationToken);

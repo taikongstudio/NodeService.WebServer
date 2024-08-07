@@ -3,6 +3,7 @@ using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.TaskSchedule;
+using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.Tasks;
 
@@ -517,10 +518,10 @@ internal class TaskActivationRecordProcessContext
             {
                 FireTimeUtc = DateTime.UtcNow,
                 TriggerSource = TriggerSource.Manual,
-                FireInstanceId = $"ChildTask_{Guid.NewGuid()}",
+                TaskActivationRecordId = $"ChildTask_{Guid.NewGuid()}",
                 TaskDefinitionId = childTaskDefinition.Id,
                 ScheduledFireTimeUtc = DateTime.UtcNow,
-                NodeList = taskDefinition.NodeList,
+                NodeList = [.. taskDefinition.NodeList],
                 ParentTaskExecutionInstanceId = parentTaskInstance.Id
             }), cancellationToken);
             parentTaskInstance.ChildTaskScheduleCount++;
@@ -562,9 +563,8 @@ internal class TaskActivationRecordProcessContext
             var fireTaskParameters = FireTaskParameters.BuildRetryTaskParameters(
                 taskActiveRecordId,
                 taskDefinitionId,
-                fireInstanceId,
-                nodeList,
-                taskActivationRecord.GetTaskDefinition()?.EnvironmentVariables ?? [],
+                nodeList.ToImmutableArray(),
+                taskActivationRecord.GetTaskDefinition()?.EnvironmentVariables.ToImmutableArray() ?? [],
                 taskExecutionInstance.GetTaskFlowTaskKey());
             if (taskDefinitionSnapshot.RetryDuration == 0)
             {

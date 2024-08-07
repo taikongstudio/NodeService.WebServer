@@ -76,30 +76,13 @@ public partial class ConfigurationController
     }
 
     [HttpGet("/api/CommonConfig/NotificationSource/NodeHealthyCheck")]
-    public async Task<ApiResponse<NodeHealthyCheckConfiguration>> QueryNodeHealthyCheckConfigurationAsync()
+    public async Task<ApiResponse<NodeHealthyCheckConfiguration>> QueryNodeHealthyCheckConfigurationAsync(CancellationToken cancellationToken = default)
     {
         var rsp = new ApiResponse<NodeHealthyCheckConfiguration>();
         try
         {
-            NodeHealthyCheckConfiguration? result = null;
-            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            await using var repo = await repoFactory.CreateRepositoryAsync();
-            var propertyBag =
-                await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.NodeHealthyCheck));
-            if (propertyBag == null)
-            {
-                result = new NodeHealthyCheckConfiguration();
-                propertyBag = new PropertyBag();
-                propertyBag.Add("Id", NotificationSources.NodeHealthyCheck);
-                propertyBag.Add("Value", JsonSerializer.Serialize(result));
-                propertyBag["CreatedDate"] = DateTime.UtcNow;
-                await repo.AddAsync(propertyBag);
-            }
-            else
-            {
-                result = JsonSerializer.Deserialize<NodeHealthyCheckConfiguration>(propertyBag["Value"] as string);
-            }
 
+            var result = await _configurationQueryService.QueryNodeHealthyCheckConfigurationAsync(cancellationToken);
             rsp.SetResult(result);
         }
         catch (Exception ex)
@@ -113,24 +96,14 @@ public partial class ConfigurationController
 
     [HttpPost("/api/CommonConfig/NotificationSource/NodeHealthyCheck/Update")]
     public async Task<ApiResponse> UpdateNodeHealthyCheckConfigurationAsync(
-        [FromBody] NodeHealthyCheckConfiguration model,
+        [FromBody] NodeHealthyCheckConfiguration entity,
         CancellationToken cancellationToken = default)
     {
         var rsp = new ApiResponse();
         try
         {
-            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-            await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
-            var propertyBag = await repo.FirstOrDefaultAsync(
-                new PropertyBagSpecification(NotificationSources.NodeHealthyCheck),
-                cancellationToken);
-            propertyBag["Value"] = JsonSerializer.Serialize(model);
-            await repo.SaveChangesAsync(cancellationToken);
-            var queue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
-            var parameters = new TaskScheduleServiceParameters(new NodeHealthyCheckScheduleParameters(NotificationSources.NodeHealthyCheck));
-            var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(parameters, AsyncOperationKind.AddOrUpdate);
-            await queue.EnqueueAsync(op, cancellationToken);
-            await op.WaitAsync(cancellationToken);
+
+            await _configurationQueryService.UpdateNodeHealthyCheckConfigurationAsync(entity, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -179,7 +152,7 @@ public partial class ConfigurationController
 
     [HttpPost("/api/CommonConfig/NotificationSource/DataQualityCheck/Update")]
     public async Task<ApiResponse> UpdateDataQualityCheckConfigurationAsync(
-        [FromBody] DataQualityCheckConfiguration model,
+        [FromBody] DataQualityCheckConfiguration entity,
         CancellationToken cancellationToken = default)
     {
         var rsp = new ApiResponse();
@@ -187,9 +160,8 @@ public partial class ConfigurationController
         {
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
             await using var repo = await repoFactory.CreateRepositoryAsync();
-            var propertyBag =
-                await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.DataQualityCheck));
-            propertyBag["Value"] = JsonSerializer.Serialize(model);
+            var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(NotificationSources.DataQualityCheck), cancellationToken);
+            propertyBag["Value"] = JsonSerializer.Serialize(entity);
             await repo.SaveChangesAsync(cancellationToken);
 
         }
@@ -230,11 +202,6 @@ public partial class ConfigurationController
         try
         {
             await _configurationQueryService.UpdateTaskObservationConfigurationAsync(entity, cancellationToken);
-            var queue = _serviceProvider.GetService<IAsyncQueue<AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>>>();
-            var parameters = new TaskScheduleServiceParameters(new TaskObservationScheduleParameters(NotificationSources.TaskObservation));
-            var op = new AsyncOperation<TaskScheduleServiceParameters, TaskScheduleServiceResult>(parameters, AsyncOperationKind.AddOrUpdate);
-            await queue.EnqueueAsync(op, cancellationToken);
-            await op.WaitAsync(cancellationToken);
         }
         catch (Exception ex)
         {

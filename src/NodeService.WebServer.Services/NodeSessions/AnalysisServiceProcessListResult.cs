@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace NodeService.WebServer.Services.NodeSessions
 {
 
-    record struct AnalysisServiceProcessListResult
+    public record struct AnalysisServiceProcessListResult
     {
         public AnalysisServiceProcessListResult()
         {

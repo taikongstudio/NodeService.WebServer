@@ -19,13 +19,13 @@ namespace NodeService.WebServer.Extensions
                 switch (detection.DetectionType)
                 {
                     case NodeUsageServiceProcessDetectionType.FileName:
-                        if (processInfo.FileName.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
+                        if (processInfo.FileName != null && processInfo.FileName.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
                         {
                             isDetected = true;
                         }
                         break;
                     case NodeUsageServiceProcessDetectionType.ProcessName:
-                        if (processInfo.FileName.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
+                        if (processInfo.FileName != null && processInfo.FileName.Contains(detection.Value, StringComparison.OrdinalIgnoreCase))
                         {
                             isDetected = true;
                         }

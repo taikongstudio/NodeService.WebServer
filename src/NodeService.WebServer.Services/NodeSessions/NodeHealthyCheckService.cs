@@ -186,22 +186,29 @@ public partial class NodeHealthyCheckService : BackgroundService
         {
             if (nodeInfo.Status == NodeStatus.Online && nodeInfo.Profile.Usages != null)
             {
-                IEnumerable<ProcessInfo> processInfoList = [];
                 var analysisPropsResultKey = $"NodePropsAnalysisResult:{nodeInfo.Id}";
                 var analysisPropsResult = await _objectCache.GetObjectAsync<AnalysisPropsResult>(analysisPropsResultKey, cancellationToken);
-                processInfoList = analysisPropsResult.ProcessInfoList;
-
-                if (processInfoList == null || !processInfoList.Any())
+                if (analysisPropsResult == default)
                 {
                     return usageList;
                 }
 
-                foreach (var  nodeUsageConfiguration in _nodeUsageConfigurations)
+                if (analysisPropsResult.ProcessInfoList == null || analysisPropsResult.ProcessInfoList.Length == 0)
+                {
+                    return usageList;
+                }
+
+                if (analysisPropsResult.ServiceProcessInfoList == null || analysisPropsResult.ServiceProcessInfoList.Length == 0)
+                {
+                    return usageList;
+                }
+
+                foreach (var nodeUsageConfiguration in _nodeUsageConfigurations)
                 {
                     var foundNode = false;
                     foreach (var item in nodeUsageConfiguration.Value.Nodes)
                     {
-                        if (item.NodeInfoId==nodeInfo.Id)
+                        if (item.NodeInfoId == nodeInfo.Id)
                         {
                             foundNode = true;
                             break;

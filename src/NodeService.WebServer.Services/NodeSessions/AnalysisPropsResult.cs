@@ -1,6 +1,6 @@
 ﻿namespace NodeService.WebServer.Services.NodeSessions
 {
-    record struct AnalysisPropsResult
+    public record struct AnalysisPropsResult
     {
         public AnalysisPropsResult()
         {

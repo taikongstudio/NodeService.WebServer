@@ -1,6 +1,6 @@
 ﻿namespace NodeService.WebServer.Services.NodeSessions
 {
-    record struct AnalysisProcessListResult
+    public record struct AnalysisProcessListResult
     {
         public AnalysisProcessListResult()
         {

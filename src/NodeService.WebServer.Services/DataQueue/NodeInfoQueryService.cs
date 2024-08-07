@@ -204,7 +204,7 @@ namespace NodeService.WebServer.Services.DataQueue
             {
                 nodeInfo = await _objectCache.GetEntityAsync<NodeInfoModel>(nodeId);
             }
-            else
+            if (nodeInfo == null)
             {
                 await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
                 nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeId, cancellationToken);
@@ -212,7 +212,6 @@ namespace NodeService.WebServer.Services.DataQueue
                 {
                     await _objectCache.SetEntityAsync(nodeInfo, cancellationToken);
                 }
-
             }
             return nodeInfo;
         }

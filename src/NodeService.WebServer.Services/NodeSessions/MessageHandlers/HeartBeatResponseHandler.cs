@@ -37,6 +37,7 @@ public class HeartBeatResponseHandler : IMessageHandler
             {
                 Message = null,
                 NodeSessionId = NodeSessionId,
+                IpAddress = _remoteIpAddress,
             });
         }
 

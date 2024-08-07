@@ -8,6 +8,10 @@ namespace NodeService.WebServer.Services.NodeSessions;
 
 public abstract record class NodeSessionMessage
 {
+    protected NodeSessionMessage()
+    {
+    }
+
     public NodeSessionId NodeSessionId { get; init; }
 
     public NodeInfoModel NodeInfo { get; set; }
@@ -29,6 +33,9 @@ public abstract record class NodeSessionMessage<T> : NodeSessionMessage where T 
 
 public record class NodeHeartBeatSessionMessage : NodeSessionMessage<HeartBeatResponse>
 {
+    public NodeHeartBeatSessionMessage()
+    {
+    }
 }
 
 public record class TaskExecutionReportMessage : NodeSessionMessage<TaskExecutionReport>

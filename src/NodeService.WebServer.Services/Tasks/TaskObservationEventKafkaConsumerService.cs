@@ -141,7 +141,10 @@ namespace NodeService.WebServer.Services.Tasks
                     Solution = GetSolution(status, item.Message)
                 });
             }
-
+            if (checkResultList.Count == 0)
+            {
+                return;
+            }
             await ProcessTaskObservationCheckResults(checkResultList, cancellationToken);
         }
 

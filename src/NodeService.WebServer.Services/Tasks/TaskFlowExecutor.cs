@@ -455,18 +455,39 @@ CancellationToken cancellationToken = default)
 
         }
 
-        private async Task SendTaskObservationEventAsync(TaskFlowExecutionInstanceModel taskFlowExecutionInstance, CancellationToken cancellationToken)
+        private async ValueTask SendTaskObservationEventAsync(TaskFlowExecutionInstanceModel taskFlowExecutionInstance, CancellationToken cancellationToken)
         {
-            await _eventQueue.EnqueueAsync(new TaskObservationEvent()
+            var taskObservationConfiguration = await _configurationQueryService.QueryTaskObservationConfigurationAsync(cancellationToken);
+            if (taskObservationConfiguration == null)
             {
-                Id = taskFlowExecutionInstance.Id,
-                Context = string.Empty,
-                CreationDateTime = taskFlowExecutionInstance.CreationDateTime,
-                Message = taskFlowExecutionInstance.Message,
-                Name = taskFlowExecutionInstance.Name,
-                Status = (int)taskFlowExecutionInstance.Status,
-                Type = "TaskFlowExecutionInstance"
-            }, cancellationToken);
+                return;
+            }
+            if (!taskObservationConfiguration.IsEnabled)
+            {
+                return;
+            }
+            foreach (var item in taskObservationConfiguration.TaskFlowObservations)
+            {
+                if (!item.IsEnabled)
+                {
+                    continue;
+                }
+                if (item.Status != taskFlowExecutionInstance.Status)
+                {
+                    continue;
+                }
+                await _eventQueue.EnqueueAsync(new TaskObservationEvent()
+                {
+                    Id = taskFlowExecutionInstance.Id,
+                    Context = string.Empty,
+                    CreationDateTime = taskFlowExecutionInstance.CreationDateTime,
+                    Message = taskFlowExecutionInstance.Message,
+                    Name = taskFlowExecutionInstance.Name,
+                    Status = (int)taskFlowExecutionInstance.Status,
+                    Type = "TaskFlowExecutionInstanceModel"
+                }, cancellationToken);
+            }
+
         }
 
         async ValueTask ExecuteTaskStageAsync(

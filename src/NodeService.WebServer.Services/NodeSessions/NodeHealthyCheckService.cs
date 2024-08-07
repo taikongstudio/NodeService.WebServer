@@ -35,6 +35,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         IAsyncQueue<NodeHealthyCheckFireEvent> fireEventQueue,
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
+        ApplicationRepositoryFactory<NotificationConfigModel> notificationRepositoryFactory,
         NodeInfoQueryService  nodeInfoQueryService,
         ExceptionCounter exceptionCounter,
         ObjectCache objectCache,
@@ -51,6 +52,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         _nodeInfoQueryService = nodeInfoQueryService;
         _objectCache = objectCache;
         _configurationQueryService = configurationQueryService;
+        _notificationRepositoryFactory = notificationRepositoryFactory;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -225,32 +227,6 @@ public partial class NodeHealthyCheckService : BackgroundService
         }
 
         return usageList;
-    }
-
-    private async ValueTask<IEnumerable<ProcessInfo>> GetProcessListFromDbAsync(string nodeInfoId, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            var nodePropsSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfoId, true, default);
-            if (nodePropsSnapshot != null)
-            {
-                var processEntry = nodePropsSnapshot.NodeProperties.FirstOrDefault(static x => x.Name == NodePropertyModel.Process_Processes_Key);
-
-                if (processEntry != default && processEntry.Value != null && processEntry.Value.Contains('[', StringComparison.CurrentCulture))
-                {
-                    var processInfoList = JsonSerializer.Deserialize<ProcessInfo[]?>(processEntry.Value);
-                    return processInfoList;
-                }
-            }
-
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.ToString());
-            _exceptionCounter.AddOrUpdate(ex, nodeInfoId);
-        }
-
-        return null;
     }
 
     private bool IsNodeOffline(NodeInfoModel nodeInfo)

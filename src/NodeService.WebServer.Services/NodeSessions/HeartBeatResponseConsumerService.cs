@@ -196,6 +196,15 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
+    private async ValueTask RefreshNodeSettingsAsync(CancellationToken cancellationToken)
+    {
+        _nodeSettings = await _configurationQueryService.QueryNodeSettingsAsync(cancellationToken);
+        if (_nodeSettings == null)
+        {
+            _nodeSettings = new NodeSettings();
+        }
+    }
+
     async ValueTask SaveNodeUsageConfigurationAsync(CancellationToken cancellationToken = default)
     {
         foreach (var nodeUsageConfig in _nodeUsageConfigList)
@@ -239,24 +248,13 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    async ValueTask RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)
-    {
-       await using var repo =await _propertyBagRepositoryFactory.CreateRepositoryAsync(cancellationToken);
-        var propertyBag =
-            await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
-        if (propertyBag == null || !propertyBag.TryGetValue("Value", out var value))
-            _nodeSettings = new NodeSettings();
-        else
-            _nodeSettings = JsonSerializer.Deserialize<NodeSettings>(value as string);
-    }
-
     async ValueTask RefreshNodeUsagesConfiguationListAsync(CancellationToken cancellationToken = default)
     {
         var nodeUsageConfigQueryResult = await _configurationQueryService.QueryConfigurationByQueryParametersAsync<NodeUsageConfigurationModel>(new PaginationQueryParameters()
         {
             PageIndex = 1,
             PageSize = int.MaxValue - 1,
-            QueryStrategy = QueryStrategy.QueryPreferred
+            QueryStrategy = QueryStrategy.CachePreferred
         }, cancellationToken);
         if (nodeUsageConfigQueryResult.HasValue)
         {
@@ -336,7 +334,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 nodeInfo.Profile.UpdateTime = DateTime.ParseExact(
                     hearBeatResponse.Properties[NodePropertyModel.LastUpdateDateTime_Key],
                     NodePropertyModel.DateTimeFormatString, DateTimeFormatInfo.InvariantInfo);
-                nodeInfo.Profile.ServerUpdateTimeUtc = DateTime.UtcNow;
+                nodeInfo.Profile.ServerUpdateTimeUtc = hearBeatMessage.UtcRecieveDateTime;
                 nodeInfo.Profile.Name = nodeInfo.Name;
                 nodeInfo.Profile.NodeInfoId = nodeInfo.Id;
                 nodeInfo.Profile.ClientVersion = hearBeatResponse.Properties[NodePropertyModel.ClientVersion_Key];

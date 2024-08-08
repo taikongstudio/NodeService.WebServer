@@ -265,6 +265,12 @@ public partial class NodeHealthyCheckService : BackgroundService
 
     private bool ShouldSendTimeDiffWarning(NodeInfoModel nodeInfo)
     {
+        var clientDateTime = _nodeSessionService.GetClientDateTime(new NodeSessionId(nodeInfo.Id));
+        if (clientDateTime != default)
+        {
+            return Math.Abs((DateTime.Now - clientDateTime)
+                .TotalSeconds) > _nodeSettings.TimeDiffWarningSeconds;
+        }
         return Math.Abs((nodeInfo.Profile.ServerUpdateTimeUtc - nodeInfo.Profile.UpdateTime.ToUniversalTime())
             .TotalSeconds) > _nodeSettings.TimeDiffWarningSeconds;
     }

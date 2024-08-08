@@ -607,7 +607,7 @@ public class ConfigurationQueryService
         var list = await this.QueryConfigurationByIdListAsync<TaskTypeDescConfigModel>([taskTypeDescId], cancellationToken);
         return list.Items?.FirstOrDefault();
     }
-    
+
     public async ValueTask UpdateNodeSettingsAsync(NodeSettings entity, CancellationToken cancellationToken = default)
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
@@ -620,30 +620,34 @@ public class ConfigurationQueryService
             .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x["Value"], x => value),
                 cancellationToken: cancellationToken);
         _memoryCache.Remove(nameof(NodeSettings));
+        await _objectCache.SetObjectAsync(nameof(NodeSettings), entity, cancellationToken);
     }
-    
-    
+
+
     public async ValueTask<NodeSettings?> QueryNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
-        NodeSettings? result;
-        var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-        await using var propertyBagRepo = await repoFactory.CreateRepositoryAsync(cancellationToken);
-        var propertyBag =
-            await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
-        if (propertyBag == null)
+        NodeSettings? result = await _objectCache.GetObjectAsync<NodeSettings>(nameof(NodeSettings), cancellationToken);
+        if (result == null)
         {
-            result = new NodeSettings();
-            propertyBag = new PropertyBag();
-            propertyBag.Add("Id", "NodeSettings");
-            propertyBag.Add("Value", JsonSerializer.Serialize(result));
-            propertyBag.Add("CreatedDate", DateTime.UtcNow);
-            await propertyBagRepo.AddAsync(propertyBag, cancellationToken);
+            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+            await using var propertyBagRepo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+            var propertyBag =
+                await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
+            if (propertyBag == null)
+            {
+                result = new NodeSettings();
+                propertyBag = new PropertyBag();
+                propertyBag.Add("Id", "NodeSettings");
+                propertyBag.Add("Value", JsonSerializer.Serialize(result));
+                propertyBag.Add("CreatedDate", DateTime.UtcNow);
+                await propertyBagRepo.AddAsync(propertyBag, cancellationToken);
+            }
+            else
+            {
+                result = JsonSerializer.Deserialize<NodeSettings>(propertyBag["Value"] as string);
+            }
+            await _objectCache.SetObjectAsync(nameof(NodeSettings), result, cancellationToken);
         }
-        else
-        {
-            result = JsonSerializer.Deserialize<NodeSettings>(propertyBag["Value"] as string);
-        }
-
         return result;
     }
 }

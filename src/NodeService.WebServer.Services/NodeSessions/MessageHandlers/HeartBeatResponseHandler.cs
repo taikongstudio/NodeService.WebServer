@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using NodeService.Infrastructure.NodeSessions;
+using System.Globalization;
 
 namespace NodeService.WebServer.Services.NodeSessions.MessageHandlers;
 
@@ -53,12 +54,26 @@ public class HeartBeatResponseHandler : IMessageHandler
         if (message is HeartBeatResponse heartBeatResponse)
         {
             heartBeatResponse.Properties.TryAdd("RemoteIpAddress", _remoteIpAddress);
+            if (heartBeatResponse.Properties.TryGetValue(
+                NodePropertyModel.LastUpdateDateTime_Key,
+                out string dateTimeString)
+                && DateTime.TryParseExact(
+                dateTimeString,
+                NodePropertyModel.DateTimeFormatString,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out DateTime dateTime)
+                )
+            {
+                _nodeSessionService.UpdateClientDateTime(NodeSessionId, dateTime);
+            }
             await _heartBeatBatchQueue.SendAsync(new NodeHeartBeatSessionMessage
             {
                 Message = heartBeatResponse,
                 NodeSessionId = NodeSessionId,
                 HostName = hostName,
-                IpAddress = _remoteIpAddress
+                IpAddress = _remoteIpAddress,
+                UtcRecieveDateTime = DateTime.UtcNow,
             }, cancellationToken);
         }
 

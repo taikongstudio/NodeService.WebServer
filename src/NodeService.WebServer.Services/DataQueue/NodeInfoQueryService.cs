@@ -59,7 +59,7 @@ namespace NodeService.WebServer.Services.DataQueue
 
                 if (limsDataId == null)
                 {
-                    var nodeInfo = await QueryNodeInfoByIdAsync(nodeInfoId, false, cancellationToken);
+                    var nodeInfo = await QueryNodeInfoByIdAsync(nodeInfoId, true, cancellationToken);
                     if (nodeInfo == null)
                     {
                         return null;

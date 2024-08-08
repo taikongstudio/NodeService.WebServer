@@ -14,6 +14,8 @@ public abstract record class NodeSessionMessage
 
     public NodeSessionId NodeSessionId { get; init; }
 
+    public DateTime UtcRecieveDateTime { get; set; }
+
     public NodeInfoModel NodeInfo { get; set; }
 
     public string HostName { get; init; }
@@ -269,6 +271,16 @@ public class NodeSessionService : INodeSessionService
         return EnsureNodeSession(nodeSessionId).LastPingReply;
     }
 
+    public void UpdateClientDateTime(NodeSessionId nodeSessionId, DateTime dateTime)
+    {
+        EnsureNodeSession(nodeSessionId).ClientDateTime = dateTime;
+    }
+
+    public DateTime GetClientDateTime(NodeSessionId nodeSessionId)
+    {
+        return EnsureNodeSession(nodeSessionId).ClientDateTime;
+    }
+
     private class NodeSession
     {
         public NodeSession(NodeSessionId id)
@@ -296,6 +308,8 @@ public class NodeSessionService : INodeSessionService
         public DateTime LastHeartBeatOutputDateTime { get; set; }
 
         public DateTime LastHeartBeatInputDateTime { get; set; }
+
+        public DateTime ClientDateTime { get; set; }
 
         public HttpContext? HttpContext { get; internal set; }
 

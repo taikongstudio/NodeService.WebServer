@@ -207,12 +207,12 @@
 
     protected override void OnInitialized()
     {
-        for (var i = TaskExecutionStatus.Unknown; i < TaskExecutionStatus.PenddingCancel + 1; i++)
+        for (var status = TaskExecutionStatus.Unknown; status < TaskExecutionStatus.PenddingCancel + 1; status++)
         {
             _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel
                 {
-                    Value = TaskExecutionStatus.Unknown,
-                    Name = i.GetDisplayName()
+                    Value = status,
+                    Name = status.GetDisplayName()
                 });
         }
 
@@ -328,6 +328,7 @@
 
     void OnSelectedStatusChanged(TaskExeuctionStatusModel status)
     {
+        _selectedStatus = status.Value;
     }
 
     async Task OnTableChange(QueryModel<TaskExecutionInstanceModel> query)

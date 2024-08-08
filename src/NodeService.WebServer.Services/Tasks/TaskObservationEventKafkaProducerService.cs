@@ -47,13 +47,12 @@ namespace NodeService.WebServer.Services.Tasks
                 LRetry:
                     try
                     {
-                        if (!_eventQueue.TryPeek(out TaskObservationEvent taskObservationEvent) || taskObservationEvent == null)
+                        await _eventQueue.WaitToReadAsync(cancellationToken);
+                        if (!_eventQueue.TryPeek(out var taskObservationEvent))
                         {
-                            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                             continue;
                         }
-
-                        var result = await producer.ProduceAsync(_kafkaOptions.TaskObservationEventTopic, new Message<string, string>()
+                         var result = await producer.ProduceAsync(_kafkaOptions.TaskObservationEventTopic, new Message<string, string>()
                         {
                             Key = taskObservationEvent.Id,
                             Value = JsonSerializer.Serialize(taskObservationEvent)

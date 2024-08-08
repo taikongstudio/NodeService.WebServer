@@ -89,6 +89,7 @@ public class TaskLogPersistenceService : BackgroundService
                 foreach (var item in queryResult.Items)
                 {
                     await DeleteTaskLogAsync(item, cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 }
                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
                 if (queryResult.Items.Count() < pageSize)

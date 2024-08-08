@@ -230,7 +230,7 @@ namespace NodeService.WebServer.Services.Tasks
                             if (string.IsNullOrEmpty(item.Solution))
                             {
                                 var defaultTemplate = taskObservationConfiguration.MessageTemplates.FirstOrDefault(x => x.Name == "*");
-                                if (defaultTemplate == null)
+                                if (defaultTemplate != null)
                                 {
                                     item.Solution = defaultTemplate.Value;
                                 }
@@ -248,8 +248,9 @@ namespace NodeService.WebServer.Services.Tasks
                             .Replace("$(FactoryName)", factoryName)
                             .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat))
                             .Replace("$(BusinessType)", bizType);
+                        var fileName = $"{attachmentName}.xlsx";
                         var emailAttachment = new XlsxAttachment(
-                            $"{attachmentName}.xlsx",
+                            fileName,
                             stream);
                         attachments.Add(emailAttachment);
                     }

@@ -322,8 +322,9 @@ public partial class NodeHealthyCheckService : BackgroundService
                         .Replace("$(FactoryName)", factoryName)
                         .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat))
                         .Replace("$(BusinessType)", bizType);
+                    var fileName = $"{attachmentName}.xlsx";
                     var emailAttachment = new XlsxAttachment(
-                        $"{attachmentName}.xlsx",
+                        fileName,
                         stream);
                     attachments.Add(emailAttachment);
                 }

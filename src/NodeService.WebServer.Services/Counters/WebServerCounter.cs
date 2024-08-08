@@ -62,6 +62,8 @@ public class WebServerCounter
     public CounterLongValue TaskExecutionReportRecieveCount { get; set; } = new();
     public CounterLongValue TaskExecutionReportQueueCount { get; set; } = new();
     public CounterLongValue TaskExecutionReportConsumeCount { get; set; } = new();
+    public CounterLongValue TaskExecutionReportProducePersistedCount { get; set; } = new();
+    public CounterLongValue TaskExecutionReportProduceNotPersistedCount { get; set; } = new();
     public CounterLongValue TaskExecutionReportSaveChangesCount { get; set; } = new();
 
     public CounterTimeSpanValue TaskExecutionReportTotalTimeSpan { get; set; } = new();

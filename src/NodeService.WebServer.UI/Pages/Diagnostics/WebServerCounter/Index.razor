@@ -124,7 +124,8 @@
         yield return (nameof(WebServerCounter.TaskExecutionReportTotalTimeSpan), WebServerCounter.TaskExecutionReportTotalTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportSaveChangesCount), WebServerCounter.TaskExecutionReportSaveChangesCount.ToString());
         yield return (nameof(WebServerCounter.TaskExecutionReportConsumeCount), WebServerCounter.TaskExecutionReportConsumeCount.ToString());
-
+        yield return (nameof(WebServerCounter.TaskExecutionReportProducePersistedCount), WebServerCounter.TaskExecutionReportProducePersistedCount.ToString());
+        yield return (nameof(WebServerCounter.TaskExecutionReportProduceNotPersistedCount), WebServerCounter.TaskExecutionReportProduceNotPersistedCount.ToString());
         yield break;
     }
 

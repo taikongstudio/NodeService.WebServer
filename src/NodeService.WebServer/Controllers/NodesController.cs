@@ -95,7 +95,7 @@ public partial class NodesController : Controller
                 SearchProfileProperties = false
             }, cancellationToken);
             stream.Position = 0;
-            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "NodeList.xlsx");
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"NodeList_{DateTime.Now:yyyy_MM_dd_HH_mm_ss}.xlsx");
         }
         catch (Exception ex)
         {

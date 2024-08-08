@@ -34,6 +34,7 @@
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\NodeService.WebServer.Data\NodeService.WebServer.Data.csproj" />
+        <ProjectReference Include="..\NodeService.WebServer.Services\NodeService.WebServer.Services.csproj" />
     </ItemGroup>
     <ItemGroup>
         <None Update="appsettings.Development.json">

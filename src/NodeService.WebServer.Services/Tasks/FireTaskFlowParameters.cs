@@ -1,7 +1,13 @@
-﻿namespace NodeService.WebServer.Services.Tasks;
+﻿using System.Collections.Immutable;
+
+namespace NodeService.WebServer.Services.Tasks;
 
 public readonly struct FireTaskFlowParameters
 {
+    public FireTaskFlowParameters()
+    {
+    }
+
     public string TaskFlowTemplateId { get; init; }
     public string TaskFlowInstanceId { get; init; }
     public string? TaskFlowParentInstanceId { get; init; }
@@ -11,5 +17,5 @@ public readonly struct FireTaskFlowParameters
     public DateTimeOffset? ScheduledFireTimeUtc { get; init; }
     public DateTimeOffset FireTimeUtc { get; init; }
 
-    public List<StringEntry> EnvironmentVariables { get; init; }
+    public ImmutableArray<StringEntry> EnvironmentVariables { get; init; } = [];
 }

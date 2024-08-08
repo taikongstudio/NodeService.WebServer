@@ -4,6 +4,7 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.DataQueue;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.Services.TaskSchedule;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 using JobScheduler = NodeService.WebServer.Services.TaskSchedule.JobScheduler;
 
@@ -142,7 +143,7 @@ namespace NodeService.WebServer.Controllers
                     TaskFlowParentInstanceId = null,
                     TaskFlowInstanceId = taskFlowInstanceId,
                     ScheduledFireTimeUtc = DateTime.UtcNow,
-                    EnvironmentVariables = invokeTaskFlowParameters.EnvironmentVariables
+                    EnvironmentVariables = [.. invokeTaskFlowParameters.EnvironmentVariables]
                 }), cancellationToken);
                 apiResponse.SetResult(new InvokeTaskFlowResult()
                 {

@@ -4,6 +4,10 @@ namespace NodeService.WebServer.Services.Tasks;
 
 public record struct FireTaskParameters
 {
+    public FireTaskParameters()
+    {
+    }
+
     public string TaskDefinitionId { get; init; }
     public string TaskActivationRecordId { get; init; }
     public TriggerSource TriggerSource { get; init; }
@@ -14,9 +18,9 @@ public record struct FireTaskParameters
 
     public string? ParentTaskExecutionInstanceId { get; init; }
 
-    public ImmutableArray<StringEntry> NodeList { get; init; }
+    public ImmutableArray<StringEntry> NodeList { get; init; } = [];
 
-    public ImmutableArray<StringEntry> EnvironmentVariables { get; init; }
+    public ImmutableArray<StringEntry> EnvironmentVariables { get; init; } = [];
 
     public TaskFlowTaskKey TaskFlowTaskKey { get; init; }
 

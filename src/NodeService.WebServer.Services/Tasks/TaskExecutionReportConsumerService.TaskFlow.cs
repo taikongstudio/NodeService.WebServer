@@ -1,5 +1,8 @@
 ﻿using Grpc.Core;
 using System.Collections.Immutable;
+using NodeService.Infrastructure.Data;
+using NodeService.WebServer.Data.Repositories;
+using NodeService.WebServer.Data.Repositories.Specifications;
 
 namespace NodeService.WebServer.Services.Tasks
 {
@@ -28,6 +31,26 @@ namespace NodeService.WebServer.Services.Tasks
 
                 await _taskFlowExecutor.ExecuteAsync(taskFlowInstanceId, [.. taskActiveRecordGroup], cancellationToken);
             }
+        }
+
+        private async ValueTask<ListQueryResult<TaskExecutionInstanceModel>> QueryTaskExecutionInstanceListAsync(
+            int pageIndex,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
+            var listQueryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(
+                new TaskExecutionInstanceListSpecification(
+                    DataFilterCollection<TaskExecutionStatus>.Includes(
+                    [
+                        TaskExecutionStatus.Triggered,
+                        TaskExecutionStatus.Started,
+                        TaskExecutionStatus.Running
+                    ]),
+                    false),
+                new PaginationInfo(pageIndex, pageSize),
+                cancellationToken);
+            return listQueryResult;
         }
     }
 }

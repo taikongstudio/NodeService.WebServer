@@ -391,29 +391,45 @@ namespace NodeService.WebServer.Servers
             //builder.Services.AddSingleton<MyDynamicRouteValueTransformer>();
             builder.Services.AddSingleton<NodeFileSyncQueueDictionary>();
             builder.Services.AddSingleton<FtpClientFactory>();
-            //builder.Services.AddDistributedMemoryCache();
-            builder.Services.AddStackExchangeRedisCache(options =>
+            if (Debugger.IsAttached)
             {
-                var endPointsString = builder.Configuration.GetValue<string>("RedisOptions:EndPoints");
-                var password = builder.Configuration.GetValue<string>("RedisOptions:Password");
-                var endPoints = new EndPointCollection();
-                foreach (var endPointString in endPointsString.Split(','))
+                builder.Services.AddDistributedMemoryCache();
+            }
+            else
+            {
+                builder.Services.AddStackExchangeRedisCache(options =>
                 {
-                    var endPoint = EndPointCollection.TryParse(endPointsString);
-                    if (endPoint == null)
+                    var endPointsString = builder.Configuration.GetValue<string>("RedisOptions:EndPoints");
+                    var password = builder.Configuration.GetValue<string>("RedisOptions:Password");
+                    var channel = builder.Configuration.GetValue<string>("RedisOptions:Channel");
+                    var endPoints = new EndPointCollection();
+                    foreach (var endPointString in endPointsString.Split(','))
                     {
-                        throw new InvalidOperationException("");
+                        var endPoint = EndPointCollection.TryParse(endPointsString);
+                        if (endPoint == null)
+                        {
+                            throw new InvalidOperationException("");
+                        }
+                        endPoints.Add(endPoint);
                     }
-                    endPoints.Add(endPoint);
-                }
-                options.InstanceName = "NodeService";
-                options.ConfigurationOptions = new ConfigurationOptions()
-                {
+                    if (channel == "Debug")
+                    {
+                        options.InstanceName = "NodeService_" + channel;
+                    }
+                    else
+                    {
+                        options.InstanceName = "NodeService";
+                    }
+                    options.ConfigurationOptions = new ConfigurationOptions()
+                    {
 
-                    EndPoints = endPoints,
-                    Password = password,
-                };
-            });
+                        EndPoints = endPoints,
+                        Password = password,
+                    };
+                });
+            }
+
+
             builder.Services.AddSingleton<ObjectCache>();
             builder.Services.AddSingleton<MongoClient>(sp =>
             {

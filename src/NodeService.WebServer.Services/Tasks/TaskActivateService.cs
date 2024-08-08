@@ -23,7 +23,7 @@ public class TaskActivateService : BackgroundService
     readonly BatchQueue<TaskActivateServiceParameters> _serviceParametersBatchQueue;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRecordRepoFactory;
-    readonly TaskActivationRecordExecutor _taskActivationRecordExecutor;
+    readonly TaskExecutor _taskExecutor;
     readonly IDelayMessageBroadcast _delayMessageBroadcast;
     readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
     readonly KafkaOptions _kafkaOptions;
@@ -34,20 +34,13 @@ public class TaskActivateService : BackgroundService
         ILogger<TaskActivateService> logger,
         INodeSessionService nodeSessionService,
         ExceptionCounter exceptionCounter,
-        ApplicationRepositoryFactory<TaskDefinitionModel> taskDefinitionRepositoryFactory,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskExecutionInstanceRepositoryFactory,
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRepositoryFactory,
-        ApplicationRepositoryFactory<TaskTypeDescConfigModel> taskTypeDescConfigRepositoryFactory,
-        ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
-        ApplicationRepositoryFactory<TaskFlowTemplateModel> taskFlowTemplateRepoFactory,
-        ApplicationRepositoryFactory<TaskFlowExecutionInstanceModel> taskFlowExecutionInstanceRepoFactory,
         IAsyncQueue<TaskExecutionReport> taskExecutionReportBatchQueue,
         BatchQueue<TaskActivateServiceParameters> serviceParametersBatchQueue,
         BatchQueue<TaskCancellationParameters> taskCancellationQueue,
         TaskFlowExecutor taskFlowExecutor,
-        NodeInfoQueryService nodeInfoQueryService,
-        ConfigurationQueryService configurationQueryService,
-        TaskActivationRecordExecutor taskActivationRecordExecutor,
+        TaskExecutor taskExecutor,
         IDelayMessageBroadcast delayMessageBroadcast,
         IAsyncQueue<KafkaDelayMessage> delayMessageQueue)
     {
@@ -60,7 +53,7 @@ public class TaskActivateService : BackgroundService
         _serviceParametersBatchQueue = serviceParametersBatchQueue;
         _taskCancellationQueue = taskCancellationQueue;
         _taskFlowExecutor = taskFlowExecutor;
-        _taskActivationRecordExecutor = taskActivationRecordExecutor;
+        _taskExecutor = taskExecutor;
         _delayMessageBroadcast = delayMessageBroadcast;
         _delayMessageQueue = delayMessageQueue;
         _delayMessageBroadcast.AddHandler(nameof(TaskActivateService), ProcessDelayMessage);
@@ -193,7 +186,7 @@ public class TaskActivateService : BackgroundService
             var nodeStatus = _nodeSessionService.GetNodeStatus(nodeSessionId);
             if (nodeStatus != NodeStatus.Online)
             {
-                bool isPenddingTimeOut = false;
+                var isPenddingTimeOut = false;
                 timeSpan = DateTime.UtcNow - taskExecutionInstance.FireTimeUtc;
                 switch (taskDefinition.PenddingLimitTimeSeconds)
                 {
@@ -245,6 +238,8 @@ public class TaskActivateService : BackgroundService
                     break;
                 case TaskExecutionStrategy.Skip:
                     return;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
 
             if (readyToRun)
@@ -504,7 +499,7 @@ public class TaskActivateService : BackgroundService
 
         foreach (var fireTaskParameters in fireTaskParameterList)
         {
-            var result = await _taskActivationRecordExecutor.CreateAsync(
+            var result = await _taskExecutor.CreateAsync(
                 fireTaskParameters,
                 cancellationToken);
             if (result.Index == 1)

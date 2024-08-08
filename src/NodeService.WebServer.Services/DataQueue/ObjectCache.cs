@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using System.Threading;
 
@@ -12,17 +14,21 @@ namespace NodeService.WebServer.Services.DataQueue
         readonly IDistributedCache _distributedCache;
         readonly ILogger<ObjectCache> _logger;
         readonly ExceptionCounter _exceptionCounter;
+        readonly RedisOptions _redisOptions;
 
         public ObjectCache(
             ILogger<ObjectCache> logger,
             ExceptionCounter exceptionCounter,
             IMemoryCache memoryCache,
-            IDistributedCache distributedCache)
+            IDistributedCache distributedCache,
+            IOptionsMonitor<RedisOptions> redisOptionsMonitor
+            )
         {
             _memoryCache = memoryCache;
             _distributedCache = distributedCache;
             _logger = logger;
             _exceptionCounter = exceptionCounter;
+            _redisOptions = redisOptionsMonitor.CurrentValue;
         }
 
         public async ValueTask<T?> GetObjectAsync<T>(

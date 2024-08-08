@@ -29,7 +29,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
     readonly IAsyncQueue<TaskExecutionReport> _taskExecutionReportBatchQueue;
     readonly WebServerCounter _webServerCounter;
-    readonly TaskActivationRecordExecutor _taskActivationRecordExecutor;
+    readonly TaskExecutor _taskExecutor;
     private readonly IServiceProvider _serviceProvider;
     private readonly KafkaOptions _kafkaOptions;
     private ConsumerConfig _consumerConfig;
@@ -54,7 +54,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         TaskFlowExecutor taskFlowExecutor,
         IAsyncQueue<KafkaDelayMessage> delayMessageQueue,
         IDelayMessageBroadcast delayMessageBroadcast,
-        TaskActivationRecordExecutor taskActivationRecordExecutor,
+        TaskExecutor taskExecutor,
         IServiceProvider serviceProvider,
         IOptionsMonitor<KafkaOptions> kafkaOptionsMonitor
     )
@@ -71,7 +71,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         _configurationQueryService = configurationQueryService;
         _delayMessageBroadcast = delayMessageBroadcast;
         _delayMessageBroadcast.AddHandler(nameof(TaskExecutionReportConsumerService), ProcessDelayMessage);
-        _taskActivationRecordExecutor = taskActivationRecordExecutor;
+        _taskExecutor = taskExecutor;
         _serviceProvider = serviceProvider;
         _kafkaOptions = kafkaOptionsMonitor.CurrentValue;
         _taskObservationConfiguration = new TaskObservationConfiguration();
@@ -224,7 +224,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     async ValueTask ProcessTaskExecutionReportsAsync(ImmutableArray<TaskExecutionReport> reports, CancellationToken cancellationToken = default)
     {
-        await _taskActivationRecordExecutor.ExecutionAsync(async (cancellationToken) =>
+        await _taskExecutor.ExecutionAsync(async (cancellationToken) =>
         {
             var processContexts = await CreateTaskExecutionProcessContextListAsync(reports, cancellationToken);
             if (processContexts.IsDefaultOrEmpty)
@@ -452,7 +452,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         CancellationToken cancellationToken)
     {
         var result = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskDefinitionModel>(
-            [taskDefinitionId],
+            [taskDefinitionId,],
             cancellationToken);
         return result.Items?.FirstOrDefault();
     }
@@ -495,26 +495,6 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
         }
-    }
-
-    async ValueTask<ListQueryResult<TaskExecutionInstanceModel>> QueryTaskExecutionInstanceListAsync(
-        int pageIndex,
-        int pageSize,
-        CancellationToken cancellationToken = default)
-    {
-        await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepoFactory.CreateRepositoryAsync();
-        var listQueryResult = await taskExecutionInstanceRepo.PaginationQueryAsync(
-                                     new TaskExecutionInstanceListSpecification(
-                                         DataFilterCollection<TaskExecutionStatus>.Includes(
-                                         [
-                                             TaskExecutionStatus.Triggered,
-                                            TaskExecutionStatus.Started,
-                                            TaskExecutionStatus.Running
-                                         ]),
-                                         false),
-                                     new PaginationInfo(pageIndex, pageSize),
-                                     cancellationToken);
-        return listQueryResult;
     }
 
     async ValueTask ProcessTaskExecutionInstanceListAsync(

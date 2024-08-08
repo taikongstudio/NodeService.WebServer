@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Collections.Immutable;
+using Microsoft.Extensions.DependencyInjection;
 using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
@@ -126,11 +127,14 @@ public class ConfigurationQueryService
     }
 
     public async ValueTask<ListQueryResult<T>> QueryConfigurationByIdListAsync<T>(
-        IEnumerable<string> idList,
+        ImmutableArray<string> idList,
         CancellationToken cancellationToken = default)
         where T : JsonRecordBase
     {
-
+        if (idList.IsDefaultOrEmpty)
+        {
+            return default;
+        }
         _logger.LogInformation($"{typeof(T).FullName}:{string.Join(",", idList)}");
         var resultList = new List<T>();
         foreach (var id in idList)
@@ -142,7 +146,7 @@ public class ConfigurationQueryService
             }
             resultList.Add(entity);
         }
-        idList = idList.Except(resultList.Select(static x => x.Id)).ToArray();
+        idList = [..idList.Except(resultList.Select(static x => x.Id)),];
         if (idList.Any())
         {
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
@@ -452,11 +456,11 @@ public class ConfigurationQueryService
     {
         await using var configVersionRepo = await _configVersionRepoFactory.CreateRepositoryAsync(cancellationToken);
         var count = await configVersionRepo.DbContext.Set<ConfigurationVersionRecordModel>()
-            .Where(x => x.ConfigurationId == configurationId && x.Version == targetVersion)
+            .Where(x => x.ConfigurationId == configurationId && x.Version == targetVersion && x.ReferenceCount > 0)
             .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x.ReferenceCount, x => x.ReferenceCount + increasement));
     }
 
-    public async ValueTask<ConfigurationVersionRecordModel?> GetCurrentConfigurationVersionAsync(
+    public async ValueTask<ConfigurationVersionRecordModel?> GetConfigurationCurrentVersionAsync(
     string configurationId,
     CancellationToken cancellationToken)
     {
@@ -588,4 +592,19 @@ public class ConfigurationQueryService
 
     }
 
+    public async ValueTask<TaskDefinitionModel?> GetTaskDefinitionAsync(
+        string taskDefinitionId,
+        CancellationToken cancellationToken = default)
+    {
+        var list = await this.QueryConfigurationByIdListAsync<TaskDefinitionModel>([taskDefinitionId], cancellationToken);
+        return list.Items?.FirstOrDefault();
+    }
+
+    public async ValueTask<TaskTypeDescConfigModel?> GetTaskTypeDescAsync(
+        string taskTypeDescId,
+        CancellationToken cancellationToken = default)
+    {
+        var list = await this.QueryConfigurationByIdListAsync<TaskTypeDescConfigModel>([taskTypeDescId], cancellationToken);
+        return list.Items?.FirstOrDefault();
+    }
 }

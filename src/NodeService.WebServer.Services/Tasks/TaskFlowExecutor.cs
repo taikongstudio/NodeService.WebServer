@@ -141,7 +141,7 @@ namespace NodeService.WebServer.Services.Tasks
                     oneOf = new Exception("invalid template id");
                     return oneOf;
                 }
-                if (fireTaskFlowParameters.EnvironmentVariables != null && fireTaskFlowParameters.EnvironmentVariables.Count > 0)
+                if (!fireTaskFlowParameters.EnvironmentVariables.IsDefaultOrEmpty && fireTaskFlowParameters.EnvironmentVariables.Length > 0)
                 {
                     foreach (var item in fireTaskFlowParameters.EnvironmentVariables)
                     {

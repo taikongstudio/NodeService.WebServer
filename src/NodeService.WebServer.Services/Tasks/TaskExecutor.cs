@@ -6,9 +6,9 @@ using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.Tasks
 {
-    public class TaskActivationRecordExecutor
+    public class TaskExecutor
     {
-        readonly ILogger<TaskActivationRecordExecutor> _logger;
+        readonly ILogger<TaskExecutor> _logger;
         readonly ExceptionCounter _exceptionCounter;
         readonly ActionBlock<AsyncOperation<Func<ValueTask>>> _executionQueue;
         readonly ConfigurationQueryService _configurationQueryService;
@@ -17,9 +17,9 @@ namespace NodeService.WebServer.Services.Tasks
         readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepoFactory;
         readonly NodeInfoQueryService _nodeInfoQueryService;
 
-        public TaskActivationRecordExecutor(
+        public TaskExecutor(
             INodeSessionService nodeSessionService,
-            ILogger<TaskActivationRecordExecutor> logger,
+            ILogger<TaskExecutor> logger,
             ExceptionCounter exceptionCounter,
             NodeInfoQueryService nodeInfoQueryService,
             ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRecordRepoFactory,
@@ -54,17 +54,17 @@ namespace NodeService.WebServer.Services.Tasks
 
             await ExecutionAsync(async (cancellationToken) =>
             {
-                result = await CreateTaskActiveRecordCoreAsync(fireTaskParameters, cancellationToken);
+                result = await CreateCoreAsync(fireTaskParameters, cancellationToken);
             }, cancellationToken);
 
             return result;
         }
 
-        async ValueTask<OneOf<TaskActivationRecordResult, Exception>> CreateTaskActiveRecordCoreAsync(
+        async ValueTask<OneOf<TaskActivationRecordResult, Exception>> CreateCoreAsync(
             FireTaskParameters fireTaskParameters,
             CancellationToken cancellationToken = default)
         {
-            var taskDefinition = await GetTaskDefinitionAsync(
+            var taskDefinition = await _configurationQueryService.GetTaskDefinitionAsync(
                 fireTaskParameters.TaskDefinitionId,
                 cancellationToken);
             if (taskDefinition == null)
@@ -77,7 +77,7 @@ namespace NodeService.WebServer.Services.Tasks
                 return default;
             }
 
-            taskDefinition.TaskTypeDesc = await GetTaskTypeDescAsync(taskDefinition.TaskTypeDescId, cancellationToken);
+            taskDefinition.TaskTypeDesc = await _configurationQueryService.GetTaskTypeDescAsync(taskDefinition.TaskTypeDescId, cancellationToken);
             if (taskDefinition.TaskTypeDesc == null)
             {
                 return default;
@@ -356,11 +356,11 @@ namespace NodeService.WebServer.Services.Tasks
                 }
                 else
                 {
-                    if (fireTaskParameters.NodeList.Length > 0)
+                    if (!fireTaskParameters.NodeList.IsDefaultOrEmpty && fireTaskParameters.NodeList.Length > 0)
                     {
                         taskDefinition.NodeList = [.. fireTaskParameters.NodeList];
                     }
-                    if (fireTaskParameters.EnvironmentVariables.Length > 0)
+                    if (!fireTaskParameters.EnvironmentVariables.IsDefaultOrEmpty && fireTaskParameters.EnvironmentVariables.Length > 0)
                     {
                         foreach (var item in fireTaskParameters.EnvironmentVariables)
                         {
@@ -375,6 +375,7 @@ namespace NodeService.WebServer.Services.Tasks
                             }
                         }
                     }
+
                     var nodeInfoList = await QueryNodeListAsync(taskDefinition, cancellationToken);
 
                     BuildTaskExecutionInstanceList(
@@ -434,24 +435,5 @@ namespace NodeService.WebServer.Services.Tasks
                 return ex;
             }
         }
-
-
-
-        async ValueTask<TaskTypeDescConfigModel?> GetTaskTypeDescAsync(
-            string taskTypeDescId,
-            CancellationToken cancellationToken = default)
-        {
-            var list = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskTypeDescConfigModel>([taskTypeDescId], cancellationToken);
-            return list.Items?.FirstOrDefault();
-        }
-
-        async ValueTask<TaskDefinitionModel?> GetTaskDefinitionAsync(
-            string taskDefinitionId,
-            CancellationToken cancellationToken = default)
-        {
-            var list = await _configurationQueryService.QueryConfigurationByIdListAsync<TaskDefinitionModel>([taskDefinitionId], cancellationToken);
-            return list.Items?.FirstOrDefault();
-        }
-
     }
 }

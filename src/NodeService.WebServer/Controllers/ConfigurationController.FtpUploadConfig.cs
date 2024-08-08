@@ -23,14 +23,14 @@ public partial class ConfigurationController
             case ConfigurationChangedType.Update:
                 var newValue = result.NewValue as FtpUploadConfigModel;
                 var oldValue = result.OldValue as FtpUploadConfigModel;
-                var newVersionRecord = await _configurationQueryService.GetCurrentConfigurationVersionAsync(newValue.FtpConfigId, cancellationToken);
+                var newVersionRecord = await _configurationQueryService.GetConfigurationCurrentVersionAsync(newValue.FtpConfigId, cancellationToken);
                 await _configurationQueryService.AddConfigurationVersionReferenceAsync<FtpConfigModel>(
                     newValue.FtpConfigId,
                     newVersionRecord.Version,
                     cancellationToken);
                 if (result.Type == ConfigurationChangedType.Update)
                 {
-                    var oldVersionRecord = await _configurationQueryService.GetCurrentConfigurationVersionAsync(oldValue.FtpConfigId, cancellationToken);
+                    var oldVersionRecord = await _configurationQueryService.GetConfigurationCurrentVersionAsync(oldValue.FtpConfigId, cancellationToken);
                     await _configurationQueryService.ReleaseConfigurationVersionReferenceAsync<FtpConfigModel>(
                         oldValue.FtpConfigId,
                         oldVersionRecord.Version,

@@ -11,5 +11,7 @@ namespace NodeService.WebServer.Models
         public string EndPoints { get; set; }
 
         public string Password { get; set; }
+
+        public string Channel { get; set; }
     }
 }

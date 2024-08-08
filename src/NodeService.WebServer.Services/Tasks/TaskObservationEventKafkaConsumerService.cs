@@ -169,7 +169,11 @@ namespace NodeService.WebServer.Services.Tasks
                 return;
             }
 
-            var notificationConfigQueryResult = await _configurationQueryService.QueryConfigurationByIdListAsync<NotificationConfigModel>(taskObservationConfiguration.Configurations.Select(static x => x.Value), cancellationToken);
+            var notificationConfigQueryResult = await _configurationQueryService.QueryConfigurationByIdListAsync<NotificationConfigModel>(
+                taskObservationConfiguration.Configurations.Where(static x => x.Value != null)
+                .Select(static x => x.Value!)
+                .ToImmutableArray(),
+                cancellationToken);
             var notificationConfigList = notificationConfigQueryResult.Items;
 
 

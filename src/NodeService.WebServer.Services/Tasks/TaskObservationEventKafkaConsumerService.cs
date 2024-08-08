@@ -154,10 +154,10 @@ namespace NodeService.WebServer.Services.Tasks
             {
                 return;
             }
-            await ProcessTaskObservationCheckResults(checkResultList, cancellationToken);
+            await ProcessTaskObservationCheckResultsAsync(checkResultList, cancellationToken);
         }
 
-        private async ValueTask ProcessTaskObservationCheckResults(
+        private async ValueTask ProcessTaskObservationCheckResultsAsync(
             List<TaskObservationCheckResult> checkResultList,
             CancellationToken cancellationToken = default)
         {
@@ -202,9 +202,9 @@ namespace NodeService.WebServer.Services.Tasks
                     }
                     var subject = taskObservationConfiguration.Subject
                         .Replace("$(FactoryName)", factoryName)
-                        .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
+                        .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
 
-                    List<EmailAttachment> attachments = [];
+                    List<XlsxAttachment> attachments = [];
                     foreach (var testInfoGroup in checkResultGroup.GroupBy(static x => x.NodeInfo?.Profile.TestInfo ?? string.Empty))
                     {
                         var bizType = testInfoGroup.Key;
@@ -246,17 +246,15 @@ namespace NodeService.WebServer.Services.Tasks
                         }
                         var attachmentName = taskObservationConfiguration.AttachmentSubject
                             .Replace("$(FactoryName)", factoryName)
-                            .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"))
+                            .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat))
                             .Replace("$(BusinessType)", bizType);
-                        var emailAttachment = new EmailAttachment(
+                        var emailAttachment = new XlsxAttachment(
                             $"{attachmentName}.xlsx",
-                            "application",
-                            "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                             stream);
                         attachments.Add(emailAttachment);
                     }
                     var content = taskObservationConfiguration.Content.Replace("$(FactoryName)", factoryName)
-                            .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
+                            .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
                     var emailContent = new EmailContent(
                         subject,
                         content,

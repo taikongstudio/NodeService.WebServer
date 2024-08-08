@@ -304,9 +304,9 @@ public partial class NodeHealthyCheckService : BackgroundService
                 }
                 var subject = _nodeHealthyCheckConfiguration.Subject
                     .Replace("$(FactoryName)", factoryName)
-                    .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
+                    .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
 
-                List<EmailAttachment> attachments = [];
+                List<XlsxAttachment> attachments = [];
                 foreach (var testInfoGroup in group.GroupBy(static x => x.NodeInfo.Profile.TestInfo ?? string.Empty))
                 {
                     var bizType = testInfoGroup.Key;
@@ -320,17 +320,15 @@ public partial class NodeHealthyCheckService : BackgroundService
                     }
                     var attachmentName = _nodeHealthyCheckConfiguration.AttachmentSubject
                         .Replace("$(FactoryName)", factoryName)
-                        .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"))
+                        .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat))
                         .Replace("$(BusinessType)", bizType);
-                    var emailAttachment = new EmailAttachment(
+                    var emailAttachment = new XlsxAttachment(
                         $"{attachmentName}.xlsx",
-                        "application",
-                        "vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         stream);
                     attachments.Add(emailAttachment);
                 }
                 var content = _nodeHealthyCheckConfiguration.Content.Replace("$(FactoryName)", factoryName)
-                        .Replace("$(DateTime)", DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss"));
+                        .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
                 var emailContent = new EmailContent(
                     subject,
                     content,

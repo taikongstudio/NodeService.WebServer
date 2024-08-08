@@ -4,7 +4,9 @@ namespace NodeService.WebServer.Models;
 
 public class EmailContent
 {
-    public EmailContent(string subject, string body, ImmutableArray<EmailAttachment> attachments)
+    public const string DateTimeFormat = "yyyy_MM_dd_HH_mm_ss";
+
+    public EmailContent(string subject, string body, ImmutableArray<EmailAttachmentBase> attachments)
     {
         Subject = subject;
         Body = body;
@@ -15,5 +17,5 @@ public class EmailContent
 
     public string Subject { get; init; }
 
-    public ImmutableArray<EmailAttachment> Attachments { get; init; }
+    public ImmutableArray<EmailAttachmentBase> Attachments { get; init; }
 }

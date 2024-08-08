@@ -18,13 +18,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="b04395b7-eb82-4cab-a9bf-7f5c3a791308" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.idea.NodeService.WebServer/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.NodeService.WebServer/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/DataQueue/ConfigurationQueryService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/DataQueue/ConfigurationQueryService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivateService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivateService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivationRecordExecutor.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutor.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionReportConsumerService.TaskFlow.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionReportConsumerService.TaskFlow.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionReportConsumerService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExecutionReportConsumerService.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExtensions.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskExtensions.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivationRecordProcessContext.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskActivationRecordProcessContext.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskObservationEventKafkaConsumerService.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.Services/Tasks/TaskObservationEventKafkaConsumerService.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Notifications/Components/TaskObservation.razor" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer.UI/Pages/Notifications/Components/TaskObservation.razor" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/ConfigurationController.NodeSettings.cs" beforeDir="false" afterPath="$PROJECT_DIR$/src/NodeService.WebServer/Controllers/ConfigurationController.NodeSettings.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -218,6 +216,7 @@
       <workItem from="1722961164043" duration="773000" />
       <workItem from="1722961956973" duration="291000" />
       <workItem from="1722996445005" duration="4913000" />
+      <workItem from="1723096212254" duration="373000" />
     </task>
     <servers />
   </component>

@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.Tasks;
 
-internal class TaskActivationRecordProcessContext
+internal partial class TaskActivationRecordProcessContext
 {
 
     readonly WebServerCounter _webServerCounter;
@@ -24,6 +24,7 @@ internal class TaskActivationRecordProcessContext
     private readonly BatchQueue<TaskCancellationParameters> _taskCancellationBatchQueue;
     private readonly IAsyncQueue<TaskObservationEvent> _taskObservationEventQueue;
     private readonly TaskObservationConfiguration _taskObservationConfiguration;
+    private readonly IComparer<TaskExecutionStatus> _taskExecutionStatusComparer;
 
     public TaskActivationRecordProcessContext(
         ILogger<TaskActivationRecordProcessContext> logger,
@@ -60,6 +61,7 @@ internal class TaskActivationRecordProcessContext
         _taskCancellationBatchQueue = taskCancellationBatchQueue;
         _taskObservationEventQueue = taskObservationEventQueue;
         _taskObservationConfiguration = taskObservationConfiguration;
+        _taskExecutionStatusComparer = new TaskExecutionStatusComparer();
     }
 
     public string TaskActivationRecordId { get; set; }
@@ -260,7 +262,7 @@ internal class TaskActivationRecordProcessContext
             var executionEndTime = taskExecutionInstance.ExecutionEndTimeUtc;
 
             stopwatchProcessMessage.Restart();
-            foreach (var reportStatusGroup in processContext.Reports.GroupBy(static x => x.Status).OrderBy(static x => x.Key))
+            foreach (var reportStatusGroup in processContext.Reports.GroupBy(static x => x.Status).OrderBy(static x => x.Key, _taskExecutionStatusComparer))
             {
 
                 var status = reportStatusGroup.Key;

@@ -1,7 +1,6 @@
 ﻿using Confluent.Kafka;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using NPOI.SS.UserModel;
@@ -174,6 +173,15 @@ namespace NodeService.WebServer.Services.Tasks
                 .Select(static x => x.Value!)
                 .ToImmutableArray(),
                 cancellationToken);
+
+            _nodeSettings = await _configurationQueryService.QueryNodeSettingsAsync(cancellationToken);
+
+            if (_nodeSettings == null)
+            {
+                return;
+            }
+
+
             var notificationConfigList = notificationConfigQueryResult.Items;
 
 
@@ -212,15 +220,24 @@ namespace NodeService.WebServer.Services.Tasks
                                 {
                                     continue;
                                 }
-                                if (item.Message != null && item.Message.Contains(messsageTemplate.Name))
+                                if (item.Message != null && item.Message.Contains(messsageTemplate.Name, StringComparison.OrdinalIgnoreCase))
                                 {
                                     item.Solution = messsageTemplate.Value;
                                     break;
                                 }
                             }
+
                             if (string.IsNullOrEmpty(item.Solution))
                             {
-                                item.Solution = "<未配置此消息的模板文本>";
+                                var defaultTemplate = taskObservationConfiguration.MessageTemplates.FirstOrDefault(x => x.Name == "*");
+                                if (defaultTemplate == null)
+                                {
+                                    item.Solution = defaultTemplate.Value;
+                                }
+                                else
+                                {
+                                    item.Solution = "<未配置此消息的模板文本>";
+                                }
                             }
                         }
                         if (!TryWriteToExcel([.. testInfoGroup], out var stream) || stream == null)

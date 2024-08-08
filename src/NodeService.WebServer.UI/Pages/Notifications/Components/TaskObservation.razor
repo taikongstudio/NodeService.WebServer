@@ -37,7 +37,7 @@
         <Input @bind-Value="@context.Subject" />
         <div>
             插入占位符:
-            @foreach (var item in _placeholders)
+            @foreach (var item in _placeholders.Skip(1))
             {
                 <Button OnClick="()=>context.Subject+=item.Name">@item.Name@item.Value</Button>
             }
@@ -48,7 +48,7 @@
         <Input @bind-Value="@context.AttachmentSubject" />
         <div>
             插入占位符:
-            @foreach (var item in _placeholders.Skip(1))
+            @foreach (var item in _placeholders)
             {
                 <Button OnClick="()=>context.AttachmentSubject+=item.Name">@item.Name@item.Value</Button>
             }

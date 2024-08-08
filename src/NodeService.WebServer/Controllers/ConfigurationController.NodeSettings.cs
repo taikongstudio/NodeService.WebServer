@@ -6,7 +6,7 @@ namespace NodeService.WebServer.Controllers;
 public partial class ConfigurationController
 {
     [HttpGet("/api/CommonConfig/NodeSettings/")]
-    public async Task<ApiResponse<NodeSettings>> QueryNodeSettingsAsync()
+    public async Task<ApiResponse<NodeSettings>> QueryNodeSettingsAsync(CancellationToken cancellationToken = default)
     {
         var rsp = new ApiResponse<NodeSettings>();
         try
@@ -14,23 +14,7 @@ public partial class ConfigurationController
             NodeSettings? result = null;
             if (!_memoryCache.TryGetValue<NodeSettings>(nameof(NodeSettings), out result))
             {
-                var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-               await using var propertyBagRepo = await repoFactory.CreateRepositoryAsync();
-                var propertyBag =
-                    await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
-                if (propertyBag == null)
-                {
-                    result = new NodeSettings();
-                    propertyBag = new PropertyBag();
-                    propertyBag.Add("Id", "NodeSettings");
-                    propertyBag.Add("Value", JsonSerializer.Serialize(result));
-                    propertyBag.Add("CreatedDate", DateTime.UtcNow);
-                    await propertyBagRepo.AddAsync(propertyBag);
-                }
-                else
-                {
-                    result = JsonSerializer.Deserialize<NodeSettings>(propertyBag["Value"] as string);
-                }
+                result = await _configurationQueryService.QueryNodeSettingsAsync(cancellationToken);
 
                 _memoryCache.Set(nameof(NodeSettings), result);
             }
@@ -46,21 +30,15 @@ public partial class ConfigurationController
         return rsp;
     }
 
+
     [HttpPost("/api/CommonConfig/NodeSettings/Update")]
-    public async Task<ApiResponse> UpdateNodeSettingAsync([FromBody] NodeSettings model)
+    public async Task<ApiResponse> UpdateNodeSettingAsync([FromBody] NodeSettings model,
+        CancellationToken cancellationToken = default)
     {
         var rsp = new ApiResponse();
         try
         {
-            var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
-           await using var repo = await repoFactory.CreateRepositoryAsync();
-            var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
-
-            var value = JsonSerializer.Serialize(model);
-            var count = await repo.DbContext.Set<PropertyBag>()
-                .Where(x => x["Id"] == nameof(NodeSettings))
-                .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x["Value"], x => value));
-            _memoryCache.Remove(nameof(NodeSettings));
+            await _configurationQueryService.UpdateNodeSettingsAsync(model, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -70,4 +48,6 @@ public partial class ConfigurationController
 
         return rsp;
     }
+
+
 }

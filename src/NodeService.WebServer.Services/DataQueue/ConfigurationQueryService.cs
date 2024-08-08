@@ -607,4 +607,43 @@ public class ConfigurationQueryService
         var list = await this.QueryConfigurationByIdListAsync<TaskTypeDescConfigModel>([taskTypeDescId], cancellationToken);
         return list.Items?.FirstOrDefault();
     }
+    
+    public async ValueTask UpdateNodeSettingsAsync(NodeSettings entity, CancellationToken cancellationToken = default)
+    {
+        var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+        await using var repo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+        var propertyBag = await repo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)));
+
+        var value = JsonSerializer.Serialize(entity);
+        var count = await repo.DbContext.Set<PropertyBag>()
+            .Where(x => x["Id"] == nameof(NodeSettings))
+            .ExecuteUpdateAsync(setPropertyCalls => setPropertyCalls.SetProperty(x => x["Value"], x => value),
+                cancellationToken: cancellationToken);
+        _memoryCache.Remove(nameof(NodeSettings));
+    }
+    
+    
+    public async ValueTask<NodeSettings?> QueryNodeSettingsAsync(CancellationToken cancellationToken = default)
+    {
+        NodeSettings? result;
+        var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
+        await using var propertyBagRepo = await repoFactory.CreateRepositoryAsync(cancellationToken);
+        var propertyBag =
+            await propertyBagRepo.FirstOrDefaultAsync(new PropertyBagSpecification(nameof(NodeSettings)), cancellationToken);
+        if (propertyBag == null)
+        {
+            result = new NodeSettings();
+            propertyBag = new PropertyBag();
+            propertyBag.Add("Id", "NodeSettings");
+            propertyBag.Add("Value", JsonSerializer.Serialize(result));
+            propertyBag.Add("CreatedDate", DateTime.UtcNow);
+            await propertyBagRepo.AddAsync(propertyBag, cancellationToken);
+        }
+        else
+        {
+            result = JsonSerializer.Deserialize<NodeSettings>(propertyBag["Value"] as string);
+        }
+
+        return result;
+    }
 }

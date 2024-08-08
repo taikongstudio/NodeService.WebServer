@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace NodeService.WebServer.Services.DataQueue
+namespace NodeService.WebServer.Services.DataServices
 {
     public static class DataQueueServiceExtension
     {

@@ -1,4 +1,4 @@
-﻿using NodeService.WebServer.Services.DataQueue;
+﻿using NodeService.WebServer.Services.DataServices;
 
 namespace NodeService.WebServer.Controllers;
 

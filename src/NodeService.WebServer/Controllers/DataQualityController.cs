@@ -4,7 +4,7 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
-using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.DataServices;
 
 namespace NodeService.WebServer.Controllers;
 

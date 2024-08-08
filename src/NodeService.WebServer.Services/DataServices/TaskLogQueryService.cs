@@ -6,7 +6,7 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using System.IO.Pipelines;
 
-namespace NodeService.WebServer.Services.DataQueue;
+namespace NodeService.WebServer.Services.DataServices;
 
 public record struct TaskLogQueryServiceParameters
 {
@@ -48,7 +48,7 @@ public record struct TaskLogQueryServiceResult
     public long CurrentPagePosition { get; set; }
 }
 
-public class TaskLogQueryService 
+public class TaskLogQueryService
 {
     class TaskLogReadPositionCache
     {
@@ -113,9 +113,9 @@ public class TaskLogQueryService
     }
 
 
-            public async ValueTask<TaskLogQueryServiceResult> QueryAsync(
-      TaskLogQueryServiceParameters serviceParameters,
-        CancellationToken cancellationToken = default)
+    public async ValueTask<TaskLogQueryServiceResult> QueryAsync(
+TaskLogQueryServiceParameters serviceParameters,
+CancellationToken cancellationToken = default)
     {
 
         var queryParameters = serviceParameters.QueryParameters;
@@ -158,7 +158,7 @@ public class TaskLogQueryService
                                 continue;
                             }
                             var taskLogEntry = JsonSerializer.Deserialize<LogEntry>(str);
-                            if (taskLogEntry==null)
+                            if (taskLogEntry == null)
                             {
                                 continue;
                             }

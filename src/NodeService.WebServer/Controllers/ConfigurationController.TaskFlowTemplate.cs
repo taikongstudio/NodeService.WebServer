@@ -1,7 +1,7 @@
 ﻿using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.DataServices;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.Services.TaskSchedule;
 using System.Collections.Immutable;

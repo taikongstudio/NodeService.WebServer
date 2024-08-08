@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Hosting;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.DataServices;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 

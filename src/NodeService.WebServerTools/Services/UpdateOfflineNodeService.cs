@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data;
-using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.DataServices;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -11,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.DataQueue
+namespace NodeService.WebServer.Services.DataServices
 {
     public record struct PackageDownloadParameters
     {

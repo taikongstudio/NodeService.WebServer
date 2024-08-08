@@ -7,9 +7,9 @@ using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.TaskSchedule;
 
-namespace NodeService.WebServer.Services.DataQueue;
+namespace NodeService.WebServer.Services.DataServices;
 
-public class ConfigurationQueryService 
+public class ConfigurationQueryService
 {
     readonly IServiceProvider _serviceProvider;
     readonly IMemoryCache _memoryCache;
@@ -146,7 +146,7 @@ public class ConfigurationQueryService
             }
             resultList.Add(entity);
         }
-        idList = [..idList.Except(resultList.Select(static x => x.Id)),];
+        idList = [.. idList.Except(resultList.Select(static x => x.Id)),];
         if (idList.Any())
         {
             var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<T>>();
@@ -573,7 +573,7 @@ public class ConfigurationQueryService
     }
 
     public async ValueTask UpdateNodeHealthyCheckConfigurationAsync(
-    NodeHealthyCheckConfiguration  entity,
+    NodeHealthyCheckConfiguration entity,
     CancellationToken cancellationToken = default)
     {
         var repoFactory = _serviceProvider.GetService<ApplicationRepositoryFactory<PropertyBag>>();
@@ -596,7 +596,7 @@ public class ConfigurationQueryService
         string taskDefinitionId,
         CancellationToken cancellationToken = default)
     {
-        var list = await this.QueryConfigurationByIdListAsync<TaskDefinitionModel>([taskDefinitionId], cancellationToken);
+        var list = await QueryConfigurationByIdListAsync<TaskDefinitionModel>([taskDefinitionId], cancellationToken);
         return list.Items?.FirstOrDefault();
     }
 
@@ -604,7 +604,7 @@ public class ConfigurationQueryService
         string taskTypeDescId,
         CancellationToken cancellationToken = default)
     {
-        var list = await this.QueryConfigurationByIdListAsync<TaskTypeDescConfigModel>([taskTypeDescId], cancellationToken);
+        var list = await QueryConfigurationByIdListAsync<TaskTypeDescConfigModel>([taskTypeDescId], cancellationToken);
         return list.Items?.FirstOrDefault();
     }
 

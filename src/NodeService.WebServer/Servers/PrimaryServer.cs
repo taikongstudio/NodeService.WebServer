@@ -14,7 +14,7 @@ using NodeService.WebServer.Services.Auth;
 using NodeService.WebServer.Services.ClientUpdate;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataQuality;
-using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.DataServices;
 using NodeService.WebServer.Services.Dianostics;
 using NodeService.WebServer.Services.NetworkDevices;
 using NodeService.WebServer.Services.NodeFileSystem;

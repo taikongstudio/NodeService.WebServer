@@ -1,4 +1,6 @@
-﻿namespace NodeService.WebServer.Services.NodeFileSystem
+﻿using NodeService.WebServer.Services.DataServices;
+
+namespace NodeService.WebServer.Services.NodeFileSystem
 {
     public class FileInfoCacheService
     {

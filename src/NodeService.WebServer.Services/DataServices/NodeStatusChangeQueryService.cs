@@ -10,7 +10,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace NodeService.WebServer.Services.DataQueue
+namespace NodeService.WebServer.Services.DataServices
 {
     public class NodeStatusChangeQueryService
     {
@@ -38,7 +38,7 @@ namespace NodeService.WebServer.Services.DataQueue
             await using var repo = await _applicationRepositoryFactory.CreateRepositoryAsync(cancellationToken);
             var query = from statusChange in repo.DbContext.Set<NodeStatusChangeRecordModel>()
                         join nodeProfile in repo.DbContext.Set<NodeProfileModel>() on statusChange.NodeId equals nodeProfile.NodeInfoId
-                        where (statusChange.CreationDateTime.Date >= parameters.BeginDateTime && statusChange.CreationDateTime <= parameters.EndDateTime)
+                        where statusChange.CreationDateTime.Date >= parameters.BeginDateTime && statusChange.CreationDateTime <= parameters.EndDateTime
                         && (parameters.NodeIdList.Count <= 0 || parameters.NodeIdList.Contains(statusChange.NodeId)) &&
                         (parameters.NodeStatus == NodeStatus.All || statusChange.Status == parameters.NodeStatus)
                         group statusChange by new { statusChange.NodeId, statusChange.Status, statusChange.CreationDateTime.Date, statusChange.Name, nodeProfile.ClientVersion }

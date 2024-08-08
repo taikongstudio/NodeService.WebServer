@@ -1,5 +1,5 @@
 ﻿using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataQueue;
+using NodeService.WebServer.Services.DataServices;
 
 namespace NodeService.WebServer.Controllers;
 

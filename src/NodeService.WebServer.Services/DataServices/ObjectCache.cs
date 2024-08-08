@@ -6,7 +6,7 @@ using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using System.Threading;
 
-namespace NodeService.WebServer.Services.DataQueue
+namespace NodeService.WebServer.Services.DataServices
 {
     public class ObjectCache
     {

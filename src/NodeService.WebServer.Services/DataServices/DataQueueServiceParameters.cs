@@ -1,7 +1,7 @@
 ﻿using OneOf;
 using System.Collections.Immutable;
 
-namespace NodeService.WebServer.Services.DataQueue
+namespace NodeService.WebServer.Services.DataServices
 {
     public record class DataQueueServiceParameters<TEntity>
     {
@@ -19,12 +19,12 @@ namespace NodeService.WebServer.Services.DataQueue
 
         public DataQueueServiceParameters(ImmutableArray<TEntity> parameters)
         {
-            this.Parameters = parameters;
+            Parameters = parameters;
         }
 
         public DataQueueServiceParameters(ImmutableArray<string> parameters)
         {
-            this.Parameters = parameters;
+            Parameters = parameters;
         }
 
 

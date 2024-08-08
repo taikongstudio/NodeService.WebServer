@@ -9,7 +9,7 @@ using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System.Collections.Immutable;
 
-namespace NodeService.WebServer.Services.DataQueue
+namespace NodeService.WebServer.Services.DataServices
 {
     public class NodeInfoQueryService
     {
@@ -408,7 +408,7 @@ namespace NodeService.WebServer.Services.DataQueue
                     for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
                     {
                         var cell = headerRow.CreateCell(columnIndex);//创建第j列
-                        SetCellValue<string>(cell, headers[columnIndex]);
+                        SetCellValue(cell, headers[columnIndex]);
                     }
                 }
 

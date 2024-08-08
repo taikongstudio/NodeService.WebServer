@@ -78,6 +78,36 @@ public partial class NodesController : Controller
         return apiResponse;
     }
 
+    [HttpGet("/api/Nodes/List/Export")]
+    public async Task<IActionResult> ExportNodeListAsync(CancellationToken cancellationToken = default)
+    {
+        var apiResponse = new PaginationResponse<NodeInfoModel>();
+        try
+        {
+            var stream = await _nodeInfoQueryService.ExportNodeListAsync(new QueryNodeListParameters()
+            {
+                AreaTag = AreaTags.Any,
+                DeviceType = NodeDeviceType.All,
+                IncludeProperties = false,
+                PageIndex = 1,
+                PageSize = int.MaxValue,
+                Status = NodeStatus.All,
+                SearchProfileProperties = false
+            }, cancellationToken);
+            stream.Position = 0;
+            return File(stream, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "NodeList.xlsx");
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogInformation(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.Message;
+        }
+
+        return Json(apiResponse);
+    }
+
 
     [HttpGet("/api/Nodes/~/{id}")]
     public async Task<ApiResponse<NodeInfoModel>> QueryNodeInfoAsync(string id, CancellationToken cancellationToken = default)

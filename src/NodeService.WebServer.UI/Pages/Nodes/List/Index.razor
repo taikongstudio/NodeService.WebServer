@@ -164,6 +164,9 @@
                             <SpaceItem>
                                 <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="_dataSource.QueryAsync"></Button>
                             </SpaceItem>
+                                <SpaceItem>
+                                    <DownloadButton Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Export" Url="/api/Nodes/List/Export" FileName="NodeList.xlsx" />
+                                </SpaceItem>
                             <SpaceItem>
                                 <Select DataSource="@_nodeSettings.IpAddressMappings"
                                         @bind-value="@_selectedAreaTag"

@@ -4,6 +4,10 @@ using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.NodeSessions;
+using NPOI.SS.UserModel;
+using NPOI.XSSF.UserModel;
+using System.Collections.Immutable;
 
 namespace NodeService.WebServer.Services.DataQueue
 {
@@ -12,11 +16,12 @@ namespace NodeService.WebServer.Services.DataQueue
         readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepoFactory;
         readonly ApplicationRepositoryFactory<NodeProfileModel> _nodeProfileRepoFactory;
         readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
-        private readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropsRepoFactory;
+        readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropsRepoFactory;
         readonly ObjectCache _objectCache;
-        private readonly IDbContextFactory<LimsDbContext> _limsDbContextFactory;
-        private readonly ILogger<NodeInfoQueryService> _logger;
-        private readonly ExceptionCounter _exceptionCounter;
+        readonly IDbContextFactory<LimsDbContext> _limsDbContextFactory;
+        readonly ILogger<NodeInfoQueryService> _logger;
+        readonly ExceptionCounter _exceptionCounter;
+        readonly INodeSessionService _nodeSessionService;
         readonly JsonSerializerOptions _jsonOptions;
 
         public NodeInfoQueryService(
@@ -27,7 +32,8 @@ namespace NodeService.WebServer.Services.DataQueue
             ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
             ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertySnapshotRepositoryFactory,
             ObjectCache objectCache,
-            IDbContextFactory<LimsDbContext> limsDbContextFactory)
+            IDbContextFactory<LimsDbContext> limsDbContextFactory,
+            INodeSessionService nodeSessionService)
         {
             _jsonOptions = _jsonOptions = new JsonSerializerOptions()
             {
@@ -41,6 +47,7 @@ namespace NodeService.WebServer.Services.DataQueue
             _limsDbContextFactory = limsDbContextFactory;
             _logger = logger;
             _exceptionCounter = exceptionCounter;
+            _nodeSessionService = nodeSessionService;
         }
 
         public async ValueTask<dl_equipment_ctrl_computer?> Query_dl_equipment_ctrl_computer_Async(string nodeInfoId, string? limsDataId, CancellationToken cancellationToken = default)
@@ -357,6 +364,146 @@ namespace NodeService.WebServer.Services.DataQueue
                 nodeInfo.Profile.Usages = value.Usages;
                 nodeInfo.Profile.Remarks = value.Remarks;
                 await UpdateNodeInfoListAsync([nodeInfo], cancellationToken);
+            }
+        }
+
+        public async ValueTask<Stream> ExportNodeListAsync(QueryNodeListParameters parameters, CancellationToken cancellationToken = default)
+        {
+            var queryResult = await QueryNodeInfoListByQueryParameters(parameters, cancellationToken);
+
+            foreach (var item in queryResult.Items)
+            {
+                item.PingReplyInfo = _nodeSessionService.GetNodeLastPingReplyInfo(new NodeSessionId(item.Id));
+            }
+            if (TryWriteToExcel(queryResult.Items.ToImmutableArray(), out Stream? stream) && stream != null)
+            {
+                return stream;
+            }
+            return Stream.Null;
+        }
+
+        public bool TryWriteToExcel(ImmutableArray<NodeInfoModel> nodeList, out Stream? stream)
+        {
+            stream = null;
+            try
+            {
+                //创建工作薄  
+                IWorkbook wb = new XSSFWorkbook();
+
+                //创建一个表单
+                ISheet sheet = wb.CreateSheet("上位机列表");
+                //设置列宽
+                int[] columnWidth = { 20, 20, 20, 20, 20, 20, 20, 50, 50 };
+                for (int i = 0; i < columnWidth.Length; i++)
+                {
+                    //设置列宽度，256*字符数，因为单位是1/256个字符
+                    sheet.SetColumnWidth(i, 256 * columnWidth[i]);
+                }
+
+                //测试数据
+
+                IRow headerRow = sheet.CreateRow(0);
+                var headers = new string[] { "上位机Id", "上位机名称", "上位机状态", "最后在线时间", "业务类型", "实验室名称", "测试区域", "上位机负责人", "IP地址", "Lims关联性" };
+                {
+                    for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
+                    {
+                        var cell = headerRow.CreateCell(columnIndex);//创建第j列
+                        SetCellValue<string>(cell, headers[columnIndex]);
+                    }
+                }
+
+
+                var rowIndex = 1;
+                for (int dataIndex = 0; dataIndex < nodeList.Length; dataIndex++)
+                {
+                    var result = nodeList[dataIndex];
+
+                    var dataRow = sheet.CreateRow(rowIndex);
+                    rowIndex++;
+                    for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
+                    {
+                        var cell = dataRow.CreateCell(columnIndex);
+                        switch (columnIndex)
+                        {
+                            case 0:
+                                SetCellValue(cell, result.Id);
+                                break;
+                            case 1:
+                                SetCellValue(cell, result.Name);
+                                break;
+                            case 2:
+                                SetCellValue(cell, result.Status.GetDisplayName());
+                                break;
+                            case 3:
+                                SetCellValue(cell, result.Profile.ServerUpdateTimeUtc);
+                                break;
+                            case 4:
+                                SetCellValue(cell, result.Profile.TestInfo ?? string.Empty);
+                                break;
+                            case 5:
+                                SetCellValue(cell, result.Profile.LabName ?? string.Empty);
+                                break;
+                            case 6:
+                                SetCellValue(cell, result.Profile.LabArea ?? string.Empty);
+                                break;
+                            case 7:
+                                SetCellValue(cell, result.Profile.Manager ?? string.Empty);
+                                break;
+                            case 8:
+                                SetCellValue(cell, result.Profile.IpAddress ?? string.Empty);
+                                break;
+                            case 9:
+                                SetCellValue(cell, result.Profile.FoundInLims ? "是" : "否");
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                }
+
+                stream = new MemoryStream();
+                wb.Write(stream, true);//向打开的这个Excel文件中写入表单并保存。  
+                stream.Position = 0;
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+            }
+            return false;
+        }
+
+        public static void SetCellValue<T>(ICell cell, T obj)
+        {
+            if (obj is int intValue)
+            {
+                cell.SetCellValue(intValue);
+            }
+            else if (obj is double doubleValue)
+            {
+                cell.SetCellValue(doubleValue);
+            }
+            else if (obj is IRichTextString richTextString)
+            {
+                cell.SetCellValue(richTextString);
+            }
+            else if (obj is string stringValue)
+            {
+                cell.SetCellValue(stringValue);
+            }
+            else if (obj is DateTime dateTimeValue)
+            {
+                cell.SetCellValue(dateTimeValue.ToString("yyyy/MM/dd HH:mm:ss"));
+            }
+            else if (obj is bool boolValue)
+            {
+                cell.SetCellValue(boolValue);
+            }
+            else
+            {
+                cell.SetCellValue(obj.ToString());
             }
         }
 

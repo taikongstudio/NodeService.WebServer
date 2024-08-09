@@ -59,6 +59,9 @@ namespace NodeService.WebServer.Services.Tasks
                     GroupId = nameof(TaskLogKafkaConsumerService),
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
+                    MaxPollIntervalMs = 600000,
+                    HeartbeatIntervalMs = 20000,
+                    SessionTimeoutMs = 70000,
                 };
                 using var consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build();
                 consumer.Subscribe([_kafkaOptions.TaskObservationEventTopic]);

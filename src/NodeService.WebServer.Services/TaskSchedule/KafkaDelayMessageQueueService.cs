@@ -39,6 +39,9 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 GroupId = nameof(KafkaDelayMessageQueueService),
                 FetchMaxBytes = 1024 * 1024 * 10,
                 AutoOffsetReset = AutoOffsetReset.Earliest,
+                MaxPollIntervalMs = 600000,
+                HeartbeatIntervalMs = 20000,
+                SessionTimeoutMs = 70000,
             };
 
             _producerConfig = new ProducerConfig

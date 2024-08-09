@@ -146,7 +146,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 SocketTimeoutMs = 60000,
                 EnableAutoCommit = false,// (the default)
                 EnableAutoOffsetStore = false,
-                GroupId = nameof(TaskLogKafkaConsumerService),
+                GroupId = nameof(TaskExecutionReportConsumerService),
                 FetchMaxBytes = 1024 * 1024 * 10,
                 AutoOffsetReset = AutoOffsetReset.Earliest,
                 MaxPollIntervalMs = 600000,

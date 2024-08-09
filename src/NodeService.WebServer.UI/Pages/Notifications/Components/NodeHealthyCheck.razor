@@ -19,8 +19,8 @@
     <FormItem Label="上位机报废检测间隔（分钟）" Help="离线时间超出此时间会被提示修改上位机状态">
         <AntDesign.InputNumber @bind-Value="@context.ScrappMinutes" />
     </FormItem>
-    <FormItem Label="上位机报废登记网址">
-        <AntDesign.Input @bind-Value="@context.ScrappUrl" />
+    <FormItem Label="上位机台账管理网址">
+        <AntDesign.Input @bind-Value="@context.MachineManagementUrl" />
     </FormItem>
     <FormItem Label="检测上位机服务与进程">
         <AntDesign.Switch @bind-Value="@context.CheckProcessService" />

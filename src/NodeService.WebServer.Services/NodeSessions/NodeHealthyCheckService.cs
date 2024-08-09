@@ -123,21 +123,22 @@ public partial class NodeHealthyCheckService : BackgroundService
         };
         try
         {
-
-            if (IsNodeOffline(nodeInfo))
+            var possiblyScrapped = false;
+            if (IsNodeScrapped(nodeInfo))
+            {
+                possiblyScrapped = true;
+                nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
+                {
+                    Exception = $"守护程序离线超过{_nodeHealthyCheckConfiguration.ScrappMinutes}分钟",
+                    Solution = $"检查上位机是否处于运行状态，如上位机已报废，请前往{_nodeHealthyCheckConfiguration.MachineManagementUrl}登记报废状态",
+                });
+            }
+            if (!possiblyScrapped && IsNodeOffline(nodeInfo))
             {
                 nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
                 {
                     Exception = $"守护程序离线超过{_nodeHealthyCheckConfiguration.OfflineMinutes}分钟",
                     Solution = "检查上位机是否处于运行状态",
-                });
-            }
-            if (IsNodeScrapped(nodeInfo))
-            {
-                nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
-                {
-                    Exception = $"守护程序离线超过{_nodeHealthyCheckConfiguration.ScrappMinutes}分钟",
-                    Solution = $"检查上位机是否处于运行状态，如上位机已报废，请前往{_nodeHealthyCheckConfiguration.ScrappUrl}登记报废状态",
                 });
             }
             if (ShouldSendTimeDiffWarning(nodeInfo))
@@ -174,7 +175,7 @@ public partial class NodeHealthyCheckService : BackgroundService
                     nodeHeathyResult.Items.Add(new NodeHealthyCheckItem()
                     {
                         Exception = $"上位机区域信息需更新",
-                        Solution = $"更新区域相关信息"
+                        Solution = $"上位机台账登记区域为{computerInfo.Factory?.name}，实际IP地址所在区域为{GetNodeFactoryDisplayName(nodeInfo.Profile.FactoryName)}，需要更新区域相关信息，请前往{_nodeHealthyCheckConfiguration.MachineManagementUrl}"
                     });
                 }
             }
@@ -187,6 +188,11 @@ public partial class NodeHealthyCheckService : BackgroundService
             _logger.LogError(ex.ToString());
         }
         return nodeHeathyResult;
+    }
+
+    string GetNodeFactoryDisplayName(string factoryName)
+    {
+        return _nodeSettings?.ProcessUsagesMapping?.FirstOrDefault(x => x.Tag == factoryName)?.Name ?? "未知";
     }
 
     private async ValueTask<IEnumerable<string>> ShouldSendProcessNotFoundWarningAsync(
@@ -231,7 +237,7 @@ public partial class NodeHealthyCheckService : BackgroundService
                         continue;
                     }
                     if (!analysisPropsResult.ProcessInfoList.Any(nodeUsageConfiguration.DetectProcess)
-                        ||
+                        &&
                         !analysisPropsResult.ServiceProcessInfoList.Any(nodeUsageConfiguration.DetectServiceProcess))
                     {
                         usageList.Add(nodeUsageConfiguration.Name);

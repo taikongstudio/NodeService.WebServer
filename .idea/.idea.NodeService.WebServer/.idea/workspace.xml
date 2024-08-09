@@ -5,8 +5,17 @@
     <projectFile profileName="Profile">../NodeService.Infrastructure/src/NodeService.Infrastructure.SourceGenerator/NodeService.Infrastructure.SourceGenerator.csproj</projectFile>
     <projectFile profileName="NodeService.Infrastructure">../NodeService.Infrastructure/src/NodeService.Infrastructure/NodeService.Infrastructure.csproj</projectFile>
     <projectFile profileName="NodeService.CoreServer">src/NodeService.CoreServer/NodeService.CoreServer.csproj</projectFile>
+    <projectFile profileName="IIS Express">src/NodeService.WebClient/NodeService.WebClient.csproj</projectFile>
+    <projectFile profileName="NodeService.WebClient">src/NodeService.WebClient/NodeService.WebClient.csproj</projectFile>
+    <projectFile profileName="Project1">src/NodeService.WebClient/NodeService.WebClient.csproj</projectFile>
+    <projectFile profileName="IIS Express">src/NodeService.WebClient/src/Client/NodeService.WebClient.Client.csproj</projectFile>
+    <projectFile profileName="NodeService.WebClient">src/NodeService.WebClient/src/Client/NodeService.WebClient.Client.csproj</projectFile>
+    <projectFile profileName="IIS Express">src/NodeService.WebClient/src/Server/NodeService.WebClient.Server.csproj</projectFile>
+    <projectFile profileName="NodeService.WebClient.Server">src/NodeService.WebClient/src/Server/NodeService.WebClient.Server.csproj</projectFile>
+    <projectFile profileName="NodeService.WebClient.Services">src/NodeService.WebServer.Services/NodeService.WebServer.Services.csproj</projectFile>
     <projectFile profileName="NodeService.WebServer.Services">src/NodeService.WebServer.Services/NodeService.WebServer.Services.csproj</projectFile>
     <projectFile profileName="IIS Express">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
+    <projectFile profileName="NodeService.WebClient">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
     <projectFile profileName="NodeService.WebServer">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
     <projectFile pubXmlPath="src/NodeService.WebServer/Properties/PublishProfiles/10.201.76.21.pubxml">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
     <projectFile pubXmlPath="src/NodeService.WebServer/Properties/PublishProfiles/172.27.242.223.pubxml">src/NodeService.WebServer/NodeService.WebServer.csproj</projectFile>
@@ -148,6 +157,111 @@
         <option name="Build" />
       </method>
     </configuration>
+    <configuration name="NodeService.WebClient" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebClient/NodeService.WebClient.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="NodeService.WebClient" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
+    <configuration name="NodeService.WebClient: IIS Express" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebClient/NodeService.WebClient.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="IIS Express" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
+    <configuration name="NodeService.WebClient: Project1" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebClient/NodeService.WebClient.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="Project1" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
+    <configuration name="NodeService.WebClient.Client: IIS Express" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebClient/src/Client/NodeService.WebClient.Client.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="IIS Express" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
+    <configuration name="NodeService.WebClient.Client: NodeService.WebClient" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebClient/src/Client/NodeService.WebClient.Client.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="NodeService.WebClient" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
+    <configuration name="NodeService.WebClient.Server" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebClient/src/Server/NodeService.WebClient.Server.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="NodeService.WebClient.Server" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
+    <configuration name="NodeService.WebClient.Server: IIS Express" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebClient/src/Server/NodeService.WebClient.Server.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="IIS Express" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
     <configuration name="NodeService.WebServer" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
       <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebServer/NodeService.WebServer.csproj" />
       <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
@@ -178,10 +292,40 @@
         <option name="Build" />
       </method>
     </configuration>
+    <configuration name="NodeService.WebServer: NodeService.WebClient" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebServer/NodeService.WebServer.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="NodeService.WebClient" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
     <configuration name="NodeService.WebServer.Services" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
       <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeService.WebServer.Services.csproj" />
       <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
       <option name="LAUNCH_PROFILE_NAME" value="NodeService.WebServer.Services" />
+      <option name="USE_EXTERNAL_CONSOLE" value="0" />
+      <option name="USE_MONO" value="0" />
+      <option name="RUNTIME_ARGUMENTS" value="" />
+      <option name="GENERATE_APPLICATIONHOST_CONFIG" value="1" />
+      <option name="SHOW_IIS_EXPRESS_OUTPUT" value="0" />
+      <option name="SEND_DEBUG_REQUEST" value="1" />
+      <option name="ADDITIONAL_IIS_EXPRESS_ARGUMENTS" value="" />
+      <method v="2">
+        <option name="Build" />
+      </method>
+    </configuration>
+    <configuration name="NodeService.WebServer.Services: NodeService.WebClient.Services" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
+      <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/src/NodeService.WebServer.Services/NodeService.WebServer.Services.csproj" />
+      <option name="LAUNCH_PROFILE_TFM" value="net8.0" />
+      <option name="LAUNCH_PROFILE_NAME" value="NodeService.WebClient.Services" />
       <option name="USE_EXTERNAL_CONSOLE" value="0" />
       <option name="USE_MONO" value="0" />
       <option name="RUNTIME_ARGUMENTS" value="" />
@@ -210,7 +354,7 @@
       <workItem from="1722961164043" duration="773000" />
       <workItem from="1722961956973" duration="291000" />
       <workItem from="1722996445005" duration="4913000" />
-      <workItem from="1723096212254" duration="973000" />
+      <workItem from="1723096212254" duration="1969000" />
     </task>
     <servers />
   </component>

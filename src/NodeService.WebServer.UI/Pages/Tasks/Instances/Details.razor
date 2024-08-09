@@ -1,5 +1,6 @@
 ﻿@page "/Tasks/Instances/{TaskExecutionInstanceId}"
 @using NodeService.WebServer.UI.Layouts
+@inject IMessageService _message
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
@@ -92,15 +93,13 @@ else
         {
             <PageHeader Class="taskflow-header" BackIcon="true" Ghost="false" OnBack="@NavigateToIndex">
                 <PageHeaderTitle>@_taskExecutionInstance.Name</PageHeaderTitle>
-                <PageHeaderSubtitle>This is a subtitle</PageHeaderSubtitle>
+                <PageHeaderSubtitle></PageHeaderSubtitle>
                 <PageHeaderExtra>
-                    <Button>Operation</Button>
-                    <Button>Operation</Button>
-                    <Button Type="@ButtonType.Primary">Primary</Button>
+                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="@RetryTaskAsync"></Button>
                 </PageHeaderExtra>
                 <PageHeaderContent>
                     <Descriptions Size="small" Column="4">
-                        <DescriptionsItem Title="节点" Span="1"><NavLink href="@("/Nodes/~/" + @_taskExecutionInstance.NodeInfoId)">@(_taskExecutionInstance.NodeInfo?.Name??"名称加载失败")</NavLink></DescriptionsItem>
+                        <DescriptionsItem Title="节点" Span="1"><Text Copyable Ellipsis><NavLink href="@("/Nodes/~/" + @_taskExecutionInstance.NodeInfoId)"> @(_taskExecutionInstance.NodeInfo?.Name ?? "名称加载失败")</NavLink></Text></DescriptionsItem>
                         <DescriptionsItem Title="状态" Span="1">@_taskExecutionInstance.Status.GetDisplayName()</DescriptionsItem>
                         <DescriptionsItem Title="启动时间" Span="1">@_taskExecutionInstance.FireTimeUtc</DescriptionsItem>
                         <DescriptionsItem Title="开始执行时间" Span="1">@_taskExecutionInstance.ExecutionBeginTimeUtc</DescriptionsItem>
@@ -182,5 +181,62 @@ else
         {
             _isIdInvalid = _taskExecutionInstance == null;
         }
+    }
+
+    async Task RetryTaskAsync()
+    {
+        try
+        {
+            if (_taskExecutionInstance?.Id == null)
+            {
+                return;
+            }
+            await ApiService.RetryTaskAsync(_taskExecutionInstance.Id);
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+    }
+
+    async Task CancelTaskAsync()
+    {
+        if (_taskExecutionInstance?.Id == null)
+        {
+            return;
+        }
+        switch (_taskExecutionInstance.Status)
+        {
+            case TaskExecutionStatus.Running:
+                await CancelTaskAsync(_taskExecutionInstance.Id);
+                break;
+        }
+    }
+
+    async Task CancelTaskAsync(string? taskExecutionInstanceId)
+    {
+        try
+        {
+            if (taskExecutionInstanceId == null)
+            {
+                return;
+            }
+            var rsp = await this.ApiService.CancelTaskAsync(taskExecutionInstanceId, new TaskCancellationParameters()
+                {
+                    TaskExeuctionInstanceId = taskExecutionInstanceId,
+                    Source = "web",
+                    Context = "web"
+                });
+            await _message.Info("取消任务成功");
+        }
+        catch (Exception ex)
+        {
+            await _message.Error($"取掉任务失败:{ex.ToString()}");
+        }
+
     }
 }

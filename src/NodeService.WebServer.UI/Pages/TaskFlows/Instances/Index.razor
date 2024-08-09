@@ -90,7 +90,11 @@
                     <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
                 </Text>
             </PropertyColumn>
-            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name">
+                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id"><NavLink href="@("/TaskFlows/Instances/" + context.Id)">@context.Name </NavLink></div>
+                </Text>
+            </PropertyColumn>
             <PropertyColumn Title="状态" Ellipsis Sortable Property="c => c.Status" DefaultSortOrder="@SortDirection.Ascending">
                 <Text>@context.Status.GetDisplayName()</Text>
             </PropertyColumn>
@@ -101,7 +105,7 @@
                 <CellRender Context="cellData">
                     <Space>
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="() => GotoViewer(context)"></Button>
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="() => GotoDetailsPage(context)"></Button>
                         </SpaceItem>
                     </Space>
                 </CellRender>
@@ -207,9 +211,9 @@
     }
 
 
-    void GotoViewer(TaskFlowExecutionInstanceModel model)
+    void GotoDetailsPage(TaskFlowExecutionInstanceModel model)
     {
-        NavigationManager.NavigateTo($"/TaskFlows/Instances/View/{model.Id}");
+        NavigationManager.NavigateTo($"/TaskFlows/Instances/{model.Id}");
     }
 
     void OnSelectedStatusChanged(TaskFlowExeuctionStatusModel status)

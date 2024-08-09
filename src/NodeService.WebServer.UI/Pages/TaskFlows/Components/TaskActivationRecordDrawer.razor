@@ -1,6 +1,7 @@
 ﻿@using NodeService.Infrastructure.DataModels;
 @implements IDisposable
 @inject IMessageService _message
+@inject NavigationManager NavigationManager
 
 <CommonDialog @bind-Visible="@_taskLogExecutionLogViewerVisible">
     @if (_taskLogExecutionLogViewerVisible)
@@ -43,60 +44,27 @@
                 }
                 else
                 {
-                    <Badge Style="margin-right:5px" Status="@(GetNodeStatus(context.NodeInfoId).GetBadgeStatus())"></Badge>
-
-                    @(_nodeInfoList?.FirstOrDefault(x => x.Id == context.NodeInfoId)?.Name)
-
-                    
+                    <Badge Style="margin-right:5px" Status="@(GetNodeStatus(context.NodeInfoId).GetBadgeStatus())"><Text Copyable Ellipsis><NavLink href="@("/Nodes/~/" + context.NodeInfoId)"> @(_nodeInfoList?.FirstOrDefault(x => x.Id == context.NodeInfoId)?.Name ?? "名称加载失败")</NavLink></Text></Badge>
                 }
 
             </PropertyColumn>
 
+           
+
             <PropertyColumn Title="状态" Ellipsis Sortable Width="100" Property="c => c.Status" DefaultSortOrder="@SortDirection.Descending">
-                @switch (context.Status)
-                {
-                    case TaskExecutionStatus.Unknown:
-                        <Text>未知</Text>
-                        break;
-                    case TaskExecutionStatus.Triggered:
-                        <Text>已触发</Text>
-                        break;
-                    case TaskExecutionStatus.Pendding:
-                        <Text>等待节点响应</Text>
-                        break;
-                    case TaskExecutionStatus.Started:
-                        <Text>已启动</Text>
-                        break;
-                    case TaskExecutionStatus.Running:
-                        <Text>运行中</Text>
-                        break;
-                    case TaskExecutionStatus.Finished:
-                        <Text>完成</Text>
-                        break;
-                    case TaskExecutionStatus.Cancelled:
-                        <Text>已取消</Text>
-                        break;
-                    case TaskExecutionStatus.Failed:
-                        <Text>失败</Text>
-                        break;
-                    case TaskExecutionStatus.PenddingTimeout:
-                        <Text>等待超时</Text>
-                        break;
-                    case TaskExecutionStatus.PenddingCancel:
-                        <Text>等待取消</Text>
-                        break;
-                }
+                <Text>@context.Status.GetDisplayName()</Text>
             </PropertyColumn>
             <PropertyColumn Title="消息" Ellipsis Sortable Property="c => c.Instances">
                 <Text>@context.Instances.LastOrDefault()?.Message</Text>
             </PropertyColumn>
-            <ActionColumn Fixed="right"  Title="操作">
+            <ActionColumn Fixed="right" Width="140"  Title="操作">
                 <CellRender Context="cellData">
                     <Space>
                         <SpaceItem>
-                            <Button Disabled="@(CanRetry(context.Status)==false)" Shape="@ButtonShape.Circle" OnClick="() => RetryTaskAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo"></Button>
-                            <Button Disabled="@(IsRunning(context.Status)==false)" Shape="@ButtonShape.Circle" OnClick="() => CancelTaskAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
-                            <Button Shape="@ButtonShape.Circle" OnClick="() => ShowLogAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.File"></Button>
+                            <Button Size="@ButtonSize.Small" Disabled="@(CanRetry(context.Status)==false)" Shape="@ButtonShape.Circle" OnClick="() => RetryTaskAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo"></Button>
+                            <Button Size="@ButtonSize.Small" Disabled="@(IsRunning(context.Status)==false)" Shape="@ButtonShape.Circle" OnClick="() => CancelTaskAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Close"></Button>
+                            <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" OnClick="() => ShowLogAsync(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.File"></Button>
+                            <Button Size="@ButtonSize.Small" Shape="@ButtonShape.Circle" OnClick="()=>GoTaskExecutionInstanceDetailsPage(context.Instances.LastOrDefault()?.TaskExecutionInstanceId)" Type="@ButtonType.Primary" Icon="@IconType.Outline.Enter"></Button>
                         </SpaceItem>
                     </Space>
                 </CellRender>
@@ -317,6 +285,15 @@
         _taskExecutionInstanceId = taskExecutionInstanceId;
         _taskLogExecutionLogViewerVisible = true;
         await Task.CompletedTask;
+    }
+
+    void GoTaskExecutionInstanceDetailsPage(string? taskExecutionInstanceId)
+    {
+        if (taskExecutionInstanceId == null)
+        {
+            return;
+        }
+        NavigationManager.NavigateTo($"/Tasks/Instances/{taskExecutionInstanceId}");
     }
 
     public void Dispose()

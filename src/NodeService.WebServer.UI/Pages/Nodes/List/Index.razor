@@ -144,7 +144,7 @@
                OnPageIndexChange="@_dataSource.OnPaginationEvent"
                OnPageSizeChange="@_dataSource.OnPaginationEvent"
                DataSource="@_dataSource.ItemsSource"
-
+               
                OnRowClick="OnRowClick">
             <TitleTemplate>
                 <GridRow>
@@ -207,10 +207,35 @@
                 </GridRow>
             </TitleTemplate>
             <ColumnDefinitions>
-                <PropertyColumn Title="标志" Sortable="true" Width="100" Property="c => c.Id">
+                <PropertyColumn Title="标志" Sortable="true" Fixed="left" Width="100" Property="c => c.Id">
                     <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
                         <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
                     </Text>
+                </PropertyColumn>
+                <PropertyColumn Title="节点名称"
+                                Fixed="left"
+                                Sortable="true"
+                                Width="150"
+                                Property="c => c.Name">
+                    <Badge Style="margin-right:5px" Status="@GetStatusIcon(context.Status)">
+                        @if (context.DeviceType == NodeDeviceType.Computer)
+                        {
+                            <div>
+                                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">
+                                        <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
+                                    </div>
+                                </Text>
+                            </div>
+                        }
+                        else
+                        {
+                            <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link" OnClick="() => ShowEditNodeDeviceFormAsync(context)">
+                                @context.Name
+                            </Button>
+                        }
+                    </Badge>
+
                 </PropertyColumn>
                 <PropertyColumn Title="LIMS关联性" Sortable="true" Width="100" Property="c => c.Profile.FoundInLims">
                     <Switch Disabled Value="@context.Profile.FoundInLims"/>
@@ -219,35 +244,7 @@
                     <Text>@_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.Profile.FactoryName)?.Name</Text>
                 </PropertyColumn>
                 <PropertyColumn Title="状态" Sortable="true" Hidden Property="c => c.Status" DefaultSortOrder="SortDirection.Descending"/>
-                <PropertyColumn
-                    Title="节点名称"
-                    Sortable="true"
-                    Width="150"
-                    Property="c => c.Name">
-                    @switch (context.Status)
-                    {
-                        case NodeStatus.Online:
-                            <Badge Style="margin-right:5px" Status="@BadgeStatus.Success"></Badge>
-                            break;
-                        case NodeStatus.Offline:
-                            <Badge Style="margin-right:5px" Status="@BadgeStatus.Warning"></Badge>
-                            break;
-                        case NodeStatus.NotConfigured:
-                            <Badge Style="margin-right:5px" Status="@BadgeStatus.Error"></Badge>
-                            break;
-                    }
-                    @if (context.DeviceType == NodeDeviceType.Computer)
-                    {
-                        <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
-                    }
-                    else
-                    {
-                        <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link" OnClick="() => ShowEditNodeDeviceFormAsync(context)">
-                            @context.Name
-                        </Button>
-                    }
-
-                </PropertyColumn>
+  
                 <PropertyColumn
                     Title="更新时间"
                     Sortable="true"
@@ -386,6 +383,19 @@
         }
 
         return dateTime.ToString();
+    }
+
+    string GetStatusIcon(NodeStatus nodeStatus)
+    {
+        switch (nodeStatus)
+        {
+            case NodeStatus.Offline:
+                return BadgeStatus.Warning;
+            case NodeStatus.Online:
+                return BadgeStatus.Success;
+            default:
+                return BadgeStatus.Processing;
+        }
     }
 
     bool ShowTimeDiffWarning(NodeInfoModel nodeInfo)

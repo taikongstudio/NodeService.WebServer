@@ -1,4 +1,4 @@
-﻿@page "/TaskFlows/Instances/View/{TaskFlowInstanceId}"
+﻿@page "/TaskFlows/Instances/{TaskFlowInstanceId}"
 
 @layout NodeService.WebServer.UI.Layouts.TaskFlowTemplateLayout
 @using NodeService.WebServer.UI.Pages.TaskFlows.Components
@@ -32,7 +32,7 @@
     #TaskFlowDesigner .taskflow-header {
         grid-area: header;
         background-color: #fff;
-        height:50px;
+        height:100px;
         padding: 0 10px;
     }
 
@@ -79,17 +79,21 @@
 
 <TaskFlowSettingsDrawer @bind-Visible="@_isSettingsDrawVisible" TaskFlow="@_taskFlowDesign" Disabled="true"/>
 <div class="taskflow-grid" id="TaskFlowDesigner">
-    <Space Class="taskflow-header">
-        <SpaceItem>
-            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Home" OnClick="@GoHome"></Button>
-        </SpaceItem>
-        <SpaceItem>
+    <PageHeader Class="taskflow-header" BackIcon="true" Ghost="false" OnBack="@GoHome">
+        <PageHeaderTitle>@_taskFlowInstance.Name</PageHeaderTitle>
+        <PageHeaderSubtitle>This is a subtitle</PageHeaderSubtitle>
+        <PageHeaderExtra>
             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Setting" OnClick="@OnSettingsButtonClickedAsync"></Button>
-        </SpaceItem>
-    </Space>
-    <div class="taskflow-navigation">
-        <Title Level="4">@_taskFlowInstance?.Name   <Text>启动时间 @_taskFlowInstance?.CreationDateTime</Text></Title>
-    </div>
+        </PageHeaderExtra>
+        <PageHeaderContent>
+            <Descriptions Size="small" Column="4">
+                <DescriptionsItem Title="状态" Span="1">@_taskFlowInstance.Status.GetDisplayName()</DescriptionsItem>
+                <DescriptionsItem Title="创建时间" Span="1">@_taskFlowInstance.CreationDateTime</DescriptionsItem>
+                <DescriptionsItem Title="更新时间" Span="1">@_taskFlowInstance.ModifiedDateTime</DescriptionsItem>
+                <DescriptionsItem Title="消息" Span="1">@_taskFlowInstance.Value.Message</DescriptionsItem>
+            </Descriptions>
+        </PageHeaderContent>
+    </PageHeader>
     <div class="taskflow-main">
         <Space Align="start" >
 
@@ -113,7 +117,6 @@
     TaskFlowExecutionInstanceModel _taskFlowInstance = new TaskFlowExecutionInstanceModel();
     TaskFlowDesignModel _taskFlowDesign = new TaskFlowDesignModel();
     bool _isSettingsDrawVisible;
-    RenderFragment customDot = @<Icon Type="loading" Theme="outline" />;
     PeriodicTimer _timer;
 
     [Parameter] public string TaskFlowInstanceId { get; set; }
@@ -123,6 +126,7 @@
         _timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
         _ = Task.Run(async () =>
         {
+            await QueryTaskFlowInstanceAsync();
             while (await _timer.WaitForNextTickAsync())
             {
                 await QueryTaskFlowInstanceAsync();

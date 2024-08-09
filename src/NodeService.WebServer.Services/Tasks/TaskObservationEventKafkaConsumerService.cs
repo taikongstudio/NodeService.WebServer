@@ -59,10 +59,10 @@ namespace NodeService.WebServer.Services.Tasks
                     GroupId = nameof(TaskObservationEventKafkaConsumerService),
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
-                    MaxPollIntervalMs = 600000,
+                    MaxPollIntervalMs = 60000 * 30,
                     HeartbeatIntervalMs = 20000,
-                    SessionTimeoutMs = 70000,
-                    //GroupInstanceId = nameof(TaskObservationEventKafkaConsumerService) + "GroupInstance",
+                    SessionTimeoutMs = 60000 * 30,
+                    GroupInstanceId = nameof(TaskObservationEventKafkaConsumerService) + "GroupInstance",
                 };
                 using var consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build();
                 consumer.Subscribe([_kafkaOptions.TaskObservationEventTopic]);

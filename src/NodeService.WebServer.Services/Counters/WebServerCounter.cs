@@ -147,11 +147,30 @@ public class WebServerCounter
 
     public CounterLongValue KafkaProduceOffset { get; set; } = new();
 
-    public ConcurrentDictionary<int, PartitionOffsetValue> ProducePartitionOffsetDictionary { get; set; } = new();
+    public ConcurrentDictionary<int, PartitionOffsetValue> KafkaLogProducePartitionOffsetDictionary { get; set; } = new();
 
-    public ConcurrentDictionary<int, PartitionOffsetValue> ConsumePartitionOffsetDictionary { get; set; } = new();
+    public ConcurrentDictionary<int, PartitionOffsetValue> KafkaLogConsumePartitionOffsetDictionary { get; set; } = new();
+
+    public ConcurrentDictionary<int, PartitionOffsetValue> KafkaDelayMessageProducePartitionOffsetDictionary { get; set; } = new();
+
+    public ConcurrentDictionary<int, PartitionOffsetValue> KafkaDelayMessageConsumePartitionOffsetDictionary { get; set; } = new();
+
+    public ConcurrentDictionary<int, PartitionOffsetValue> TaskExecutionReportProducePartitionOffsetDictionary { get; set; } = new();
+
+    public ConcurrentDictionary<int, PartitionOffsetValue> TaskExecutionReportConsumePartitionOffsetDictionary { get; set; } = new();
 
     public CounterLongValue TaskExecutionReportProduceRetryCount { get; set; } = new();
 
     public CounterLongValue TaskObservationProduceRetryCount { get; set; } = new();
+
+
+    public CounterLongValue KafkaDelayMessageTickCount { get; set; } = new();
+
+    public CounterLongValue KafkaDelayMessageScheduleCount { get; set; } = new();
+
+    public CounterLongValue KafkaDelayMessageHandledCount { get; set; } = new();
+
+    public CounterLongValue KafkaDelayMessageProducedCount { get; set; } = new();
+
+    public CounterLongValue KafkaDelayMessageComitteddCount { get; set; } = new();
 }

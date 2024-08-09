@@ -18,6 +18,22 @@
     </ColumnDefinitions>
 </Table>
 
+<Table Size="TableSize.Small" Title="任务执行报告生产分区偏移"
+       DataSource="@TaskExecutionReportProducePartitionOffsetValues">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
+        <PropertyColumn Property="c => c" Title="值">@ctx</PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="任务执行报告消费分区偏移"
+       DataSource="@TaskExecutionReportConsumePartitionOffsetValues">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
+        <PropertyColumn Property="c => c" Title="值">@ctx</PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
 <Table Size="TableSize.Small" Title="心跳"
        DataSource="@HeartBeatStatistics">
     <ColumnDefinitions Context="ctx">
@@ -42,35 +58,59 @@
     </ColumnDefinitions>
 </Table>
 
-<Table Size="TableSize.Small" Title="Kafka消费"
-       DataSource="@KafkaConsumeStatistics">
+<Table Size="TableSize.Small" Title="Kafka日志消费"
+       DataSource="@KafkaLogConsumeStatistics">
     <ColumnDefinitions Context="ctx">
         <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
         <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
     </ColumnDefinitions>
 </Table>
 
-<Table Size="TableSize.Small" Title="Kafka生产"
-       DataSource="@KafkaProduceStatistics">
+<Table Size="TableSize.Small" Title="Kafka日志生产"
+       DataSource="@KafkaLogProduceStatistics">
     <ColumnDefinitions Context="ctx">
         <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
         <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
     </ColumnDefinitions>
 </Table>
 
-<Table Size="TableSize.Small" Title="Kafka生产分区偏移"
-       DataSource="@ProducePartitionOffsetValues">
+<Table Size="TableSize.Small" Title="Kafka日志生产分区偏移"
+       DataSource="@KafkaLogProducePartitionOffsetValues">
     <ColumnDefinitions Context="ctx">
         <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
         <PropertyColumn Property="c => c"  Title="值">@ctx</PropertyColumn>
     </ColumnDefinitions>
 </Table>
 
-<Table Size="TableSize.Small" Title="Kafka消费分区偏移"
-       DataSource="@ConsumePartitionOffsetValues">
+<Table Size="TableSize.Small" Title="Kafka日志消费分区偏移"
+       DataSource="@KafkaLogConsumePartitionOffsetValues">
     <ColumnDefinitions Context="ctx">
         <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
         <PropertyColumn Property="c => c"  Title="值">@ctx</PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="Kafka延时消息"
+       DataSource="@KafkaDelayMessageStatistics">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
+        <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="Kafka延时队列生产分区偏移"
+       DataSource="@KafkaDelayMessageProducePartitionOffsetValues">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
+        <PropertyColumn Property="c => c" Title="值">@ctx</PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="Kafka延时队列消费分区偏移"
+       DataSource="@KafkaDelayMessageConsumePartitionOffsetValues">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
+        <PropertyColumn Property="c => c" Title="值">@ctx</PropertyColumn>
     </ColumnDefinitions>
 </Table>
 
@@ -80,12 +120,22 @@
     IEnumerable<(string Desc, string Value)> HeartBeatStatistics = [];
     IEnumerable<(string Desc, string Value)> NodeServiceStatistics = [];
     IEnumerable<(string Desc, string Value)> TaskLogStatistics = [];
-    IEnumerable<(string Desc, string Value)> KafkaConsumeStatistics = [];
-    IEnumerable<(string Desc, string Value)> KafkaProduceStatistics = [];
+    IEnumerable<(string Desc, string Value)> KafkaLogConsumeStatistics = [];
+    IEnumerable<(string Desc, string Value)> KafkaLogProduceStatistics = [];
+    IEnumerable<(string Desc, string Value)> KafkaDelayMessageStatistics = [];
 
-    IEnumerable<PartitionOffsetValue> ConsumePartitionOffsetValues = [];
 
-    IEnumerable<PartitionOffsetValue> ProducePartitionOffsetValues = [];
+    IEnumerable<PartitionOffsetValue> TaskExecutionReportConsumePartitionOffsetValues = [];
+
+    IEnumerable<PartitionOffsetValue> TaskExecutionReportProducePartitionOffsetValues = [];
+
+    IEnumerable<PartitionOffsetValue> KafkaDelayMessageConsumePartitionOffsetValues = [];
+
+    IEnumerable<PartitionOffsetValue> KafkaDelayMessageProducePartitionOffsetValues = [];
+
+    IEnumerable<PartitionOffsetValue> KafkaLogConsumePartitionOffsetValues = [];
+
+    IEnumerable<PartitionOffsetValue> KafkaLogProducePartitionOffsetValues = [];
 
     Timer _timer;
 
@@ -109,10 +159,15 @@
         HeartBeatStatistics = GetHeartBeatStatistics();
         NodeServiceStatistics = GetNodeServiceStatistics();
         TaskLogStatistics = GetTaskLogStatistics();
-        KafkaConsumeStatistics = GetKafkaConsumeStatistics();
-        KafkaProduceStatistics = GetKafkaProduceStatistics();
-        ConsumePartitionOffsetValues = WebServerCounter.ConsumePartitionOffsetDictionary.Values;
-        ProducePartitionOffsetValues = WebServerCounter.ProducePartitionOffsetDictionary.Values;
+        KafkaLogConsumeStatistics = GetKafkaConsumeStatistics();
+        KafkaLogProduceStatistics = GetKafkaProduceStatistics();
+        KafkaDelayMessageStatistics = GetKafkaDelayMessageStatistics();
+        TaskExecutionReportConsumePartitionOffsetValues = WebServerCounter.TaskExecutionReportConsumePartitionOffsetDictionary.Values;
+        TaskExecutionReportProducePartitionOffsetValues = WebServerCounter.TaskExecutionReportProducePartitionOffsetDictionary.Values;
+        KafkaLogConsumePartitionOffsetValues = WebServerCounter.KafkaLogConsumePartitionOffsetDictionary.Values;
+        KafkaLogProducePartitionOffsetValues = WebServerCounter.KafkaLogProducePartitionOffsetDictionary.Values;
+        KafkaDelayMessageConsumePartitionOffsetValues = WebServerCounter.KafkaDelayMessageConsumePartitionOffsetDictionary.Values;
+        KafkaDelayMessageProducePartitionOffsetValues = WebServerCounter.KafkaDelayMessageConsumePartitionOffsetDictionary.Values;
     }
 
     IEnumerable<(string Desc, string Value)> GetTaskExecutionStatistics()
@@ -190,6 +245,16 @@
         yield return (nameof(WebServerCounter.TaskLogInfoSaveTimeSpan), WebServerCounter.TaskLogInfoSaveTimeSpan.ToString());
         yield return (nameof(WebServerCounter.TaskLogPageCount), WebServerCounter.TaskLogPageCount.ToString());
         yield return (nameof(WebServerCounter.TaskLogHandlerCount), WebServerCounter.TaskLogHandlerCount.ToString());
+        yield break;
+    }
+
+    IEnumerable<(string Desc, string Value)> GetKafkaDelayMessageStatistics()
+    {
+        yield return (nameof(WebServerCounter.KafkaDelayMessageTickCount), WebServerCounter.KafkaDelayMessageTickCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaDelayMessageScheduleCount), WebServerCounter.KafkaDelayMessageScheduleCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaDelayMessageProducedCount), WebServerCounter.KafkaDelayMessageProducedCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaDelayMessageHandledCount), WebServerCounter.KafkaDelayMessageHandledCount.ToString());
+        yield return (nameof(WebServerCounter.KafkaDelayMessageProducedCount), WebServerCounter.KafkaDelayMessageProducedCount.ToString());
         yield break;
     }
 

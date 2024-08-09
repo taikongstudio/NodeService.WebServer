@@ -127,19 +127,19 @@ namespace NodeService.WebServer.Services.Tasks
 
         void DeliveryHandler(DeliveryReport<string, string> report)
         {
-            if (report.Status != PersistenceStatus.Persisted)
-            {
-                _webServerCounter.KafkaTaskLogProduceRetryCount.Value++;
-            }
-            else
+            if (report.Status == PersistenceStatus.Persisted)
             {
                 _webServerCounter.KafkaTaskLogProduceCount.Value++;
-                var value = _webServerCounter.ProducePartitionOffsetDictionary.GetOrAdd(report.Partition.Value, new PartitionOffsetValue()
+                var value = _webServerCounter.KafkaLogProducePartitionOffsetDictionary.GetOrAdd(report.Partition.Value, new PartitionOffsetValue()
                 {
 
                 });
                 value.Partition.Value = report.Partition.Value;
                 value.Offset.Value = report.Offset.Value;
+            }
+            else
+            {
+                _webServerCounter.KafkaTaskLogProduceRetryCount.Value++;
             }
         }
     }

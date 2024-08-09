@@ -182,7 +182,12 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     await ProcessTaskExecutionReportsAsync(reports, cancellationToken);
 
                     consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
-
+                    foreach (var consumeResult in consumeResults)
+                    {
+                        var partionOffsetValue = _webServerCounter.TaskExecutionReportConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, new PartitionOffsetValue());
+                        partionOffsetValue.Partition.Value = consumeResult.Partition.Value;
+                        partionOffsetValue.Offset.Value = consumeResult.Offset.Value;
+                    }
                     elapsed = Stopwatch.GetElapsedTime(timeStamp);
 
                 }

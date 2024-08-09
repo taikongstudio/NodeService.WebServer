@@ -16,9 +16,11 @@ namespace NodeService.WebServer.Services.TaskSchedule
         readonly IAsyncQueue<KafkaDelayMessage> _delayMessageQueue;
         readonly ConsumerConfig _consumerConfig;
         readonly ProducerConfig _producerConfig;
+        private readonly WebServerCounter _webServerCounter;
 
         public KafkaDelayMessageQueueService(
             ExceptionCounter exceptionCounter,
+            WebServerCounter webServerCounter,
             ILogger<KafkaDelayMessageQueueService> logger,
             IOptionsMonitor<KafkaOptions> kafkaOptionsMonitor,
             IDelayMessageBroadcast delayMessageBroadcast,
@@ -52,6 +54,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 SocketTimeoutMs = 60000,
                 LingerMs = 20,
             };
+            _webServerCounter = webServerCounter;
         }
 
         protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -71,15 +74,18 @@ namespace NodeService.WebServer.Services.TaskSchedule
                     {
                         while (_delayMessageQueue.TryPeek(out KafkaDelayMessage kafkaDelayMessage))
                         {
-                            var result = await producer.ProduceAsync(_kafkaOptions.TaskDelayQueueMessageTopic, new Message<string, string>()
+                            var deliveryReport = await producer.ProduceAsync(_kafkaOptions.TaskDelayQueueMessageTopic, new Message<string, string>()
                             {
                                 Key = kafkaDelayMessage.Type,
                                 Value = JsonSerializer.Serialize(kafkaDelayMessage)
                             }, cancellationToken);
 
-                            if (result.Status == PersistenceStatus.Persisted)
+                            if (deliveryReport.Status == PersistenceStatus.Persisted)
                             {
                                 await _delayMessageQueue.DeuqueAsync(cancellationToken);
+                                var partionOffsetValue = _webServerCounter.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, new PartitionOffsetValue());
+                                partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
+                                partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;
                             }
                         }
 
@@ -107,8 +113,17 @@ namespace NodeService.WebServer.Services.TaskSchedule
                                     MaxDegreeOfParallelism = 4
                                 }, ProcessConsumeContextAsync);
                             }
-
+                            
                             consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
+
+                            foreach (var consumeResult in consumeResults)
+                            {
+                                var partionOffsetValue = _webServerCounter.KafkaDelayMessageConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, new PartitionOffsetValue());
+                                partionOffsetValue.Partition.Value = consumeResult.Partition.Value;
+                                partionOffsetValue.Offset.Value = consumeResult.Offset.Value;
+                            }
+
+                            _webServerCounter.KafkaDelayMessageComitteddCount.Value += consumeContexts.Length;
                         }
                     }
                     catch (Exception ex)
@@ -148,8 +163,10 @@ namespace NodeService.WebServer.Services.TaskSchedule
                         await _delayMessageBroadcast.BroadcastAsync(
                             delayMessage,
                             cancellationToken);
+                        _webServerCounter.KafkaDelayMessageTickCount.Value++;
                         if (delayMessage.Handled)
                         {
+                            _webServerCounter.KafkaDelayMessageHandledCount.Value++;
                             return;
                         }
                         if (DateTime.UtcNow < delayMessage.ScheduleDateTime)
@@ -164,8 +181,12 @@ namespace NodeService.WebServer.Services.TaskSchedule
                     await _delayMessageBroadcast.BroadcastAsync(
                         delayMessage,
                         cancellationToken);
+
+                    _webServerCounter.KafkaDelayMessageScheduleCount.Value++;
+
                     if (delayMessage.Handled)
                     {
+                        _webServerCounter.KafkaDelayMessageHandledCount.Value++;
                         return;
                     }
                 }
@@ -178,10 +199,17 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 LRetry:
                     try
                     {
-                        await consumeContext.Producer.ProduceAsync(
+                        var deliveryReport = await consumeContext.Producer.ProduceAsync(
                             _kafkaOptions.TaskDelayQueueMessageTopic,
                             result.Message,
                             cancellationToken);
+                        if (deliveryReport.Status == PersistenceStatus.Persisted)
+                        {
+                            _webServerCounter.KafkaDelayMessageProducedCount.Value++;
+                            var partionOffsetValue = _webServerCounter.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, new PartitionOffsetValue());
+                            partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
+                            partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;
+                        }
                     }
                     catch (ProduceException<string, string> ex)
                     {

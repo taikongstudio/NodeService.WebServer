@@ -132,6 +132,9 @@ namespace NodeService.WebServer.Services.Tasks
             if (deliveryReport.Status == PersistenceStatus.Persisted)
             {
                 _webServerCounter.TaskExecutionReportProducePersistedCount.Value++;
+                var partionOffsetValue = _webServerCounter.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, new PartitionOffsetValue());
+                partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
+                partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;
             }
             else if (deliveryReport.Status == PersistenceStatus.NotPersisted)
             {

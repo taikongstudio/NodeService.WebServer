@@ -184,7 +184,7 @@ namespace NodeService.WebServer.Services.Tasks
 
                         foreach (var item in contexts)
                         {
-                            var value = _webServerCounter.ConsumePartitionOffsetDictionary.GetOrAdd(item.Result.Partition.Value, new PartitionOffsetValue()
+                            var value = _webServerCounter.KafkaLogConsumePartitionOffsetDictionary.GetOrAdd(item.Result.Partition.Value, new PartitionOffsetValue()
                             {
 
                             });

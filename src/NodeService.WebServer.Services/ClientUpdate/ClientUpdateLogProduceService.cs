@@ -120,7 +120,7 @@ namespace NodeService.WebServer.Services.ClientUpdate
             else
             {
 
-                var value = _webServerCounter.ProducePartitionOffsetDictionary.GetOrAdd(report.Partition.Value, new PartitionOffsetValue()
+                var value = _webServerCounter.KafkaLogProducePartitionOffsetDictionary.GetOrAdd(report.Partition.Value, new PartitionOffsetValue()
                 {
 
                 });

@@ -58,7 +58,7 @@ namespace NodeService.WebServer.Services.ClientUpdate
                     GroupId = nameof(ClientUpdateLogConsumeService),
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
-                    GroupInstanceId = nameof(ClientUpdateLogConsumeService) + "GroupInstance",
+                    //GroupInstanceId = nameof(ClientUpdateLogConsumeService) + "GroupInstance",
                 };
                 using (_consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build())
                 {

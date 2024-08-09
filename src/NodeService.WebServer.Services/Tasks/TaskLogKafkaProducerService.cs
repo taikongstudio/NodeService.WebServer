@@ -130,10 +130,7 @@ namespace NodeService.WebServer.Services.Tasks
             if (report.Status == PersistenceStatus.Persisted)
             {
                 _webServerCounter.KafkaTaskLogProduceCount.Value++;
-                var value = _webServerCounter.KafkaLogProducePartitionOffsetDictionary.GetOrAdd(report.Partition.Value, new PartitionOffsetValue()
-                {
-
-                });
+                var value = _webServerCounter.KafkaLogProducePartitionOffsetDictionary.GetOrAdd(report.Partition.Value, PartitionOffsetValue.CreateNew);
                 value.Partition.Value = report.Partition.Value;
                 value.Offset.Value = report.Offset.Value;
             }

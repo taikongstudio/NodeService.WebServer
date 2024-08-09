@@ -159,8 +159,8 @@
         HeartBeatStatistics = GetHeartBeatStatistics();
         NodeServiceStatistics = GetNodeServiceStatistics();
         TaskLogStatistics = GetTaskLogStatistics();
-        KafkaLogConsumeStatistics = GetKafkaConsumeStatistics();
-        KafkaLogProduceStatistics = GetKafkaProduceStatistics();
+        KafkaLogConsumeStatistics = GetKafkaLogConsumeStatistics();
+        KafkaLogProduceStatistics = GetKafkaLogProduceStatistics();
         KafkaDelayMessageStatistics = GetKafkaDelayMessageStatistics();
         TaskExecutionReportConsumePartitionOffsetValues = WebServerCounter.TaskExecutionReportConsumePartitionOffsetDictionary.Values;
         TaskExecutionReportProducePartitionOffsetValues = WebServerCounter.TaskExecutionReportProducePartitionOffsetDictionary.Values;
@@ -185,7 +185,7 @@
     }
 
 
-    IEnumerable<(string Desc, string Value)> GetKafkaConsumeStatistics()
+    IEnumerable<(string Desc, string Value)> GetKafkaLogConsumeStatistics()
     {
         yield return (nameof(WebServerCounter.KafkaTaskLogConsumeCount), WebServerCounter.KafkaTaskLogConsumeCount.ToString());
         yield return (nameof(WebServerCounter.KafkaTaskLogConsumeWaitCount), WebServerCounter.KafkaTaskLogConsumeWaitCount.ToString());
@@ -200,7 +200,7 @@
     }
 
 
-    IEnumerable<(string Desc, string Value)> GetKafkaProduceStatistics()
+    IEnumerable<(string Desc, string Value)> GetKafkaLogProduceStatistics()
     {
 
         yield return (nameof(WebServerCounter.KafkaTaskLogProduceCount), WebServerCounter.KafkaTaskLogProduceCount.ToString());

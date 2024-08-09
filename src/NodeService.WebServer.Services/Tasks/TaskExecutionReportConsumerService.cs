@@ -184,7 +184,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
                     foreach (var consumeResult in consumeResults)
                     {
-                        var partionOffsetValue = _webServerCounter.TaskExecutionReportConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, new PartitionOffsetValue());
+                        var partionOffsetValue = _webServerCounter.TaskExecutionReportConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, PartitionOffsetValue.CreateNew);
                         partionOffsetValue.Partition.Value = consumeResult.Partition.Value;
                         partionOffsetValue.Offset.Value = consumeResult.Offset.Value;
                     }

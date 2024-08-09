@@ -26,6 +26,13 @@ public class PartitionOffsetValue
     {
         return $"Partition {Partition.Value} @ {Offset.Value}";
     }
+
+    public static PartitionOffsetValue CreateNew(int partion)
+    {
+        var value = new PartitionOffsetValue();
+        value.Partition.Value = partion;
+        return value;
+    }
 }
 
 public class CounterTimeSpanValue

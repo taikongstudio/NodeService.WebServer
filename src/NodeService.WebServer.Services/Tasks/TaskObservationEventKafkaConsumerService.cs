@@ -197,10 +197,11 @@ namespace NodeService.WebServer.Services.Tasks
                 }
                 foreach (var notificationConfig in notificationConfigList)
                 {
-                    if (notificationConfig.Value.FactoryName != factoryCode)
+                    if (notificationConfig.Value.FactoryName != AreaTags.Any && notificationConfig.Value.FactoryName != factoryCode)
                     {
                         continue;
                     }
+
                     var subject = taskObservationConfiguration.Subject
                         .Replace("$(FactoryName)", factoryName)
                         .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));

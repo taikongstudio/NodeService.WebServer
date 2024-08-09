@@ -305,7 +305,7 @@ public partial class NodeHealthyCheckService : BackgroundService
             }
             foreach (var notificationConfig in notificationConfigList)
             {
-                if (notificationConfig.Value.FactoryName != factoryCode)
+                if (notificationConfig.Value.FactoryName != AreaTags.Any && notificationConfig.Value.FactoryName != factoryCode)
                 {
                     continue;
                 }

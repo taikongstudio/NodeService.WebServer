@@ -161,7 +161,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 {
                     var timeStamp = Stopwatch.GetTimestamp();
 
-                    consumeResults = await consumer.ConsumeAsync(10000, TimeSpan.FromSeconds(3));
+                    consumeResults = await consumer.ConsumeAsync(1000, TimeSpan.FromSeconds(1));
                     if (consumeResults.IsDefaultOrEmpty)
                     {
                         continue;

@@ -92,7 +92,7 @@ namespace NodeService.WebServer.Services.Tasks
                         _timeSpanProcess = TimeSpan.Zero;
                         _timeSpanCommit = TimeSpan.Zero;
 
-                        prefecthList = !prefecthList.IsDefaultOrEmpty ? prefecthList : await consumer.ConsumeAsync((int)(100 * _scaleFactor), TimeSpan.FromMilliseconds(500));
+                        prefecthList = !prefecthList.IsDefaultOrEmpty ? prefecthList : await consumer.ConsumeAsync((int)(100 * _scaleFactor), TimeSpan.FromSeconds(3));
 
                         if (prefecthList.IsDefaultOrEmpty)
                         {
@@ -126,7 +126,7 @@ namespace NodeService.WebServer.Services.Tasks
                             consumeContextGroups,
                             ProcessConsumeContextGroupAsync);
 
-                        var pefetchTask = consumer.ConsumeAsync((int)(100 * _scaleFactor), TimeSpan.FromMilliseconds(500));
+                        var pefetchTask = consumer.ConsumeAsync((int)(100 * _scaleFactor), TimeSpan.FromSeconds(3));
 
                         _webServerCounter.KafkaTaskLogConsumeTotalTimeSpan.Value += _timeSpanConsume;
                         if (_timeSpanConsume > _webServerCounter.KafkaTaskLogConsumeMaxTimeSpan.Value)
@@ -162,9 +162,9 @@ namespace NodeService.WebServer.Services.Tasks
                             _scaleFactor = 1;
                         }
 
-                        if (_scaleFactor > 100)
+                        if (_scaleFactor > 10)
                         {
-                            _scaleFactor = 100;
+                            _scaleFactor = 10;
                         }
 
                         _webServerCounter.KafkaTaskLogConsumeScaleFactor.Value = TimeSpan.FromSeconds(_scaleFactor);

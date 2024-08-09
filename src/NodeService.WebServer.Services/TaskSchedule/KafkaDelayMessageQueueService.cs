@@ -42,6 +42,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 MaxPollIntervalMs = 600000,
                 HeartbeatIntervalMs = 20000,
                 SessionTimeoutMs = 70000,
+                GroupInstanceId = nameof(KafkaDelayMessageQueueService) + "InstanceId",
             };
 
             _producerConfig = new ProducerConfig

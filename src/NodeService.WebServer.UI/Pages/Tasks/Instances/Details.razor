@@ -1,0 +1,186 @@
+﻿@page "/Tasks/Instances/{TaskExecutionInstanceId}"
+@using NodeService.WebServer.UI.Layouts
+@inject ApiService ApiService
+@inject NotificationService _notice
+@inject NavigationManager NavigationManager
+@layout TaskInstanceLayout
+
+<style>
+    .site-layout .site-layout-background {
+        background: #fff;
+    }
+
+    body { /* ADDED */
+        margin: 0;
+        background-color: #fff
+    }
+
+    #TaskFlowDesigner {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: min-content  auto min-content;
+        grid-gap: 6px;
+        grid-template-areas: "header header"  "main sidebar " "footer footer";
+        height: 100vh; /* ADDED */
+    }
+
+        #TaskFlowDesigner .taskflow-header {
+            grid-area: header;
+            background-color: #fff;
+            height: 100px;
+            padding: 0 10px;
+        }
+
+        #TaskFlowDesigner .taskflow-navigation {
+            grid-area: nav;
+            height: 40px;
+            line-height: 40px;
+            background-color: #fff;
+            padding: 0px 20px;
+        }
+
+        #TaskFlowDesigner .taskflow-sidebar {
+            grid-area: sidebar;
+            background-color: #fff;
+            overflow: auto;
+        }
+
+        #TaskFlowDesigner .taskflow-main {
+            grid-area: main;
+            background-color: #fff;
+            overflow: auto;
+            margin: 0px;
+            padding: 10px;
+            height: 100%;
+            width: 100%;
+            display: inline-block;
+        }
+
+        #TaskFlowDesigner .taskflow-footer {
+            grid-area: footer;
+            background-color: #fff;
+        }
+
+        #TaskFlowDesigner .ant-steps {
+            width: auto;
+            display: inline-flex;
+        }
+
+            #TaskFlowDesigner .ant-steps .ant-steps-item {
+                width: 308px;
+                padding: 4px;
+            }
+
+</style>
+
+
+@if (_taskExecutionInstance == null)
+{
+    <Spin Spinning/>
+}
+else
+{
+    <div class="taskflow-grid" id="TaskFlowDesigner">
+        @if (_isIdInvalid)
+        {
+            <PageHeader Class="taskflow-header" BackIcon="true" Ghost="false" OnBack="@NavigateToIndex">
+                <PageHeaderTitle>无效的任务ID</PageHeaderTitle>
+            </PageHeader>
+            <Empty />
+        }
+        else
+        {
+            <PageHeader Class="taskflow-header" BackIcon="true" Ghost="false" OnBack="@NavigateToIndex">
+                <PageHeaderTitle>@_taskExecutionInstance.Name</PageHeaderTitle>
+                <PageHeaderSubtitle>This is a subtitle</PageHeaderSubtitle>
+                <PageHeaderExtra>
+                    <Button>Operation</Button>
+                    <Button>Operation</Button>
+                    <Button Type="@ButtonType.Primary">Primary</Button>
+                </PageHeaderExtra>
+                <PageHeaderContent>
+                    <Descriptions Size="small" Column="4">
+                        <DescriptionsItem Title="节点" Span="1"><NavLink href="@("/Nodes/~/" + @_taskExecutionInstance.NodeInfoId)">@(_taskExecutionInstance.NodeInfo?.Name??"名称加载失败")</NavLink></DescriptionsItem>
+                        <DescriptionsItem Title="状态" Span="1">@_taskExecutionInstance.Status.GetDisplayName()</DescriptionsItem>
+                        <DescriptionsItem Title="启动时间" Span="1">@_taskExecutionInstance.FireTimeUtc</DescriptionsItem>
+                        <DescriptionsItem Title="开始执行时间" Span="1">@_taskExecutionInstance.ExecutionBeginTimeUtc</DescriptionsItem>
+                        <DescriptionsItem Title="结束执行时间" Span="1">@_taskExecutionInstance.ExecutionEndTimeUtc</DescriptionsItem>
+                        <DescriptionsItem Title="消息" Span="1">@_taskExecutionInstance.Message</DescriptionsItem>
+                        <DescriptionsItem Title="触发源头" Span="1">@_taskExecutionInstance.TriggerSource</DescriptionsItem>
+                    </Descriptions>
+                </PageHeaderContent>
+            </PageHeader>
+            <div class="taskflow-main">
+                <TaskExecutionInstanceLogViewer TaskExecutionInstanceId="@TaskExecutionInstanceId" />
+            </div>
+        }
+
+    </div>
+}
+
+
+
+
+@code {
+    bool _isLoading;
+    bool _isIdInvalid;
+
+    TaskExecutionInstanceModel _taskExecutionInstance;
+
+    [Parameter] public string? TaskExecutionInstanceId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await QueryTaskExecutionInstanceAsync(TaskExecutionInstanceId);
+        await base.OnInitializedAsync();
+    }
+
+    void OnTaskLogViewDialogClosedAsync()
+    {
+        NavigateToIndex();
+    }
+
+    private void NavigateToIndex()
+    {
+        NavigationManager.NavigateTo($"/Tasks/Instances");
+    }
+
+    async Task QueryTaskExecutionInstanceAsync(string taskExecutionInstanceId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(taskExecutionInstanceId))
+            {
+                return;
+            }
+            var queryTaskExecutionInstanceRsp = await ApiService.QueryTaskExecutionInstancesAsync(new QueryTaskExecutionInstanceListParameters
+                {
+                    TaskExecutionInstanceIdList = [taskExecutionInstanceId]
+                });
+            if (queryTaskExecutionInstanceRsp.ErrorCode == 0 && queryTaskExecutionInstanceRsp.Result != null)
+            {
+                _taskExecutionInstance = queryTaskExecutionInstanceRsp.Result.FirstOrDefault();
+                if (_taskExecutionInstance != null)
+                {
+                    var queryNodeRsp = await ApiService.QueryNodeInfoAsync(_taskExecutionInstance.NodeInfoId);
+                    if (queryNodeRsp.ErrorCode == 0)
+                    {
+                        _taskExecutionInstance.NodeInfo = queryNodeRsp.Result;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+        finally
+        {
+            _isIdInvalid = _taskExecutionInstance == null;
+        }
+    }
+}

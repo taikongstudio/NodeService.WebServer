@@ -1,17 +1,10 @@
 ﻿@namespace NodeService.WebServer.UI.Pages.Tasks.Instances
 @page "/Tasks/Instances/"
-@page "/Tasks/Instances/{TaskExecutionInstanceId}/log"
 @inject ApiService ApiService
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
 @implements IDisposable
 <GridContent>
-    <CommonDialog Title="@_taskLogDialogTitle"
-                  @ref="_taskLogViewerDialog"
-                  Opened="@OnTaskLogViewDialogOpenedAsync"
-                  Closed="OnTaskLogViewDialogClosedAsync">
-        <TaskExecutionInstanceLogViewer TaskExecutionInstanceId="@_taskExecutionInstanceId"/>
-    </CommonDialog>
     <CommonDialog Closed="OnDialogClosed" @ref="_taskDefinitionSelectorDialog">
         <TaskDefinitionSelector @bind-SelectedItems="_selectedTaskDefinitionList" Mode="SelectionMode.Multiple"/>
     </CommonDialog>
@@ -116,7 +109,9 @@
                     <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
                 </Text>
             </PropertyColumn>
-            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name"></PropertyColumn>
+            <PropertyColumn Title="名称" Ellipsis Sortable Property="c => c.Name">
+                <NavLink href="@("/Tasks/Instances/" + context.Id)">@context.Name</NavLink>
+            </PropertyColumn>
             <PropertyColumn Title="触发源头" Sortable="true" Property="c => c.TriggerSource">
                 @switch (context.TriggerSource)
                 {
@@ -154,7 +149,7 @@
                                 break;
                         }
                         <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Eye" OnClick="() => ShowTaskLogViewerDialogAsync(context.Id)">
+                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Enter" OnClick="() => GotoTaskExecutionInstanceDetailsPage(context.Id)">
                             </Button>
                         </SpaceItem>
                         <SpaceItem>
@@ -200,7 +195,6 @@
 
     TaskExecutionStatus _selectedStatus;
 
-    [Parameter] public string? TaskExecutionInstanceId { get; set; }
 
     private string? _taskExecutionInstanceId { get; set; }
 
@@ -241,19 +235,6 @@
         _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.FireTimeUtc), "descend"));
         await QueryTaskExecutionInstanceListAsync();
         await base.OnInitializedAsync();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            if (!string.IsNullOrEmpty(TaskExecutionInstanceId))
-            {
-                await ShowTaskLogViewerDialogAsync(TaskExecutionInstanceId);
-            }
-        }
-
-        await base.OnAfterRenderAsync(firstRender);
     }
 
     void OnDatePickerChanged(DateRangeChangedEventArgs<DateTime?[]> e)
@@ -333,11 +314,6 @@
 
     async Task OnTableChange(QueryModel<TaskExecutionInstanceModel> query)
     {
-        if (!string.IsNullOrEmpty(TaskExecutionInstanceId))
-        {
-            return;
-        }
-
         _dataSource.QueryParameters.SortDescriptions.Clear();
         foreach (var sortModel in query.SortModel)
         {
@@ -352,35 +328,7 @@
         await _dataSource.RequestAsync();
     }
 
-    async Task ShowTaskLogViewerDialogAsync(string value)
-    {
-        try
-        {
-            var rsp = await ApiService.QueryTaskExecutionInstancesAsync(new QueryTaskExecutionInstanceListParameters
-            {
-                TaskExecutionInstanceIdList = [value]
-            });
-            if (rsp.ErrorCode == 0 && rsp.Result != null)
-            {
-                var taskExecutionInstance = rsp.Result.FirstOrDefault();
-                if (taskExecutionInstance != null)
-                {
-                    _taskLogDialogTitle = $"{taskExecutionInstance.Name}";
-                    _taskExecutionInstanceId = value;
-                    StateHasChanged();
-                    await _taskLogViewerDialog.ShowAsync();
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            await _notice.Open(new NotificationConfig
-            {
-                Message = "错误提示",
-                Description = ex.ToString()
-            });
-        }
-    }
+
 
     async Task ShowNodeSelectorDialogAsync()
     {
@@ -403,19 +351,9 @@
         return Task.CompletedTask;
     }
 
-    void OnTaskLogViewDialogClosedAsync()
+    void GotoTaskExecutionInstanceDetailsPage(string taskExecutionInstanceId)
     {
-        NavigateToDefault();
-    }
-
-    private void NavigateToDefault()
-    {
-        if (!string.IsNullOrEmpty(TaskExecutionInstanceId))
-        {
-            TaskExecutionInstanceId = null;
-            var uri = NavigationManager.BaseUri;
-            NavigationManager.NavigateTo($"{uri}Tasks/Instances");
-        }
+        NavigationManager.NavigateTo($"/Tasks/Instances/{taskExecutionInstanceId}");
     }
 
     public void Dispose()

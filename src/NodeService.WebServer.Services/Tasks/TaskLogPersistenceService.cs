@@ -58,7 +58,7 @@ public class TaskLogPersistenceService : BackgroundService
         {
             try
             {
-               await ProcessExpiredTaskExecutionInstanceAsync(cancellationToken);
+                await ProcessExpiredTaskExecutionInstanceAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -106,7 +106,7 @@ public class TaskLogPersistenceService : BackgroundService
             var applicationDbContext = taskLogRepo.DbContext as ApplicationDbContext;
             int deleteCount = await applicationDbContext.TaskLogStorageDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
             await applicationDbContext.TaskExecutionInstanceDbSet.Where(x => x.Id == taskExecutionInstance.Id)
-                .ExecuteUpdateAsync(x => x.SetProperty(x => x.LogEntriesSaveCount, 0),
+                .ExecuteUpdateAsync(x => x.SetProperty(x => x.LogEntriesSaveCount, -1),
                 cancellationToken);
             await _taskLogQueryService.DeleteAsync(taskExecutionInstance.Id);
         }

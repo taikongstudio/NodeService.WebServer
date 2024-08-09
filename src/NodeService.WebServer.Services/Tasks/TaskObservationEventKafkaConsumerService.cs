@@ -56,12 +56,13 @@ namespace NodeService.WebServer.Services.Tasks
                     SocketTimeoutMs = 60000,
                     EnableAutoCommit = false,// (the default)
                     EnableAutoOffsetStore = false,
-                    GroupId = nameof(TaskLogKafkaConsumerService),
+                    GroupId = nameof(TaskObservationEventKafkaConsumerService),
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
                     MaxPollIntervalMs = 600000,
                     HeartbeatIntervalMs = 20000,
                     SessionTimeoutMs = 70000,
+                    GroupInstanceId = nameof(TaskObservationEventKafkaConsumerService) + "GroupInstance",
                 };
                 using var consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build();
                 consumer.Subscribe([_kafkaOptions.TaskObservationEventTopic]);

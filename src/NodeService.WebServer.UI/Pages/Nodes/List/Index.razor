@@ -497,12 +497,12 @@
         await _dataSource.RequestAsync();
     }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         _typographyEllipsisConfig = new TypographyEllipsisConfig()
-        {
-            Rows = 1,
-        };
+            {
+                Rows = 1,
+            };
         _nodeDeviceTypes =
         [
             new EnumModel<NodeDeviceType>("网络设备", NodeDeviceType.NetworkDevice),
@@ -513,9 +513,10 @@
         _dataSource.QueryParameters.AreaTag = "*";
         _dataSource.QueryParameters.PageIndex = 1;
         _dataSource.QueryParameters.PageSize = 10;
-        _dataSource.Ready = QueryNodeSettingsAsync;
         _dataSource.ExceptionHandler = OnExepction;
-        base.OnInitialized();
+        await QueryNodeSettingsAsync();
+        await _dataSource.RequestAsync();
+        await base.OnInitializedAsync();
     }
 
     async Task OnExepction(Exception ex)
@@ -525,12 +526,6 @@
             Message = "加载失败",
             Description = ex.ToString()
         });
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await _dataSource.RequestAsync();
-        await base.OnInitializedAsync();
     }
 
 

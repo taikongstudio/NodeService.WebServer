@@ -55,9 +55,10 @@ namespace NodeService.WebServer.Services.ClientUpdate
                     SocketTimeoutMs = 60000,
                     EnableAutoCommit = false,// (the default)
                     EnableAutoOffsetStore = false,
-                    GroupId = nameof(TaskLogKafkaConsumerService),
+                    GroupId = nameof(ClientUpdateLogConsumeService),
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
+                    GroupInstanceId = nameof(ClientUpdateLogConsumeService) + "InstanceId",
                 };
                 using (_consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build())
                 {
@@ -66,14 +67,23 @@ namespace NodeService.WebServer.Services.ClientUpdate
                     {
                         try
                         {
-                            var consumeResult = _consumer.Consume(cancellationToken);
-                            var log = JsonSerializer.Deserialize<ClientUpdateLog>(consumeResult.Message.Value);
-                            if (log == null)
+                            var consumeResults = await _consumer.ConsumeAsync<string, string>(1000, TimeSpan.FromSeconds(3));
+                            if (consumeResults.IsDefaultOrEmpty)
                             {
                                 continue;
                             }
-                            _clientUpdateCounter.Enquque(log);
-                            _consumer.Commit(consumeResult);
+                            foreach (var consumeResult in consumeResults)
+                            {
+                                var log = JsonSerializer.Deserialize<ClientUpdateLog>(consumeResult.Message.Value);
+                                if (log == null)
+                                {
+                                    continue;
+                                }
+                                _clientUpdateCounter.Enquque(log);
+                            }
+
+                            _consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
+
                         }
                         catch (Exception ex)
                         {

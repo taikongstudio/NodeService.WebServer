@@ -76,7 +76,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                         {
                             var deliveryReport = await producer.ProduceAsync(_kafkaOptions.TaskDelayQueueMessageTopic, new Message<string, string>()
                             {
-                                Key = kafkaDelayMessage.Type,
+                                Key = kafkaDelayMessage.Id,
                                 Value = JsonSerializer.Serialize(kafkaDelayMessage)
                             }, cancellationToken);
 

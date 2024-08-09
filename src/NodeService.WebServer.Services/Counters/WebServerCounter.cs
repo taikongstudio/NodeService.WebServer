@@ -170,7 +170,7 @@ public class WebServerCounter
 
     public CounterLongValue KafkaDelayMessageHandledCount { get; set; } = new();
 
-    public CounterLongValue KafkaDelayMessageProducedCount { get; set; } = new();
+    public CounterLongValue KafkaDelayMessageProduceCount { get; set; } = new();
 
-    public CounterLongValue KafkaDelayMessageComitteddCount { get; set; } = new();
+    public CounterLongValue KafkaDelayMessageConsumeCount { get; set; } = new();
 }

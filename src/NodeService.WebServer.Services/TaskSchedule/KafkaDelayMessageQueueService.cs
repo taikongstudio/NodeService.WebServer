@@ -123,7 +123,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                                 partionOffsetValue.Offset.Value = consumeResult.Offset.Value;
                             }
 
-                            _webServerCounter.KafkaDelayMessageComitteddCount.Value += consumeContexts.Length;
+                            _webServerCounter.KafkaDelayMessageConsumeCount.Value += consumeContexts.Length;
                         }
                     }
                     catch (Exception ex)
@@ -205,7 +205,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                             cancellationToken);
                         if (deliveryReport.Status == PersistenceStatus.Persisted)
                         {
-                            _webServerCounter.KafkaDelayMessageProducedCount.Value++;
+                            _webServerCounter.KafkaDelayMessageProduceCount.Value++;
                             var partionOffsetValue = _webServerCounter.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, new PartitionOffsetValue());
                             partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
                             partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;

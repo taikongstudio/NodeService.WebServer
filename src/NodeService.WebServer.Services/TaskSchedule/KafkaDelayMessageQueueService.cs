@@ -40,8 +40,8 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 FetchMaxBytes = 1024 * 1024 * 10,
                 AutoOffsetReset = AutoOffsetReset.Earliest,
                 MaxPollIntervalMs = 60000 * 30,
-                HeartbeatIntervalMs = 20000,
-                SessionTimeoutMs = 60000 * 30,
+                HeartbeatIntervalMs = 12000,
+                SessionTimeoutMs = 45000,
                 GroupInstanceId = nameof(KafkaDelayMessageQueueService) + "GroupInstance",
             };
 
@@ -160,6 +160,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 }
                 else if (DateTime.UtcNow > delayMessage.ScheduleDateTime)
                 {
+
                     await _delayMessageBroadcast.BroadcastAsync(
                         delayMessage,
                         cancellationToken);

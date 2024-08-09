@@ -22,7 +22,6 @@ namespace NodeService.WebServer.Services.ClientUpdate
         private readonly WebServerCounter _webServerCounter;
         private readonly ClientUpdateCounter _clientUpdateCounter;
         private ConsumerConfig _consumerConfig;
-        private IConsumer<string, string> _consumer;
 
         public ClientUpdateLogConsumeService(
     ILogger<ClientUpdateLogConsumeService> logger,
@@ -59,40 +58,38 @@ namespace NodeService.WebServer.Services.ClientUpdate
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
                     MaxPollIntervalMs = 60000 * 30,
-                    HeartbeatIntervalMs = 20000,
-                    SessionTimeoutMs = 60000 * 30,
+                    HeartbeatIntervalMs = 12000,
+                    SessionTimeoutMs = 45000,
                     GroupInstanceId = nameof(ClientUpdateLogConsumeService) + "GroupInstance",
                 };
-                using (_consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build())
+                using var consumer = new ConsumerBuilder<string, string>(_consumerConfig).Build();
+                consumer.Subscribe([_kafkaOptions.ClientUpdateLogTopic]);
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    _consumer.Subscribe([_kafkaOptions.ClientUpdateLogTopic]);
-                    while (!cancellationToken.IsCancellationRequested)
+                    try
                     {
-                        try
+                        var consumeResults = await consumer.ConsumeAsync(10000, TimeSpan.FromSeconds(10));
+                        if (consumeResults.IsDefaultOrEmpty)
                         {
-                            var consumeResults = await _consumer.ConsumeAsync<string, string>(1000, TimeSpan.FromSeconds(3));
-                            if (consumeResults.IsDefaultOrEmpty)
+                            continue;
+                        }
+                        foreach (var consumeResult in consumeResults)
+                        {
+                            var log = JsonSerializer.Deserialize<ClientUpdateLog>(consumeResult.Message.Value);
+                            if (log == null)
                             {
                                 continue;
                             }
-                            foreach (var consumeResult in consumeResults)
-                            {
-                                var log = JsonSerializer.Deserialize<ClientUpdateLog>(consumeResult.Message.Value);
-                                if (log == null)
-                                {
-                                    continue;
-                                }
-                                _clientUpdateCounter.Enquque(log);
-                            }
-
-                            _consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
-
+                            _clientUpdateCounter.Enquque(log);
                         }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex.ToString());
-                            _exceptionCounter.AddOrUpdate(ex);
-                        }
+
+                        consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
+
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex.ToString());
+                        _exceptionCounter.AddOrUpdate(ex);
                     }
                 }
             }

@@ -152,9 +152,8 @@ namespace NodeService.WebServer.Services.Tasks
             FireTaskParameters fireTaskParameters,
             TaskDefinitionModel taskDefinition,
             TaskFlowTaskKey taskFlowTaskKey,
-            IEnumerable<StringEntry> nodeList,
-            IEnumerable<NodeInfoModel> nodeInfoList,
-            CancellationToken cancellationToken)
+            ImmutableArray<StringEntry> nodeList,
+            ImmutableArray<NodeInfoModel> nodeInfoList)
         {
             foreach (var nodeEntry in nodeList)
             {
@@ -195,7 +194,10 @@ namespace NodeService.WebServer.Services.Tasks
             TaskDefinitionModel taskDefinition,
             CancellationToken cancellationToken = default)
         {
-            return _nodeInfoQueryService.QueryNodeInfoListAsync(taskDefinition.NodeList.Select(static x => x.Value), true, cancellationToken);
+            return _nodeInfoQueryService.QueryNodeInfoListAsync(
+                taskDefinition.NodeList.Where(x => x.Value != null).Select(static x => x.Value!),
+                true,
+                cancellationToken);
         }
 
         static (NodeId NodeId, NodeInfoModel NodeInfo) FindNodeInfo(
@@ -214,11 +216,11 @@ namespace NodeService.WebServer.Services.Tasks
         }
 
         TaskExecutionInstanceModel BuildTaskExecutionInstance(
-    NodeInfoModel nodeInfo,
-    TaskDefinitionModel taskDefinition,
-    NodeSessionId nodeSessionId,
-    FireTaskParameters parameters,
-    TaskFlowTaskKey taskFlowTaskKey = default)
+                NodeInfoModel nodeInfo,
+                TaskDefinitionModel taskDefinition,
+                NodeSessionId nodeSessionId,
+                FireTaskParameters parameters,
+                TaskFlowTaskKey taskFlowTaskKey = default)
         {
             var nodeName = _nodeSessionService.GetNodeName(nodeSessionId) ?? nodeInfo.Name;
             var taskExecutionInstance = new TaskExecutionInstanceModel
@@ -332,9 +334,8 @@ namespace NodeService.WebServer.Services.Tasks
                             fireTaskParameters,
                             taskDefinition,
                             taskFlowTaskKey,
-                            nodeEntries,
-                            [nodeInfoFindResult.NodeInfo],
-                            cancellationToken);
+                            [.. nodeEntries],
+                            [nodeInfoFindResult.NodeInfo]);
 
                         foreach (var nodeEntry in nodeEntries)
                         {
@@ -384,9 +385,9 @@ namespace NodeService.WebServer.Services.Tasks
                         fireTaskParameters,
                         taskDefinition,
                         taskFlowTaskKey,
-                        taskDefinition.NodeList,
-                        nodeInfoList,
-                        cancellationToken);
+                        [.. taskDefinition.NodeList],
+                        [.. nodeInfoList]
+                        );
 
                     await AddTaskExecutionInstanceListAsync(
                         taskExecutionInstanceList.Select(static x => x.Value),
@@ -427,7 +428,9 @@ namespace NodeService.WebServer.Services.Tasks
                     await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
                     await taskActivationRecordRepo.AddAsync(taskActivationRecord, cancellationToken);
                 }
-                return new TaskActivationRecordResult(fireTaskParameters, taskActivationRecord, taskExecutionInstanceList.ToImmutableArray());
+                return new TaskActivationRecordResult(fireTaskParameters,
+                                                      taskActivationRecord,
+                                                      [.. taskExecutionInstanceList]);
             }
             catch (Exception ex)
             {

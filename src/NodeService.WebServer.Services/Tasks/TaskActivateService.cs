@@ -329,7 +329,6 @@ public class TaskActivateService : BackgroundService
             var taskExecutionInstance = kv.Value;
             TaskActivateServiceHelpers.ApplyEnvironmentVariables(taskDefinition);
             await SendTaskExecutionReportAsync(taskExecutionInstance.Id, TaskExecutionStatus.Triggered, string.Empty);
-
             await _delayMessageQueue.EnqueueAsync(new KafkaDelayMessage()
             {
                 Id = taskExecutionInstance.Id,

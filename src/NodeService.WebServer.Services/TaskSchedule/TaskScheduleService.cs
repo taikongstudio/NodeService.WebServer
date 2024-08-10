@@ -58,6 +58,7 @@ public partial  class TaskScheduleService : BackgroundService
             await ScheduleTaskDefinitionsAsync(cancellationToken);
             await ScheduleTaskFlowTemplatesAsync(cancellationToken);
             await ScheduleNodeHealthyCheckAsync(cancellationToken);
+            await ScheduleTaskObservationAsync(cancellationToken);
         }
 
         while (!cancellationToken.IsCancellationRequested)

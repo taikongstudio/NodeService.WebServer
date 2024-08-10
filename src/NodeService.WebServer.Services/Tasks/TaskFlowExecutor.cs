@@ -25,7 +25,7 @@ namespace NodeService.WebServer.Services.Tasks
         private ConfigurationQueryService _configurationQueryService;
         readonly IAsyncQueue<TaskObservationEvent> _eventQueue;
         const string SubType_ExecutionTimeLimit = "ExecutionTimeLimit";
-        const string SubTyoe_TaskFlowStageExecutionTimeLimit = "TaskFlowStageExecutionTimeLimit";
+        const string SubType_TaskFlowStageExecutionTimeLimit = "TaskFlowStageExecutionTimeLimit";
 
         public TaskFlowExecutor(
             ILogger<TaskFlowExecutor> logger,
@@ -66,7 +66,12 @@ namespace NodeService.WebServer.Services.Tasks
 
         ActionBlock<AsyncOperation<Func<Task>>> GetActionBlock(string id)
         {
-            var key = Math.DivRem(id[0], 10, out int result);
+            var ch = id[0];
+            if (id.StartsWith("TaskFlow_"))
+            {
+                ch = id[9];
+            }
+            var key = Math.DivRem(ch, 10, out int result);
             return _executionQueueDict[key];
         }
 
@@ -80,7 +85,7 @@ namespace NodeService.WebServer.Services.Tasks
                         kafkaDelayMessage.Handled = true;
                     }
                     break;
-                case SubTyoe_TaskFlowStageExecutionTimeLimit:
+                case SubType_TaskFlowStageExecutionTimeLimit:
                     {
                         var stageId = kafkaDelayMessage.Properties["StageId"];
                         await ProcessTaskFlowStageExecutionTimeLimitReachedAsync(
@@ -552,7 +557,7 @@ CancellationToken cancellationToken = default)
             var kafkaDelayMessage = new KafkaDelayMessage()
             {
                 Type = nameof(TaskFlowExecutor),
-                SubType = SubTyoe_TaskFlowStageExecutionTimeLimit,
+                SubType = SubType_TaskFlowStageExecutionTimeLimit,
                 Id = taskFlowExecutionInstanceId,
                 ScheduleDateTime = DateTime.UtcNow + TimeSpan.FromSeconds(executionTimeLimitSeconds),
                 CreateDateTime = DateTime.UtcNow,

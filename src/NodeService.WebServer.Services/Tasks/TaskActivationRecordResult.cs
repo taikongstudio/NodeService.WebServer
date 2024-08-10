@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.Tasks
 {
-    public record struct TaskActivationRecordResult
+    public readonly record struct TaskActivationRecordResult
     {
         public TaskActivationRecordResult(
             FireTaskParameters fireTaskParameters,

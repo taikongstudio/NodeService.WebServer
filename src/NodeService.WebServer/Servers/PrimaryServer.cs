@@ -73,13 +73,6 @@ namespace NodeService.WebServer.Servers
 
             app.UseStaticFiles();
 
-            app.UseFileServer(new FileServerOptions()
-            {
-                EnableDirectoryBrowsing = true,
-                RequestPath = "/NodeFileSystem/Nodes",
-                FileProvider = new NodeFileProvider(),
-            });
-
             app.UseRouting();
 
             app.UseCors("AllowAll");

@@ -273,11 +273,13 @@ public class TaskActivateService : BackgroundService
         {
             _exceptionCounter.AddOrUpdate(ex, delayMessage.Id);
             _logger.LogError($"{delayMessage.Id}:{ex}");
+            delayMessage.Handled = true;
         }
         catch (OperationCanceledException ex)
         {
             _exceptionCounter.AddOrUpdate(ex, delayMessage.Id);
             _logger.LogError($"{delayMessage.Id}:{ex}");
+            delayMessage.Handled = true;
         }
         catch (Exception ex)
         {

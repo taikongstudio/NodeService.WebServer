@@ -159,22 +159,19 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 }
                 else if (delayMessage.Duration > TimeSpan.Zero)
                 {
+                    await _delayMessageBroadcast.BroadcastAsync(
+                            delayMessage,
+                            cancellationToken);
+                    _webServerCounter.KafkaDelayMessageTickCount.Value++;
+                    if (delayMessage.Handled)
+                    {
+                        _webServerCounter.KafkaDelayMessageHandledCount.Value++;
+                        return;
+                    }
+                    produceMessage = true;
                     if (DateTime.UtcNow > delayMessage.CreateDateTime + delayMessage.Duration)
                     {
                         delayMessage.CreateDateTime = DateTime.UtcNow;
-                        await _delayMessageBroadcast.BroadcastAsync(
-                            delayMessage,
-                            cancellationToken);
-                        _webServerCounter.KafkaDelayMessageTickCount.Value++;
-                        if (delayMessage.Handled)
-                        {
-                            _webServerCounter.KafkaDelayMessageHandledCount.Value++;
-                            return;
-                        }
-                        if (DateTime.UtcNow < delayMessage.ScheduleDateTime)
-                        {
-                            produceMessage = true;
-                        }
                     }
                 }
                 else if (DateTime.UtcNow > delayMessage.ScheduleDateTime)

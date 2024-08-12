@@ -37,10 +37,13 @@ public partial class ConfigurationController
                     if (oldValue != null)
                     {
                         var oldVersionRecord = await _configurationQueryService.GetConfigurationCurrentVersionAsync(oldValue.FtpConfigId, cancellationToken);
-                        await _configurationQueryService.ReleaseConfigurationVersionReferenceAsync<FtpConfigModel>(
-                            oldValue.FtpConfigId,
-                            oldVersionRecord.Version,
-                            cancellationToken);
+                        if (oldVersionRecord != null)
+                        {
+                            await _configurationQueryService.ReleaseConfigurationVersionReferenceAsync<FtpConfigModel>(
+                                        oldValue.FtpConfigId,
+                                        oldVersionRecord.Version,
+                                        cancellationToken);
+                        }
                     }
                 }
                 break;

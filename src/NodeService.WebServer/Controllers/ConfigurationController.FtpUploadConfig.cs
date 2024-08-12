@@ -24,17 +24,24 @@ public partial class ConfigurationController
                 var newValue = result.NewValue as FtpUploadConfigModel;
                 var oldValue = result.OldValue as FtpUploadConfigModel;
                 var newVersionRecord = await _configurationQueryService.GetConfigurationCurrentVersionAsync(newValue.FtpConfigId, cancellationToken);
-                await _configurationQueryService.AddConfigurationVersionReferenceAsync<FtpConfigModel>(
-                    newValue.FtpConfigId,
-                    newVersionRecord.Version,
-                    cancellationToken);
+                if (newVersionRecord != null)
+                {
+                    await _configurationQueryService.AddConfigurationVersionReferenceAsync<FtpConfigModel>(
+                            newValue.FtpConfigId,
+                            newVersionRecord.Version,
+                            cancellationToken);
+                }
+
                 if (result.Type == ConfigurationChangedType.Update)
                 {
-                    var oldVersionRecord = await _configurationQueryService.GetConfigurationCurrentVersionAsync(oldValue.FtpConfigId, cancellationToken);
-                    await _configurationQueryService.ReleaseConfigurationVersionReferenceAsync<FtpConfigModel>(
-                        oldValue.FtpConfigId,
-                        oldVersionRecord.Version,
-                        cancellationToken);
+                    if (oldValue != null)
+                    {
+                        var oldVersionRecord = await _configurationQueryService.GetConfigurationCurrentVersionAsync(oldValue.FtpConfigId, cancellationToken);
+                        await _configurationQueryService.ReleaseConfigurationVersionReferenceAsync<FtpConfigModel>(
+                            oldValue.FtpConfigId,
+                            oldVersionRecord.Version,
+                            cancellationToken);
+                    }
                 }
                 break;
             case ConfigurationChangedType.Delete:

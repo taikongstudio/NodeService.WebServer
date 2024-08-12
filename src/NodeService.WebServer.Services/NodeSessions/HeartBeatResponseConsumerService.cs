@@ -278,7 +278,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var nodeInfo = hearBeatMessage.NodeInfo;
             var stopwatch = new Stopwatch();
             if (nodeInfo == null) return;
-            var hearBeatResponse = hearBeatMessage.GetMessage();
+            var heartBeatResponse = hearBeatMessage.GetMessage();
             var nodeName = _nodeSessionService.GetNodeName(hearBeatMessage.NodeSessionId);
             var nodeStatus = _nodeSessionService.GetNodeStatus(hearBeatMessage.NodeSessionId);
             nodeInfo.Status = nodeStatus;
@@ -296,14 +296,14 @@ public class HeartBeatResponseConsumerService : BackgroundService
             AnalysisPropsResult analysisPropsResult = default;
             var analysisPropsResultKey = $"NodePropsAnalysisResult:{nodeInfo.Id}";
 
-            if (hearBeatResponse != null)
+            if (heartBeatResponse != null)
             {
                 if (hearBeatMessage.NodeSessionId.NodeId == NodeId.Null)
                 {
-                    _logger.LogInformation($"invalid node id: {hearBeatResponse.Properties["RemoteIpAddress"]}");
+                    _logger.LogInformation($"invalid node id: {heartBeatResponse.Properties["RemoteIpAddress"]}");
                     return;
                 }
-                var propsList = hearBeatResponse.Properties.Select(NodePropertyEntry.From).ToList();
+                var propsList = heartBeatResponse.Properties.Select(NodePropertyEntry.From).ToList();
                 if (nodePropSnapshot == null)
                 {
                     nodePropSnapshot = new NodePropertySnapshotModel
@@ -333,20 +333,25 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 }
                 nodeInfo.Name = hearBeatMessage.HostName;
                 nodeInfo.Profile.UpdateTime = DateTime.ParseExact(
-                    hearBeatResponse.Properties[NodePropertyModel.LastUpdateDateTime_Key],
+                    heartBeatResponse.Properties[NodePropertyModel.LastUpdateDateTime_Key],
                     NodePropertyModel.DateTimeFormatString, DateTimeFormatInfo.InvariantInfo);
                 nodeInfo.Profile.ServerUpdateTimeUtc = hearBeatMessage.UtcRecieveDateTime;
                 nodeInfo.Profile.Name = nodeInfo.Name;
                 nodeInfo.Profile.NodeInfoId = nodeInfo.Id;
-                nodeInfo.Profile.ClientVersion = hearBeatResponse.Properties[NodePropertyModel.ClientVersion_Key];
-                nodeInfo.Profile.IpAddress = hearBeatResponse.Properties["RemoteIpAddress"];
+                nodeInfo.Profile.ClientVersion = heartBeatResponse.Properties[NodePropertyModel.ClientVersion_Key];
+                nodeInfo.Profile.IpAddress = heartBeatResponse.Properties["RemoteIpAddress"];
                 nodeInfo.Profile.InstallStatus = true;
-                nodeInfo.Profile.LoginName = hearBeatResponse.Properties[NodePropertyModel.Environment_UserName_Key];
-                if (hearBeatResponse.Properties.TryGetValue(NodePropertyModel.Domain_ComputerDomain_Key, out string computerDomain))
+                nodeInfo.Profile.LoginName = heartBeatResponse.Properties[NodePropertyModel.Environment_UserName_Key];
+                if (heartBeatResponse.Properties.TryGetValue(NodePropertyModel.Domain_ComputerDomain_Key, out string computerDomain))
                 {
                     nodeInfo.Profile.ComputerDomain = computerDomain;
                 }
                 nodeInfo.Profile.FactoryName = "Unknown";
+
+                await TryUpdateExtendInfo(
+                    nodeInfo,
+                    heartBeatResponse,
+                    cancellationToken);
 
                 var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(
                     nodeInfo.Id,
@@ -375,7 +380,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     _nodeSettings.MatchAreaTag(nodeInfo);
                 }
 
-                analysisPropsResult = ProcessProps(nodeInfo, hearBeatResponse);
+                analysisPropsResult = ProcessProps(nodeInfo, heartBeatResponse);
                 List<string> usageList = [];
                 if (analysisPropsResult.ServiceProcessListResult.Usages != null)
                 {
@@ -452,6 +457,47 @@ public class HeartBeatResponseConsumerService : BackgroundService
             var ellaspedTime = Stopwatch.GetElapsedTime(timeStamp);
 
         }
+    }
+
+    private async ValueTask TryUpdateExtendInfo(NodeInfoModel nodeInfo, HeartBeatResponse heartBeatResponse, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var nodeExtendInfo = await _nodeInfoQueryService.QueryExtendInfoAsync(nodeInfo, cancellationToken);
+            if (nodeExtendInfo != null)
+            {
+                if (heartBeatResponse.Properties.TryGetValue(NodePropertyModel.Device_Cpu_SerialNumbers_Key, out string cpuSerialNumbersString))
+                {
+                    if (cpuSerialNumbersString.Contains('['))
+                    {
+                        nodeExtendInfo.Value.CpuInfoList = JsonSerializer.Deserialize<List<CpuInfo>>(cpuSerialNumbersString);
+                    }
+                }
+
+                if (heartBeatResponse.Properties.TryGetValue(NodePropertyModel.Device_BIOS_SerialNumbers_Key, out string biosSerialNumbersString))
+                {
+                    if (biosSerialNumbersString.Contains('['))
+                    {
+                        nodeExtendInfo.Value.BIOSInfoList = JsonSerializer.Deserialize<List<BIOSInfo>>(biosSerialNumbersString);
+                    }
+                }
+
+                if (heartBeatResponse.Properties.TryGetValue(NodePropertyModel.Device_PhysicalMedia_SerialNumbers_Key, out string physicalMediaSerialNumbers))
+                {
+                    if (biosSerialNumbersString.Contains('['))
+                    {
+                        nodeExtendInfo.Value.PhysicalMediaInfoList = JsonSerializer.Deserialize<List<PhysicalMediaInfo>>(physicalMediaSerialNumbers);
+                    }
+                }
+                await _nodeInfoQueryService.UpdateExtendInfoAsync(nodeExtendInfo, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+            _exceptionCounter.AddOrUpdate(ex, nodeInfo.Id);
+        }
+
     }
 
     private AnalysisPropsResult ProcessProps(NodeInfoModel nodeInfo, HeartBeatResponse hearBeatResponse)

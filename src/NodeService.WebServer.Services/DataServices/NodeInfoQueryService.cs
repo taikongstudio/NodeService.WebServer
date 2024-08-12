@@ -8,6 +8,7 @@ using NodeService.WebServer.Services.NodeSessions;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System.Collections.Immutable;
+using System.Threading;
 
 namespace NodeService.WebServer.Services.DataServices
 {
@@ -17,6 +18,7 @@ namespace NodeService.WebServer.Services.DataServices
         readonly ApplicationRepositoryFactory<NodeProfileModel> _nodeProfileRepoFactory;
         readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
         readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropsRepoFactory;
+        readonly ApplicationRepositoryFactory<NodeExtendInfoModel> _nodeExtendInfoRepoFactory;
         readonly ObjectCache _objectCache;
         readonly IDbContextFactory<LimsDbContext> _limsDbContextFactory;
         readonly ILogger<NodeInfoQueryService> _logger;
@@ -31,6 +33,7 @@ namespace NodeService.WebServer.Services.DataServices
             ApplicationRepositoryFactory<NodeProfileModel> nodeProfileRepoFactory,
             ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
             ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertySnapshotRepositoryFactory,
+            ApplicationRepositoryFactory<NodeExtendInfoModel> nodeExtendInfoRepoFactory,
             ObjectCache objectCache,
             IDbContextFactory<LimsDbContext> limsDbContextFactory,
             INodeSessionService nodeSessionService)
@@ -43,6 +46,7 @@ namespace NodeService.WebServer.Services.DataServices
             _nodeProfileRepoFactory = nodeProfileRepoFactory;
             _propertyBagRepositoryFactory = propertyBagRepositoryFactory;
             _nodePropsRepoFactory = nodePropertySnapshotRepositoryFactory;
+            _nodeExtendInfoRepoFactory = nodeExtendInfoRepoFactory;
             _objectCache = objectCache;
             _limsDbContextFactory = limsDbContextFactory;
             _logger = logger;
@@ -237,6 +241,28 @@ namespace NodeService.WebServer.Services.DataServices
                 }
                 await _objectCache.SetEntityAsync(nodeInfo, cancellationToken);
             }
+        }
+
+        public async ValueTask<NodeExtendInfoModel> QueryExtendInfoAsync(NodeInfoModel nodeInfo, CancellationToken cancellationToken = default)
+        {
+            await using var nodeExtendInfoRepo = await _nodeExtendInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
+            var nodeExtendInfo = await nodeExtendInfoRepo.GetByIdAsync(nodeInfo.Id, cancellationToken);
+            if (nodeExtendInfo == null)
+            {
+                nodeExtendInfo = new NodeExtendInfoModel()
+                {
+                    Id = nodeInfo.Id,
+                    Name = nodeInfo.Name,
+                };
+                await nodeExtendInfoRepo.AddAsync(nodeExtendInfo, cancellationToken);
+            }
+            return nodeExtendInfo;
+        }
+
+        public async ValueTask UpdateExtendInfoAsync(NodeExtendInfoModel nodeExtendInfo, CancellationToken cancellationToken = default)
+        {
+            await using var nodeExtendInfoRepo = await _nodeExtendInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
+            await nodeExtendInfoRepo.UpdateAsync(nodeExtendInfo, cancellationToken);
         }
 
         public async ValueTask<List<NodeInfoModel>> QueryNodeInfoListAsync(

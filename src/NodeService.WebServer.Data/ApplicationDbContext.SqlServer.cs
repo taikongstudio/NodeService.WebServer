@@ -461,5 +461,30 @@ public partial class ApplicationDbContext
                         .SetValueComparer(GetEnumerableComparer<NodeUsageServiceProcessDetectionEntry>());
                 });
         });
+
+        modelBuilder.Entity<NodeExtendInfoModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+
+                    ownedNavigationBuilder.Property(x => x.CpuInfoList)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<CpuInfo>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<CpuInfo>());
+
+                    ownedNavigationBuilder.Property(x => x.BIOSInfoList)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<BIOSInfo>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<BIOSInfo>());
+
+                    ownedNavigationBuilder.Property(x => x.PhysicalMediaInfoList)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<PhysicalMediaInfo>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<PhysicalMediaInfo>());
+                });
+        });
     }
 }

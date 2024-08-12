@@ -190,14 +190,37 @@ namespace NodeService.WebServer.Services.Tasks
             }
         }
 
-        ValueTask<List<NodeInfoModel>> QueryNodeListAsync(
+        async ValueTask<List<NodeInfoModel>> QueryNodeListAsync(
             TaskDefinitionModel taskDefinition,
             CancellationToken cancellationToken = default)
         {
-            return _nodeInfoQueryService.QueryNodeInfoListAsync(
+            var nodeInfoList = await _nodeInfoQueryService.QueryNodeInfoListAsync(
                 taskDefinition.NodeList.Where(x => x.Value != null).Select(static x => x.Value!),
                 true,
                 cancellationToken);
+
+            foreach (var nodeInfo in nodeInfoList)
+            {
+                if (_nodeSessionService.GetNodeStatus(new NodeSessionId(nodeInfo.Id)) == NodeStatus.Online)
+                {
+                    continue;
+                }
+                var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(
+                    nodeInfo.Id,
+                    nodeInfo.Profile.LimsDataId,
+                    cancellationToken);
+                if (computerInfo == null)
+                {
+                    continue;
+                }
+                if (computerInfo.remark != null && (computerInfo.remark.Contains("废弃") || computerInfo.remark.Contains("报废")))
+                {
+                    nodeInfo.Status = NodeStatus.Scrapped;
+                }
+            }
+
+            nodeInfoList = nodeInfoList.Where(static x => x.Status != NodeStatus.Scrapped).ToList();
+            return nodeInfoList;
         }
 
         static (NodeId NodeId, NodeInfoModel NodeInfo) FindNodeInfo(
@@ -379,6 +402,8 @@ namespace NodeService.WebServer.Services.Tasks
                     }
 
                     var nodeInfoList = await QueryNodeListAsync(taskDefinition, cancellationToken);
+
+                    nodeInfoList = nodeInfoList.Where(static x => x.Status != NodeStatus.Scrapped).ToList();
 
                     BuildTaskExecutionInstanceList(
                         taskExecutionInstanceList,

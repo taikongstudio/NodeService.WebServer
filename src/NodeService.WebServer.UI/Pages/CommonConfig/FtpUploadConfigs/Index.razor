@@ -403,6 +403,9 @@
         try
         {
             _editFormVisible = true;
+
+            _editModel.Value.FtpConfigId = _selectedFtpConfigs.FirstOrDefault()?.Id;
+
             if (_editModel.DateTimeFilters == null)
             {
                 _editModel.DateTimeFilters = [];

@@ -217,24 +217,25 @@
                                 Sortable="true"
                                 Width="150"
                                 Property="c => c.Name">
-                    <Badge Style="margin-right:5px" Status="@GetStatusIcon(context.Status)">
-                        @if (context.DeviceType == NodeDeviceType.Computer)
-                        {
-                            <div>
-                                <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
-                                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">
-                                        <NavLink href="@("/Nodes/~/" + context.Id)">@context.Name</NavLink>
+                        <GridRow Wrap="false">
+                            <GridCol Flex="@("12px")"><Badge Status="@(context.Status.GetBadgeStatus())"></Badge></GridCol>
+                            <GridCol Flex=@("auto")>
+                                @if (context.DeviceType == NodeDeviceType.Computer)
+                                {
+                                    <div>
+                                        <Text Copyable Ellipsis><NavLink href="@("/Nodes/~/" + context.Id)"> @(context.Name ?? "名称加载失败")</NavLink></Text>
                                     </div>
-                                </Text>
-                            </div>
-                        }
-                        else
-                        {
-                            <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link" OnClick="() => ShowEditNodeDeviceFormAsync(context)">
-                                @context.Name
-                            </Button>
-                        }
-                    </Badge>
+                                }
+                                else
+                                {
+                                    <Button Style="padding-left:0px;padding-right:0px;" Type="@ButtonType.Link" OnClick="() => ShowEditNodeDeviceFormAsync(context)">
+                                        @context.Name
+                                    </Button>
+                                }
+
+                            
+                            </GridCol>
+                        </GridRow>
 
                 </PropertyColumn>
                 <PropertyColumn Title="LIMS关联性" Sortable="true" Width="100" Property="c => c.Profile.FoundInLims">

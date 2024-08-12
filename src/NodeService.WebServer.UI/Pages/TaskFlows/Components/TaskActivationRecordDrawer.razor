@@ -44,7 +44,10 @@
                 }
                 else
                 {
-                    <Badge Style="margin-right:5px" Status="@(GetNodeStatus(context.NodeInfoId).GetBadgeStatus())"><Text Copyable Ellipsis><NavLink href="@("/Nodes/~/" + context.NodeInfoId)"> @(_nodeInfoList?.FirstOrDefault(x => x.Id == context.NodeInfoId)?.Name ?? "名称加载失败")</NavLink></Text></Badge>
+                    <GridRow>
+                        <GridCol Flex="@("12px")"><Badge  Status="@(GetNodeStatus(context.NodeInfoId).GetBadgeStatus())"></Badge></GridCol>
+                        <GridCol Flex=@("auto")><Text Copyable Ellipsis><NavLink href="@("/Nodes/~/" + context.NodeInfoId)"> @(_nodeInfoList?.FirstOrDefault(x => x.Id == context.NodeInfoId)?.Name ?? "名称加载失败")</NavLink></Text></GridCol>
+                    </GridRow>
                 }
 
             </PropertyColumn>

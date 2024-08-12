@@ -123,6 +123,7 @@ namespace NodeService.WebServer.Services.ClientUpdate
                 var value = _webServerCounter.KafkaLogProducePartitionOffsetDictionary.GetOrAdd(report.Partition.Value, PartitionOffsetValue.CreateNew);
                 value.Partition.Value = report.Partition.Value;
                 value.Offset.Value = report.Offset.Value;
+                value.Message = report.Value;
             }
         }
     }

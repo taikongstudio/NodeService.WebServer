@@ -86,6 +86,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                                 var partionOffsetValue = _webServerCounter.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, PartitionOffsetValue.CreateNew);
                                 partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
                                 partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;
+                                partionOffsetValue.Message = deliveryReport.Message.Value;
                             }
                         }
 
@@ -121,6 +122,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                                 var partionOffsetValue = _webServerCounter.KafkaDelayMessageConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, PartitionOffsetValue.CreateNew);
                                 partionOffsetValue.Partition.Value = consumeResult.Partition.Value;
                                 partionOffsetValue.Offset.Value = consumeResult.Offset.Value;
+                                partionOffsetValue.Message = consumeResult.Message.Value;
                             }
 
                             _webServerCounter.KafkaDelayMessageConsumeCount.Value += consumeContexts.Length;
@@ -209,6 +211,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                             var partionOffsetValue = _webServerCounter.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, PartitionOffsetValue.CreateNew);
                             partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
                             partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;
+                            partionOffsetValue.Message = deliveryReport.Message.Value;
                         }
                     }
                     catch (ProduceException<string, string> ex)

@@ -22,6 +22,8 @@ public class PartitionOffsetValue
 
     public CounterLongValue Offset { get; set; } = new CounterLongValue();
 
+    public string Message { get; set; }
+
     public override string ToString()
     {
         return $"Partition {Partition.Value} @ {Offset.Value}";

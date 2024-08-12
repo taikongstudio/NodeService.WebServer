@@ -187,6 +187,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                         var partionOffsetValue = _webServerCounter.TaskExecutionReportConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, PartitionOffsetValue.CreateNew);
                         partionOffsetValue.Partition.Value = consumeResult.Partition.Value;
                         partionOffsetValue.Offset.Value = consumeResult.Offset.Value;
+                        partionOffsetValue.Message = consumeResult.Message.Value.ToString();
                     }
                     elapsed = Stopwatch.GetElapsedTime(timeStamp);
 

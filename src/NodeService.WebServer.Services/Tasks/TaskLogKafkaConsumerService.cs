@@ -184,9 +184,10 @@ namespace NodeService.WebServer.Services.Tasks
 
                         foreach (var item in contexts)
                         {
-                            var value = _webServerCounter.KafkaLogConsumePartitionOffsetDictionary.GetOrAdd(item.Result.Partition.Value, PartitionOffsetValue.CreateNew);
-                            value.Partition.Value = item.Result.Partition.Value;
-                            value.Offset.Value = item.Result.Offset.Value;
+                            var partionOffsetValue = _webServerCounter.KafkaLogConsumePartitionOffsetDictionary.GetOrAdd(item.Result.Partition.Value, PartitionOffsetValue.CreateNew);
+                            partionOffsetValue.Partition.Value = item.Result.Partition.Value;
+                            partionOffsetValue.Offset.Value = item.Result.Offset.Value;
+                            partionOffsetValue.Message = item.Result.Message.Value;
                         }
 
 

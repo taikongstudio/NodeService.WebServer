@@ -135,6 +135,7 @@ namespace NodeService.WebServer.Services.Tasks
                 var partionOffsetValue = _webServerCounter.TaskExecutionReportProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, PartitionOffsetValue.CreateNew);
                 partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
                 partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;
+                partionOffsetValue.Message = deliveryReport.Value;
             }
             else if (deliveryReport.Status == PersistenceStatus.NotPersisted)
             {

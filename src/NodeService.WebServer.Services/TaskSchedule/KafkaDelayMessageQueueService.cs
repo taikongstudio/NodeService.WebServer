@@ -188,6 +188,9 @@ namespace NodeService.WebServer.Services.TaskSchedule
                         _webServerCounter.KafkaDelayMessageHandledCount.Value++;
                         return;
                     }
+                }
+                else
+                {
                     produceMessage = true;
                 }
                 if (produceMessage)

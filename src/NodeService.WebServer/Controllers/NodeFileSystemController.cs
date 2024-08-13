@@ -139,9 +139,9 @@ public class NodeFileSystemController : Controller
             foreach (var nodeFileSyncRequest in nodeFileSyncRequests)
             {
                 var fileInfoCache = await _fileInfoCacheService.GetFileInfoCacheAsync(
-    nodeFileSyncRequest.ConfigurationId,
-    nodeFileSyncRequest.StoragePath,
-    cancellationToken);
+                    nodeFileSyncRequest.ConfigurationId,
+                    nodeFileSyncRequest.StoragePath,
+                    cancellationToken);
                 if (fileInfoCache == null)
                 {
                     bulkQueryFileInfoCacheResult.Items.Add(new QueryFileInfoCacheResult()

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace NodeService.WebServerTools.Services;
@@ -24,21 +25,24 @@ internal class ClearConfigService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        var dbContext = _dbContextFactory.CreateDbContext();
-        var ftpUploadConfigs = await dbContext.TaskDefinitionDbSet.ToListAsync();
-
-        foreach (var item in ftpUploadConfigs)
+        try
         {
-            if (item.Value.PenddingLimitTimeSeconds == 0)
-            {
-                item.Value.PenddingLimitTimeSeconds = 600;
-            }
-            if (item.Value.ExecutionLimitTimeSeconds == 0)
-            {
-                item.Value.PenddingLimitTimeSeconds = 600;
-            }
+            var dbContext = _dbContextFactory.CreateDbContext();
+
+            var ndoeServiceUpdateServiceConfig = File.OpenRead("D:\\format\\NodeService.UpdateService");
+            var ndoeServiceWindowsServiceConfig = File.OpenRead("D:\\format\\NodeService.WindowsService");
+            var ndoeServiceWorkerServiceConfig = File.OpenRead("D:\\format\\NodeService.WorkerService");
+            var ndoeServiceServiceHostConfig = File.OpenRead("D:\\format\\NodeService.ServiceHost");
+            dbContext.ClientUpdateConfigurationDbSet.Add(JsonSerializer.Deserialize<ClientUpdateConfigModel>(ndoeServiceUpdateServiceConfig));
+            dbContext.ClientUpdateConfigurationDbSet.Add(JsonSerializer.Deserialize<ClientUpdateConfigModel>(ndoeServiceWindowsServiceConfig));
+            dbContext.ClientUpdateConfigurationDbSet.Add(JsonSerializer.Deserialize<ClientUpdateConfigModel>(ndoeServiceWorkerServiceConfig));
+            dbContext.ClientUpdateConfigurationDbSet.Add(JsonSerializer.Deserialize<ClientUpdateConfigModel>(ndoeServiceServiceHostConfig));
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+
         }
 
-        var count1 = await dbContext.SaveChangesAsync();
     }
 }

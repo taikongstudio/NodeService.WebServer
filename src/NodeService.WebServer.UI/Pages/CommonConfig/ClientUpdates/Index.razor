@@ -124,7 +124,7 @@
     Form<ClientUpdateConfigModel> _editForm;
     ClientUpdateConfigModel _editModel = new();
     IEnumerable<PackageConfigModel> _selectedPackageConfigs;
-    IEnumerable<NodeInfoModel> _selectedNodes;
+    IEnumerable<NodeInfoModel> _selectedNodes = [];
 
     bool _loading;
     RoutedPaginationDataSource<ClientUpdateConfigModel, PaginationQueryParameters> _dataSource;

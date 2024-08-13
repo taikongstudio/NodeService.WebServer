@@ -19,7 +19,7 @@
     <FormItem Label="上位机报废检测间隔（分钟）" Help="离线时间超出此时间会被提示修改上位机状态">
         <AntDesign.InputNumber @bind-Value="@context.ScrappMinutes" />
     </FormItem>
-    <FormItem Label="上位机台账管理网址">
+    <FormItem Required Label="上位机台账管理网址">
         <AntDesign.Input @bind-Value="@context.MachineManagementUrl" />
     </FormItem>
     <FormItem Label="检测上位机服务与进程">
@@ -28,7 +28,7 @@
     <FormItem Label="通知时间">
         <TimeOnlyTable ItemsSource="@context.DailyTimes" />
     </FormItem>
-    <FormItem Required Label="主题">
+    <FormItem Required Label="主题" >
         <Input @bind-Value="@context.Subject"/>
         <div>
             插入占位符:

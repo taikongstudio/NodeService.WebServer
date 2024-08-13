@@ -74,7 +74,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         }
     }
 
-    private async Task CheckNodeHealthyAsync(CancellationToken cancellationToken = default)
+    private async ValueTask CheckNodeHealthyAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -91,7 +91,7 @@ public partial class NodeHealthyCheckService : BackgroundService
             var nodeInfoList = await nodeInfoRepo.ListAsync(new NodeInfoSpecification(
                     AreaTags.Any,
                     NodeStatus.All,
-                    NodeDeviceType.All,
+                    NodeDeviceType.Computer,
                     []),
                 cancellationToken);
             foreach (var nodeInfo in nodeInfoList)

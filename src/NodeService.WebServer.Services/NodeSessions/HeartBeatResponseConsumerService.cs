@@ -177,7 +177,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             await Parallel.ForEachAsync(array, new ParallelOptions()
             {
                 CancellationToken = cancellationToken,
-                MaxDegreeOfParallelism = 4
+                MaxDegreeOfParallelism = 8
             }, ProcessHeartBeatMessageAsync);
 
             stopwatch.Start();

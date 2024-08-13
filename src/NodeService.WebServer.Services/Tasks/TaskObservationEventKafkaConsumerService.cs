@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataServices;
+using NodeService.WebServer.Services.TaskSchedule;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System.Collections.Immutable;
@@ -56,7 +56,7 @@ namespace NodeService.WebServer.Services.Tasks
                     SocketTimeoutMs = 60000,
                     EnableAutoCommit = false,// (the default)
                     EnableAutoOffsetStore = false,
-                    GroupId = nameof(TaskObservationEventKafkaConsumerService),
+                    GroupId = Debugger.IsAttached ? $"{nameof(TaskObservationEventKafkaConsumerService)}_Debug" : nameof(TaskObservationEventKafkaConsumerService),
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
                     MaxPollIntervalMs = 60000 * 30,

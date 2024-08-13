@@ -1,16 +1,9 @@
 ﻿using Confluent.Kafka;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.Tasks;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Confluent.Kafka.ConfigPropertyNames;
+using NodeService.WebServer.Services.TaskSchedule;
 
 namespace NodeService.WebServer.Services.ClientUpdate
 {
@@ -54,7 +47,7 @@ namespace NodeService.WebServer.Services.ClientUpdate
                     SocketTimeoutMs = 60000,
                     EnableAutoCommit = false,// (the default)
                     EnableAutoOffsetStore = false,
-                    GroupId = nameof(ClientUpdateLogConsumeService),
+                    GroupId = Debugger.IsAttached ? $"{nameof(ClientUpdateLogConsumeService)}_Debug" : nameof(ClientUpdateLogConsumeService),
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
                     MaxPollIntervalMs = 60000 * 30,

@@ -75,7 +75,7 @@ namespace NodeService.WebServer.Services.Tasks
                     SocketTimeoutMs = 60000,
                     EnableAutoCommit = false,// (the default)
                     EnableAutoOffsetStore = false,
-                    GroupId = nameof(TaskLogKafkaConsumerService),
+                    GroupId = Debugger.IsAttached ? $"{nameof(TaskLogKafkaConsumerService)}_Debug" : nameof(TaskLogKafkaConsumerService),
                     FetchMaxBytes = 1024 * 1024 * 10,
                     AutoOffsetReset = AutoOffsetReset.Earliest,
                     MaxPollIntervalMs = 60000 * 30,

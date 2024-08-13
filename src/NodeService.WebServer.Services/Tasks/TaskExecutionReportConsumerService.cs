@@ -2,12 +2,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataServices;
 using NodeService.WebServer.Services.TaskSchedule;
 using System.Buffers;
 using System.Collections.Immutable;
@@ -146,7 +144,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                 SocketTimeoutMs = 60000,
                 EnableAutoCommit = false,// (the default)
                 EnableAutoOffsetStore = false,
-                GroupId = nameof(TaskExecutionReportConsumerService),
+                GroupId = Debugger.IsAttached ? $"{nameof(TaskExecutionReportConsumerService)}_Debug" : nameof(TaskExecutionReportConsumerService),
                 FetchMaxBytes = 1024 * 1024 * 10,
                 AutoOffsetReset = AutoOffsetReset.Earliest,
                 MaxPollIntervalMs = 60000 * 30,

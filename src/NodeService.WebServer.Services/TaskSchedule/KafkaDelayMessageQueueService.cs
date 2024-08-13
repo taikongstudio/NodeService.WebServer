@@ -38,7 +38,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                 SocketTimeoutMs = 60000,
                 EnableAutoCommit = false,// (the default)
                 EnableAutoOffsetStore = false,
-                GroupId = nameof(KafkaDelayMessageQueueService),
+                GroupId = Debugger.IsAttached ? $"{nameof(KafkaDelayMessageQueueService)}_Debug": nameof(KafkaDelayMessageQueueService),
                 FetchMaxBytes = 1024 * 1024 * 10,
                 AutoOffsetReset = AutoOffsetReset.Earliest,
                 MaxPollIntervalMs = 60000 * 30,

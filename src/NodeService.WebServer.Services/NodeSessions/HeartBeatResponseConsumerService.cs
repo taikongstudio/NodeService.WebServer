@@ -106,17 +106,19 @@ public class HeartBeatResponseConsumerService : BackgroundService
         try
         {
             await using var nodeRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
-            var nodeList = await nodeRepo.ListAsync(
+            var nodeInfoList = await nodeRepo.ListAsync(
                 new NodeInfoSpecification(
                     AreaTags.Any,
-                    NodeStatus.Online,
+                    NodeStatus.All,
                     NodeDeviceType.All),
                 cancellationToken);
-            foreach (var node in nodeList)
+            foreach (var nodeInfo in nodeInfoList)
             {
-                node.Status = NodeStatus.Offline;
+                nodeInfo.Status = NodeStatus.Offline;
+                await _nodeInfoQueryService.QueryExtendInfoAsync(nodeInfo, cancellationToken);
+                await SyncPropertiesFromLimsDbAsync(nodeInfo, cancellationToken);
             }
-            foreach (var array in nodeList.Chunk(40))
+            foreach (var array in nodeInfoList.Chunk(40))
             {
                 await nodeRepo.UpdateRangeAsync(array, cancellationToken);
             }
@@ -353,27 +355,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     heartBeatResponse,
                     cancellationToken);
 
-                var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(
-                    nodeInfo.Id,
-                    nodeInfo.Profile.LimsDataId,
-                    cancellationToken);
-
-                if (computerInfo == null)
-                {
-                    nodeInfo.Profile.FoundInLims = false;
-                }
-                else
-                {
-                    if (nodeInfo.Profile.LimsDataId == null)
-                    {
-                        nodeInfo.Profile.LimsDataId = computerInfo.id;
-                    }
-                    nodeInfo.Profile.FoundInLims = true;
-                    nodeInfo.Profile.LabArea = computerInfo.LabArea?.name;
-                    nodeInfo.Profile.LabName = computerInfo.LabInfo?.name;
-                    nodeInfo.Profile.Manager = computerInfo.manager_name;
-                }
-
+                await SyncPropertiesFromLimsDbAsync(nodeInfo, cancellationToken);
 
                 if (!string.IsNullOrEmpty(nodeInfo.Profile.IpAddress))
                 {
@@ -456,6 +438,32 @@ public class HeartBeatResponseConsumerService : BackgroundService
         {
             var ellaspedTime = Stopwatch.GetElapsedTime(timeStamp);
 
+        }
+    }
+
+    async ValueTask SyncPropertiesFromLimsDbAsync(
+        NodeInfoModel nodeInfo,
+        CancellationToken cancellationToken = default)
+    {
+        var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(
+            nodeInfo.Id,
+            nodeInfo.Profile.LimsDataId,
+            cancellationToken);
+
+        if (computerInfo == null)
+        {
+            nodeInfo.Profile.FoundInLims = false;
+        }
+        else
+        {
+            if (nodeInfo.Profile.LimsDataId == null)
+            {
+                nodeInfo.Profile.LimsDataId = computerInfo.id;
+            }
+            nodeInfo.Profile.FoundInLims = true;
+            nodeInfo.Profile.LabArea = computerInfo.LabArea?.name;
+            nodeInfo.Profile.LabName = computerInfo.LabInfo?.name;
+            nodeInfo.Profile.Manager = computerInfo.manager_name;
         }
     }
 

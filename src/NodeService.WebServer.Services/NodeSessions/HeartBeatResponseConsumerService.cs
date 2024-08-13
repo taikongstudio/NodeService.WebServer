@@ -293,8 +293,13 @@ public class HeartBeatResponseConsumerService : BackgroundService
             nodeInfo.Status = nodeStatus;
 
             stopwatch.Start();
+            var key = $"{nameof(HeartBeatResponseConsumerService)}/NodePropertySnapshot:{nodeInfo.Id}";
+            if (!_memoryCache.TryGetValue<NodePropertySnapshotModel>(key, out var nodePropSnapshot) || nodePropSnapshot == null)
+            {
+                nodePropSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfo.Id, true, cancellationToken);
+                _memoryCache.Set(key, nodePropSnapshot);
+            }
 
-            var nodePropSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfo.Id, true, cancellationToken);
 
             stopwatch.Stop();
 
@@ -330,6 +335,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                                                                           true,
                                                                           cancellationToken);
                     nodeInfo.LastNodePropertySnapshotId = nodePropSnapshot.Id;
+                    _memoryCache.Set(key, nodePropSnapshot);
                 }
                 else
                 {

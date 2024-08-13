@@ -210,7 +210,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     async ValueTask SaveNodeUsageConfigurationListAsync(CancellationToken cancellationToken = default)
     {
-        await Parallel.ForEachAsync(_nodeUsageConfigList, new ParallelOptions()
+        await Parallel.ForEachAsync(_nodeUsageConfigList.Where(static x => x.HasChanged).ToList(), new ParallelOptions()
         {
             CancellationToken = cancellationToken,
             MaxDegreeOfParallelism = 4
@@ -605,6 +605,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     else if (detectedCount == 0 && nodeUsageConfiguration.Value.DynamicDetect)
                     {
                         nodeUsageConfiguration.Value.Nodes.RemoveAll(x => x.NodeInfoId == nodeInfo.Id);
+                        nodeUsageConfiguration.Value.Nodes = [.. nodeUsageConfiguration.Value.Nodes];
+                        nodeUsageConfiguration.HasChanged = true;
                     }
                 }
                 analysisProcessListResult.Usages = usages;
@@ -682,6 +684,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     {
                         nodeUsageConfiguration.Value.Nodes.RemoveAll(x => x.NodeInfoId == nodeInfo.Id);
                         nodeUsageConfiguration.Value.Nodes = [.. nodeUsageConfiguration.Value.Nodes];
+                        nodeUsageConfiguration.HasChanged = true;
                     }
                 }
                 analisisProcessListResult.Usages = usages;

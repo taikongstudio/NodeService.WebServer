@@ -210,10 +210,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     async ValueTask SaveNodeUsageConfigurationListAsync(CancellationToken cancellationToken = default)
     {
-        await Parallel.ForEachAsync(_nodeUsageConfigList.Where(static x => x.HasChanged).ToList(), new ParallelOptions()
+        await Parallel.ForEachAsync(_nodeUsageConfigList.Where(static x => x.HasChanged).ToArray(), new ParallelOptions()
         {
             CancellationToken = cancellationToken,
-            MaxDegreeOfParallelism = 4
+            MaxDegreeOfParallelism = 8
         }, SaveNodeUsageConfigurationAsync);
     }
 
@@ -294,7 +294,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             stopwatch.Start();
 
-            var nodePropSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfo.Id, false, cancellationToken);
+            var nodePropSnapshot = await _nodeInfoQueryService.QueryNodePropsAsync(nodeInfo.Id, true, cancellationToken);
 
             stopwatch.Stop();
 

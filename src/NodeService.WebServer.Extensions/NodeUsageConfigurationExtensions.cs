@@ -108,6 +108,7 @@ namespace NodeService.WebServer.Extensions
                         NodeInfoId = nodeInfo.Id
                     };
                     nodeUsageConfiguration.Nodes.Add(nodeUsageInfo);
+                    nodeUsageConfiguration.HasChanged = true;
                 }
             }
         }

@@ -299,59 +299,81 @@ public partial class NodeHealthyCheckService : BackgroundService
             if (notificationConfig == null || !notificationConfig.IsEnabled) continue;
             notificationConfigList.Add(notificationConfig);
         }
-
-        foreach (var group in resultList.GroupBy(static x => x.NodeInfo.Profile.FactoryName ?? AreaTags.Any))
+        var dataDict = resultList.GroupBy(static x => x.NodeInfo.Profile.FactoryName ?? AreaTags.Any).ToDictionary(static x => x.Key);
+        foreach (var notificationConfig in notificationConfigList)
         {
-            var factoryCode = group.Key;
-            string factoryName = "全部区域";
-            var areaEntry = _nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == factoryCode);
-            if (areaEntry != null)
+            if (notificationConfig.Value.FactoryName == AreaTags.Any || notificationConfig.Value.FactoryName == null)
             {
-                factoryName = areaEntry.Name ?? "全部区域";
+                await SendEmailAsync(
+                    resultList,
+                    "全部区域",
+                    notificationConfig,
+                    cancellationToken);
             }
-            foreach (var notificationConfig in notificationConfigList)
+            else
             {
-                if (notificationConfig.Value.FactoryName != AreaTags.Any && notificationConfig.Value.FactoryName != factoryCode)
+                if (!dataDict.TryGetValue(notificationConfig.Value.FactoryName, out var group) || group == null || !group.Any())
                 {
                     continue;
                 }
-                var subject = _nodeHealthyCheckConfiguration.Subject
-                    .Replace("$(FactoryName)", factoryName)
-                    .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
-
-                List<XlsxAttachment> attachments = [];
-                foreach (var testInfoGroup in group.GroupBy(static x => x.NodeInfo.Profile.TestInfo ?? string.Empty))
+                string factoryName = group.Key;
+                var areaEntry = _nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == group.Key);
+                if (areaEntry != null && areaEntry.Name != null)
                 {
-                    var bizType = testInfoGroup.Key;
-                    if (string.IsNullOrEmpty(bizType))
-                    {
-                        bizType = "未分类";
-                    }
-                    if (!TryWriteToExcel([.. testInfoGroup], out var stream) || stream == null)
-                    {
-                        continue;
-                    }
-                    var attachmentName = _nodeHealthyCheckConfiguration.AttachmentSubject
-                        .Replace("$(FactoryName)", factoryName)
-                        .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat))
-                        .Replace("$(BusinessType)", bizType);
-                    var fileName = $"{attachmentName}.xlsx";
-                    var emailAttachment = new XlsxAttachment(
-                        fileName,
-                        stream);
-                    attachments.Add(emailAttachment);
+                    factoryName = areaEntry.Name;
                 }
-                var content = _nodeHealthyCheckConfiguration.Content.Replace("$(FactoryName)", factoryName)
-                        .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
-                var emailContent = new EmailContent(
-                    subject,
-                    content,
-                    [.. attachments]);
-                await _notificationQueue.EnqueueAsync(
-                    new NotificationMessage(emailContent, notificationConfig.Value),
+                await SendEmailAsync(
+                    group,
+                    factoryName,
+                    notificationConfig,
                     cancellationToken);
             }
+
         }
+
+    }
+
+    async ValueTask SendEmailAsync(
+        IEnumerable<NodeHeathyCheckResult> results,
+        string factoryName,
+        NotificationConfigModel notificationConfig,
+        CancellationToken cancellationToken)
+    {
+        var subject = _nodeHealthyCheckConfiguration.Subject
+            .Replace("$(FactoryName)", factoryName)
+            .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
+
+        List<XlsxAttachment> attachments = [];
+        foreach (var testInfoGroup in results.GroupBy(static x => x.NodeInfo.Profile.TestInfo ?? string.Empty))
+        {
+            var bizType = testInfoGroup.Key;
+            if (string.IsNullOrEmpty(bizType))
+            {
+                bizType = "未分类";
+            }
+            if (!TryWriteToExcel([.. testInfoGroup.OrderByDescending(static x => x.NodeInfo.Profile.ServerUpdateTimeUtc)], out var stream) || stream == null)
+            {
+                continue;
+            }
+            var attachmentName = _nodeHealthyCheckConfiguration.AttachmentSubject
+                .Replace("$(FactoryName)", factoryName)
+                .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat))
+                .Replace("$(BusinessType)", bizType);
+            var fileName = $"{attachmentName}.xlsx";
+            var emailAttachment = new XlsxAttachment(
+                fileName,
+                stream);
+            attachments.Add(emailAttachment);
+        }
+        var content = _nodeHealthyCheckConfiguration.Content.Replace("$(FactoryName)", factoryName)
+                .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
+        var emailContent = new EmailContent(
+            subject,
+            content,
+            [.. attachments]);
+        await _notificationQueue.EnqueueAsync(
+            new NotificationMessage(emailContent, notificationConfig.Value),
+            cancellationToken);
     }
 
     private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)

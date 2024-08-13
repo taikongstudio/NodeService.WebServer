@@ -7,6 +7,7 @@ using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataServices;
 using System.Globalization;
+using System.Threading;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -180,7 +181,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             }, ProcessHeartBeatMessageAsync);
 
             stopwatch.Start();
-            await SaveNodeUsageConfigurationAsync(cancellationToken);
+            await SaveNodeUsageConfigurationListAsync(cancellationToken);
             await _nodeInfoQueryService.UpdateNodeInfoListAsync(nodeList, cancellationToken);
             _webServerCounter.HeartBeatUpdateNodeInfoListTimeSpan.Value += stopwatch.Elapsed;
             stopwatch.Stop();
@@ -207,46 +208,53 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    async ValueTask SaveNodeUsageConfigurationAsync(CancellationToken cancellationToken = default)
+    async ValueTask SaveNodeUsageConfigurationListAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var nodeUsageConfig in _nodeUsageConfigList)
+        await Parallel.ForEachAsync(_nodeUsageConfigList, new ParallelOptions()
         {
-            try
+            CancellationToken = cancellationToken,
+            MaxDegreeOfParallelism = 4
+        }, SaveNodeUsageConfigurationAsync);
+    }
+
+    async ValueTask SaveNodeUsageConfigurationAsync(
+        NodeUsageConfigurationModel nodeUsageConfiguration,
+        CancellationToken cancellationToken = default) {
+        try
+        {
+            var queryResult = await _configurationQueryService.QueryConfigurationByIdListAsync<NodeUsageConfigurationModel>([nodeUsageConfiguration.Id], cancellationToken);
+            if (!queryResult.HasValue)
             {
-                var queryResult = await _configurationQueryService.QueryConfigurationByIdListAsync<NodeUsageConfigurationModel>([nodeUsageConfig.Id], cancellationToken);
-                if (!queryResult.HasValue)
-                {
-                    continue;
-                }
-                var nodeUsageConfigFromDb = queryResult.Items.FirstOrDefault();
-                if (nodeUsageConfigFromDb == null)
-                {
-                    continue;
-                }
-                if (!nodeUsageConfigFromDb.IsEnabled && !nodeUsageConfig.Value.AutoDetect)
-                {
-                    continue;
-                }
-                nodeUsageConfig.IsEnabled = nodeUsageConfigFromDb.IsEnabled;
-                nodeUsageConfig.Name = nodeUsageConfigFromDb.Name;
-                nodeUsageConfig.FactoryName = nodeUsageConfigFromDb.FactoryName;
-                nodeUsageConfig.Value = nodeUsageConfig.Value with
-                {
-                    AutoDetect = nodeUsageConfigFromDb.Value.AutoDetect,
-                    DynamicDetect = nodeUsageConfigFromDb.Value.DynamicDetect,
-                    Nodes = nodeUsageConfigFromDb.Value.Nodes.Union(nodeUsageConfig.Value.Nodes).ToList(),
-                    ServiceProcessDetections = nodeUsageConfigFromDb.Value.ServiceProcessDetections,
-                };
-                await _configurationQueryService.AddOrUpdateConfigurationAsync(
-                    nodeUsageConfig,
-                    true,
-                    cancellationToken);
+                return;
             }
-            catch (Exception ex)
+            var nodeUsageConfigFromDb = queryResult.Items.FirstOrDefault();
+            if (nodeUsageConfigFromDb == null)
             {
-                _exceptionCounter.AddOrUpdate(ex, nodeUsageConfig.Id);
-                _logger.LogError(ex.ToString());
+                return;
             }
+            if (!nodeUsageConfigFromDb.IsEnabled && !nodeUsageConfiguration.Value.AutoDetect)
+            {
+                return;
+            }
+            nodeUsageConfiguration.IsEnabled = nodeUsageConfigFromDb.IsEnabled;
+            nodeUsageConfiguration.Name = nodeUsageConfigFromDb.Name;
+            nodeUsageConfiguration.FactoryName = nodeUsageConfigFromDb.FactoryName;
+            nodeUsageConfiguration.Value = nodeUsageConfiguration.Value with
+            {
+                AutoDetect = nodeUsageConfigFromDb.Value.AutoDetect,
+                DynamicDetect = nodeUsageConfigFromDb.Value.DynamicDetect,
+                Nodes = nodeUsageConfigFromDb.Value.Nodes.Union(nodeUsageConfiguration.Value.Nodes).ToList(),
+                ServiceProcessDetections = nodeUsageConfigFromDb.Value.ServiceProcessDetections,
+            };
+            await _configurationQueryService.AddOrUpdateConfigurationAsync(
+                nodeUsageConfiguration,
+            true,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex, nodeUsageConfiguration.Id);
+            _logger.LogError(ex.ToString());
         }
     }
 

@@ -75,13 +75,13 @@ public class ClientUpdateQueryQueueService : BackgroundService
                     var name = nameGroup.Key;
 
                     var key = $"ClientUpdateConfig:{name}";
-                    var querykey = $"ClientUpdateConfig:{name}:QueryEnabled";
                     ClientUpdateConfigModel? clientUpdateConfig = null;
                     foreach (var op in nameGroup)
                         try
                         {
                             var ipAddress = op.Argument.IpAddress;
                             var value = false;
+                            var querykey = $"ClientUpdateConfig:{op.Argument.IpAddress}:QueryEnabled";
                             if (_memoryCache.TryGetValue<bool>(querykey, out value))
                             {
                                 if (value)

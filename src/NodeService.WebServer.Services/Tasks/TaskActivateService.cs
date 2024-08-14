@@ -472,7 +472,7 @@ public class TaskActivateService : BackgroundService
                 taskExecutionRecord.Id,
                 taskExecutionRecord.TaskDefinitionId,
                 nodes,
-                [.. taskExecutionRecord.Value.EnvironmentVariables],
+                [.. taskExecutionRecord.EnvironmentVariables],
                 taskExecutionInstance.GetTaskFlowTaskKey());
             await _serviceParametersBatchQueue.SendAsync(new TaskActivateServiceParameters(fireTaskParameters), cancellationToken);
 

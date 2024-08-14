@@ -2,7 +2,7 @@
 {
     public partial class NodesController
     {
-
+        [HttpPost("/api/Nodes/QueryNodeInfoListByExtendInfo")]
         public async Task<ApiResponse<IEnumerable<NodeInfoModel>>> QueryNodeInfoListByExtendInfoAsyncAsync(
             NodeExtendInfo nodeExtendInfo,
             CancellationToken cancellationToken = default)

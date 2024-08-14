@@ -248,14 +248,14 @@ public class TaskActivateService : BackgroundService
                 {
                     return;
                 }
-
+                TaskActivateServiceHelpers.ApplyEnvironmentVariables(taskDefinition);
                 var rsp = await _nodeSessionService.SendTaskExecutionEventAsync(
                     nodeSessionId,
                    taskExecutionInstance.ToTriggerEvent(new TaskDefinitionModel()
                    {
                        Id = taskActivationRecord.TaskDefinitionId,
                        Value = taskDefinition
-                   }, taskActivationRecord.EnvironmentVariables),
+                   }, taskDefinition.EnvironmentVariables),
                     cancellationToken);
                 _logger.LogInformation($"{delayMessage.Id}:SendTaskExecutionEventAsync");
                 await _taskExecutionReportBatchQueue.EnqueueAsync(new TaskExecutionReport
@@ -329,7 +329,6 @@ public class TaskActivateService : BackgroundService
         foreach (var kv in result.Instances)
         {
             var taskExecutionInstance = kv.Value;
-            TaskActivateServiceHelpers.ApplyEnvironmentVariables(taskDefinition);
             await SendTaskExecutionReportAsync(taskExecutionInstance.Id, TaskExecutionStatus.Triggered, string.Empty);
             await _delayMessageQueue.EnqueueAsync(new KafkaDelayMessage()
             {

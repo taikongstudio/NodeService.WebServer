@@ -448,7 +448,7 @@ namespace NodeService.WebServer.Services.Tasks
                         TaskFlowGroupId = taskFlowTaskKey.TaskFlowGroupId,
                         TaskFlowStageId = taskFlowTaskKey.TaskFlowStageId,
                         NodeList = [.. taskDefinition.NodeList],
-                        EnvironmentVariables = [.. fireTaskParameters.EnvironmentVariables]
+                        EnvironmentVariables = [.. taskDefinition.EnvironmentVariables]
                     };
                     await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
                     await taskActivationRecordRepo.AddAsync(taskActivationRecord, cancellationToken);

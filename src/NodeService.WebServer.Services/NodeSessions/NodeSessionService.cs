@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using NodeService.Infrastructure.Messages;
 using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Data;
-using System.Net.NetworkInformation;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 

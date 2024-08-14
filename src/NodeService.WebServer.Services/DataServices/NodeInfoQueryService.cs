@@ -227,6 +227,68 @@ namespace NodeService.WebServer.Services.DataServices
             return nodeInfo;
         }
 
+        public async ValueTask<ImmutableArray<NodeInfoModel>> QueryNodeInfoListByExtendInfoAsync(
+            NodeExtendInfo nodeExtendInfo,
+            CancellationToken cancellationToken = default)
+        {
+            var builder = ImmutableArray.CreateBuilder<NodeInfoModel>();
+            await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
+            await using var nodeExtendInfoRepo = await _nodeExtendInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
+            var nodeInfoList = await nodeInfoRepo.ListAsync(cancellationToken);
+            foreach (var nodeInfoArray in nodeInfoList.Chunk(10))
+            {
+                var idList = DataFilterCollection<string>.Includes(nodeInfoArray.Select(static x => x.Id));
+                var nodeExtendInfoList = await nodeExtendInfoRepo.ListAsync(new NodeExtendInfoSpecification(idList), cancellationToken);
+                foreach (var nodeExtendInfoFromDb in nodeExtendInfoList)
+                {
+                    var isCpuMatched = false;
+                    foreach (var cpuInfoLeft in nodeExtendInfoFromDb.Value.CpuInfoList)
+                    {
+                        foreach (var cpuInfoRight in nodeExtendInfo.CpuInfoList)
+                        {
+                            if (cpuInfoLeft == cpuInfoRight)
+                            {
+                                isCpuMatched = true;
+                                break;
+                            }
+                        }
+                    }
+                    bool isBiosMatched = false;
+                    foreach (var biosInfoLeft in nodeExtendInfoFromDb.Value.BIOSInfoList)
+                    {
+                        foreach (var biosInfoRight in nodeExtendInfo.BIOSInfoList)
+                        {
+                            if (biosInfoLeft == biosInfoRight)
+                            {
+                                isBiosMatched = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    bool isPhysicalMediaInfoMatched = false;
+                    foreach (var physicalMediaInfoLeft in nodeExtendInfoFromDb.Value.PhysicalMediaInfoList)
+                    {
+                        foreach (var physicalMediaInfoRight in nodeExtendInfo.PhysicalMediaInfoList)
+                        {
+                            if (physicalMediaInfoLeft == physicalMediaInfoRight)
+                            {
+                                isPhysicalMediaInfoMatched = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (isCpuMatched || isPhysicalMediaInfoMatched || isBiosMatched)
+                    {
+                        builder.Add(nodeInfoArray.FirstOrDefault(x => x.Id == nodeExtendInfoFromDb.Id));
+                    }
+                }
+
+            }
+
+            return builder.ToImmutable();
+        }
+
         public async ValueTask UpdateNodeInfoListAsync(
             IEnumerable<NodeInfoModel> nodeInfoList,
             CancellationToken cancellationToken = default)

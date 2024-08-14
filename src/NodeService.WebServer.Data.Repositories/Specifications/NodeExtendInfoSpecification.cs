@@ -8,9 +8,20 @@ namespace NodeService.WebServer.Data.Repositories.Specifications
 {
     public class NodeExtendInfoSpecification : Specification<NodeExtendInfoModel>
     {
-        public NodeExtendInfoSpecification(string nodeInfoId)
+        public NodeExtendInfoSpecification(DataFilterCollection<string> idList)
         {
-            Query.Where(x => x.Id == nodeInfoId);
+            if (idList.HasValue)
+            {
+                if (idList.FilterType== DataFilterTypes.Include)
+                {
+                    Query.Where(x => idList.Items.Contains(x.Id));
+                }
+                else if (idList.FilterType== DataFilterTypes.Exclude)
+                {
+                    Query.Where(x => !idList.Items.Contains(x.Id));
+                }
+            }
         }
+
     }
 }

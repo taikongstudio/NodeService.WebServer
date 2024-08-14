@@ -116,6 +116,7 @@ namespace NodeService.WebServer.Services.Tasks
                         return;
                     }
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Fault;
+                    taskFlowExecutionInstance.Value.Status = taskFlowExecutionInstance.Status;
                     taskFlowExecutionInstance.Value.Message = $"Execution time limit!";
                     await taskFlowRepo.SaveChangesAsync(cancellationToken);
                 }
@@ -434,16 +435,19 @@ CancellationToken cancellationToken = default)
                 if (taskFlowExecutionInstance.TaskStages.All(static x => x.Status == TaskFlowExecutionStatus.Finished))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Finished;
+                    taskFlowExecutionInstance.Value.Status = taskFlowExecutionInstance.Status;
                     statusChanged = true;
                 }
                 else if (taskFlowExecutionInstance.Value.TaskStages.Any(static x => x.Status != TaskFlowExecutionStatus.Finished))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Running;
+                    taskFlowExecutionInstance.Value.Status = taskFlowExecutionInstance.Status;
                     statusChanged = true;
                 }
                 else if (taskFlowExecutionInstance.Value.TaskStages.Any(static x => x.Status == TaskFlowExecutionStatus.Fault))
                 {
                     taskFlowExecutionInstance.Status = TaskFlowExecutionStatus.Fault;
+                    taskFlowExecutionInstance.Value.Status = taskFlowExecutionInstance.Status;
                     statusChanged = true;
                 }
                 if (statusChanged)

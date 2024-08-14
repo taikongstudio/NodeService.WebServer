@@ -1,12 +1,10 @@
-﻿using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Data;
-using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.Counters;
 
-namespace NodeService.WebServer.Services.ClientUpdate;
+namespace NodeService.WebServer.Services.DataQueue;
 
 public class ClientUpdateBatchQueryParameters
 {
@@ -50,7 +48,59 @@ public class ClientUpdateQueryQueueService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        await QueueAsync(cancellationToken);
+        await Task.WhenAll(
+            ShuffleNodesAsync(cancellationToken),
+            QueueAsync(cancellationToken));
+    }
+
+
+    async Task ShuffleNodesAsync(CancellationToken cancellationToken = default)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+            try
+            {
+                int itemsCount = await GetNodesCount(cancellationToken);
+                var nodeNumbers = Enumerable.Range(0, itemsCount);
+                if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(10));
+                int pageIndex = 1;
+                foreach (var array in nodeNumbers.Chunk(20))
+                {
+                    var nodeList = await QueryNodesListAsync(pageIndex, cancellationToken);
+                    foreach (var item in nodeList.Items)
+                    {
+                        var key = CreateKey(item.Profile.IpAddress);
+                        _memoryCache.Set(key, true, TimeSpan.FromMinutes(10));
+                    }
+
+                    await Task.Delay(TimeSpan.FromSeconds(60 * 10 - 5), cancellationToken);
+                    pageIndex++;
+                }
+            }
+            catch (Exception ex)
+            {
+                _exceptionCounter.AddOrUpdate(ex);
+                _logger.LogError(ex.ToString());
+            }
+            finally
+            {
+                await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+            }
+    }
+
+    async ValueTask<ListQueryResult<NodeInfoModel>> QueryNodesListAsync(int pageIndex, CancellationToken cancellationToken = default)
+    {
+        await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
+        var listQueryResult = await nodeInfoRepo.PaginationQueryAsync(
+                                        new NodeInfoSpecification(),
+                                        new PaginationInfo(pageIndex, 20),
+                                        cancellationToken);
+        return listQueryResult;
+    }
+
+    async Task<int> GetNodesCount(CancellationToken cancellationToken)
+    {
+        await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
+        return await nodeInfoRepo.CountAsync(cancellationToken);
     }
 
     private static string CreateKey(string ipAddress)
@@ -80,31 +130,37 @@ public class ClientUpdateQueryQueueService : BackgroundService
                         try
                         {
                             var ipAddress = op.Argument.IpAddress;
-                            var value = false;
-                            var querykey = $"ClientUpdateConfig:{op.Argument.IpAddress}:QueryEnabled";
-                            if (_memoryCache.TryGetValue<bool>(querykey, out value))
-                            {
-                                if (value)
-                                {
-                                    clientUpdateConfig = await QueryConfigurationAsync(name, key, ipAddress);
-                                    clientUpdateConfig = await FilterIpAddressAsync(clientUpdateConfig, ipAddress);
-                                    op.TrySetResult(clientUpdateConfig);
-                                }
-                                else
-                                {
-                                    op.TrySetResult(null);
-                                }
-
-                            }
-                            else
-                            {
-                                if (Random.Shared.Next(10) % 2 == 0)
-                                {
-                                    value = true;
-                                }
-                                _memoryCache.Set<bool>(querykey, value, TimeSpan.FromMinutes(20));
-                            }
-
+                            var updateKey = CreateKey(ipAddress);
+                            if (clientUpdateConfig == null)
+                                clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                            clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
+                            op.TrySetResult(clientUpdateConfig);
+                            continue;
+                            //if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
+                            //{
+                            //    if (clientUpdateConfig == null)
+                            //        clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                            //    clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
+                            //    op.TrySetResult(clientUpdateConfig);
+                            //}
+                            //else
+                            //{
+                            //    var hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
+                            //            null,
+                            //            op.Argument.IpAddress,
+                            //            NodeDeviceType.Computer),
+                            //        cancellationToken);
+                            //    if (!hasNodeInfo)
+                            //    {
+                            //        if (clientUpdateConfig == null)
+                            //            clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                            //        op.TrySetResult(clientUpdateConfig);
+                            //    }
+                            //    else
+                            //    {
+                            //        op.TrySetResult(null);
+                            //    }
+                            //}
                         }
                         catch (Exception ex)
                         {
@@ -127,19 +183,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
         }
     }
 
-    async ValueTask<bool> HasNodeAsync(string ipAddress, CancellationToken cancellationToken)
-    {
-        await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
-        bool hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
-                 null,
-                 ipAddress,
-                 NodeDeviceType.Computer),
-             cancellationToken);
-        return hasNodeInfo;
-    }
-
-    private async ValueTask<ClientUpdateConfigModel?> FilterIpAddressAsync(
-        ClientUpdateConfigModel? clientUpdateConfig,
+    private async Task<ClientUpdateConfigModel?> IsFiltered(ClientUpdateConfigModel? clientUpdateConfig,
         string ipAddress)
     {
         if (clientUpdateConfig != null && clientUpdateConfig.DnsFilters != null && clientUpdateConfig.DnsFilters.Any())
@@ -183,7 +227,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
         return clientUpdateConfig;
     }
 
-    async Task<ClientUpdateConfigModel?> QueryConfigurationAsync(string name, string key, string ipAddress)
+    private async Task<ClientUpdateConfigModel?> QueryAsync(string name, string key, string ipAddress)
     {
         ClientUpdateConfigModel? clientUpdateConfig = null;
         if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue) || cacheValue == null)

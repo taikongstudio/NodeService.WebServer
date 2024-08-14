@@ -7,7 +7,7 @@
         {
             return;
         }
-        if (taskDefinition.TaskTypeDesc.Value.FullName == "NodeService.ServiceHost.Tasks.ExecuteBatchScriptTask")
+        if (taskDefinition.TaskTypeDesc.Value.FullName == "NodeService.WindowsService.Services.ExecuteBatchScriptJob")
         {
             if (taskDefinition.Options.TryGetValue(
                 "Scripts",

@@ -102,7 +102,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
                                 {
                                     value = true;
                                 }
-                                _memoryCache.Set<bool>(querykey, value, TimeSpan.FromMinutes(5));
+                                _memoryCache.Set<bool>(querykey, value, TimeSpan.FromMinutes(20));
                             }
 
                         }

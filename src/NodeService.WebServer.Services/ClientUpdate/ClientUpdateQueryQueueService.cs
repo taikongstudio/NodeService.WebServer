@@ -63,16 +63,16 @@ public class ClientUpdateQueryQueueService : BackgroundService
                 var nodeNumbers = Enumerable.Range(0, itemsCount);
                 if (Debugger.IsAttached) _memoryCache.Set(CreateKey("::1"), true, TimeSpan.FromMinutes(10));
                 int pageIndex = 1;
-                foreach (var array in nodeNumbers.Chunk(20))
+                foreach (var array in nodeNumbers.Chunk(5))
                 {
                     var nodeList = await QueryNodesListAsync(pageIndex, cancellationToken);
                     foreach (var item in nodeList.Items)
                     {
                         var key = CreateKey(item.Profile.IpAddress);
-                        _memoryCache.Set(key, true, TimeSpan.FromMinutes(10));
+                        _memoryCache.Set(key, true, TimeSpan.FromMinutes(5));
                     }
 
-                    await Task.Delay(TimeSpan.FromSeconds(60 * 10 - 5), cancellationToken);
+                    await Task.Delay(TimeSpan.FromSeconds(60 * 5 - 5), cancellationToken);
                     pageIndex++;
                 }
             }
@@ -119,7 +119,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                //await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
+                await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();
                 foreach (var nameGroup in array.GroupBy(static x => x.Argument.Name))
                 {
                     var name = nameGroup.Key;
@@ -131,36 +131,32 @@ public class ClientUpdateQueryQueueService : BackgroundService
                         {
                             var ipAddress = op.Argument.IpAddress;
                             var updateKey = CreateKey(ipAddress);
-                            if (clientUpdateConfig == null)
-                                clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                            clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
-                            op.TrySetResult(clientUpdateConfig);
-                            continue;
-                            //if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
-                            //{
-                            //    if (clientUpdateConfig == null)
-                            //        clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                            //    clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
-                            //    op.TrySetResult(clientUpdateConfig);
-                            //}
-                            //else
-                            //{
-                            //    var hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
-                            //            null,
-                            //            op.Argument.IpAddress,
-                            //            NodeDeviceType.Computer),
-                            //        cancellationToken);
-                            //    if (!hasNodeInfo)
-                            //    {
-                            //        if (clientUpdateConfig == null)
-                            //            clientUpdateConfig = await QueryAsync(name, key, ipAddress);
-                            //        op.TrySetResult(clientUpdateConfig);
-                            //    }
-                            //    else
-                            //    {
-                            //        op.TrySetResult(null);
-                            //    }
-                            //}
+
+                            if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
+                            {
+                                if (clientUpdateConfig == null)
+                                    clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                                clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
+                                op.TrySetResult(clientUpdateConfig);
+                            }
+                            else
+                            {
+                                var hasNodeInfo = await nodeInfoRepo.AnyAsync(new NodeInfoSpecification(
+                                        null,
+                                        op.Argument.IpAddress,
+                                        NodeDeviceType.Computer),
+                                    cancellationToken);
+                                if (!hasNodeInfo)
+                                {
+                                    if (clientUpdateConfig == null)
+                                        clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                                    op.TrySetResult(clientUpdateConfig);
+                                }
+                                else
+                                {
+                                    op.TrySetResult(null);
+                                }
+                            }
                         }
                         catch (Exception ex)
                         {

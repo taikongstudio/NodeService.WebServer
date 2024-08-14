@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
@@ -74,21 +75,36 @@ public class ClientUpdateQueryQueueService : BackgroundService
                     var name = nameGroup.Key;
 
                     var key = $"ClientUpdateConfig:{name}";
+                    var querykey = $"ClientUpdateConfig:{name}:QueryEnabled";
                     ClientUpdateConfigModel? clientUpdateConfig = null;
                     foreach (var op in nameGroup)
                         try
                         {
                             var ipAddress = op.Argument.IpAddress;
-                            clientUpdateConfig = await QueryConfigurationAsync(name, key, ipAddress);
-                            clientUpdateConfig = await FilterIpAddressAsync(clientUpdateConfig, ipAddress);
-                            if (Random.Shared.Next(10) % 2 == 0)
+                            var value = false;
+                            if (_memoryCache.TryGetValue<bool>(querykey, out value))
                             {
-                                op.TrySetResult(clientUpdateConfig);
+                                if (value)
+                                {
+                                    clientUpdateConfig = await QueryConfigurationAsync(name, key, ipAddress);
+                                    clientUpdateConfig = await FilterIpAddressAsync(clientUpdateConfig, ipAddress);
+                                    op.TrySetResult(clientUpdateConfig);
+                                }
+                                else
+                                {
+                                    op.TrySetResult(null);
+                                }
+
                             }
                             else
                             {
-                                op.TrySetResult(null);
+                                if (Random.Shared.Next(10) % 2 == 0)
+                                {
+                                    value = true;
+                                }
+                                _memoryCache.Set<bool>(querykey, value, TimeSpan.FromMinutes(5));
                             }
+
                         }
                         catch (Exception ex)
                         {

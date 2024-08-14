@@ -81,7 +81,14 @@ public class ClientUpdateQueryQueueService : BackgroundService
                             var ipAddress = op.Argument.IpAddress;
                             clientUpdateConfig = await QueryConfigurationAsync(name, key, ipAddress);
                             clientUpdateConfig = await FilterIpAddressAsync(clientUpdateConfig, ipAddress);
-                            op.TrySetResult(clientUpdateConfig);
+                            if (Random.Shared.Next(10) % 2 == 0)
+                            {
+                                op.TrySetResult(clientUpdateConfig);
+                            }
+                            else
+                            {
+                                op.TrySetResult(null);
+                            }
                         }
                         catch (Exception ex)
                         {

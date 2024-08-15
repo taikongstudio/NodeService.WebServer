@@ -226,6 +226,7 @@ public record class WebServerCounterSnapshot
     public CounterLongValue FireNodeHeathyCheckJobDequeueCount { get; set; } = new();
 
     public CounterLongValue NodeHeathyCheckSendEmailCount { get; set; } = new();
+    public CounterLongValue NodeHeathyCheckScheduleCount { get; set; } = new();
 
     public CounterLongValue TaskObservationEventConsumeCount { get; set; } = new();
     public CounterLongValue TaskObservationEventProducePersistedCount { get; set; } = new();

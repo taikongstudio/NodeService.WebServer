@@ -12,6 +12,7 @@ namespace NodeService.WebServer.Services.TaskSchedule.Jobs
 
         public override async Task Execute(IJobExecutionContext context)
         {
+            if (Debugger.IsAttached) { return; }
             var queue = ServiceProvider.GetService<IAsyncQueue<NodeHealthyCheckFireEvent>>();
             var webServerCounter = ServiceProvider.GetService<WebServerCounter>();
             webServerCounter.Snapshot.FireNodeHeathyCheckJobEnqueueCount.Value++;

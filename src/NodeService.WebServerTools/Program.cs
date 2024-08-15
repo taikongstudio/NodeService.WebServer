@@ -40,9 +40,9 @@ internal class Program
     private static void Configure(HostApplicationBuilder builder)
     {
         ConfigureDbContext(builder);
-        builder.Services.AddHostedService<ClearConfigService>();
+        //builder.Services.AddHostedService<ClearConfigService>();
         //builder.Services.AddHostedService<UpdateOfflineNodeService>();
-        //builder.Services.AddHostedService<TestConfigService>();
+        builder.Services.AddHostedService<MaccorEnvVarsService>();
         builder.Services.AddSingleton<HttpClient>(sp =>
         {
             return new HttpClient

@@ -79,12 +79,23 @@ namespace NodeService.WebServer.Services.TaskSchedule
             NodeHealthyCheckConfiguration configuration,
             CancellationToken cancellationToken = default)
         {
+
             var triggers = configuration.DailyTimes.Select(TimeOnlyToTrigger).ToArray().AsReadOnly();
             var asyncDisposable = await _jobScheduler.ScheduleAsync<FireNodeHeathyCheckJob>(taskSchedulerKey,
                 triggers,
-                new Dictionary<string, object?>() { { "Id", taskSchedulerKey.Key } },
+                new Dictionary<string, object?>() {
+                    {
+                            "Id",
+                            taskSchedulerKey.Key
+                    },
+                    {
+                            "DateTime",
+                            DateTime.UtcNow
+                    }
+                },
                 cancellationToken
             );
+            _webServerCounter.Snapshot.NodeHeathyCheckScheduleCount.Value++;
             return asyncDisposable;
         }
 

@@ -105,6 +105,10 @@ namespace NodeService.WebServer.Servers
 
         private static async Task InitWebServerCounter(WebApplication app)
         {
+            if (Debugger.IsAttached)
+            {
+                return;
+            }
             var webServerCounter = app.Services.GetService<WebServerCounter>();
             var objectCache = app.Services.GetService<ObjectCache>();
             await webServerCounter.InitFromCacheAsync(objectCache);

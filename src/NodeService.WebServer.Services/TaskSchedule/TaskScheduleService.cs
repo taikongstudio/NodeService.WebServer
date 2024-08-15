@@ -11,6 +11,7 @@ namespace NodeService.WebServer.Services.TaskSchedule;
 public partial  class TaskScheduleService : BackgroundService
 {
     readonly ExceptionCounter _exceptionCounter;
+    private readonly WebServerCounter _webServerCounter;
     readonly ILogger<TaskScheduleService> _logger;
     readonly JobScheduler _jobScheduler;
     readonly IJobFactory _jobFactory;
@@ -33,7 +34,8 @@ public partial  class TaskScheduleService : BackgroundService
         JobScheduler jobScheduler,
         ISchedulerFactory schedulerFactory,
         [FromKeyedServices(nameof(TaskScheduleService))] TaskSchedulerDictionary taskSchedulerDictionary,
-        ExceptionCounter exceptionCounter)
+        ExceptionCounter exceptionCounter,
+        WebServerCounter webServerCounter)
     {
         _jobFactory = jobFactory;
         _schedulerFactory = schedulerFactory;
@@ -45,6 +47,7 @@ public partial  class TaskScheduleService : BackgroundService
         _taskSchedulerDictionary = taskSchedulerDictionary;
         _taskScheduleServiceParametersQueue = taskScheduleServiceParametersQueue;
         _exceptionCounter = exceptionCounter;
+        _webServerCounter = webServerCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)

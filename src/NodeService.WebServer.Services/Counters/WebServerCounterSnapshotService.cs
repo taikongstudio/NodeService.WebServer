@@ -33,6 +33,10 @@ namespace NodeService.WebServer.Services.Counters
             {
                 try
                 {
+                    if (Debugger.IsAttached)
+                    {
+                        continue;
+                    }
                     await _webServerCounter.SaveToCacheAsync(_objectCache, cancellationToken);
                 }
                 catch (Exception ex)

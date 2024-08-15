@@ -312,7 +312,6 @@ public partial class NodeHealthyCheckService : BackgroundService
         {
             if (notificationConfig.Value.FactoryName == AreaTags.Any || notificationConfig.Value.FactoryName == null)
             {
-                _webServerCounter.NodeHeathyCheckSendEmailCount.Value++;
                 await SendEmailAsync(
                     resultList,
                     "全部区域",
@@ -331,7 +330,6 @@ public partial class NodeHealthyCheckService : BackgroundService
                 {
                     factoryName = areaEntry.Name;
                 }
-                _webServerCounter.NodeHeathyCheckSendEmailCount.Value++;
                 await SendEmailAsync(
                     group,
                     factoryName,
@@ -384,6 +382,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         await _notificationQueue.EnqueueAsync(
             new NotificationMessage(emailContent, notificationConfig.Value),
             cancellationToken);
+        _webServerCounter.NodeHeathyCheckSendEmailCount.Value++;
     }
 
     private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)

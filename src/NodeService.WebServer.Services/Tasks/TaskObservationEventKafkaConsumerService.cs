@@ -91,7 +91,7 @@ namespace NodeService.WebServer.Services.Tasks
 
                         foreach (var result in consumeResults)
                         {
-                            var partionOffsetValue = _webServerCounter.KafkaTaskObservationEventProducePartitionOffsetDictionary.GetOrAdd(result.Partition.Value, PartitionOffsetValue.CreateNew);
+                            var partionOffsetValue = _webServerCounter.KafkaTaskObservationEventConsumePartitionOffsetDictionary.GetOrAdd(result.Partition.Value, PartitionOffsetValue.CreateNew);
                             partionOffsetValue.Partition.Value = result.Partition.Value;
                             partionOffsetValue.Offset.Value = result.Offset.Value;
                             partionOffsetValue.Message = result.Message.Value;

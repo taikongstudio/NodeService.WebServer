@@ -3,7 +3,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.TaskSchedule;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using System.Collections.Immutable;
@@ -89,6 +88,15 @@ namespace NodeService.WebServer.Services.Tasks
                             cancellationToken);
 
                         consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
+
+                        foreach (var result in consumeResults)
+                        {
+                            var partionOffsetValue = _webServerCounter.KafkaTaskObservationEventProducePartitionOffsetDictionary.GetOrAdd(result.Partition.Value, PartitionOffsetValue.CreateNew);
+                            partionOffsetValue.Partition.Value = result.Partition.Value;
+                            partionOffsetValue.Offset.Value = result.Offset.Value;
+                            partionOffsetValue.Message = result.Message.Value;
+                            _webServerCounter.TaskObservationEventConsumeCount.Value++;
+                        }
 
                         elapsed = Stopwatch.GetElapsedTime(timeStamp);
 

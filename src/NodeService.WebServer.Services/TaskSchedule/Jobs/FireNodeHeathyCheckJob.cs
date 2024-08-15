@@ -1,10 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.NodeSessions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.TaskSchedule.Jobs
 {
@@ -17,6 +13,8 @@ namespace NodeService.WebServer.Services.TaskSchedule.Jobs
         public override async Task Execute(IJobExecutionContext context)
         {
             var queue = ServiceProvider.GetService<IAsyncQueue<NodeHealthyCheckFireEvent>>();
+            var webServerCounter = ServiceProvider.GetService<WebServerCounter>();
+            webServerCounter.FireNodeHeathyCheckJobEnqueueCount.Value++;
             await queue.EnqueueAsync(new NodeHealthyCheckFireEvent()
             {
 

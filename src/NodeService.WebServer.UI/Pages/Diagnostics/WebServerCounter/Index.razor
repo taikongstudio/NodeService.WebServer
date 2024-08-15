@@ -10,6 +10,15 @@
     </SpaceItem>
 
 </Space>
+
+<Table Size="TableSize.Small" Title="通知统计"
+       DataSource="@TaskExecutionStatistics">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
+        <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
 <Table Size="TableSize.Small" Title="任务执行"
        DataSource="@TaskExecutionStatistics">
     <ColumnDefinitions Context="ctx">
@@ -120,6 +129,32 @@
     </ColumnDefinitions>
 </Table>
 
+<Table Size="TableSize.Small" Title="Kafka任务监控事件统计"
+       DataSource="@TaskObservationEventStatistics">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
+        <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="Kafka任务监控事件生产分区偏移"
+       DataSource="@TaskObservationEventProducePartitionOffsetValues">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
+        <PropertyColumn Property="c => c" Title="值">@ctx</PropertyColumn>
+        <PropertyColumn Property="c => c.Message" Title="值">@ctx.Message</PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
+<Table Size="TableSize.Small" Title="Kafka任务监控事件消费分区偏移"
+       DataSource="@TaskObservationEventConsumePartitionOffsetValues">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Partition" Width="200" Ellipsis Title="分区"></PropertyColumn>
+        <PropertyColumn Property="c => c" Title="值">@ctx</PropertyColumn>
+        <PropertyColumn Property="c => c.Message" Title="值">@ctx.Message</PropertyColumn>
+    </ColumnDefinitions>
+</Table>
+
 
 @code {
     IEnumerable<(string Desc, string Value)> TaskExecutionStatistics = [];
@@ -129,6 +164,8 @@
     IEnumerable<(string Desc, string Value)> KafkaLogConsumeStatistics = [];
     IEnumerable<(string Desc, string Value)> KafkaLogProduceStatistics = [];
     IEnumerable<(string Desc, string Value)> KafkaDelayMessageStatistics = [];
+    IEnumerable<(string Desc, string Value)> NodeHealthyCheckNotificationStatistics = [];
+    IEnumerable<(string Desc, string Value)> TaskObservationEventStatistics = [];
 
 
     IEnumerable<PartitionOffsetValue> TaskExecutionReportConsumePartitionOffsetValues = [];
@@ -142,6 +179,10 @@
     IEnumerable<PartitionOffsetValue> KafkaLogConsumePartitionOffsetValues = [];
 
     IEnumerable<PartitionOffsetValue> KafkaLogProducePartitionOffsetValues = [];
+
+    IEnumerable<PartitionOffsetValue> TaskObservationEventConsumePartitionOffsetValues = [];
+
+    IEnumerable<PartitionOffsetValue> TaskObservationEventProducePartitionOffsetValues = [];
 
     Timer _timer;
 
@@ -161,7 +202,9 @@
 
     void Refresh()
     {
+        NodeHealthyCheckNotificationStatistics = GetNodeHealthyCheckNotificationStatistics();
         TaskExecutionStatistics = GetTaskExecutionStatistics();
+        TaskObservationEventStatistics = GetTaskObservationEventStatistics();
         HeartBeatStatistics = GetHeartBeatStatistics();
         NodeServiceStatistics = GetNodeServiceStatistics();
         TaskLogStatistics = GetTaskLogStatistics();
@@ -174,6 +217,8 @@
         KafkaLogProducePartitionOffsetValues = WebServerCounter.KafkaLogProducePartitionOffsetDictionary.Values;
         KafkaDelayMessageConsumePartitionOffsetValues = WebServerCounter.KafkaDelayMessageConsumePartitionOffsetDictionary.Values;
         KafkaDelayMessageProducePartitionOffsetValues = WebServerCounter.KafkaDelayMessageConsumePartitionOffsetDictionary.Values;
+        TaskObservationEventConsumePartitionOffsetValues = WebServerCounter.KafkaTaskObservationEventConsumePartitionOffsetDictionary.Values;
+        TaskObservationEventProducePartitionOffsetValues = WebServerCounter.KafkaTaskObservationEventProducePartitionOffsetDictionary.Values;
     }
 
     IEnumerable<(string Desc, string Value)> GetTaskExecutionStatistics()
@@ -263,6 +308,19 @@
         yield return (nameof(WebServerCounter.KafkaDelayMessageHandledCount), WebServerCounter.KafkaDelayMessageHandledCount.ToString());
         yield break;
     }
+
+    IEnumerable<(string Desc, string Value)> GetNodeHealthyCheckNotificationStatistics()
+    {
+        yield return (nameof(WebServerCounter.FireNodeHeathyCheckJobDequeueCount), WebServerCounter.FireNodeHeathyCheckJobDequeueCount.ToString());
+        yield return (nameof(WebServerCounter.FireNodeHeathyCheckJobEnqueueCount), WebServerCounter.FireNodeHeathyCheckJobEnqueueCount.ToString());
+        yield return (nameof(WebServerCounter.NodeHeathyCheckSendEmailCount), WebServerCounter.NodeHeathyCheckSendEmailCount.ToString());
+        yield break;
+    }
+
+    IEnumerable<(string Desc, string Value)> GetTaskObservationEventStatistics()
+    {
+        yield return (nameof(WebServerCounter.TaskObservationEventConsumeCount), WebServerCounter.TaskObservationEventConsumeCount.ToString());
+        yield return (nameof(WebServerCounter.TaskObservationEventProducePersistedCount), WebServerCounter.TaskObservationEventProducePersistedCount.ToString());   }
 
     public void Dispose()
     {

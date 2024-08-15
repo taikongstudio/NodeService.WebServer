@@ -8,5 +8,8 @@ namespace NodeService.WebServer.Services.NodeSessions
 {
     public class NodeHealthyCheckFireEvent
     {
+        public NodeHealthyCheckFireEvent()
+        {
+        }
     }
 }

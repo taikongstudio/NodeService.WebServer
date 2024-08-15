@@ -23,6 +23,7 @@ public partial class NodeHealthyCheckService : BackgroundService
     readonly IAsyncQueue<NodeHealthyCheckFireEvent> _fireEventQueue;
     readonly ApplicationRepositoryFactory<NodeInfoModel> _nodeInfoRepositoryFactory;
     readonly ApplicationRepositoryFactory<NotificationConfigModel> _notificationRepositoryFactory;
+    private readonly WebServerCounter _webServerCounter;
     readonly ApplicationRepositoryFactory<PropertyBag> _propertyBagRepositoryFactory;
     NodeSettings _nodeSettings;
     NodeHealthyCheckConfiguration _nodeHealthyCheckConfiguration;
@@ -36,10 +37,11 @@ public partial class NodeHealthyCheckService : BackgroundService
         ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepositoryFactory,
         ApplicationRepositoryFactory<NotificationConfigModel> notificationRepositoryFactory,
-        NodeInfoQueryService  nodeInfoQueryService,
+        NodeInfoQueryService nodeInfoQueryService,
         ExceptionCounter exceptionCounter,
         ObjectCache objectCache,
-        ConfigurationQueryService configurationQueryService
+        ConfigurationQueryService configurationQueryService,
+        WebServerCounter webServerCounter
     )
     {
         _logger = logger;
@@ -53,6 +55,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         _objectCache = objectCache;
         _configurationQueryService = configurationQueryService;
         _notificationRepositoryFactory = notificationRepositoryFactory;
+        _webServerCounter = webServerCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -63,6 +66,7 @@ public partial class NodeHealthyCheckService : BackgroundService
             try
             {
                 var fireEvent = await _fireEventQueue.DeuqueAsync(cancellationToken);
+                _webServerCounter.FireNodeHeathyCheckJobDequeueCount.Value++;
                 await CheckNodeHealthyAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -308,6 +312,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         {
             if (notificationConfig.Value.FactoryName == AreaTags.Any || notificationConfig.Value.FactoryName == null)
             {
+                _webServerCounter.NodeHeathyCheckSendEmailCount.Value++;
                 await SendEmailAsync(
                     resultList,
                     "全部区域",
@@ -326,6 +331,7 @@ public partial class NodeHealthyCheckService : BackgroundService
                 {
                     factoryName = areaEntry.Name;
                 }
+                _webServerCounter.NodeHeathyCheckSendEmailCount.Value++;
                 await SendEmailAsync(
                     group,
                     factoryName,

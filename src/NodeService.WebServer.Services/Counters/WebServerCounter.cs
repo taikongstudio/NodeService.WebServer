@@ -168,10 +168,11 @@ public class WebServerCounter
 
     public ConcurrentDictionary<int, PartitionOffsetValue> TaskExecutionReportConsumePartitionOffsetDictionary { get; set; } = new();
 
+    public ConcurrentDictionary<int, PartitionOffsetValue> KafkaTaskObservationEventProducePartitionOffsetDictionary { get; set; } = new();
+
+    public ConcurrentDictionary<int, PartitionOffsetValue> KafkaTaskObservationEventConsumePartitionOffsetDictionary { get; set; } = new();
+
     public CounterLongValue TaskExecutionReportProduceRetryCount { get; set; } = new();
-
-    public CounterLongValue TaskObservationProduceRetryCount { get; set; } = new();
-
 
     public CounterLongValue KafkaDelayMessageTickCount { get; set; } = new();
 
@@ -182,4 +183,17 @@ public class WebServerCounter
     public CounterLongValue KafkaDelayMessageProduceCount { get; set; } = new();
 
     public CounterLongValue KafkaDelayMessageConsumeCount { get; set; } = new();
+
+
+    public CounterLongValue FireNodeHeathyCheckJobEnqueueCount { get; set; } = new();
+
+    public CounterLongValue FireNodeHeathyCheckJobDequeueCount { get; set; } = new();
+
+    public CounterLongValue NodeHeathyCheckSendEmailCount { get; set; } = new();
+
+    public CounterLongValue TaskObservationEventConsumeCount { get; set; } = new();
+    public CounterLongValue TaskObservationEventProducePersistedCount { get; set; } = new();
+
+    public CounterLongValue NotificationRecordCount { get; set; } = new();
+
 }

@@ -9,10 +9,12 @@ public class NotificationService : BackgroundService
 {
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly ExceptionCounter _exceptionCounter;
+    private readonly WebServerCounter _webServerCounter;
     private readonly ILogger<NotificationService> _logger;
     private readonly IAsyncQueue<NotificationMessage> _notificationMessageQueue;
 
     public NotificationService(
+        WebServerCounter webServerCounter,
         ExceptionCounter exceptionCounter,
         ILogger<NotificationService> logger,
         IDbContextFactory<ApplicationDbContext> dbContextFactory,
@@ -22,6 +24,7 @@ public class NotificationService : BackgroundService
         _dbContextFactory = dbContextFactory;
         _notificationMessageQueue = notificationMessageQueue;
         _exceptionCounter = exceptionCounter;
+        _webServerCounter = webServerCounter;
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
@@ -42,7 +45,7 @@ public class NotificationService : BackgroundService
                         break;
                 }
 
-                await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+                await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
                 switch (notificationMessage.Content.Index)
                 {
                     case 0:
@@ -68,7 +71,10 @@ public class NotificationService : BackgroundService
                 }
 
 
-                await dbContext.SaveChangesAsync();
+                await dbContext.SaveChangesAsync(cancellationToken);
+
+                _webServerCounter.NotificationRecordCount.Value++;
+
             }
 
             catch (Exception ex)

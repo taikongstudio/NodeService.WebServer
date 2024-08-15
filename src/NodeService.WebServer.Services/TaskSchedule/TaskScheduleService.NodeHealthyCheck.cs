@@ -1,11 +1,5 @@
-﻿using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Data.Repositories.Specifications;
+﻿using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.TaskSchedule.Jobs;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NodeService.WebServer.Services.TaskSchedule
 {
@@ -64,12 +58,6 @@ namespace NodeService.WebServer.Services.TaskSchedule
             if (_taskSchedulerDictionary.TryGetValue(taskSchedulerKey, out var asyncDisposable))
             {
                 await asyncDisposable.DisposeAsync();
-                if (!nodeHealthyCheckConfiguration.IsEnabled)
-                {
-                    await DeleteAllTaskScheduleAsync(parameters.ConfigurationId, nameof(FireNodeHeathyCheckJob));
-                    return;
-                }
-
                 var newAsyncDisposable = await ScheduleNodeHealthyCheckAsync(
                     taskSchedulerKey,
                     nodeHealthyCheckConfiguration,

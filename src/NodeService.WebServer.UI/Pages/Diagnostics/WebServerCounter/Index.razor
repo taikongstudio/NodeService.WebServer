@@ -11,8 +11,8 @@
 
 </Space>
 
-<Table Size="TableSize.Small" Title="通知统计"
-       DataSource="@TaskExecutionStatistics">
+<Table Size="TableSize.Small" Title="节点健康检查通知统计"
+       DataSource="@NodeHealthyCheckNotificationStatistics">
     <ColumnDefinitions Context="ctx">
         <PropertyColumn Property="c => c.Desc" Ellipsis Title="分类"></PropertyColumn>
         <PropertyColumn Property="c => c.Value" Width="200" Title="数值"></PropertyColumn>

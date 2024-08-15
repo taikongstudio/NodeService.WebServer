@@ -135,7 +135,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
                             if (_memoryCache.TryGetValue<bool>(updateKey, out var isEnabled))
                             {
                                 if (clientUpdateConfig == null)
-                                    clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                                    clientUpdateConfig = await QueryAsync(name, key);
                                 clientUpdateConfig = await IsFiltered(clientUpdateConfig, ipAddress);
                                 op.TrySetResult(clientUpdateConfig);
                             }
@@ -149,7 +149,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
                                 if (!hasNodeInfo)
                                 {
                                     if (clientUpdateConfig == null)
-                                        clientUpdateConfig = await QueryAsync(name, key, ipAddress);
+                                        clientUpdateConfig = await QueryAsync(name, key);
                                     op.TrySetResult(clientUpdateConfig);
                                 }
                                 else
@@ -223,7 +223,7 @@ public class ClientUpdateQueryQueueService : BackgroundService
         return clientUpdateConfig;
     }
 
-    private async Task<ClientUpdateConfigModel?> QueryAsync(string name, string key, string ipAddress)
+    private async Task<ClientUpdateConfigModel?> QueryAsync(string name, string key)
     {
         ClientUpdateConfigModel? clientUpdateConfig = null;
         if (!_memoryCache.TryGetValue<ClientUpdateConfigModel>(key, out var cacheValue) || cacheValue == null)

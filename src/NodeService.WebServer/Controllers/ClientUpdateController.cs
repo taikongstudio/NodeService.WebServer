@@ -1,4 +1,5 @@
-﻿using NodeService.Infrastructure.Concurrent;
+﻿using Microsoft.Extensions.Primitives;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.ClientUpdate;
@@ -52,6 +53,10 @@ public partial class ClientUpdateController : Controller
         {
             if (string.IsNullOrEmpty(name)) return apiResponse;
             var ipAddress = HttpContext.Connection.RemoteIpAddress.ToString();
+            if (Debugger.IsAttached && HttpContext.Request.Query.TryGetValue("FakeIpAddress", out StringValues fakeIpAddress))
+            {
+                ipAddress = fakeIpAddress.FirstOrDefault();
+            }
             var paramters = new ClientUpdateBatchQueryParameters(name, ipAddress);
             var batchQueueOperation =
                 new AsyncOperation<ClientUpdateBatchQueryParameters, ClientUpdateConfigModel>(paramters,

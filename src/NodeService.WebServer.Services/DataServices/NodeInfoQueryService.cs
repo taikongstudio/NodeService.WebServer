@@ -54,14 +54,19 @@ namespace NodeService.WebServer.Services.DataServices
             _nodeSessionService = nodeSessionService;
         }
 
-        public async ValueTask<dl_equipment_ctrl_computer?> Query_dl_equipment_ctrl_computer_Async(string nodeInfoId, string? limsDataId, CancellationToken cancellationToken = default)
+        public async ValueTask<dl_equipment_ctrl_computer?> Query_dl_equipment_ctrl_computer_Async(string nodeInfoId, string? externalBindingId, CancellationToken cancellationToken = default)
         {
             try
             {
                 dl_equipment_ctrl_computer? result = null;
                 await using var dbContext = await _limsDbContextFactory.CreateDbContextAsync(cancellationToken);
 
-                if (limsDataId == null)
+                if (externalBindingId != null)
+                {
+                    result = await dbContext.dl_equipment_ctrl_computer.FindAsync([externalBindingId], cancellationToken);
+                }
+
+                if (result == null)
                 {
                     var nodeInfo = await QueryNodeInfoByIdAsync(nodeInfoId, true, cancellationToken);
                     if (nodeInfo == null)
@@ -69,15 +74,11 @@ namespace NodeService.WebServer.Services.DataServices
                         return null;
                     }
                     var fullName = $"{nodeInfo.Name}.{nodeInfo.Profile.ComputerDomain}";
-                    result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.full_name == fullName).FirstOrDefaultAsync(cancellationToken);
+                    result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.full_name != null && x.full_name.Equals(fullName, StringComparison.OrdinalIgnoreCase)).FirstOrDefaultAsync(cancellationToken);
                     if (result == null)
                     {
-                        result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.name == nodeInfo.Name).FirstOrDefaultAsync(cancellationToken);
+                        result = await dbContext.dl_equipment_ctrl_computer.Where(x => x.name != null && x.name.Equals(nodeInfo.Name, StringComparison.OrdinalIgnoreCase)).FirstOrDefaultAsync(cancellationToken);
                     }
-                }
-                else
-                {
-                    result = await dbContext.dl_equipment_ctrl_computer.FindAsync([limsDataId], cancellationToken);
                 }
 
                 if (result != null)

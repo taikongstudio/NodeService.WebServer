@@ -213,7 +213,7 @@ namespace NodeService.WebServer.Services.Tasks
                 {
                     continue;
                 }
-                if (computerInfo.remark != null && (computerInfo.remark.Contains("废弃") || computerInfo.remark.Contains("报废")))
+                if (computerInfo.IsScrapped())
                 {
                     nodeInfo.Status = NodeStatus.Scrapped;
                 }

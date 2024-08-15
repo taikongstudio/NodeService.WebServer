@@ -104,7 +104,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
         {
             try
             {
-                var taskScheduleServiceParameters = new TaskScheduleServiceParameters(new NodeHealthyCheckScheduleParameters()
+                var taskScheduleServiceParameters = new TaskScheduleServiceParameters(new TaskObservationScheduleParameters()
                 {
                     ConfigurationId = nameof(NotificationSources.TaskObservation)
                 });

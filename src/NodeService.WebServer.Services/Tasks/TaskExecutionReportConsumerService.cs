@@ -171,7 +171,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
                     _taskObservationConfiguration = await _configurationQueryService.QueryTaskObservationConfigurationAsync(cancellationToken);
 
-                    _webServerCounter.TaskExecutionReportQueueCount.Value = _taskExecutionReportBatchQueue.AvailableCount;
+                    _webServerCounter.Snapshot.TaskExecutionReportQueueCount.Value = _taskExecutionReportBatchQueue.AvailableCount;
 
                     var reports = consumeResults.Select(static x => JsonSerializer.Deserialize<TaskExecutionReport>(x.Message.Value)!).ToImmutableArray();
 
@@ -182,7 +182,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     consumer.Commit(consumeResults.Select(static x => x.TopicPartitionOffset));
                     foreach (var consumeResult in consumeResults)
                     {
-                        var partionOffsetValue = _webServerCounter.TaskExecutionReportConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, PartitionOffsetValue.CreateNew);
+                        var partionOffsetValue = _webServerCounter.Snapshot.TaskExecutionReportConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, PartitionOffsetValue.CreateNew);
                         partionOffsetValue.Partition.Value = consumeResult.Partition.Value;
                         partionOffsetValue.Offset.Value = consumeResult.Offset.Value;
                         partionOffsetValue.Message = consumeResult.Message.Value.ToString();
@@ -206,9 +206,9 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
                     if (!consumeResults.IsDefaultOrEmpty && consumeResults.Length > 0)
                     {
                         _logger.LogInformation($"process {consumeResults.Length} messages,spent: {elapsed}, QueueCount:{_taskExecutionReportBatchQueue.AvailableCount}");
-                        _webServerCounter.TaskExecutionReportConsumeCount.Value += (uint)consumeResults.Length;
+                        _webServerCounter.Snapshot.TaskExecutionReportConsumeCount.Value += (uint)consumeResults.Length;
                     }
-                    _webServerCounter.TaskExecutionReportTotalTimeSpan.Value += elapsed;
+                    _webServerCounter.Snapshot.TaskExecutionReportTotalTimeSpan.Value += elapsed;
                 }
             }
         }
@@ -317,7 +317,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
         var taskActivationRecord = await taskActivationRecordRepo.GetByIdAsync(taskActivationRecordId, cancellationToken);
-        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
+        _webServerCounter.Snapshot.TaskExecutionReportQueryTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
         return taskActivationRecord;
     }
 
@@ -329,7 +329,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
         var list = await taskExecutionInstanceRepo.ListAsync(
                                                                     new TaskExecutionInstanceListSpecification(taskExecutionInstanceIdFilters),
                                                                     cancellationToken);
-        _webServerCounter.TaskExecutionReportQueryTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
+        _webServerCounter.Snapshot.TaskExecutionReportQueryTimeSpan.Value += taskExecutionInstanceRepo.LastOperationTimeSpan;
         return list;
     }
 

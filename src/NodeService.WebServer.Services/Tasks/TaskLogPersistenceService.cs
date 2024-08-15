@@ -120,7 +120,7 @@ public class TaskLogPersistenceService : BackgroundService
             {
                 try
                 {
-                    _webServerCounter.TaskLogUnitQueueCount.Value = _taskLogUnitBatchQueue.QueueCount;
+                    _webServerCounter.Snapshot.TaskLogUnitQueueCount.Value = _taskLogUnitBatchQueue.QueueCount;
                     if (array == null)
                     {
                         continue;
@@ -150,7 +150,7 @@ public class TaskLogPersistenceService : BackgroundService
 
                     _logger.LogInformation("End");
                     _keys = _taskLogHandlers.Keys;
-                    _webServerCounter.TaskLogHandlerCount.Value = _taskLogHandlers.Count;
+                    _webServerCounter.Snapshot.TaskLogHandlerCount.Value = _taskLogHandlers.Count;
                 }
                 catch (Exception ex)
                 {

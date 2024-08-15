@@ -99,27 +99,27 @@ namespace NodeService.WebServer.Services.Tasks
                 var taskInfoCache = await EnsureTaskInfoCacheAsync(taskExecutionInstanceId, cancellationToken);
                 stopwatch.Stop();
 
-                _webServerCounter.TaskLogInfoQueryTimeSpan.Value += stopwatch.Elapsed;
-                _webServerCounter.TaskLogEntriesSaveTimes.Value++;
+                _webServerCounter.Snapshot.TaskLogInfoQueryTimeSpan.Value += stopwatch.Elapsed;
+                _webServerCounter.Snapshot.TaskLogEntriesSaveTimes.Value++;
 
                 stopwatch.Restart();
                 var entriesCount = await SaveLogEntriesAsync(taskInfoCache, logEntries, cancellationToken);
                 stopwatch.Stop();
-                if (stopwatch.Elapsed > _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value)
+                if (stopwatch.Elapsed > _webServerCounter.Snapshot.TaskLogUnitSaveMaxTimeSpan.Value)
                 {
-                    _webServerCounter.TaskLogUnitSaveMaxTimeSpan.Value = stopwatch.Elapsed;
+                    _webServerCounter.Snapshot.TaskLogUnitSaveMaxTimeSpan.Value = stopwatch.Elapsed;
                 }
-                _webServerCounter.TaskLogUnitSaveTimeSpan.Value += stopwatch.Elapsed;
+                _webServerCounter.Snapshot.TaskLogUnitSaveTimeSpan.Value += stopwatch.Elapsed;
                 stopwatch.Restart();
                 await UpdateTaskLogInfoPageAsync(taskInfoCache.TaskInfoLog, cancellationToken);
                 stopwatch.Stop();
 
-                this._webServerCounter.TaskLogInfoSaveTimeSpan.Value += stopwatch.Elapsed;
+                this._webServerCounter.Snapshot.TaskLogInfoSaveTimeSpan.Value += stopwatch.Elapsed;
 
                 _logger.LogInformation($"Process {taskExecutionInstanceId},spent:{stopwatch.Elapsed},Save {entriesCount} logs");
 
-                this._webServerCounter.TaskLogUnitConsumeCount.Value += taskLogUnitGroup.Count();
-                this._webServerCounter.TaskLogEntriesSaveCount.Value += entriesCount;
+                this._webServerCounter.Snapshot.TaskLogUnitConsumeCount.Value += taskLogUnitGroup.Count();
+                this._webServerCounter.Snapshot.TaskLogEntriesSaveCount.Value += entriesCount;
 
             }
             catch (Exception ex)
@@ -181,7 +181,7 @@ namespace NodeService.WebServer.Services.Tasks
                         };
                         taskInfoCache.TaskInfoLog.LogEntries = [.. taskInfoCache.TaskInfoLog.LogEntries, currentLogEntry];
 
-                        _webServerCounter.TaskLogPageCount.Value++;
+                        _webServerCounter.Snapshot.TaskLogPageCount.Value++;
                     }
                 }
 

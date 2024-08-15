@@ -56,7 +56,7 @@ public class FileRecordQueryService
         CancellationToken cancellationToken = default)
     {
         await using var repo = await _applicationRepoFactory.CreateRepositoryAsync(cancellationToken);
-        var modelFromRepo = await repo.DbContext.Set<FileRecordModel>().FindAsync(new object?[] { fileRecord.Id, fileRecord.Name, cancellationToken }, cancellationToken: cancellationToken);
+        var modelFromRepo = await repo.DbContext.Set<FileRecordModel>().FindAsync(new object?[] { fileRecord.Id, fileRecord.Name }, cancellationToken);
         if (modelFromRepo == null)
         {
             await repo.AddAsync(fileRecord, cancellationToken);

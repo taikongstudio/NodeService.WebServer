@@ -83,7 +83,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                             if (deliveryReport.Status == PersistenceStatus.Persisted)
                             {
                                 await _delayMessageQueue.DeuqueAsync(cancellationToken);
-                                var partionOffsetValue = _webServerCounter.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, PartitionOffsetValue.CreateNew);
+                                var partionOffsetValue = _webServerCounter.Snapshot.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, PartitionOffsetValue.CreateNew);
                                 partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
                                 partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;
                                 partionOffsetValue.Message = deliveryReport.Message.Value;
@@ -119,13 +119,13 @@ namespace NodeService.WebServer.Services.TaskSchedule
 
                             foreach (var consumeResult in consumeResults)
                             {
-                                var partionOffsetValue = _webServerCounter.KafkaDelayMessageConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, PartitionOffsetValue.CreateNew);
+                                var partionOffsetValue = _webServerCounter.Snapshot.KafkaDelayMessageConsumePartitionOffsetDictionary.GetOrAdd(consumeResult.Partition.Value, PartitionOffsetValue.CreateNew);
                                 partionOffsetValue.Partition.Value = consumeResult.Partition.Value;
                                 partionOffsetValue.Offset.Value = consumeResult.Offset.Value;
                                 partionOffsetValue.Message = consumeResult.Message.Value;
                             }
 
-                            _webServerCounter.KafkaDelayMessageConsumeCount.Value += consumeContexts.Length;
+                            _webServerCounter.Snapshot.KafkaDelayMessageConsumeCount.Value += consumeContexts.Length;
                         }
                     }
                     catch (Exception ex)
@@ -162,10 +162,10 @@ namespace NodeService.WebServer.Services.TaskSchedule
                     await _delayMessageBroadcast.BroadcastAsync(
                             delayMessage,
                             cancellationToken);
-                    _webServerCounter.KafkaDelayMessageTickCount.Value++;
+                    _webServerCounter.Snapshot.KafkaDelayMessageTickCount.Value++;
                     if (delayMessage.Handled)
                     {
-                        _webServerCounter.KafkaDelayMessageHandledCount.Value++;
+                        _webServerCounter.Snapshot.KafkaDelayMessageHandledCount.Value++;
                         return;
                     }
                     produceMessage = true;
@@ -181,11 +181,11 @@ namespace NodeService.WebServer.Services.TaskSchedule
                         delayMessage,
                         cancellationToken);
 
-                    _webServerCounter.KafkaDelayMessageScheduleCount.Value++;
+                    _webServerCounter.Snapshot.KafkaDelayMessageScheduleCount.Value++;
 
                     if (delayMessage.Handled)
                     {
-                        _webServerCounter.KafkaDelayMessageHandledCount.Value++;
+                        _webServerCounter.Snapshot.KafkaDelayMessageHandledCount.Value++;
                         return;
                     }
                 }
@@ -204,8 +204,8 @@ namespace NodeService.WebServer.Services.TaskSchedule
                             cancellationToken);
                         if (deliveryReport.Status == PersistenceStatus.Persisted)
                         {
-                            _webServerCounter.KafkaDelayMessageProduceCount.Value++;
-                            var partionOffsetValue = _webServerCounter.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, PartitionOffsetValue.CreateNew);
+                            _webServerCounter.Snapshot.KafkaDelayMessageProduceCount.Value++;
+                            var partionOffsetValue = _webServerCounter.Snapshot.KafkaDelayMessageProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, PartitionOffsetValue.CreateNew);
                             partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
                             partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;
                             partionOffsetValue.Message = deliveryReport.Message.Value;

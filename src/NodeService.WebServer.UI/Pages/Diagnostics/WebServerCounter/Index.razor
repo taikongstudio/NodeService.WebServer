@@ -211,42 +211,42 @@
         KafkaLogConsumeStatistics = GetKafkaLogConsumeStatistics();
         KafkaLogProduceStatistics = GetKafkaLogProduceStatistics();
         KafkaDelayMessageStatistics = GetKafkaDelayMessageStatistics();
-        TaskExecutionReportConsumePartitionOffsetValues = WebServerCounter.TaskExecutionReportConsumePartitionOffsetDictionary.Values;
-        TaskExecutionReportProducePartitionOffsetValues = WebServerCounter.TaskExecutionReportProducePartitionOffsetDictionary.Values;
-        KafkaLogConsumePartitionOffsetValues = WebServerCounter.KafkaLogConsumePartitionOffsetDictionary.Values;
-        KafkaLogProducePartitionOffsetValues = WebServerCounter.KafkaLogProducePartitionOffsetDictionary.Values;
-        KafkaDelayMessageConsumePartitionOffsetValues = WebServerCounter.KafkaDelayMessageConsumePartitionOffsetDictionary.Values;
-        KafkaDelayMessageProducePartitionOffsetValues = WebServerCounter.KafkaDelayMessageConsumePartitionOffsetDictionary.Values;
-        TaskObservationEventConsumePartitionOffsetValues = WebServerCounter.KafkaTaskObservationEventConsumePartitionOffsetDictionary.Values;
-        TaskObservationEventProducePartitionOffsetValues = WebServerCounter.KafkaTaskObservationEventProducePartitionOffsetDictionary.Values;
+        TaskExecutionReportConsumePartitionOffsetValues = WebServerCounter.Snapshot.TaskExecutionReportConsumePartitionOffsetDictionary.Values;
+        TaskExecutionReportProducePartitionOffsetValues = WebServerCounter.Snapshot.TaskExecutionReportProducePartitionOffsetDictionary.Values;
+        KafkaLogConsumePartitionOffsetValues = WebServerCounter.Snapshot.KafkaLogConsumePartitionOffsetDictionary.Values;
+        KafkaLogProducePartitionOffsetValues = WebServerCounter.Snapshot.KafkaLogProducePartitionOffsetDictionary.Values;
+        KafkaDelayMessageConsumePartitionOffsetValues = WebServerCounter.Snapshot.KafkaDelayMessageConsumePartitionOffsetDictionary.Values;
+        KafkaDelayMessageProducePartitionOffsetValues = WebServerCounter.Snapshot.KafkaDelayMessageConsumePartitionOffsetDictionary.Values;
+        TaskObservationEventConsumePartitionOffsetValues = WebServerCounter.Snapshot.KafkaTaskObservationEventConsumePartitionOffsetDictionary.Values;
+        TaskObservationEventProducePartitionOffsetValues = WebServerCounter.Snapshot.KafkaTaskObservationEventProducePartitionOffsetDictionary.Values;
     }
 
     IEnumerable<(string Desc, string Value)> GetTaskExecutionStatistics()
     {
-        yield return (nameof(WebServerCounter.TaskExecutionReportQueueCount), WebServerCounter.TaskExecutionReportQueueCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportProcessTimeSpan), WebServerCounter.TaskExecutionReportProcessTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportQueryTimeSpan), WebServerCounter.TaskExecutionReportQueryTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportSaveTimeSpan), WebServerCounter.TaskExecutionReportSaveTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportTotalTimeSpan), WebServerCounter.TaskExecutionReportTotalTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportSaveChangesCount), WebServerCounter.TaskExecutionReportSaveChangesCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportConsumeCount), WebServerCounter.TaskExecutionReportConsumeCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportProducePersistedCount), WebServerCounter.TaskExecutionReportProducePersistedCount.ToString());
-        yield return (nameof(WebServerCounter.TaskExecutionReportProduceNotPersistedCount), WebServerCounter.TaskExecutionReportProduceNotPersistedCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskExecutionReportQueueCount), WebServerCounter.Snapshot.TaskExecutionReportQueueCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskExecutionReportProcessTimeSpan), WebServerCounter.Snapshot.TaskExecutionReportProcessTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskExecutionReportQueryTimeSpan), WebServerCounter.Snapshot.TaskExecutionReportQueryTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskExecutionReportSaveTimeSpan), WebServerCounter.Snapshot.TaskExecutionReportSaveTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskExecutionReportTotalTimeSpan), WebServerCounter.Snapshot.TaskExecutionReportTotalTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskExecutionReportSaveChangesCount), WebServerCounter.Snapshot.TaskExecutionReportSaveChangesCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskExecutionReportConsumeCount), WebServerCounter.Snapshot.TaskExecutionReportConsumeCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskExecutionReportProducePersistedCount), WebServerCounter.Snapshot.TaskExecutionReportProducePersistedCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskExecutionReportProduceNotPersistedCount), WebServerCounter.Snapshot.TaskExecutionReportProduceNotPersistedCount.ToString());
         yield break;
     }
 
 
     IEnumerable<(string Desc, string Value)> GetKafkaLogConsumeStatistics()
     {
-        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeCount), WebServerCounter.KafkaTaskLogConsumeCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeWaitCount), WebServerCounter.KafkaTaskLogConsumeWaitCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan), WebServerCounter.KafkaTaskLogConsumeContextGroupMaxTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeContextGroupAvgTimeSpan), WebServerCounter.KafkaTaskLogConsumeContextGroupAvgTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeScaleFactor), WebServerCounter.KafkaTaskLogConsumeScaleFactor.ToString());
-        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeMaxPrefetchCount), WebServerCounter.KafkaTaskLogConsumeMaxPrefetchCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaTaskLogConsumePrefetchCount), WebServerCounter.KafkaTaskLogConsumePrefetchCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeTotalTimeSpan), WebServerCounter.KafkaTaskLogConsumeTotalTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.KafkaTaskLogConsumeMaxTimeSpan), WebServerCounter.KafkaTaskLogConsumeMaxTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogConsumeCount), WebServerCounter.Snapshot.KafkaTaskLogConsumeCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogConsumeWaitCount), WebServerCounter.Snapshot.KafkaTaskLogConsumeWaitCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogConsumeContextGroupMaxTimeSpan), WebServerCounter.Snapshot.KafkaTaskLogConsumeContextGroupMaxTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogConsumeContextGroupAvgTimeSpan), WebServerCounter.Snapshot.KafkaTaskLogConsumeContextGroupAvgTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogConsumeScaleFactor), WebServerCounter.Snapshot.KafkaTaskLogConsumeScaleFactor.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogConsumeMaxPrefetchCount), WebServerCounter.Snapshot.KafkaTaskLogConsumeMaxPrefetchCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogConsumePrefetchCount), WebServerCounter.Snapshot.KafkaTaskLogConsumePrefetchCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogConsumeTotalTimeSpan), WebServerCounter.Snapshot.KafkaTaskLogConsumeTotalTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogConsumeMaxTimeSpan), WebServerCounter.Snapshot.KafkaTaskLogConsumeMaxTimeSpan.ToString());
         yield break;
     }
 
@@ -254,73 +254,74 @@
     IEnumerable<(string Desc, string Value)> GetKafkaLogProduceStatistics()
     {
 
-        yield return (nameof(WebServerCounter.KafkaTaskLogProduceCount), WebServerCounter.KafkaTaskLogProduceCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaTaskLogProduceRetryCount), WebServerCounter.KafkaTaskLogProduceRetryCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogProduceCount), WebServerCounter.Snapshot.KafkaTaskLogProduceCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaTaskLogProduceRetryCount), WebServerCounter.Snapshot.KafkaTaskLogProduceRetryCount.ToString());
         yield break;
     }
 
     IEnumerable<(string Desc, string Value)> GetHeartBeatStatistics()
     {
-        yield return (nameof(WebServerCounter.HeartBeatQueueCount), WebServerCounter.HeartBeatQueueCount.ToString());
-        yield return (nameof(WebServerCounter.HeartBeatMessageConsumeCount), WebServerCounter.HeartBeatMessageConsumeCount.ToString());
-        yield return (nameof(WebServerCounter.HeartBeatQueryNodeInfoListTimeSpan), WebServerCounter.HeartBeatQueryNodeInfoListTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.HeartBeatUpdateNodeInfoListTimeSpan), WebServerCounter.HeartBeatUpdateNodeInfoListTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.HeartBeatQueryNodePropsTimeSpan), WebServerCounter.HeartBeatQueryNodePropsTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.HeartBeatSaveNodePropsTimeSpan), WebServerCounter.HeartBeatSaveNodePropsTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.HeartBeatTotalProcessTimeSpan), WebServerCounter.HeartBeatTotalProcessTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.HeartBeatRecieveCount), WebServerCounter.Snapshot.HeartBeatRecieveCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.HeartBeatQueueCount), WebServerCounter.Snapshot.HeartBeatQueueCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.HeartBeatMessageConsumeCount), WebServerCounter.Snapshot.HeartBeatMessageConsumeCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.HeartBeatQueryNodeInfoListTimeSpan), WebServerCounter.Snapshot.HeartBeatQueryNodeInfoListTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.HeartBeatUpdateNodeInfoListTimeSpan), WebServerCounter.Snapshot.HeartBeatUpdateNodeInfoListTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.HeartBeatQueryNodePropsTimeSpan), WebServerCounter.Snapshot.HeartBeatQueryNodePropsTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.HeartBeatSaveNodePropsTimeSpan), WebServerCounter.Snapshot.HeartBeatSaveNodePropsTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.HeartBeatTotalProcessTimeSpan), WebServerCounter.Snapshot.HeartBeatTotalProcessTimeSpan.ToString());
         yield break;
     }
 
     IEnumerable<(string Desc, string Value)> GetNodeServiceStatistics()
     {
-        yield return (nameof(WebServerCounter.NodeServiceInputMessagesCount), WebServerCounter.NodeServiceInputMessagesCount.ToString());
-        yield return (nameof(WebServerCounter.NodeServiceOutputMessagesCount), WebServerCounter.NodeServiceOutputMessagesCount.ToString());
-        yield return (nameof(WebServerCounter.NodeServiceExpiredMessagesCount), WebServerCounter.NodeServiceExpiredMessagesCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.NodeServiceInputMessagesCount), WebServerCounter.Snapshot.NodeServiceInputMessagesCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.NodeServiceOutputMessagesCount), WebServerCounter.Snapshot.NodeServiceOutputMessagesCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.NodeServiceExpiredMessagesCount), WebServerCounter.Snapshot.NodeServiceExpiredMessagesCount.ToString());
         yield break;
     }
 
     IEnumerable<(string Desc, string Value)> GetTaskLogStatistics()
     {
-        yield return (nameof(WebServerCounter.TaskLogUnitEntriesCount), WebServerCounter.TaskLogUnitEntriesCount.ToString());
-        yield return (nameof(WebServerCounter.TaskLogUnitCollectLogEntriesTimeSpan), WebServerCounter.TaskLogUnitCollectLogEntriesTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskLogUnitRecieveCount), WebServerCounter.TaskLogUnitRecieveCount.ToString());
-        yield return (nameof(WebServerCounter.TaskLogUnitSaveTimeSpan), WebServerCounter.TaskLogUnitSaveTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskLogUnitQueryTimeSpan), WebServerCounter.TaskLogUnitQueryTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskLogUnitSaveMaxTimeSpan), WebServerCounter.TaskLogUnitSaveMaxTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskLogUnitQueueCount), WebServerCounter.TaskLogUnitQueueCount.ToString());
-        yield return (nameof(WebServerCounter.TaskLogUnitConsumeCount), WebServerCounter.TaskLogUnitConsumeCount.ToString());
-        yield return (nameof(WebServerCounter.TaskLogPageDetachedCount), WebServerCounter.TaskLogPageDetachedCount.ToString());
-        yield return (nameof(WebServerCounter.TaskLogEntriesSaveCount), WebServerCounter.TaskLogEntriesSaveCount.ToString());
-        yield return (nameof(WebServerCounter.TaskLogEntriesSaveTimes), WebServerCounter.TaskLogEntriesSaveTimes.ToString());
-        yield return (nameof(WebServerCounter.TaskLogInfoQueryTimeSpan), WebServerCounter.TaskLogInfoQueryTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskLogInfoSaveTimeSpan), WebServerCounter.TaskLogInfoSaveTimeSpan.ToString());
-        yield return (nameof(WebServerCounter.TaskLogPageCount), WebServerCounter.TaskLogPageCount.ToString());
-        yield return (nameof(WebServerCounter.TaskLogHandlerCount), WebServerCounter.TaskLogHandlerCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogUnitEntriesCount), WebServerCounter.Snapshot.TaskLogUnitEntriesCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogUnitCollectLogEntriesTimeSpan), WebServerCounter.Snapshot.TaskLogUnitCollectLogEntriesTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogUnitRecieveCount), WebServerCounter.Snapshot.TaskLogUnitRecieveCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogUnitSaveTimeSpan), WebServerCounter.Snapshot.TaskLogUnitSaveTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogUnitQueryTimeSpan), WebServerCounter.Snapshot.TaskLogUnitQueryTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogUnitSaveMaxTimeSpan), WebServerCounter.Snapshot.TaskLogUnitSaveMaxTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogUnitQueueCount), WebServerCounter.Snapshot.TaskLogUnitQueueCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogUnitConsumeCount), WebServerCounter.Snapshot.TaskLogUnitConsumeCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogPageDetachedCount), WebServerCounter.Snapshot.TaskLogPageDetachedCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogEntriesSaveCount), WebServerCounter.Snapshot.TaskLogEntriesSaveCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogEntriesSaveTimes), WebServerCounter.Snapshot.TaskLogEntriesSaveTimes.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogInfoQueryTimeSpan), WebServerCounter.Snapshot.TaskLogInfoQueryTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogInfoSaveTimeSpan), WebServerCounter.Snapshot.TaskLogInfoSaveTimeSpan.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogPageCount), WebServerCounter.Snapshot.TaskLogPageCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskLogHandlerCount), WebServerCounter.Snapshot.TaskLogHandlerCount.ToString());
         yield break;
     }
 
     IEnumerable<(string Desc, string Value)> GetKafkaDelayMessageStatistics()
     {
-        yield return (nameof(WebServerCounter.KafkaDelayMessageTickCount), WebServerCounter.KafkaDelayMessageTickCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaDelayMessageScheduleCount), WebServerCounter.KafkaDelayMessageScheduleCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaDelayMessageProduceCount), WebServerCounter.KafkaDelayMessageProduceCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaDelayMessageConsumeCount), WebServerCounter.KafkaDelayMessageConsumeCount.ToString());
-        yield return (nameof(WebServerCounter.KafkaDelayMessageHandledCount), WebServerCounter.KafkaDelayMessageHandledCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaDelayMessageTickCount), WebServerCounter.Snapshot.KafkaDelayMessageTickCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaDelayMessageScheduleCount), WebServerCounter.Snapshot.KafkaDelayMessageScheduleCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaDelayMessageProduceCount), WebServerCounter.Snapshot.KafkaDelayMessageProduceCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaDelayMessageConsumeCount), WebServerCounter.Snapshot.KafkaDelayMessageConsumeCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.KafkaDelayMessageHandledCount), WebServerCounter.Snapshot.KafkaDelayMessageHandledCount.ToString());
         yield break;
     }
 
     IEnumerable<(string Desc, string Value)> GetNodeHealthyCheckNotificationStatistics()
     {
-        yield return (nameof(WebServerCounter.FireNodeHeathyCheckJobDequeueCount), WebServerCounter.FireNodeHeathyCheckJobDequeueCount.ToString());
-        yield return (nameof(WebServerCounter.FireNodeHeathyCheckJobEnqueueCount), WebServerCounter.FireNodeHeathyCheckJobEnqueueCount.ToString());
-        yield return (nameof(WebServerCounter.NodeHeathyCheckSendEmailCount), WebServerCounter.NodeHeathyCheckSendEmailCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.FireNodeHeathyCheckJobDequeueCount), WebServerCounter.Snapshot.FireNodeHeathyCheckJobDequeueCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.FireNodeHeathyCheckJobEnqueueCount), WebServerCounter.Snapshot.FireNodeHeathyCheckJobEnqueueCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.NodeHeathyCheckSendEmailCount), WebServerCounter.Snapshot.NodeHeathyCheckSendEmailCount.ToString());
         yield break;
     }
 
     IEnumerable<(string Desc, string Value)> GetTaskObservationEventStatistics()
     {
-        yield return (nameof(WebServerCounter.TaskObservationEventConsumeCount), WebServerCounter.TaskObservationEventConsumeCount.ToString());
-        yield return (nameof(WebServerCounter.TaskObservationEventProducePersistedCount), WebServerCounter.TaskObservationEventProducePersistedCount.ToString());   }
+        yield return (nameof(WebServerCounterSnapshot.TaskObservationEventConsumeCount), WebServerCounter.Snapshot.TaskObservationEventConsumeCount.ToString());
+        yield return (nameof(WebServerCounterSnapshot.TaskObservationEventProducePersistedCount), WebServerCounter.Snapshot.TaskObservationEventProducePersistedCount.ToString());   }
 
     public void Dispose()
     {

@@ -14,7 +14,7 @@ namespace NodeService.WebServer.Services.TaskSchedule.Jobs
         {
             var queue = ServiceProvider.GetService<IAsyncQueue<NodeHealthyCheckFireEvent>>();
             var webServerCounter = ServiceProvider.GetService<WebServerCounter>();
-            webServerCounter.FireNodeHeathyCheckJobEnqueueCount.Value++;
+            webServerCounter.Snapshot.FireNodeHeathyCheckJobEnqueueCount.Value++;
             await queue.EnqueueAsync(new NodeHealthyCheckFireEvent()
             {
 

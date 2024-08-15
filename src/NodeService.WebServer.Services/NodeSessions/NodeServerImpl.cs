@@ -98,7 +98,7 @@ public class NodeServerImpl : NodeServiceBase
                 {
                     try
                     {
-                        _webServerCounter.NodeServiceInputMessagesCount.Value++;
+                        _webServerCounter.Snapshot.NodeServiceInputMessagesCount.Value++;
                         if (!messageHandlerDictionary.TryGetValue(message.Descriptor, out var messageHandler)) continue;
                         await messageHandler.HandleAsync(message, cancellationToken);
                     }
@@ -132,7 +132,7 @@ public class NodeServerImpl : NodeServiceBase
                         }
                         if (message is not INodeMessage nodeMessage || nodeMessage.IsExpired)
                         {
-                            _webServerCounter.NodeServiceExpiredMessagesCount.Value++;
+                            _webServerCounter.Snapshot.NodeServiceExpiredMessagesCount.Value++;
                             await outputQueue.DeuqueAsync(cancellationToken);
                             continue;
                         }
@@ -146,7 +146,7 @@ public class NodeServerImpl : NodeServiceBase
                             }
                             subscribeEvent.Properties.TryAdd("DateTime", nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
                             await responseStream.WriteAsync(subscribeEvent, cancellationToken);
-                            _webServerCounter.NodeServiceOutputMessagesCount.Value++;
+                            _webServerCounter.Snapshot.NodeServiceOutputMessagesCount.Value++;
                         }
                         await outputQueue.DeuqueAsync(cancellationToken);
                     }

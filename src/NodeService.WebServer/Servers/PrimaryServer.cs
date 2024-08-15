@@ -29,6 +29,7 @@ using OpenTelemetry.Metrics;
 using StackExchange.Redis;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Threading;
 using System.Threading.RateLimiting;
 
 namespace NodeService.WebServer.Servers
@@ -98,6 +99,15 @@ namespace NodeService.WebServer.Servers
             using var scope = app.Services.CreateAsyncScope();
             using var applicationUserDbContext = scope.ServiceProvider.GetService<ApplicationUserDbContext>();
             applicationUserDbContext.Database.EnsureCreated();
+
+            await InitWebServerCounter(app);
+        }
+
+        private static async Task InitWebServerCounter(WebApplication app)
+        {
+            var webServerCounter = app.Services.GetService<WebServerCounter>();
+            var objectCache = app.Services.GetService<ObjectCache>();
+            await webServerCounter.InitFromCacheAsync(objectCache);
         }
 
         void MapGrpcServices(WebApplication app)
@@ -227,6 +237,7 @@ namespace NodeService.WebServer.Servers
 
         void ConfigureHostedServices(WebApplicationBuilder builder)
         {
+            builder.Services.AddHostedService<WebServerCounterSnapshotService>();
             builder.Services.AddHostedService<TaskScheduleService>();
             builder.Services.AddHostedService<TaskExecutionReportConsumerService>();
             builder.Services.AddHostedService<HeartBeatResponseConsumerService>();

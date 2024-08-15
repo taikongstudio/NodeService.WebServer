@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using NodeService.Infrastructure.NodeSessions;
+using NodeService.WebServer.Services.Counters;
 using System.Globalization;
 
 namespace NodeService.WebServer.Services.NodeSessions.MessageHandlers;
@@ -8,6 +9,7 @@ public class HeartBeatResponseHandler : IMessageHandler
 {
     readonly BatchQueue<NodeHeartBeatSessionMessage> _heartBeatBatchQueue;
     readonly BatchQueue<NodeStatusChangeRecordModel> _nodeStatusChangeRecordBatchQueue;
+    readonly WebServerCounter _webServerCounter;
     readonly ILogger<HeartBeatResponseHandler> _logger;
     readonly INodeSessionService _nodeSessionService;
     string _remoteIpAddress;
@@ -16,12 +18,14 @@ public class HeartBeatResponseHandler : IMessageHandler
         ILogger<HeartBeatResponseHandler> logger,
         INodeSessionService nodeSessionService,
         BatchQueue<NodeHeartBeatSessionMessage> heartBeatBatchQueue,
-        BatchQueue<NodeStatusChangeRecordModel> nodeStatusChangeRecordBatchQueue)
+        BatchQueue<NodeStatusChangeRecordModel> nodeStatusChangeRecordBatchQueue,
+        WebServerCounter webServerCounter)
     {
         _logger = logger;
         _nodeSessionService = nodeSessionService;
         _heartBeatBatchQueue = heartBeatBatchQueue;
         _nodeStatusChangeRecordBatchQueue = nodeStatusChangeRecordBatchQueue;
+        _webServerCounter = webServerCounter;
         NodeSessionId = NodeSessionId.Empty;
     }
 

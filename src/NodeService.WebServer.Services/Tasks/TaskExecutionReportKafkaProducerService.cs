@@ -131,15 +131,15 @@ namespace NodeService.WebServer.Services.Tasks
         {
             if (deliveryReport.Status == PersistenceStatus.Persisted)
             {
-                _webServerCounter.TaskExecutionReportProducePersistedCount.Value++;
-                var partionOffsetValue = _webServerCounter.TaskExecutionReportProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, PartitionOffsetValue.CreateNew);
+                _webServerCounter.Snapshot.TaskExecutionReportProducePersistedCount.Value++;
+                var partionOffsetValue = _webServerCounter.Snapshot.TaskExecutionReportProducePartitionOffsetDictionary.GetOrAdd(deliveryReport.Partition.Value, PartitionOffsetValue.CreateNew);
                 partionOffsetValue.Partition.Value = deliveryReport.Partition.Value;
                 partionOffsetValue.Offset.Value = deliveryReport.Offset.Value;
                 partionOffsetValue.Message = deliveryReport.Value;
             }
             else if (deliveryReport.Status == PersistenceStatus.NotPersisted)
             {
-                _webServerCounter.TaskExecutionReportProduceNotPersistedCount.Value++;
+                _webServerCounter.Snapshot.TaskExecutionReportProduceNotPersistedCount.Value++;
                 var report = JsonSerializer.Deserialize<TaskExecutionReport>(deliveryReport.Message.Value)!;
                 _currentSendQueue.TryWrite(report);
             }
@@ -158,7 +158,7 @@ namespace NodeService.WebServer.Services.Tasks
                 };
                 await _taskLogUnitBatchQueue.SendAsync(taskLogUnit, cancellationToken);
                 _logger.LogInformation($"Send task log unit:{taskExecutionReport.Id},{taskExecutionReport.LogEntries.Count} enties");
-                _webServerCounter.TaskLogUnitRecieveCount.Value++;
+                _webServerCounter.Snapshot.TaskLogUnitRecieveCount.Value++;
                 taskExecutionReport.LogEntries.Clear();
             }
         }

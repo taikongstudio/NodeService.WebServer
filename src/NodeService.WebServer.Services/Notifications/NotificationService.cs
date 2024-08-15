@@ -73,7 +73,7 @@ public class NotificationService : BackgroundService
 
                 await dbContext.SaveChangesAsync(cancellationToken);
 
-                _webServerCounter.NotificationRecordCount.Value++;
+                _webServerCounter.Snapshot.NotificationRecordCount.Value++;
 
             }
 

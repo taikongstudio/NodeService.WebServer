@@ -33,7 +33,7 @@ public class TaskExecutionReportHandler : IMessageHandler
 
     public async ValueTask HandleAsync(IMessage message, CancellationToken cancellationToken = default)
     {
-        _webServerCounter.TaskExecutionReportRecieveCount.Value++;
+        _webServerCounter.Snapshot.TaskExecutionReportRecieveCount.Value++;
         await _reportQueue.EnqueueAsync(message as TaskExecutionReport, cancellationToken);
     }
 

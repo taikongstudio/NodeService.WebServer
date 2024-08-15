@@ -61,8 +61,8 @@ namespace NodeService.WebServer.Services.Tasks
                         if (result.Status == PersistenceStatus.Persisted)
                         {
                             await _eventQueue.DeuqueAsync(cancellationToken);
-                            _webServerCounter.TaskObservationEventProducePersistedCount.Value++;
-                            var partionOffsetValue = _webServerCounter.KafkaTaskObservationEventProducePartitionOffsetDictionary.GetOrAdd(result.Partition.Value, PartitionOffsetValue.CreateNew);
+                            _webServerCounter.Snapshot.TaskObservationEventProducePersistedCount.Value++;
+                            var partionOffsetValue = _webServerCounter.Snapshot.KafkaTaskObservationEventProducePartitionOffsetDictionary.GetOrAdd(result.Partition.Value, PartitionOffsetValue.CreateNew);
                             partionOffsetValue.Partition.Value = result.Partition.Value;
                             partionOffsetValue.Offset.Value = result.Offset.Value;
                             partionOffsetValue.Message = result.Message.Value;

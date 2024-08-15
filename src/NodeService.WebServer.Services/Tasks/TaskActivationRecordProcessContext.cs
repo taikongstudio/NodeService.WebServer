@@ -253,7 +253,7 @@ internal partial class TaskActivationRecordProcessContext
 
             if (taskExecutionInstance.IsTerminatedStatus()) return false;
 
-            _webServerCounter.TaskLogUnitCollectLogEntriesTimeSpan.Value += stopwatchCollectLogEntries.Elapsed;
+            _webServerCounter.Snapshot.TaskLogUnitCollectLogEntriesTimeSpan.Value += stopwatchCollectLogEntries.Elapsed;
 
 
             var taskExecutionStatus = taskExecutionInstance.Status;
@@ -286,7 +286,7 @@ internal partial class TaskActivationRecordProcessContext
 
             }
             stopwatchProcessMessage.Stop();
-            _webServerCounter.TaskExecutionReportProcessTimeSpan.Value += stopwatchProcessMessage.Elapsed;
+            _webServerCounter.Snapshot.TaskExecutionReportProcessTimeSpan.Value += stopwatchProcessMessage.Elapsed;
 
             int diffCount = 0;
 
@@ -607,8 +607,8 @@ internal partial class TaskActivationRecordProcessContext
         await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
         await taskActivationRecordRepo.UpdateRangeAsync(taskActivationRecordList, cancellationToken);
         var taskActivationRecordUpdateCount = taskActivationRecordRepo.LastSaveChangesCount;
-        _webServerCounter.TaskExecutionReportSaveTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
-        _webServerCounter.TaskExecutionReportSaveChangesCount.Value += (uint)taskActivationRecordRepo.LastSaveChangesCount;
+        _webServerCounter.Snapshot.TaskExecutionReportSaveTimeSpan.Value += taskActivationRecordRepo.LastOperationTimeSpan;
+        _webServerCounter.Snapshot.TaskExecutionReportSaveChangesCount.Value += (uint)taskActivationRecordRepo.LastSaveChangesCount;
     }
 
     async ValueTask SaveTaskExecutionInstanceListAsync(

@@ -86,9 +86,9 @@ public class HeartBeatResponseConsumerService : BackgroundService
             {
                 await ProcessHeartBeatMessagesAsync(array, cancellationToken);
                 processTimeSpan = Stopwatch.GetElapsedTime(timeStamp);
-                _webServerCounter.HeartBeatQueueCount.Value = _hearBeatSessionMessageBatchQueue.QueueCount;
-                _webServerCounter.HeartBeatTotalProcessTimeSpan.Value += processTimeSpan;
-                _webServerCounter.HeartBeatMessageConsumeCount.Value += (uint)count;
+                _webServerCounter.Snapshot.HeartBeatQueueCount.Value = _hearBeatSessionMessageBatchQueue.QueueCount;
+                _webServerCounter.Snapshot.HeartBeatTotalProcessTimeSpan.Value += processTimeSpan;
+                _webServerCounter.Snapshot.HeartBeatMessageConsumeCount.Value += (uint)count;
             }
             catch (Exception ex)
             {
@@ -152,7 +152,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 nodeIdList,
                 false,
                 cancellationToken);
-            _webServerCounter.HeartBeatQueryNodeInfoListTimeSpan.Value += stopwatch.Elapsed;
+            _webServerCounter.Snapshot.HeartBeatQueryNodeInfoListTimeSpan.Value += stopwatch.Elapsed;
 
             stopwatch.Stop();
 
@@ -183,7 +183,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             stopwatch.Start();
             await SaveNodeUsageConfigurationListAsync(cancellationToken);
             await _nodeInfoQueryService.UpdateNodeInfoListAsync(nodeList, cancellationToken);
-            _webServerCounter.HeartBeatUpdateNodeInfoListTimeSpan.Value += stopwatch.Elapsed;
+            _webServerCounter.Snapshot.HeartBeatUpdateNodeInfoListTimeSpan.Value += stopwatch.Elapsed;
             stopwatch.Stop();
         }
         catch (Exception ex)
@@ -303,7 +303,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
             stopwatch.Stop();
 
-            _webServerCounter.HeartBeatQueryNodePropsTimeSpan.Value += stopwatch.Elapsed;
+            _webServerCounter.Snapshot.HeartBeatQueryNodePropsTimeSpan.Value += stopwatch.Elapsed;
 
             stopwatch.Restart();
 

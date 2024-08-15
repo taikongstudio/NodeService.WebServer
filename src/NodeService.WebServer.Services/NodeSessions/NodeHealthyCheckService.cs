@@ -66,7 +66,7 @@ public partial class NodeHealthyCheckService : BackgroundService
             try
             {
                 var fireEvent = await _fireEventQueue.DeuqueAsync(cancellationToken);
-                _webServerCounter.FireNodeHeathyCheckJobDequeueCount.Value++;
+                _webServerCounter.Snapshot.FireNodeHeathyCheckJobDequeueCount.Value++;
                 await CheckNodeHealthyAsync(cancellationToken);
             }
             catch (Exception ex)
@@ -382,7 +382,7 @@ public partial class NodeHealthyCheckService : BackgroundService
         await _notificationQueue.EnqueueAsync(
             new NotificationMessage(emailContent, notificationConfig.Value),
             cancellationToken);
-        _webServerCounter.NodeHeathyCheckSendEmailCount.Value++;
+        _webServerCounter.Snapshot.NodeHeathyCheckSendEmailCount.Value++;
     }
 
     private async Task RefreshNodeSettingsAsync(CancellationToken cancellationToken = default)

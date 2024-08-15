@@ -435,9 +435,9 @@ public class TaskActivateService : BackgroundService
     {
         await using var taskExecutionInstanceRepo = await _taskExecutionInstanceRepositoryFactory.CreateRepositoryAsync(cancellationToken);
         await using var taskActivationRecordRepo = await _taskActivationRecordRepoFactory.CreateRepositoryAsync(cancellationToken);
-        foreach (var retryTaskFlowParametersGroup in retryTaskParameterList.GroupBy(static x => x.TaskExecutionInstanceId))
+        foreach (var retryTaskParametersGroup in retryTaskParameterList.GroupBy(static x => x.TaskExecutionInstanceId))
         {
-            var taskExecutionInstanceId = retryTaskFlowParametersGroup.Key;
+            var taskExecutionInstanceId = retryTaskParametersGroup.Key;
             if (taskExecutionInstanceId == null)
             {
                 continue;

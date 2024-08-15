@@ -389,10 +389,10 @@ namespace NodeService.WebServer.Services.Tasks
                     {
                         foreach (var item in fireTaskParameters.EnvironmentVariables)
                         {
-                            var entry = taskDefinition.Value.EnvironmentVariables.Find(x => x.Name == item.Name);
+                            var entry = taskDefinition.EnvironmentVariables.Find(x => x.Name == item.Name);
                             if (entry == null)
                             {
-                                taskDefinition.Value.EnvironmentVariables.Add(item);
+                                taskDefinition.EnvironmentVariables.Add(item);
                             }
                             else
                             {

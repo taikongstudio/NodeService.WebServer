@@ -130,9 +130,13 @@ public partial class NodeHealthyCheckService : BackgroundService
                 nodeInfo.Id,
                 nodeInfo.Profile.LimsDataId,
                 cancellationToken);
-            if (computerInfo != null && computerInfo.IsScrapped())
+            if (computerInfo != null)
             {
-                return nodeHeathyResult;
+                nodeHeathyResult.DisplayName = computerInfo.name;
+                if (computerInfo.IsScrapped())
+                {
+                    return nodeHeathyResult;
+                }
             }
             var possiblyScrapped = false;
             if (IsNodeScrapped(nodeInfo))
@@ -359,6 +363,22 @@ public partial class NodeHealthyCheckService : BackgroundService
             {
                 bizType = "未分类";
             }
+            var sendEmail = false;
+            if (notificationConfig.Value.Tags != null)
+            {
+                foreach (var tag in notificationConfig.Value.Tags)
+                {
+                    if (tag.Value == bizType)
+                    {
+                        sendEmail = true;
+                        break;
+                    }
+                }
+            }
+            if (!sendEmail)
+            {
+                continue;
+            }
             if (!TryWriteToExcel([.. testInfoGroup.OrderByDescending(static x => x.NodeInfo.Profile.ServerUpdateTimeUtc)], out var stream) || stream == null)
             {
                 continue;
@@ -372,6 +392,10 @@ public partial class NodeHealthyCheckService : BackgroundService
                 fileName,
                 stream);
             attachments.Add(emailAttachment);
+        }
+        if (attachments.Count == 0)
+        {
+            return;
         }
         var content = _nodeHealthyCheckConfiguration.Content.Replace("$(FactoryName)", factoryName)
                 .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
@@ -459,7 +483,19 @@ public partial class NodeHealthyCheckService : BackgroundService
             //测试数据
 
             IRow headerRow = sheet.CreateRow(0);
-            var headers = new string[] { "最后在线时间", "上位机名称", "业务类型", "实验室名称", "测试区域", "上位机负责人", "IP地址", "异常消息", "建议处理措施" };
+            var headers = new string[]
+            {
+                "最后在线时间",
+                "上位机名称",
+                "主机名",
+                "业务类型",
+                "实验室名称",
+                "测试区域",
+                "上位机负责人",
+                "IP地址",
+                "异常消息",
+                "建议处理措施"
+            };
             {
                 for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
                 {
@@ -490,24 +526,27 @@ public partial class NodeHealthyCheckService : BackgroundService
                                 SetCellValue(cell, result.NodeInfo.Profile.Name ?? string.Empty);
                                 break;
                             case 2:
+                                SetCellValue(cell, result.DisplayName ?? string.Empty);
+                                break;
+                            case 3:
                                 SetCellValue(cell, result.NodeInfo.Profile.TestInfo ?? string.Empty);
                                 break;
                             case 4:
                                 SetCellValue(cell, result.NodeInfo.Profile.LabName ?? string.Empty);
                                 break;
-                            case 3:
+                            case 5:
                                 SetCellValue(cell, result.NodeInfo.Profile.LabArea ?? string.Empty);
                                 break;
-                            case 5:
+                            case 6:
                                 SetCellValue(cell, result.NodeInfo.Profile.Manager ?? string.Empty);
                                 break;
-                            case 6:
+                            case 7:
                                 SetCellValue(cell, result.NodeInfo.Profile.IpAddress ?? string.Empty);
                                 break;
-                            case 7:
+                            case 8:
                                 SetCellValue(cell, item.Exception);
                                 break;
-                            case 8:
+                            case 9:
                                 SetCellValue(cell, item.Solution);
                                 break;
                             default:

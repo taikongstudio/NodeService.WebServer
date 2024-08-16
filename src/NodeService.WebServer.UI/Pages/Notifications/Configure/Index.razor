@@ -37,6 +37,9 @@
                         LabelName="@nameof(StringEntry.Name)"
                         ValueName="@nameof(StringEntry.Tag)" />
             </FormItem>
+            <FormItem Label="标签">
+                <StringEntryTable ValueTitle="标签" IsNameHidden NameTitle="备注" ItemsSource="@_editModel.Tags" />
+            </FormItem>
             <FormItem Label="配置类型">
                 <Select DataSource="@_types"
                         Value="@_editModel.ConfigurationType"
@@ -98,12 +101,18 @@
                     <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
                 </Text>
             </PropertyColumn>
-            <PropertyColumn Title="厂区" Sortable Property="c => c.Value.FactoryName">
+            <PropertyColumn Title="厂区" Property="c => c.FactoryName">
                 <Text>@(_nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == context.FactoryName)?.Name ?? "全部区域")</Text>
             </PropertyColumn>
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="创建时间" Sortable="true" Property="c => c.CreationDateTime"></PropertyColumn>
             <PropertyColumn Title="修改时间" Sortable="true" Property="c => c.ModifiedDateTime"></PropertyColumn>
+            <PropertyColumn Title="标签" Sortable="true" Property="c => c.Tags">
+                @foreach (var tag in context.Tags)
+                {
+                    <Tag>@tag.Value</Tag>
+                }
+            </PropertyColumn>
             <ActionColumn Fixed="right" Width="250" Title="操作">
                 <CellRender Context="cellData">
                     <Space>

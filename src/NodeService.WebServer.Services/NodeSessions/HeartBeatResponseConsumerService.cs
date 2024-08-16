@@ -5,9 +5,7 @@ using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataServices;
 using System.Globalization;
-using System.Threading;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 
@@ -469,11 +467,8 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
         else
         {
-            if (nodeInfo.Profile.LimsDataId == null)
-            {
-                nodeInfo.Profile.LimsDataId = computerInfo.id;
-            }
             nodeInfo.Profile.FoundInLims = true;
+            nodeInfo.Profile.LimsDataId = computerInfo.id;
             nodeInfo.Profile.LabArea = computerInfo.LabArea?.name;
             nodeInfo.Profile.LabName = computerInfo.LabInfo?.name;
             nodeInfo.Profile.Manager = computerInfo.manager_name;

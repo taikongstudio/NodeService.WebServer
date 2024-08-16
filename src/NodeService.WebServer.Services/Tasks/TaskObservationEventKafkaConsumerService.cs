@@ -245,7 +245,7 @@ namespace NodeService.WebServer.Services.Tasks
         async ValueTask SendEmailAsync(
             IEnumerable<TaskObservationCheckResult> checkResults,
             string factoryName,
-            NotificationConfigModel? notificationConfig,
+            NotificationConfigModel notificationConfig,
             CancellationToken cancellationToken)
         {
             if (_taskObservationConfiguration == null)
@@ -265,6 +265,24 @@ namespace NodeService.WebServer.Services.Tasks
                 {
                     bizType = "未分类";
                 }
+
+                var sendEmail = false;
+                if (notificationConfig.Value.Tags != null)
+                {
+                    foreach (var tag in notificationConfig.Value.Tags)
+                    {
+                        if (tag.Value == bizType)
+                        {
+                            sendEmail = true;
+                            break;
+                        }
+                    }
+                }
+                if (!sendEmail)
+                {
+                    continue;
+                }
+
                 foreach (var item in testInfoGroup)
                 {
                     foreach (var messsageTemplate in _taskObservationConfiguration.MessageTemplates)
@@ -306,6 +324,10 @@ namespace NodeService.WebServer.Services.Tasks
                     fileName,
                     stream);
                 attachments.Add(emailAttachment);
+            }
+            if (attachments.Count == 0)
+            {
+                return;
             }
             var content = _taskObservationConfiguration.Content.Replace("$(FactoryName)", factoryName)
                     .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));

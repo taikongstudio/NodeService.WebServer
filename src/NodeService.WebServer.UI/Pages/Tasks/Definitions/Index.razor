@@ -67,6 +67,8 @@
             <PropertyColumn Title="名称" Sortable Property="c => c.Name"></PropertyColumn>
             <PropertyColumn Title="描述" Ellipsis Sortable Property="c => c.Description"></PropertyColumn>
             <PropertyColumn Title="启用" Ellipsis Sortable Property="c => c.IsEnabled"></PropertyColumn>
+            <PropertyColumn Title="创建时间" Ellipsis Sortable Property="c => c.CreationDateTime"></PropertyColumn>
+            <PropertyColumn Title="修改时间" Ellipsis Sortable Property="c => c.ModifiedDateTime"></PropertyColumn>
             <PropertyColumn Title="任务类型" Ellipsis Property="c => c.TaskTypeDesc">
                 <Text>@context.TaskTypeDesc?.Name</Text>
             </PropertyColumn>

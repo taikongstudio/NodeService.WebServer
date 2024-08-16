@@ -205,6 +205,7 @@ public class ConfigurationQueryService
             {
                 oldEntity = entityFromDb.JsonClone<T>();
                 entityFromDb.With(entity);
+                entityFromDb.ModifiedDateTime = DateTime.UtcNow;
                 await configurationRepo.UpdateAsync(entityFromDb, cancellationToken);
                 changesCount += configurationRepo.LastSaveChangesCount;
                 type = ConfigurationChangedType.Update;

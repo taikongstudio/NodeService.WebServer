@@ -104,7 +104,7 @@ public class TaskLogPersistenceService : BackgroundService
         {
             await using var taskLogRepo = await _taskLogRepoFactory.CreateRepositoryAsync(cancellationToken);
             var applicationDbContext = taskLogRepo.DbContext as ApplicationDbContext;
-            int deleteCount = await applicationDbContext.TaskLogStorageDbSet.Where(x => x.Id.StartsWith(taskExecutionInstance.Id)).ExecuteDeleteAsync(cancellationToken);
+            int deleteCount = await applicationDbContext.TaskLogStorageDbSet.Where(x => x.Id == taskExecutionInstance.Id).ExecuteDeleteAsync(cancellationToken);
             await applicationDbContext.TaskExecutionInstanceDbSet.Where(x => x.Id == taskExecutionInstance.Id)
                 .ExecuteUpdateAsync(x => x.SetProperty(x => x.LogEntriesSaveCount, -1),
                 cancellationToken);

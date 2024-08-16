@@ -152,7 +152,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         bool removeCache,
         CancellationToken cancellationToken = default)
     {
-        ImmutableArray<NodeInfoModel> nodeInfoImmutableList = [];
+        ImmutableArray<InvalidateNodeContext> invalidateNodeContext = [];
         try
         {
             await using var nodeRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync(cancellationToken);
@@ -163,28 +163,25 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     NodeDeviceType.All),
                 cancellationToken);
 
-            nodeInfoImmutableList = nodeInfoList.Where(IsNotInNodeInfoDict).ToImmutableArray();
+            invalidateNodeContext = nodeInfoList.Where(IsNotInNodeInfoDict).Select(x => new InvalidateNodeContext(x, removeCache)).ToImmutableArray();
 
-            foreach (var nodeInfo in nodeInfoImmutableList)
+            if (Debugger.IsAttached)
             {
-                try
+                foreach (var context in invalidateNodeContext)
                 {
-                    nodeInfo.Status = NodeStatus.Offline;
-                    if (removeCache)
-                    {
-                        await _objectCache.RemoveEntityAsync(nodeInfo, cancellationToken);
-                    }
-                    await _nodeInfoQueryService.QueryExtendInfoAsync(nodeInfo, cancellationToken);
-                    await SyncPropertiesFromLimsDbAsync(nodeInfo, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex.ToString());
-                    _exceptionCounter.AddOrUpdate(ex, nodeInfo.Id);
+                    await InvalidateNodeAsync(context, cancellationToken);
                 }
             }
+            else
+            {
+                await Parallel.ForEachAsync(invalidateNodeContext, new ParallelOptions()
+                {
+                    CancellationToken = cancellationToken,
+                    MaxDegreeOfParallelism = 4
+                }, InvalidateNodeAsync);
+            }
 
-            foreach (var array in nodeInfoImmutableList.Chunk(40))
+            foreach (var array in invalidateNodeContext.Select(static x => x.NodeInfo).Chunk(40))
             {
                 await nodeRepo.UpdateRangeAsync(array, cancellationToken);
             }
@@ -197,6 +194,27 @@ public class HeartBeatResponseConsumerService : BackgroundService
         finally
         {
 
+        }
+    }
+
+    private async ValueTask InvalidateNodeAsync(
+        InvalidateNodeContext context,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            context.NodeInfo.Status = NodeStatus.Offline;
+            if (context.RemoveCache)
+            {
+                await _objectCache.RemoveEntityAsync(context.NodeInfo, cancellationToken);
+            }
+            await _nodeInfoQueryService.QueryExtendInfoAsync(context.NodeInfo, cancellationToken);
+            await SyncPropertiesFromLimsDbAsync(context.NodeInfo, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+            _exceptionCounter.AddOrUpdate(ex, context.NodeInfo.Id);
         }
     }
 

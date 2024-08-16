@@ -1,10 +1,12 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
+using System.Collections.Immutable;
 using System.Globalization;
 
 namespace NodeService.WebServer.Services.NodeSessions;
@@ -29,6 +31,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
     readonly WebServerOptions _webServerOptions;
     NodeSettings _nodeSettings;
     IEnumerable<NodeUsageConfigurationModel> _nodeUsageConfigList = [];
+    readonly ConcurrentDictionary<string, object?> _nodesDict;
 
     public HeartBeatResponseConsumerService(
         ILogger<HeartBeatResponseConsumerService> logger,
@@ -65,12 +68,20 @@ public class HeartBeatResponseConsumerService : BackgroundService
         _nodeStatusChangeRecordBatchQueue = nodeStatusChangeRecordBatchQueue;
         _objectCache = objectCache;
         _configurationQueryService = configurationQueryService;
+        _nodesDict = new ConcurrentDictionary<string, object?>();
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        if (!_webServerOptions.DebugProductionMode) await InvalidateAllNodeStatusAsync(cancellationToken);
+        if (!_webServerOptions.DebugProductionMode) await InvalidateAllNodeStatusAsync(NodeStatus.All, cancellationToken);
 
+        await Task.WhenAll(
+            InvalidateAllNodeStatusAsync(NodeStatus.Offline, TimeSpan.FromMinutes(1), cancellationToken),
+            ConsumeHeartBeatMessageAsync(cancellationToken));
+    }
+
+    private async Task ConsumeHeartBeatMessageAsync(CancellationToken cancellationToken = default)
+    {
         await foreach (var array in _hearBeatSessionMessageBatchQueue.ReceiveAllAsync(cancellationToken))
         {
             if (array == null)
@@ -100,24 +111,66 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
     }
 
-    private async Task InvalidateAllNodeStatusAsync(CancellationToken cancellationToken = default)
+    private async Task InvalidateAllNodeStatusAsync(
+        NodeStatus nodeStatus,
+        TimeSpan timeSpan,
+        CancellationToken cancellationToken = default)
     {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+
+            try
+            {
+                await Task.Delay(timeSpan, cancellationToken);
+                await InvalidateAllNodeStatusAsync(
+                    nodeStatus,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                _exceptionCounter.AddOrUpdate(ex);
+            }
+        }
+    }
+
+    bool IsNotInNodeInfoDict(NodeInfoModel nodeInfo)
+    {
+        return !_nodesDict.ContainsKey(nodeInfo.Id);
+    }
+
+
+    async ValueTask InvalidateAllNodeStatusAsync(NodeStatus nodeStatus, CancellationToken cancellationToken = default)
+    {
+        ImmutableArray<NodeInfoModel> nodeInfoImmutableList = [];
         try
         {
-            await using var nodeRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync();
+            await using var nodeRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync(cancellationToken);
             var nodeInfoList = await nodeRepo.ListAsync(
                 new NodeInfoSpecification(
                     AreaTags.Any,
-                    NodeStatus.All,
+                    nodeStatus,
                     NodeDeviceType.All),
                 cancellationToken);
-            foreach (var nodeInfo in nodeInfoList)
+
+            nodeInfoImmutableList = nodeInfoList.Where(IsNotInNodeInfoDict).ToImmutableArray();
+
+            foreach (var nodeInfo in nodeInfoImmutableList)
             {
-                nodeInfo.Status = NodeStatus.Offline;
-                await _nodeInfoQueryService.QueryExtendInfoAsync(nodeInfo, cancellationToken);
-                await SyncPropertiesFromLimsDbAsync(nodeInfo, cancellationToken);
+                try
+                {
+                    nodeInfo.Status = NodeStatus.Offline;
+                    await _nodeInfoQueryService.QueryExtendInfoAsync(nodeInfo, cancellationToken);
+                    await SyncPropertiesFromLimsDbAsync(nodeInfo, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex.ToString());
+                    _exceptionCounter.AddOrUpdate(ex, nodeInfo.Id);
+                }
             }
-            foreach (var array in nodeInfoList.Chunk(40))
+
+            foreach (var array in nodeInfoImmutableList.Chunk(40))
             {
                 await nodeRepo.UpdateRangeAsync(array, cancellationToken);
             }
@@ -126,6 +179,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
         {
             _exceptionCounter.AddOrUpdate(ex);
             _logger.LogError(ex.ToString());
+        }
+        finally
+        {
+
         }
     }
 
@@ -145,6 +202,12 @@ public class HeartBeatResponseConsumerService : BackgroundService
             await RefreshNodeSettingsAsync(cancellationToken);
             await RefreshNodeUsagesConfiguationListAsync(cancellationToken);
             var nodeIdList = array.Select(GetNodeId);
+
+            foreach (var item in nodeIdList)
+            {
+                _nodesDict.TryAdd(item, null);
+            }
+
             stopwatch.Restart();
             var nodeList = await _nodeInfoQueryService.QueryNodeInfoListAsync(
                 nodeIdList,
@@ -191,6 +254,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         }
         finally
         {
+            _nodesDict.Clear();
             _logger.LogInformation(
                 $"Process {array.Length} messages, SaveElapsed:{stopwatch.Elapsed}");
             stopwatch.Reset();

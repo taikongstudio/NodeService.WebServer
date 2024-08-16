@@ -73,7 +73,13 @@ public class HeartBeatResponseConsumerService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        if (!_webServerOptions.DebugProductionMode) await InvalidateAllNodeStatusAsync(NodeStatus.All, cancellationToken);
+        if (!_webServerOptions.DebugProductionMode)
+        {
+            await InvalidateAllNodeStatusAsync(
+                NodeStatus.All,
+                true,
+                cancellationToken);
+        }
 
         await Task.WhenAll(
             InvalidateAllNodeStatusAsync(NodeStatus.Offline, TimeSpan.FromMinutes(1), cancellationToken),
@@ -124,6 +130,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 await Task.Delay(timeSpan, cancellationToken);
                 await InvalidateAllNodeStatusAsync(
                     nodeStatus,
+                    false,
                     cancellationToken);
             }
             catch (Exception ex)
@@ -140,7 +147,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
     }
 
 
-    async ValueTask InvalidateAllNodeStatusAsync(NodeStatus nodeStatus, CancellationToken cancellationToken = default)
+    async ValueTask InvalidateAllNodeStatusAsync(
+        NodeStatus nodeStatus,
+        bool removeCache,
+        CancellationToken cancellationToken = default)
     {
         ImmutableArray<NodeInfoModel> nodeInfoImmutableList = [];
         try
@@ -160,6 +170,10 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 try
                 {
                     nodeInfo.Status = NodeStatus.Offline;
+                    if (removeCache)
+                    {
+                        await _objectCache.RemoveEntityAsync(nodeInfo, cancellationToken);
+                    }
                     await _nodeInfoQueryService.QueryExtendInfoAsync(nodeInfo, cancellationToken);
                     await SyncPropertiesFromLimsDbAsync(nodeInfo, cancellationToken);
                 }

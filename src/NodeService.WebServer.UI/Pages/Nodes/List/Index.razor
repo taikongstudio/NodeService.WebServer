@@ -134,7 +134,7 @@
         <Table Loading="@_dataSource.IsLoading"
                Size="TableSize.Small"
                Resizable
-               ScrollX="1500"
+               ScrollX="1800"
                EnableVirtualization="false"
                OnChange="OnNodeTableChanged"
                TItem="NodeInfoModel"
@@ -262,7 +262,7 @@
                         </Tooltip>
                     }
                 </PropertyColumn>
-                <PropertyColumn Title="IP地址" Sortable="true" Ellipsis Width="120" Property="c => c.Profile.IpAddress">
+                <PropertyColumn Title="IP地址" Sortable="true" Ellipsis Width="170" Property="c => c.Profile.IpAddress">
                     <AntDesign.Tooltip Placement="@Placement.Left">
                         <TitleTemplate>
                             @if (context.PingReplyInfo != null)
@@ -298,16 +298,25 @@
                     </AntDesign.Tooltip>
 
                 </PropertyColumn>
-                <PropertyColumn Title="用途" Sortable="true" Property="c => c.Profile.Usages">
-                    @(string.IsNullOrEmpty(context.Profile.Usages) ? "（空）" : context.Profile.Usages)
-                </PropertyColumn>
-                <PropertyColumn Title="备注" Sortable="true" Ellipsis Width="100" Property="c => c.Profile.Remarks">
+                <PropertyColumn Title="用途" Sortable="true" Width="auto" Property="c => c.Profile.Usages">
+                        @if (context.Profile.Usages != null)
+                        {
+                            <Space>
+                                @foreach (var item in context.Profile.Usages.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                {
+                                    <Tag>@item</Tag>
+                                }
+                           </Space>
+      
+                        }
+                    </PropertyColumn>
+                <PropertyColumn Title="备注" Sortable="true" Ellipsis Width="150" Property="c => c.Profile.Remarks">
                     @(string.IsNullOrEmpty(context.Profile.Remarks) ? "（空）" : context.Profile.Remarks)
                 </PropertyColumn>
 
-                <PropertyColumn Title="测试分类" Sortable="true" Ellipsis Width="100" Property="c => c.Profile.TestInfo"></PropertyColumn>
-                <PropertyColumn Title="实验室区域" Sortable="true" Ellipsis Width="120" Property="c => c.Profile.LabArea"></PropertyColumn>
-                <PropertyColumn Title="实验室名称" Sortable="true" Ellipsis Width="120" Property="c => c.Profile.LabName"></PropertyColumn>
+                <PropertyColumn Title="测试分类" Sortable="true" Ellipsis Width="150" Property="c => c.Profile.TestInfo"></PropertyColumn>
+                <PropertyColumn Title="实验室区域" Sortable="true" Ellipsis Width="150" Property="c => c.Profile.LabArea"></PropertyColumn>
+                <PropertyColumn Title="实验室名称" Sortable="true" Ellipsis Width="150" Property="c => c.Profile.LabName"></PropertyColumn>
 
 
                 <ActionColumn Width="120" Fixed="right" Title="操作">

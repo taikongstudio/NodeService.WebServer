@@ -51,13 +51,13 @@
                 }
 
             </GridRow>
-            <GridRow Wrap Style="min-height:30px">
+            <GridRow>
                 <Text>任务定义配置：</Text>
-                <GridRow>
-                    <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowTaskDefinitionSelectorDialogAsync"></Button>
-                </GridRow>
+                <Button Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" Type="@ButtonType.Primary" OnClick="ShowTaskDefinitionSelectorDialogAsync"></Button>
+            </GridRow>
 
-                <GridRow>
+            <GridRow>
+                <GridCol Flex="@("100%")">
                     <Select ItemValue="c=>c"
                             ItemLabel="c=>c.Name"
                             TItem="TaskDefinitionModel"
@@ -74,8 +74,8 @@
                             EnableSearch
                             DropdownMatchSelectWidth="false">
                     </Select>
+                </GridCol>
 
-                </GridRow>
 
             </GridRow>
             <GridRow>
@@ -205,6 +205,10 @@
     {
         for (var status = TaskExecutionStatus.Unknown; status < TaskExecutionStatus.PenddingCancel + 1; status++)
         {
+            if (status == TaskExecutionStatus.MaxCount)
+            {
+                continue;
+            }
             _taskExeuctionStatusList.Add(new TaskExeuctionStatusModel
                 {
                     Value = status,

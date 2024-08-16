@@ -14,7 +14,7 @@ namespace NodeService.WebServer.Extensions
         {
             return status switch
             {
-                TaskExecutionStatus.Unknown => "未知",
+                TaskExecutionStatus.Unknown => "全部",
                 TaskExecutionStatus.Triggered => "已触发",
                 TaskExecutionStatus.Pendding => "等待启动",
                 TaskExecutionStatus.Started => "已启动",

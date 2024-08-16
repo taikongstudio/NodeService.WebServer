@@ -418,10 +418,10 @@ namespace NodeService.WebServer.Services.Tasks
                                 SetCellValue(cell, result.Id);
                                 break;
                             case 1:
-                                SetCellValue(cell, result.NodeInfo?.Profile.Name ?? string.Empty);
+                                SetCellValue(cell, result.DisplayName ?? string.Empty);
                                 break;
                             case 2:
-                                SetCellValue(cell, result.DisplayName ?? string.Empty);
+                                SetCellValue(cell, result.NodeInfo?.Profile.Name ?? string.Empty);
                                 break;
                             case 3:
                                 SetCellValue(cell, result.NodeInfo?.Profile.TestInfo ?? string.Empty);

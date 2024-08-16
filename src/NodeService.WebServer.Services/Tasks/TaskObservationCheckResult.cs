@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace NodeService.WebServer.Services.Tasks
+﻿namespace NodeService.WebServer.Services.Tasks
 {
     public class TaskObservationCheckResult
     {
         public string Id { get; set; }
+
+        public string DisplayName { get; set; }
 
         public NodeInfoModel? NodeInfo { get; set; }
 

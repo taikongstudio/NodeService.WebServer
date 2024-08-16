@@ -133,36 +133,52 @@ namespace NodeService.WebServer.Services.Tasks
         {
             events = events.Distinct().ToImmutableArray();
             List<TaskObservationCheckResult> checkResultList = [];
-            foreach (var item in events)
+            foreach (var eventItem in events)
             {
-                if (item == null)
+                if (eventItem == null)
                 {
                     continue;
                 }
-                var status = item.Type switch
+                var status = eventItem.Type switch
                 {
-                    "TaskExecutionInstanceModel" => ((TaskExecutionStatus)item.Status).GetDisplayName(),
-                    "TaskFlowExecutionInstanceModel" => ((TaskFlowExecutionStatus)item.Status).GetDisplayName(),
+                    "TaskExecutionInstanceModel" => ((TaskExecutionStatus)eventItem.Status).GetDisplayName(),
+                    "TaskFlowExecutionInstanceModel" => ((TaskFlowExecutionStatus)eventItem.Status).GetDisplayName(),
                     _ => "Unknown"
                 };
 
                 NodeInfoModel? nodeInfo = null;
-                if (item.Type == "TaskExecutionInstanceModel")
+                if (eventItem.Type == "TaskExecutionInstanceModel")
                 {
                     nodeInfo = await _nodeInfoQueryService.QueryNodeInfoByIdAsync(
-                        item.Context,
+                        eventItem.Context,
                         true,
                         cancellationToken);
                 }
-                checkResultList.Add(new TaskObservationCheckResult()
+                var checkResult = new TaskObservationCheckResult()
                 {
-                    Id = item.Id,
-                    Name = item.Name,
+                    Id = eventItem.Id,
+                    Name = eventItem.Name,
                     NodeInfo = nodeInfo,
-                    CreationDateTime = item.CreationDateTime.ToString(),
-                    Message = item.Message,
+                    CreationDateTime = eventItem.CreationDateTime.ToString(),
+                    Message = eventItem.Message,
                     Status = status
-                });
+                };
+                if (nodeInfo != null)
+                {
+                    var computerInfo = await _nodeInfoQueryService.Query_dl_equipment_ctrl_computer_Async(
+                        nodeInfo.Id,
+                        nodeInfo.Profile.LimsDataId,
+                        cancellationToken);
+                    if (computerInfo != null)
+                    {
+                        if (computerInfo.IsScrapped())
+                        {
+                            continue;
+                        }
+                        checkResult.DisplayName = computerInfo.name;
+                    }
+                }
+                checkResultList.Add(checkResult);
             }
             if (checkResultList.Count == 0)
             {
@@ -361,7 +377,22 @@ namespace NodeService.WebServer.Services.Tasks
                 //测试数据
 
                 IRow headerRow = sheet.CreateRow(0);
-                var headers = new string[] { "任务Id", "上位机名称", "业务类型", "实验室名称", "测试区域", "上位机负责人", "IP地址", "任务名称", "任务启动时间", "任务状态", "任务消息", "建议处理措施" };
+                var headers = new string[]
+                {
+                    "任务Id",
+                    "上位机名称",
+                    "主机名",
+                    "业务类型",
+                    "实验室名称",
+                    "测试区域",
+                    "上位机负责人",
+                    "IP地址",
+                    "任务名称",
+                    "任务启动时间",
+                    "任务状态",
+                    "任务消息",
+                    "建议处理措施"
+                };
                 {
                     for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
                     {
@@ -390,33 +421,36 @@ namespace NodeService.WebServer.Services.Tasks
                                 SetCellValue(cell, result.NodeInfo?.Profile.Name ?? string.Empty);
                                 break;
                             case 2:
+                                SetCellValue(cell, result.DisplayName ?? string.Empty);
+                                break;
+                            case 3:
                                 SetCellValue(cell, result.NodeInfo?.Profile.TestInfo ?? string.Empty);
                                 break;
                             case 4:
                                 SetCellValue(cell, result.NodeInfo?.Profile.LabName ?? string.Empty);
                                 break;
-                            case 3:
+                            case 5:
                                 SetCellValue(cell, result.NodeInfo?.Profile.LabArea ?? string.Empty);
                                 break;
-                            case 5:
+                            case 6:
                                 SetCellValue(cell, result.NodeInfo?.Profile.Manager ?? string.Empty);
                                 break;
-                            case 6:
+                            case 7:
                                 SetCellValue(cell, result.NodeInfo?.Profile.IpAddress ?? string.Empty);
                                 break;
-                            case 7:
+                            case 8:
                                 SetCellValue(cell, result.Name);
                                 break;
-                            case 8:
+                            case 9:
                                 SetCellValue(cell, result.CreationDateTime);
                                 break;
-                            case 9:
+                            case 10:
                                 SetCellValue(cell, result.Status);
                                 break;
-                            case 10:
+                            case 11:
                                 SetCellValue(cell, result.Message);
                                 break;
-                            case 11:
+                            case 12:
                                 SetCellValue(cell, result.Solution);
                                 break;
                             default:

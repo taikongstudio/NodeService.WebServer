@@ -63,12 +63,12 @@
             <br/>
             <AntDesign.Col Span="24">
                 <Text>用途</Text>
-                <AntDesign.Input @bind-Value="@_editingNodeInfoModel.Usages" Placeholder="请输入用途" TValue="string"/>
+                    <AntDesign.Input Disabled @bind-Value="@_editingNodeInfoModel.Usages" Placeholder="请输入用途" TValue="string" />
             </AntDesign.Col>
             <Row>
                 <AntDesign.Col Span="24">
                     <Text>备注</Text>
-                    <TextArea @bind-Value="@_editingNodeInfoModel.Remarks" Placeholder="请输入备注"></TextArea>
+                        <TextArea Disabled @bind-Value="@_editingNodeInfoModel.Remarks" Placeholder="请输入备注"></TextArea>
                 </AntDesign.Col>
             </Row>
             <br/>

@@ -568,6 +568,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
             nodeInfo.Profile.LabArea = computerInfo.LabArea?.name;
             nodeInfo.Profile.LabName = computerInfo.LabInfo?.name;
             nodeInfo.Profile.Manager = computerInfo.manager_name;
+            nodeInfo.Profile.Remarks = computerInfo.remark;
         }
     }
 

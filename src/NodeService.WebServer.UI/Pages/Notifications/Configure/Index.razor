@@ -96,7 +96,7 @@
             </GridRow>
         </TitleTemplate>
         <ColumnDefinitions>
-            <PropertyColumn Title="标志" Sortable="true" Width="100" Property="c => c.Id">
+            <PropertyColumn Title="标志" Sortable="true" Fixed="left" Width="100" Property="c => c.Id">
                 <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
                     <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
                 </Text>
@@ -124,9 +124,6 @@
                         </SpaceItem>
                         <SpaceItem>
                             <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Delete" OnClick="() => DeleteConfig(context)"></Button>
-                        </SpaceItem>
-                        <SpaceItem>
-                            <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Danger Icon="@IconType.Outline.Notification" OnClick="() => TestNotificationAsync(context)"></Button>
                         </SpaceItem>
                     </Space>
                 </CellRender>

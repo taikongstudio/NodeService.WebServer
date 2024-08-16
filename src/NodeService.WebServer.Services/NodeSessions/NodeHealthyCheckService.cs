@@ -164,7 +164,7 @@ public partial class NodeHealthyCheckService : BackgroundService
                     Solution = "建议校正上位机时间"
                 });
             }
-            if (_nodeHealthyCheckConfiguration.CheckProcessService)
+            if (_nodeHealthyCheckConfiguration.CheckProcessService && nodeInfo.Status == NodeStatus.Online)
             {
                 var usageList = await ShouldSendProcessNotFoundWarningAsync(nodeInfo, cancellationToken);
                 if (usageList.Any())
@@ -284,6 +284,10 @@ public partial class NodeHealthyCheckService : BackgroundService
 
     private bool ShouldSendTimeDiffWarning(NodeInfoModel nodeInfo)
     {
+        if (nodeInfo.Status == NodeStatus.Offline)
+        {
+            return false;
+        }
         var clientDateTime = _nodeSessionService.GetClientDateTime(new NodeSessionId(nodeInfo.Id));
         if (clientDateTime != default)
         {

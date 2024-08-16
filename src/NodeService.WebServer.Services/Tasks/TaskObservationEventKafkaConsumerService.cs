@@ -11,16 +11,17 @@ namespace NodeService.WebServer.Services.Tasks
 {
     public class TaskObservationEventKafkaConsumerService : BackgroundService
     {
-        private KafkaOptions _kafkaOptions;
+        KafkaOptions _kafkaOptions;
         readonly WebServerCounter _webServerCounter;
         readonly ExceptionCounter _exceptionCounter;
         readonly ILogger<TaskObservationEventKafkaConsumerService> _logger;
         readonly IAsyncQueue<TaskObservationEventKafkaConsumerFireEvent> _fireEventQueue;
         readonly IAsyncQueue<NotificationMessage> _notificationQueue;
         readonly ConfigurationQueryService _configurationQueryService;
-        private readonly NodeInfoQueryService _nodeInfoQueryService;
-        private ConsumerConfig _consumerConfig;
+        readonly NodeInfoQueryService _nodeInfoQueryService;
+        ConsumerConfig _consumerConfig;
         NodeSettings _nodeSettings;
+        TaskObservationConfiguration _taskObservationConfiguration;
 
         public TaskObservationEventKafkaConsumerService(
             ILogger<TaskObservationEventKafkaConsumerService> logger,
@@ -174,18 +175,25 @@ namespace NodeService.WebServer.Services.Tasks
             List<TaskObservationCheckResult> checkResultList,
             CancellationToken cancellationToken = default)
         {
-            var taskObservationConfiguration = await _configurationQueryService.QueryTaskObservationConfigurationAsync(cancellationToken);
+            _taskObservationConfiguration = await _configurationQueryService.QueryTaskObservationConfigurationAsync(cancellationToken);
 
-            if (taskObservationConfiguration == null)
+            if (_taskObservationConfiguration == null)
             {
                 return;
             }
 
             var notificationConfigQueryResult = await _configurationQueryService.QueryConfigurationByIdListAsync<NotificationConfigModel>(
-                taskObservationConfiguration.Configurations.Where(static x => x.Value != null)
+                _taskObservationConfiguration.Configurations.Where(static x => x.Value != null)
                 .Select(static x => x.Value!)
                 .ToImmutableArray(),
                 cancellationToken);
+
+            var notificationConfigList = notificationConfigQueryResult.Items.ToImmutableArray();
+
+            if (notificationConfigList.IsDefaultOrEmpty)
+            {
+                return;
+            }
 
             _nodeSettings = await _configurationQueryService.QueryNodeSettingsAsync(cancellationToken);
 
@@ -194,103 +202,120 @@ namespace NodeService.WebServer.Services.Tasks
                 return;
             }
 
+            var dataDict = checkResultList.GroupBy(static x => x.NodeInfo?.Profile.FactoryName ?? AreaTags.Any).ToDictionary(static x => x.Key);
 
-            var notificationConfigList = notificationConfigQueryResult.Items;
-
-
-            foreach (var checkResultGroup in checkResultList.GroupBy(static x => x.NodeInfo?.Profile.FactoryName ?? AreaTags.Any))
+            foreach (var notificationConfig in notificationConfigList)
             {
-                var factoryCode = checkResultGroup.Key;
-                string factoryName = "全部区域";
-                var areaEntry = _nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == factoryCode);
-                if (areaEntry != null)
+                if (!notificationConfig.Value.IsEnabled)
                 {
-                    factoryName = areaEntry.Name ?? "全部区域";
+                    continue;
                 }
-                foreach (var notificationConfig in notificationConfigList)
+                if (notificationConfig.Value.FactoryName == AreaTags.Any || notificationConfig.Value.FactoryName == null)
                 {
-                    if (notificationConfig.Value.FactoryName != AreaTags.Any && notificationConfig.Value.FactoryName != factoryCode)
+
+                    await SendEmailAsync(
+                        checkResultList,
+                        "全部区域",
+                        notificationConfig,
+                        cancellationToken);
+                }
+                else
+                {
+                    if (!dataDict.TryGetValue(notificationConfig.Value.FactoryName, out var group) || group == null || !group.Any())
                     {
                         continue;
                     }
-
-                    var subject = taskObservationConfiguration.Subject
-                        .Replace("$(FactoryName)", factoryName)
-                        .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
-
-                    List<XlsxAttachment> attachments = [];
-                    foreach (var testInfoGroup in checkResultGroup.GroupBy(static x => x.NodeInfo?.Profile.TestInfo ?? string.Empty))
+                    string factoryName = group.Key;
+                    var areaEntry = _nodeSettings.IpAddressMappings.FirstOrDefault(x => x.Tag == group.Key);
+                    if (areaEntry != null && areaEntry.Name != null)
                     {
-                        var bizType = testInfoGroup.Key;
-                        if (string.IsNullOrEmpty(bizType))
-                        {
-                            bizType = "未分类";
-                        }
-                        foreach (var item in testInfoGroup)
-                        {
-                            foreach (var messsageTemplate in taskObservationConfiguration.MessageTemplates)
-                            {
-                                if (string.IsNullOrEmpty(messsageTemplate.Name))
-                                {
-                                    continue;
-                                }
-                                if (item.Message != null && item.Message.Contains(messsageTemplate.Name, StringComparison.OrdinalIgnoreCase))
-                                {
-                                    item.Solution = messsageTemplate.Value;
-                                    break;
-                                }
-                            }
-
-                            if (string.IsNullOrEmpty(item.Solution))
-                            {
-                                var defaultTemplate = taskObservationConfiguration.MessageTemplates.FirstOrDefault(x => x.Name == "*");
-                                if (defaultTemplate != null)
-                                {
-                                    item.Solution = defaultTemplate.Value;
-                                }
-                                else
-                                {
-                                    item.Solution = "<未配置此消息的模板文本>";
-                                }
-                            }
-                        }
-                        if (!TryWriteToExcel([.. testInfoGroup], out var stream) || stream == null)
-                        {
-                            continue;
-                        }
-                        var attachmentName = taskObservationConfiguration.AttachmentSubject
-                            .Replace("$(FactoryName)", factoryName)
-                            .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat))
-                            .Replace("$(BusinessType)", bizType);
-                        var fileName = $"{attachmentName}.xlsx";
-                        var emailAttachment = new XlsxAttachment(
-                            fileName,
-                            stream);
-                        attachments.Add(emailAttachment);
+                        factoryName = areaEntry.Name;
                     }
-                    var content = taskObservationConfiguration.Content.Replace("$(FactoryName)", factoryName)
-                            .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
-                    var emailContent = new EmailContent(
-                        subject,
-                        content,
-                        [.. attachments]);
-                    await _notificationQueue.EnqueueAsync(
-                        new NotificationMessage(emailContent, notificationConfig.Value),
+                    await SendEmailAsync(
+                        group,
+                        factoryName,
+                        notificationConfig,
                         cancellationToken);
                 }
+
             }
 
         }
 
-        string GetSolution(string status, string message)
+        async ValueTask SendEmailAsync(
+            IEnumerable<TaskObservationCheckResult> checkResults,
+            string factoryName,
+            NotificationConfigModel? notificationConfig,
+            CancellationToken cancellationToken)
         {
-            return status switch
+            if (_taskObservationConfiguration == null)
             {
-                nameof(TaskExecutionStatus.PenddingTimeout) => "等待上位机响应超时，请检查上位机运行状态。",
-                nameof(TaskExecutionStatus.Failed) => "任务执行时发生了异常，请联系开发人员。",
-                nameof(TaskExecutionStatus.Cancelled) => "任务被取消执行，请联系开发人员。",
-                _ => string.Empty,
-            };
+                return;
+            }
+
+            var subject = _taskObservationConfiguration.Subject
+                .Replace("$(FactoryName)", factoryName)
+                .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
+
+            List<XlsxAttachment> attachments = [];
+            foreach (var testInfoGroup in checkResults.GroupBy(static x => x.NodeInfo?.Profile.TestInfo ?? string.Empty))
+            {
+                var bizType = testInfoGroup.Key;
+                if (string.IsNullOrEmpty(bizType))
+                {
+                    bizType = "未分类";
+                }
+                foreach (var item in testInfoGroup)
+                {
+                    foreach (var messsageTemplate in _taskObservationConfiguration.MessageTemplates)
+                    {
+                        if (string.IsNullOrEmpty(messsageTemplate.Name))
+                        {
+                            continue;
+                        }
+                        if (item.Message != null && item.Message.Contains(messsageTemplate.Name, StringComparison.OrdinalIgnoreCase))
+                        {
+                            item.Solution = messsageTemplate.Value;
+                            break;
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(item.Solution))
+                    {
+                        var defaultTemplate = _taskObservationConfiguration.MessageTemplates.FirstOrDefault(x => x.Name == "*");
+                        if (defaultTemplate != null)
+                        {
+                            item.Solution = defaultTemplate.Value;
+                        }
+                        else
+                        {
+                            item.Solution = "<请配置此消息的模板文本>";
+                        }
+                    }
+                }
+                if (!TryWriteToExcel([.. testInfoGroup], out var stream) || stream == null)
+                {
+                    continue;
+                }
+                var attachmentName = _taskObservationConfiguration.AttachmentSubject
+                    .Replace("$(FactoryName)", factoryName)
+                    .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat))
+                    .Replace("$(BusinessType)", bizType);
+                var fileName = $"{attachmentName}.xlsx";
+                var emailAttachment = new XlsxAttachment(
+                    fileName,
+                    stream);
+                attachments.Add(emailAttachment);
+            }
+            var content = _taskObservationConfiguration.Content.Replace("$(FactoryName)", factoryName)
+                    .Replace("$(DateTime)", DateTime.Now.ToString(EmailContent.DateTimeFormat));
+            var emailContent = new EmailContent(
+                subject,
+                content,
+                [.. attachments]);
+            await _notificationQueue.EnqueueAsync(
+                new NotificationMessage(emailContent, notificationConfig.Value),
+                cancellationToken);
         }
 
         public bool TryWriteToExcel(List<TaskObservationCheckResult> checkResults, out Stream? stream)

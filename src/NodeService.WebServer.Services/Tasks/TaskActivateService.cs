@@ -501,14 +501,23 @@ public class TaskActivateService : BackgroundService
 
         foreach (var fireTaskParameters in fireTaskParameterList)
         {
-            var result = await _taskExecutor.CreateAsync(
-                fireTaskParameters,
-                cancellationToken);
-            if (result.Index == 1)
+            try
             {
-                continue;
+                var result = await _taskExecutor.CreateAsync(
+                                    fireTaskParameters,
+                                    cancellationToken);
+                if (result.Index == 1)
+                {
+                    continue;
+                }
+                await ProcessTaskActivationRecordCreateResultAsync(result.AsT0, cancellationToken);
             }
-            await ProcessTaskActivationRecordCreateResultAsync(result.AsT0, cancellationToken);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                _exceptionCounter.AddOrUpdate(ex, fireTaskParameters.TaskDefinitionId);
+            }
+
         }
     }
 

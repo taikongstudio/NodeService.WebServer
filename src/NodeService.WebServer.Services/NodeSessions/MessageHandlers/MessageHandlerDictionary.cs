@@ -2,6 +2,6 @@
 
 namespace NodeService.WebServer.Services.NodeSessions.MessageHandlers;
 
-public class MessageHandlerDictionary : Dictionary<MessageDescriptor, IMessageHandler>
+public class MessageHandlerDictionary : ConcurrentDictionary<MessageDescriptor, IMessageHandler>
 {
 }

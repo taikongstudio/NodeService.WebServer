@@ -155,6 +155,7 @@ public class TaskActivateService : BackgroundService
             var taskExecutionInstanceId = delayMessage.Id;
             if (taskExecutionInstanceId == null)
             {
+                delayMessage.Handled = true;
                 return;
             }
 
@@ -162,6 +163,7 @@ public class TaskActivateService : BackgroundService
             var taskExecutionInstance = await taskExecutionInstanceRepo.GetByIdAsync(taskExecutionInstanceId, cancellationToken);
             if (taskExecutionInstance == null)
             {
+                delayMessage.Handled = true;
                 return;
             }
             if (taskExecutionInstance.Status > TaskExecutionStatus.Triggered)

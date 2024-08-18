@@ -5,6 +5,10 @@
 @inject NavigationManager NavigationManager
 @implements IDisposable
 <GridContent>
+    @if (_taskExecutionInstance?.TaskProgressInfo != null)
+    {
+        <TaskProgressInfoDrawer @bind-Visible="@_taskProgressInfoDrawerVisible" TaskProgressInfo="@_taskExecutionInstance?.TaskProgressInfo" />
+    }
     <CommonDialog Closed="OnDialogClosed" @ref="_taskDefinitionSelectorDialog">
         <TaskDefinitionSelector @bind-SelectedItems="_selectedTaskDefinitionList" Mode="SelectionMode.Multiple"/>
     </CommonDialog>
@@ -66,7 +70,6 @@
                             DataSource="@_selectedTaskDefinitionList"
                             Mode="multiple"
                             AllowClear
-                            AutoFocus
                             Placeholder="选择任务定义"
                             Style="margin-bottom:4px;margin-top:4px"
                             MaxTagCount="50"
@@ -109,9 +112,9 @@
                     <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id">@context.Id</div>
                 </Text>
             </PropertyColumn>
-            <PropertyColumn Title="名称" Sortable Fixed="left" Property="c => c.Name">
+            <PropertyColumn Title="名称" Sortable Fixed="left" Width="300" Property="c => c.Name">
                 <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
-                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Id"><NavLink href="@("/Tasks/Instances/" + context.Id)">@context.Name</NavLink></div>
+                    <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.Name"><NavLink href="@("/Tasks/Instances/" + context.Id)">@context.Name</NavLink></div>
                 </Text>
             </PropertyColumn>
             <PropertyColumn Title="触发源头" Sortable="true" Property="c => c.TriggerSource">
@@ -160,6 +163,13 @@
                                 </Button>
                             </a>
                         </SpaceItem>
+                        @if (context.TaskProgressInfo != null)
+                        {
+                            <SpaceItem>
+                                <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.OrderedList" OnClick="()=>ShowTaskProgressInfoDrawerAsync(context)">
+                                </Button>
+                            </SpaceItem>
+                        }
                     </Space>
                 </CellRender>
             </ActionColumn>
@@ -168,6 +178,7 @@
 </GridContent>
 
 @code {
+    TaskExecutionInstanceModel _taskExecutionInstance;
 
     class TaskExeuctionStatusModel
     {
@@ -179,6 +190,8 @@
     CommonDialog _nodeSelectorDialog;
     CommonDialog _taskDefinitionSelectorDialog;
     CommonDialog _taskLogViewerDialog;
+
+    bool _taskProgressInfoDrawerVisible;
 
     DateTime BeginDateTime;
     DateTime EndDateTime;
@@ -236,6 +249,7 @@
         EndDateTime = DateTime.Today.AddDays(1).Date.AddSeconds(-1);
         DateTimes[0] = BeginDateTime;
         DateTimes[1] = EndDateTime;
+        _dataSource.QueryParameters.IncludeTaskProgressInfo = true;
         _dataSource.QueryParameters.SortDescriptions.Clear();
         _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.Status), "ascend"));
         _dataSource.QueryParameters.SortDescriptions.Add(new SortDescription(nameof(TaskExecutionInstanceModel.FireTimeUtc), "descend"));
@@ -367,4 +381,10 @@
         _dataSource.Dispose();
     }
 
+    async Task ShowTaskProgressInfoDrawerAsync(TaskExecutionInstanceModel taskExecutionInstance)
+    {
+        _taskProgressInfoDrawerVisible = true;
+        _taskExecutionInstance = taskExecutionInstance;
+        await Task.CompletedTask;
+    }
 }

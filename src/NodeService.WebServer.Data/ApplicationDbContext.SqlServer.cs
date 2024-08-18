@@ -486,5 +486,19 @@ public partial class ApplicationDbContext
                         .SetValueComparer(GetEnumerableComparer<PhysicalMediaInfo>());
                 });
         });
+
+        modelBuilder.Entity<TaskProgressInfoModel>(builder =>
+        {
+            builder.HasKey(x => x.Id);
+            builder.OwnsOne(
+                model => model.Value, ownedNavigationBuilder =>
+                {
+                    ownedNavigationBuilder.ToJson();
+                    ownedNavigationBuilder.Property(x => x.Entries)
+                        .HasConversion(x => Serialize(x), x => Deserialize<List<TaskProgressEntry>>(x))
+                        .Metadata
+                        .SetValueComparer(GetEnumerableComparer<TaskProgressEntry>());
+                });
+        });
     }
 }

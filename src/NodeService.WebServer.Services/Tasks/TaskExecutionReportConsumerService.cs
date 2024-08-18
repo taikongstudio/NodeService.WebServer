@@ -85,6 +85,10 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
 
     private async Task ProcessExpiredTasksAsync(CancellationToken cancellationToken = default)
     {
+        if (Debugger.IsAttached)
+        {
+            return;
+        }
         await Task.Delay(TimeSpan.FromMinutes(10), cancellationToken);
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -512,7 +516,7 @@ public partial class TaskExecutionReportConsumerService : BackgroundService
     {
         foreach (var taskExecutionInstanceGroup in taskExecutionInstances.GroupBy(static x => x.FireInstanceId))
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(1000), cancellationToken);
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
             var taskFireInstanceId = taskExecutionInstanceGroup.Key;
             if (taskFireInstanceId == null) continue;
             var taskActiveRecord = await QueryTaskActiveRecordAsync(taskFireInstanceId, cancellationToken);

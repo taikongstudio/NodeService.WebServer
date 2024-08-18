@@ -333,5 +333,13 @@ public partial class ApplicationDbContext
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
                     v => JsonSerializer.Deserialize<NodeExtendInfo>(v, (JsonSerializerOptions)null));
         });
+
+        modelBuilder.Entity<TaskProgressInfoModel>(builder =>
+        {
+            builder.Property(x => x.Value)
+                .HasColumnType("json").HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                    v => JsonSerializer.Deserialize<TaskProgressInfo>(v, (JsonSerializerOptions)null));
+        });
     }
 }

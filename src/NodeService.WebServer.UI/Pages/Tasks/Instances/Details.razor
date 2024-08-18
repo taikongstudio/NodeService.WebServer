@@ -5,6 +5,7 @@
 @inject NotificationService _notice
 @inject NavigationManager NavigationManager
 @layout TaskInstanceLayout
+@implements IDisposable
 
 <style>
     .site-layout .site-layout-background {
@@ -81,6 +82,10 @@
 }
 else
 {
+    @if (_taskExecutionInstance?.TaskProgressInfo != null)
+    {
+        <TaskProgressInfoDrawer @bind-Visible="@_taskProgressInfoDrawerVisible" TaskProgressInfo="@_taskExecutionInstance?.TaskProgressInfo" />
+    }
     <div class="taskflow-grid" id="TaskFlowDesigner">
         @if (_isIdInvalid)
         {
@@ -95,7 +100,12 @@ else
                 <PageHeaderTitle>@_taskExecutionInstance.Name</PageHeaderTitle>
                 <PageHeaderSubtitle></PageHeaderSubtitle>
                 <PageHeaderExtra>
-                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Reload" OnClick="@RetryTaskAsync"></Button>
+                    <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.Redo" OnClick="@RetryTaskAsync"></Button>
+                    @if (_taskExecutionInstance.TaskProgressInfo != null)
+                    {
+                        <Button Shape="@ButtonShape.Circle" Type="@ButtonType.Primary" Icon="@IconType.Outline.OrderedList" OnClick="@ShowTaskProgressInfoDrawerAsync"></Button>
+                    }
+
                 </PageHeaderExtra>
                 <PageHeaderContent>
                     <Descriptions Size="small" Column="4">
@@ -110,7 +120,7 @@ else
                 </PageHeaderContent>
             </PageHeader>
             <div class="taskflow-main">
-                <TaskExecutionInstanceLogViewer TaskExecutionInstanceId="@TaskExecutionInstanceId" />
+              <TaskExecutionInstanceLogViewer TaskExecutionInstanceId="@TaskExecutionInstanceId" />
             </div>
         }
 
@@ -121,16 +131,36 @@ else
 
 
 @code {
-    bool _isLoading;
-    bool _isIdInvalid;
-
-    TaskExecutionInstanceModel _taskExecutionInstance;
 
     [Parameter] public string? TaskExecutionInstanceId { get; set; }
 
+    bool _isLoading;
+    bool _isIdInvalid;
+    bool _taskProgressInfoDrawerVisible;
+    PeriodicTimer _timer;
+
+    TaskExecutionInstanceModel _taskExecutionInstance = new TaskExecutionInstanceModel();
+
+
     protected override async Task OnInitializedAsync()
     {
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
         await QueryTaskExecutionInstanceAsync(TaskExecutionInstanceId);
+        _= Task.Run(async () =>
+        {
+            try
+            {
+                while (await _timer.WaitForNextTickAsync())
+                {
+                    await QueryTaskExecutionInstanceAsync(TaskExecutionInstanceId);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+
+        });
         await base.OnInitializedAsync();
     }
 
@@ -154,19 +184,13 @@ else
             }
             var queryTaskExecutionInstanceRsp = await ApiService.QueryTaskExecutionInstancesAsync(new QueryTaskExecutionInstanceListParameters
                 {
+                    IncludeTaskProgressInfo = true,
+                    IncludeNodeInfo = true,
                     TaskExecutionInstanceIdList = [taskExecutionInstanceId]
                 });
             if (queryTaskExecutionInstanceRsp.ErrorCode == 0 && queryTaskExecutionInstanceRsp.Result != null)
             {
                 _taskExecutionInstance = queryTaskExecutionInstanceRsp.Result.FirstOrDefault();
-                if (_taskExecutionInstance != null)
-                {
-                    var queryNodeRsp = await ApiService.QueryNodeInfoAsync(_taskExecutionInstance.NodeInfoId);
-                    if (queryNodeRsp.ErrorCode == 0)
-                    {
-                        _taskExecutionInstance.NodeInfo = queryNodeRsp.Result;
-                    }
-                }
             }
         }
         catch (Exception ex)
@@ -181,6 +205,12 @@ else
         {
             _isIdInvalid = _taskExecutionInstance == null;
         }
+    }
+
+    async Task ShowTaskProgressInfoDrawerAsync()
+    {
+        _taskProgressInfoDrawerVisible = true;
+        await Task.CompletedTask;
     }
 
     async Task RetryTaskAsync()
@@ -238,5 +268,13 @@ else
             await _message.Error($"取掉任务失败:{ex.ToString()}");
         }
 
+    }
+
+    public void Dispose()
+    {
+        if (_timer != null)
+        {
+            _timer.Dispose();
+        }
     }
 }

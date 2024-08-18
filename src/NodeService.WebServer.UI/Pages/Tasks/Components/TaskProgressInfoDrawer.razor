@@ -1,0 +1,43 @@
+﻿@using NodeService.Infrastructure.DataModels;
+
+<Drawer Visible="@Visible" VisibleChanged="@VisibleChanged" OnClose="@OnClose" Title="@("查看进度信息")" Width="700">
+    @if (TaskProgressInfo == null)
+    {
+        <Empty/>
+    }
+    else
+    {
+        <Table Size="TableSize.Small"
+               EnableVirtualization="false"
+               TItem="TaskProgressEntry"
+               DataSource="@TaskProgressInfo.Entries"
+               Resizable
+               Total="@TaskProgressInfo.Entries.Count"
+               RowKey="x => x.TaskName"
+               PageSize="10">
+            <ColumnDefinitions>
+                <Selection Key="@context.TaskName" Type="checkbox" />
+                <PropertyColumn Title="进程名称" Sortable="true" Width="100" Property="c => c.TaskName">
+                    <Text Ellipsis Copyable Style="max-height:30px;display:flex;flex-direction:row">
+                        <div style="overflow: hidden; white-space: nowrap;text-overflow: ellipsis;" title="@context.TaskName">@context.TaskName</div>
+                    </Text>
+                </PropertyColumn>
+
+                <PropertyColumn Title="进度" Ellipsis Sortable Width="100" Property="c => c.Progress" DefaultSortOrder="@SortDirection.Descending">
+                    <Text>@context.Progress</Text>
+                </PropertyColumn>
+            </ColumnDefinitions>
+        </Table>
+    }
+
+</Drawer>
+@code {
+    [Parameter] public TaskProgressInfo TaskProgressInfo { get; set; }
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    void OnClose()
+    {
+        Visible = false;
+    }
+
+}

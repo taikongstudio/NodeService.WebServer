@@ -2,8 +2,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
+using NodeService.WebServer.Services.DataServices;
 using System.Threading;
 
 namespace NodeService.WebServer.Services.Tasks
@@ -15,6 +17,8 @@ namespace NodeService.WebServer.Services.Tasks
         KafkaOptions _kafkaOptions;
         private BatchQueue<TaskLogUnit> _taskLogUnitQueue;
         private WebServerCounter _webServerCounter;
+        private IAsyncQueue<TaskLogUnit> _taskLogUnitAnalysisQueue;
+        private ObjectCache _objectCache;
         private ProducerConfig _producerConfig;
         private IProducer<string, string> _producer;
 
@@ -23,13 +27,15 @@ namespace NodeService.WebServer.Services.Tasks
             ExceptionCounter exceptionCounter,
             WebServerCounter webServerCounter,
             IOptionsMonitor<KafkaOptions> kafkaOptionsMonitor,
-            [FromKeyedServices(nameof(TaskLogKafkaProducerService))] BatchQueue<TaskLogUnit> taskLogUnitQueue)
+            [FromKeyedServices(nameof(TaskLogKafkaProducerService))] BatchQueue<TaskLogUnit> taskLogUnitQueue,
+            [FromKeyedServices(nameof(TaskLogAnalysisService))] IAsyncQueue<TaskLogUnit> taskLogUnitAnalysisQueue)
         {
             _logger = logger;
             _exceptionCounter = exceptionCounter;
             _kafkaOptions = kafkaOptionsMonitor.CurrentValue;
             _taskLogUnitQueue = taskLogUnitQueue;
             _webServerCounter = webServerCounter;
+            _taskLogUnitAnalysisQueue = taskLogUnitAnalysisQueue;
         }
 
 
@@ -61,7 +67,7 @@ namespace NodeService.WebServer.Services.Tasks
                                 {
                                     continue;
                                 }
-                                string logString = string.Empty;
+                                var logString = string.Empty;
                             LRetry:
                                 try
                                 {
@@ -69,6 +75,9 @@ namespace NodeService.WebServer.Services.Tasks
                                     {
                                         logString = JsonSerializer.Serialize(taskLogUnit);
                                     }
+
+                                    await _taskLogUnitAnalysisQueue.EnqueueAsync(taskLogUnit, cancellationToken);
+
                                     var length = logString.Length;
                                     _producer.Produce(_kafkaOptions.TaskLogTopic, new Message<string, string>()
                                     {

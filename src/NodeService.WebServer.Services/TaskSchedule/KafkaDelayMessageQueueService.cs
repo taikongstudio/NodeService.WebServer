@@ -101,9 +101,11 @@ namespace NodeService.WebServer.Services.TaskSchedule
 
                             if (Debugger.IsAttached)
                             {
+                                var index = 0;
                                 foreach (var consumeContext in consumeContexts)
                                 {
                                     await ProcessConsumeContextAsync(consumeContext, cancellationToken);
+                                    index++;
                                 }
                             }
                             else
@@ -111,7 +113,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
                                 await Parallel.ForEachAsync(consumeContexts, new ParallelOptions()
                                 {
                                     CancellationToken = cancellationToken,
-                                    MaxDegreeOfParallelism = 4
+                                    MaxDegreeOfParallelism = 16
                                 }, ProcessConsumeContextAsync);
                             }
                             

@@ -110,6 +110,8 @@ public partial class ApplicationDbContext : DbContext
 
     public DbSet<NodeExtendInfoModel> NodeExtendInfoDbSet { get; set; }
 
+    public DbSet<TaskProgressInfoModel> TaskProgressInfoDbSet { get; set; }
+
     public override DbSet<TEntity> Set<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors |
                                     DynamicallyAccessedMemberTypes.NonPublicConstructors |

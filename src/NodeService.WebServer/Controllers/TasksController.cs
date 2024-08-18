@@ -1,4 +1,5 @@
-﻿using NodeService.Infrastructure.Concurrent;
+﻿using CommandLine;
+using NodeService.Infrastructure.Concurrent;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
@@ -21,6 +22,8 @@ public class TasksController : Controller
     readonly BatchQueue<TaskCancellationParameters> _taskCancellationAsyncQueue;
     readonly BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> _logQueryBatchQueue;
     readonly BatchQueue<TaskActivateServiceParameters> _taskActivateServiceParametersBatchQueue;
+    readonly ObjectCache _objectCache;
+    private readonly ApplicationRepositoryFactory<TaskProgressInfoModel> _taskProgressInfoRepoFactory;
     readonly ApplicationRepositoryFactory<TaskExecutionInstanceModel> _taskExecutionInstanceRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskActivationRecordModel> _taskActivationRepositoryFactory;
     readonly ApplicationRepositoryFactory<TaskFlowTemplateModel> _taskDiagramTemplateFactory;
@@ -33,11 +36,13 @@ public class TasksController : Controller
         IMemoryCache memoryCache,
         ExceptionCounter exceptionCounter,
         INodeSessionService nodeSessionService,
+        ObjectCache objectCache,
         ApplicationRepositoryFactory<TaskExecutionInstanceModel> taskInstanceRepositoryFactory,
         ApplicationRepositoryFactory<TaskActivationRecordModel> taskActivationRepositoryFactory,
         ApplicationRepositoryFactory<TaskFlowTemplateModel> taskDiagramTemplateFactory,
         ApplicationRepositoryFactory<TaskLogModel> taskLogRepoFactory,
         ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
+        ApplicationRepositoryFactory<TaskProgressInfoModel> taskProgressInfoRepoFactory,
         BatchQueue<TaskCancellationParameters> taskCancellationAsyncQueue,
         BatchQueue<AsyncOperation<TaskLogQueryServiceParameters, TaskLogQueryServiceResult>> logQueryBatchQueue,
         BatchQueue<TaskActivateServiceParameters> taskActivateServiceParametersBatchQueue
@@ -56,6 +61,8 @@ public class TasksController : Controller
         _taskCancellationAsyncQueue = taskCancellationAsyncQueue;
         _logQueryBatchQueue = logQueryBatchQueue;
         _taskActivateServiceParametersBatchQueue = taskActivateServiceParametersBatchQueue;
+        _objectCache = objectCache;
+        _taskProgressInfoRepoFactory = taskProgressInfoRepoFactory;
     }
 
     [HttpGet("/api/Tasks/Instances/List")]
@@ -82,6 +89,18 @@ public class TasksController : Controller
                 queryParameters.PageSize,
                 queryParameters.PageIndex
             );
+            if (queryParameters.IncludeTaskProgressInfo)
+            {
+                await using var taskProgressInfoRepo = await _taskProgressInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
+                foreach (var taskExecutionInstance in queryResult.Items)
+                {
+                    var taskProgressInfo = await taskProgressInfoRepo.GetByIdAsync(taskExecutionInstance.Id, cancellationToken);
+                    if (taskProgressInfo != null)
+                    {
+                        taskExecutionInstance.TaskProgressInfo = taskProgressInfo.Value;
+                    }
+                }
+            }
             if (queryParameters.IncludeNodeInfo)
             {
                 await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync();

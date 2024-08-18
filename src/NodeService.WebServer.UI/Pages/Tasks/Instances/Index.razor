@@ -7,7 +7,7 @@
 <GridContent>
     @if (_taskExecutionInstance?.TaskProgressInfo != null)
     {
-        <TaskProgressInfoDrawer @bind-Visible="@_taskProgressInfoDrawerVisible" TaskProgressInfo="@_taskExecutionInstance?.TaskProgressInfo" />
+        <TaskProgressInfoDrawer @bind-Visible="@_taskProgressInfoDrawerVisible" TaskExecutionInstance="@_taskExecutionInstance"  ChangedCount="1"/>
     }
     <CommonDialog Closed="OnDialogClosed" @ref="_taskDefinitionSelectorDialog">
         <TaskDefinitionSelector @bind-SelectedItems="_selectedTaskDefinitionList" Mode="SelectionMode.Multiple"/>

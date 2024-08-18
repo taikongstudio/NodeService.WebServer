@@ -84,7 +84,7 @@ else
 {
     @if (_taskExecutionInstance?.TaskProgressInfo != null)
     {
-        <TaskProgressInfoDrawer @bind-Visible="@_taskProgressInfoDrawerVisible" TaskProgressInfo="@_taskExecutionInstance?.TaskProgressInfo" />
+        <TaskProgressInfoDrawer @bind-Visible="@_taskProgressInfoDrawerVisible" TaskExecutionInstance="@_taskExecutionInstance" ChangedCount="@_requestedCount"/>
     }
     <div class="taskflow-grid" id="TaskFlowDesigner">
         @if (_isIdInvalid)
@@ -134,6 +134,7 @@ else
 
     [Parameter] public string? TaskExecutionInstanceId { get; set; }
 
+    int _requestedCount = 0;
     bool _isLoading;
     bool _isIdInvalid;
     bool _taskProgressInfoDrawerVisible;
@@ -153,6 +154,8 @@ else
                 while (await _timer.WaitForNextTickAsync())
                 {
                     await QueryTaskExecutionInstanceAsync(TaskExecutionInstanceId);
+                    _requestedCount++;
+                    await InvokeAsync(StateHasChanged);
                 }
             }
             catch (Exception ex)

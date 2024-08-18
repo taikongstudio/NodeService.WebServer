@@ -1,7 +1,7 @@
 ﻿@using NodeService.Infrastructure.DataModels;
 
 <Drawer Visible="@Visible" VisibleChanged="@VisibleChanged" OnClose="@OnClose" Title="@("查看进度信息")" Width="700">
-    @if (TaskProgressInfo == null)
+    @if (TaskExecutionInstance?.TaskProgressInfo == null|| ChangedCount==0)
     {
         <Empty/>
     }
@@ -10,9 +10,9 @@
         <Table Size="TableSize.Small"
                EnableVirtualization="false"
                TItem="TaskProgressEntry"
-               DataSource="@TaskProgressInfo.Entries"
+               DataSource="@TaskExecutionInstance.TaskProgressInfo.Entries"
                Resizable
-               Total="@TaskProgressInfo.Entries.Count"
+               Total="@TaskExecutionInstance.TaskProgressInfo.Entries.Count"
                RowKey="x => x.TaskName"
                PageSize="10">
             <ColumnDefinitions>
@@ -32,9 +32,10 @@
 
 </Drawer>
 @code {
-    [Parameter] public TaskProgressInfo TaskProgressInfo { get; set; }
+    [Parameter] public TaskExecutionInstanceModel TaskExecutionInstance { get; set; }
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+    [Parameter] public int ChangedCount { get; set; }
 
     string Format(double value) {
         return value.ToString("n2") + "%";

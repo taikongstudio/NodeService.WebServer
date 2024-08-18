@@ -334,12 +334,9 @@ namespace NodeService.WebServer.Servers
             builder.Services.AddScoped<TaskExecutionReportHandler>();
             builder.Services.AddScoped<MessageHandlerDictionary>(sp =>
             {
-                var messageHandlerDictionary = new MessageHandlerDictionary
-                {
-                    { HeartBeatResponse.Descriptor, sp.GetService<HeartBeatResponseHandler>() },
-                    { TaskExecutionReport.Descriptor, sp.GetService<TaskExecutionReportHandler>() }
-                    //{ FileSystemBulkOperationReport.Descriptor, sp.GetService<FileSystemOperationReportHandler>() },
-                };
+                var messageHandlerDictionary = new MessageHandlerDictionary();
+                messageHandlerDictionary.TryAdd(HeartBeatResponse.Descriptor, sp.GetService<HeartBeatResponseHandler>());
+                messageHandlerDictionary.TryAdd(TaskExecutionReport.Descriptor, sp.GetService<TaskExecutionReportHandler>());
                 return messageHandlerDictionary;
             }
             );

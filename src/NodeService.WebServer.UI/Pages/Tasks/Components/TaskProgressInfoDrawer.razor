@@ -24,7 +24,7 @@
                 </PropertyColumn>
 
                 <PropertyColumn Title="进度" Ellipsis Sortable Width="100" Property="c => c.Progress" DefaultSortOrder="@SortDirection.Descending">
-                    <Text>@context.Progress</Text>
+                    <AntDesign.Progress Format="@Format" Percent="@(context.Progress*100)" />
                 </PropertyColumn>
             </ColumnDefinitions>
         </Table>
@@ -35,6 +35,11 @@
     [Parameter] public TaskProgressInfo TaskProgressInfo { get; set; }
     [Parameter] public bool Visible { get; set; }
     [Parameter] public EventCallback<bool> VisibleChanged { get; set; }
+
+    string Format(double value) {
+        return value.ToString("n2") + "%";
+    }
+
     void OnClose()
     {
         Visible = false;

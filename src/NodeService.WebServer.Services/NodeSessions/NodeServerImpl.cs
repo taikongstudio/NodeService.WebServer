@@ -144,7 +144,15 @@ public class NodeServerImpl : NodeServiceBase
                                 await outputQueue.DeuqueAsync(cancellationToken);
                                 continue;
                             }
-                            subscribeEvent.Properties.TryAdd("DateTime", nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
+                            if (subscribeEvent.Properties.ContainsKey("DateTime"))
+                            {
+                                subscribeEvent.Properties["DateTime"] = nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString);
+                            }
+                            else
+                            {
+                                subscribeEvent.Properties.TryAdd("DateTime", nodeMessage.CreatedDateTime.ToString(NodePropertyModel.DateTimeFormatString));
+                            }
+
                             await responseStream.WriteAsync(subscribeEvent, cancellationToken);
                             _webServerCounter.Snapshot.NodeServiceOutputMessagesCount.Value++;
                         }

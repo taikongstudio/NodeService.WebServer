@@ -43,7 +43,7 @@ namespace NodeService.WebServer.Services.Tasks
                 PersistTaskProgressInfoAsync(cancellationToken),
                 AnalysisTaskLogAsync(cancellationToken));
         }
-
+         
         private async Task PersistTaskProgressInfoAsync(CancellationToken cancellationToken = default)
         {
             await foreach (var entries in _batchQueue.ReceiveAllAsync(cancellationToken))

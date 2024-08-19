@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NPOI.SS.Formula.Functions;
+using System;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
@@ -52,6 +53,13 @@ namespace NodeService.WebServer.Services.NodeFileSystem
         public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             var bytesOfRead = await _stream.ReadAsync(buffer, offset, count, cancellationToken);
+            this._position += bytesOfRead;
+            return bytesOfRead;
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var bytesOfRead = await _stream.ReadAsync(buffer, cancellationToken);
             this._position += bytesOfRead;
             return bytesOfRead;
         }

@@ -169,9 +169,12 @@ public class FtpClientProcessContext : ProcessContext
         }
         finally
         {
-            await AddOrUpdateSyncRecordAsync(
-                syncContext,
-                cancellationToken);
+            if (syncContext.Record.Status != NodeFileSyncStatus.Skipped)
+            {
+                await AddOrUpdateSyncRecordAsync(
+                    syncContext,
+                    cancellationToken);
+            }
         }
     }
 

@@ -42,7 +42,7 @@ internal class Program
         ConfigureDbContext(builder);
         //builder.Services.AddHostedService<ClearConfigService>();
         //builder.Services.AddHostedService<UpdateOfflineNodeService>();
-        builder.Services.AddHostedService<MaccorEnvVarsService>();
+        builder.Services.AddHostedService<DeleteSkippedSyncRecordService>();
         builder.Services.AddSingleton<HttpClient>(sp =>
         {
             return new HttpClient

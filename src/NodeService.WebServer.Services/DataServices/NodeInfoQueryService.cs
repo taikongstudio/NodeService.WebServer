@@ -124,17 +124,15 @@ namespace NodeService.WebServer.Services.DataServices
 
             if (nodeInfo == null)
             {
-                nodeInfo = NodeInfoModel.Create(nodeId, nodeName, NodeDeviceType.Computer);
-                var nodeProfile =
-                    await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileListSpecification(nodeName), cancellationToken);
+                var nodeProfile = await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileListSpecification(nodeName), cancellationToken);
                 if (nodeProfile != null)
                 {
-                    var oldNodeInfo = await nodeInfoRepo.GetByIdAsync(nodeProfile.NodeInfoId, cancellationToken);
-                    if (oldNodeInfo != null) await nodeInfoRepo.DeleteAsync(oldNodeInfo, cancellationToken);
-                    nodeProfile.NodeInfoId = nodeId;
-                    nodeInfo.ProfileId = nodeProfile.Id;
+                    nodeInfo = await nodeInfoRepo.GetByIdAsync(nodeProfile.NodeInfoId, cancellationToken);
                 }
-
+                if (nodeInfo == null)
+                {
+                    nodeInfo = NodeInfoModel.Create(nodeId, nodeName, NodeDeviceType.Computer);
+                }
                 nodeInfo.Status = NodeStatus.Online;
                 await nodeInfoRepo.AddAsync(nodeInfo, cancellationToken);
             }

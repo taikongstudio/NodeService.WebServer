@@ -344,6 +344,16 @@ namespace NodeService.WebServer.Servers
 
                 });
             }, 2048);
+
+            builder.Services.AddPooledDbContextFactory<LimsDbContext>(
+    options =>
+    options.UseMySql(builder.Configuration.GetConnectionString("LIMSMySQL"),
+              MySqlServerVersion.LatestSupportedServerVersion, mySqlOptionBuilder =>
+              {
+                  mySqlOptionBuilder.EnableRetryOnFailure();
+                  mySqlOptionBuilder.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+                  mySqlOptionBuilder.EnableStringComparisonTranslations();
+              }));
         }
 
         public override async Task RunAsync(CancellationToken cancellationToken = default)

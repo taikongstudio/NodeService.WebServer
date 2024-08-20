@@ -1,4 +1,5 @@
-﻿using NodeService.Infrastructure.Data;
+﻿using Microsoft.Extensions.DependencyInjection;
+using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
@@ -20,13 +21,13 @@ namespace NodeService.WebServer.Services.DataServices
         readonly ApplicationRepositoryFactory<NodePropertySnapshotModel> _nodePropsRepoFactory;
         readonly ApplicationRepositoryFactory<NodeExtendInfoModel> _nodeExtendInfoRepoFactory;
         readonly ObjectCache _objectCache;
-        readonly IDbContextFactory<LimsDbContext> _limsDbContextFactory;
         readonly ILogger<NodeInfoQueryService> _logger;
         readonly ExceptionCounter _exceptionCounter;
-        readonly INodeSessionService _nodeSessionService;
+        readonly IServiceProvider _serviceProvider;
         readonly JsonSerializerOptions _jsonOptions;
 
         public NodeInfoQueryService(
+            IServiceProvider serviceProvider,
             ILogger<NodeInfoQueryService> logger,
             ExceptionCounter exceptionCounter,
             ApplicationRepositoryFactory<NodeInfoModel> nodeInfoRepoFactory,
@@ -34,9 +35,7 @@ namespace NodeService.WebServer.Services.DataServices
             ApplicationRepositoryFactory<PropertyBag> propertyBagRepositoryFactory,
             ApplicationRepositoryFactory<NodePropertySnapshotModel> nodePropertySnapshotRepositoryFactory,
             ApplicationRepositoryFactory<NodeExtendInfoModel> nodeExtendInfoRepoFactory,
-            ObjectCache objectCache,
-            IDbContextFactory<LimsDbContext> limsDbContextFactory,
-            INodeSessionService nodeSessionService)
+            ObjectCache objectCache)
         {
             _jsonOptions = _jsonOptions = new JsonSerializerOptions()
             {
@@ -48,10 +47,9 @@ namespace NodeService.WebServer.Services.DataServices
             _nodePropsRepoFactory = nodePropertySnapshotRepositoryFactory;
             _nodeExtendInfoRepoFactory = nodeExtendInfoRepoFactory;
             _objectCache = objectCache;
-            _limsDbContextFactory = limsDbContextFactory;
             _logger = logger;
             _exceptionCounter = exceptionCounter;
-            _nodeSessionService = nodeSessionService;
+            _serviceProvider = serviceProvider;
         }
 
         public async ValueTask<dl_equipment_ctrl_computer?> Query_dl_equipment_ctrl_computer_Async(string nodeInfoId, string? externalBindingId, CancellationToken cancellationToken = default)
@@ -59,7 +57,10 @@ namespace NodeService.WebServer.Services.DataServices
             try
             {
                 dl_equipment_ctrl_computer? result = null;
-                await using var dbContext = await _limsDbContextFactory.CreateDbContextAsync(cancellationToken);
+
+                var limsDbContextFactory = _serviceProvider.GetService<IDbContextFactory<LimsDbContext>>();
+
+                await using var dbContext = await limsDbContextFactory.CreateDbContextAsync(cancellationToken);
 
                 if (externalBindingId != null)
                 {
@@ -458,10 +459,6 @@ namespace NodeService.WebServer.Services.DataServices
         {
             var queryResult = await QueryNodeInfoListByQueryParameters(parameters, cancellationToken);
 
-            foreach (var item in queryResult.Items)
-            {
-                item.PingReplyInfo = _nodeSessionService.GetNodeLastPingReplyInfo(new NodeSessionId(item.Id));
-            }
             if (TryWriteToExcel(queryResult.Items.ToImmutableArray(), out Stream? stream) && stream != null)
             {
                 return stream;

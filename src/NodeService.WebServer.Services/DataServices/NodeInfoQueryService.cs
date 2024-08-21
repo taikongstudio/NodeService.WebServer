@@ -125,6 +125,7 @@ namespace NodeService.WebServer.Services.DataServices
 
             if (nodeInfo == null)
             {
+                var createNewNode = false;
                 var nodeProfile = await nodeProfileRepo.FirstOrDefaultAsync(new NodeProfileListSpecification(nodeName), cancellationToken);
                 if (nodeProfile != null)
                 {
@@ -133,11 +134,18 @@ namespace NodeService.WebServer.Services.DataServices
                 if (nodeInfo == null)
                 {
                     nodeInfo = NodeInfoModel.Create(nodeId, nodeName, NodeDeviceType.Computer);
+                    createNewNode = true;
                 }
                 nodeInfo.Status = NodeStatus.Online;
-                await nodeInfoRepo.AddAsync(nodeInfo, cancellationToken);
+                if (createNewNode)
+                {
+                    await nodeInfoRepo.AddAsync(nodeInfo, cancellationToken);
+                }
+                else
+                {
+                    await nodeInfoRepo.UpdateAsync(nodeInfo, cancellationToken);
+                }
             }
-
             return new NodeId(nodeInfo.Id);
         }
 

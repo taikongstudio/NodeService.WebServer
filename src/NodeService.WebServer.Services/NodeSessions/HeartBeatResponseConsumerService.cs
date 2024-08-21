@@ -181,9 +181,18 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 }, InvalidateNodeAsync);
             }
 
-            foreach (var array in invalidateNodeContext.Select(static x => x.NodeInfo).Chunk(40))
+            foreach (var context in invalidateNodeContext)
             {
-                await nodeRepo.UpdateRangeAsync(array, cancellationToken);
+                try
+                {
+                    await nodeRepo.UpdateAsync(context.NodeInfo, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _exceptionCounter.AddOrUpdate(ex);
+                    _logger.LogError(ex.ToString());
+                }
+
             }
         }
         catch (Exception ex)

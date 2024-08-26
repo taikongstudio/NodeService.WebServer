@@ -38,7 +38,7 @@
                               NameTitle="进程名称"
                               ItemsSource="@_nodeSettings.ProcessUsagesMapping"/>
         </TabPane>
-                <TabPane Tab="区域站点映射" Key="4">
+        <TabPane Tab="区域站点映射" Key="4">
        <StringEntryTable ValueTitle="站点"
                             NameTitle="区域"
                             ItemsSource="@_nodeSettings.NodeSiteMapping"/>
@@ -49,8 +49,10 @@
                 IsValueHidden
                 ItemsSource="@_nodeSettings.NodeStatusChangeRememberProcessList" />
         </TabPane>
-        <TabPane Tab="用途管理" Key="6">
-            <NodeUsageManagement/>
+        <TabPane Tab="节点设备供应商" Key="6">
+            <StringEntryTable ValueTitle="值"
+                              NameTitle="显示名称"
+                              ItemsSource="@_nodeSettings.NodeDeviceManufactures" />
         </TabPane>
     </Tabs>
 

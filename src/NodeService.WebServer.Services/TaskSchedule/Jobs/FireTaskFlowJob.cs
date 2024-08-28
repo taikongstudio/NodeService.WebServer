@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using NodeService.Infrastructure.DataModels;
-using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.Tasks;
 using System;
 using System.Collections.Generic;

@@ -1,5 +1,4 @@
-﻿using NodeService.WebServer.Services.Counters;
-using NodeService.WebServer.Services.DataServices;
+﻿using NodeService.WebServer.Services.DataServices;
 
 namespace NodeService.WebServer.Controllers;
 

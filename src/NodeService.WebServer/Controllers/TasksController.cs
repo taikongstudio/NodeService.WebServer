@@ -4,7 +4,6 @@ using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataServices;
 using NodeService.WebServer.Services.Tasks;
 

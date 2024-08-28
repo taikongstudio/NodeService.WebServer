@@ -4,7 +4,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Models;
-using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.NodeSessions;
 

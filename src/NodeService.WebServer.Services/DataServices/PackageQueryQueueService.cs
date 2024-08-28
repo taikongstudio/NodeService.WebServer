@@ -3,7 +3,6 @@ using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Concurrent;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.VirtualFileSystem;
 using System;
 using System.Collections.Generic;

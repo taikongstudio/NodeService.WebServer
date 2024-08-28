@@ -3,7 +3,6 @@ using NodeService.Infrastructure.DataModels;
 using NodeService.Infrastructure.Logging;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Services.Counters;
 using System.IO.Pipelines;
 
 namespace NodeService.WebServer.Services.DataServices;

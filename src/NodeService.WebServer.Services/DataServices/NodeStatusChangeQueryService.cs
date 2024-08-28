@@ -3,7 +3,6 @@ using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Services.Counters;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -2,7 +2,6 @@
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.DataQuality;
 

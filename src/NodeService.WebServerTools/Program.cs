@@ -1,9 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using NodeService.Infrastructure;
+using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
-using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataServices;
 using NodeService.WebServerTools.Services;
 using StackExchange.Redis;

@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using NodeService.Infrastructure.Logging;
-using NodeService.Infrastructure.Models;
 using NodeService.WebServer.Models;
 using NodeService.WebServer.Services.Counters;
 using System.Collections.Immutable;

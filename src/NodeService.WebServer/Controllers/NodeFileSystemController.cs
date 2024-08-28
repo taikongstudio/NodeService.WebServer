@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Net.Http.Headers;
 using NodeService.Infrastructure.NodeFileSystem;
-using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.DataServices;
 using NodeService.WebServer.Services.NodeFileSystem;
 

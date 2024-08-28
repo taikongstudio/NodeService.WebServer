@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using NodeService.WebServer.Services.Counters;
 
 namespace NodeService.WebServer.Services.TaskSchedule;
 

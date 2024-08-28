@@ -2,7 +2,6 @@
 using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.Tasks;
 
 namespace NodeService.WebServer.Controllers

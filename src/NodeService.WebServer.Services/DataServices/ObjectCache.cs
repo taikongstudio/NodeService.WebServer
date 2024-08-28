@@ -3,7 +3,6 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NodeService.WebServer.Models;
-using NodeService.WebServer.Services.Counters;
 using System.Threading;
 
 namespace NodeService.WebServer.Services.DataServices

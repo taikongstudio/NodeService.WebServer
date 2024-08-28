@@ -4,7 +4,6 @@ using NodeService.Infrastructure.Data;
 using NodeService.WebServer.Data;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
-using NodeService.WebServer.Services.Counters;
 using NodeService.WebServer.Services.TaskSchedule;
 
 namespace NodeService.WebServer.Services.DataServices;

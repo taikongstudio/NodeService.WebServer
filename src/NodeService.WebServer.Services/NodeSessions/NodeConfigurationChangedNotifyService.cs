@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NodeService.Infrastructure.NodeSessions;
-using NodeService.WebServer.Services.Counters;
 using System;
 using System.Collections.Generic;
 using System.Linq;

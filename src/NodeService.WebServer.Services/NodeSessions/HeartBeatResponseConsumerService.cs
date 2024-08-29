@@ -181,7 +181,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 }, InvalidateNodeAsync);
             }
 
-            await nodeRepo.DbContext.SaveChangesAsync(cancellationToken);
+            await nodeRepo.UpdateRangeAsync(invalidateNodeContext.Select(static x => x.NodeInfo), cancellationToken);
         }
         catch (Exception ex)
         {

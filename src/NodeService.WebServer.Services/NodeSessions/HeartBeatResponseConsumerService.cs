@@ -181,19 +181,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 }, InvalidateNodeAsync);
             }
 
-            foreach (var context in invalidateNodeContext)
-            {
-                try
-                {
-                    await nodeRepo.UpdateAsync(context.NodeInfo, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _exceptionCounter.AddOrUpdate(ex);
-                    _logger.LogError(ex.ToString());
-                }
-
-            }
+            await nodeRepo.DbContext.SaveChangesAsync(cancellationToken);
         }
         catch (Exception ex)
         {

@@ -21,7 +21,7 @@ namespace NodeService.WebServer.Controllers
         }
 
         [HttpGet("/api/Diagnostics/ExceptionStatistics")]
-        public async Task<PaginationResponse<ExceptionEntry>> GetExceptionStatisticsAsync()
+        public Task<PaginationResponse<ExceptionEntry>> GetExceptionStatisticsAsync()
         {
             var exceptionStatistics = _exceptionCounter.GetStatistics().ToArray();
             var rsp = new PaginationResponse<ExceptionEntry>();
@@ -30,15 +30,15 @@ namespace NodeService.WebServer.Controllers
                 1,
                 exceptionStatistics.Length,
                 exceptionStatistics));
-            return rsp;
+            return Task.FromResult(rsp);
         }
 
         [HttpGet("/api/Diagnostics/Counters")]
-        public async Task<ApiResponse<WebServerCounterSnapshot>> GetCountersAsync()
+        public Task<ApiResponse<WebServerCounterSnapshot>> GetCountersAsync()
         {
             var rsp = new ApiResponse<WebServerCounterSnapshot>();
             rsp.SetResult(_webServerCounter.Snapshot);
-            return rsp;
+            return Task.FromResult(rsp);
         }
     }
 }

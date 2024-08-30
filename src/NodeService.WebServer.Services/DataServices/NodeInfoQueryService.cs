@@ -494,7 +494,7 @@ namespace NodeService.WebServer.Services.DataServices
                 //测试数据
 
                 IRow headerRow = sheet.CreateRow(0);
-                var headers = new string[] { "上位机Id", "上位机名称", "上位机状态", "最后在线时间", "业务类型", "实验室名称", "测试区域", "上位机负责人", "IP地址", "Lims关联性" };
+                var headers = new string[] { "上位机Id", "上位机名称", "上位机状态", "最后在线时间", "业务类型", "实验室名称", "测试区域", "上位机负责人", "IP地址", "Lims关联性", "用途" };
                 {
                     for (int columnIndex = 0; columnIndex < headers.Length; columnIndex++)
                     {
@@ -545,6 +545,9 @@ namespace NodeService.WebServer.Services.DataServices
                                 break;
                             case 9:
                                 SetCellValue(cell, result.Profile.FoundInLims ? "是" : "否");
+                                break;
+                            case 10:
+                                SetCellValue(cell, result.Profile.Usages ?? string.Empty);
                                 break;
                             default:
                                 break;

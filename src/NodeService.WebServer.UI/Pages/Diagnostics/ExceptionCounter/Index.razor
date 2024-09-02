@@ -69,6 +69,7 @@
             if (rsp.ErrorCode == 0)
             {
                 Statistics = rsp.Result;
+                _table?.ReloadData();
             }
         }
         catch (Exception ex)

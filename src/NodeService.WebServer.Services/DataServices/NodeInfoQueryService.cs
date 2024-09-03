@@ -61,7 +61,7 @@ namespace NodeService.WebServer.Services.DataServices
 
                 await using var dbContext = await limsDbContextFactory.CreateDbContextAsync(cancellationToken);
 
-                if (externalBindingId != null)
+                if (false && externalBindingId != null)
                 {
                     result = await dbContext.dl_equipment_ctrl_computer.FindAsync([externalBindingId], cancellationToken);
                 }

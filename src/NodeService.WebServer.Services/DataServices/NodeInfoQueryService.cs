@@ -301,14 +301,37 @@ namespace NodeService.WebServer.Services.DataServices
             CancellationToken cancellationToken = default)
         {
             await using var nodeInfoRepo = await _nodeInfoRepoFactory.CreateRepositoryAsync(cancellationToken);
-            await nodeInfoRepo.UpdateRangeAsync(nodeInfoList, cancellationToken);
             foreach (var nodeInfo in nodeInfoList)
             {
-                if (nodeInfo == null)
+                try
                 {
-                    continue;
+                    await nodeInfoRepo.UpdateAsync(nodeInfo, cancellationToken);
+                    if (nodeInfo.Status == NodeStatus.Online)
+                    {
+                        await _objectCache.SetEntityAsync(nodeInfo, cancellationToken);
+                    }
+                    else
+                    {
+                        await _objectCache.RemoveEntityAsync(nodeInfo, cancellationToken);
+                    }
                 }
-                await _objectCache.SetEntityAsync(nodeInfo, cancellationToken);
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    _exceptionCounter.AddOrUpdate(ex, nodeInfo.Id);
+                    _logger.LogError(ex.ToString());
+                }
+                catch (DbUpdateException ex)
+                {
+                    _exceptionCounter.AddOrUpdate(ex, nodeInfo.Id);
+                    _logger.LogError(ex.ToString());
+                }
+                catch (Exception ex)
+                {
+                    _exceptionCounter.AddOrUpdate(ex, nodeInfo.Id);
+                    _logger.LogError(ex.ToString());
+
+                }
+
             }
         }
 

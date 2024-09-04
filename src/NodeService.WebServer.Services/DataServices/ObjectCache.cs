@@ -119,7 +119,7 @@ namespace NodeService.WebServer.Services.DataServices
         {
             try
             {
-                await _distributedCache.RemoveAsync(key);
+                await _distributedCache.RemoveAsync(key, cancellationToken);
                 return true;
             }
             catch (Exception ex)

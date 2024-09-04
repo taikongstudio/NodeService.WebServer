@@ -160,7 +160,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 new NodeInfoSpecification(
                     AreaTags.Any,
                     nodeStatus,
-                    NodeDeviceType.All),
+                    NodeDeviceType.Computer),
                 cancellationToken);
 
             invalidateNodeContext = nodeInfoList.Where(IsNotInNodeInfoDict).Select(x => new InvalidateNodeContext(x, removeCache)).ToImmutableArray();
@@ -200,11 +200,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
     {
         try
         {
-            context.NodeInfo.Status = NodeStatus.Offline;
-            if (context.RemoveCache)
-            {
-                await _objectCache.RemoveEntityAsync(context.NodeInfo, cancellationToken);
-            }
             await _nodeInfoQueryService.QueryExtendInfoAsync(context.NodeInfo, cancellationToken);
             await SyncPropertiesFromLimsDbAsync(context.NodeInfo, cancellationToken);
         }

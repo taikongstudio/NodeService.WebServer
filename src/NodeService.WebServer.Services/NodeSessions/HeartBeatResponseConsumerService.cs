@@ -152,7 +152,7 @@ public class HeartBeatResponseConsumerService : BackgroundService
         bool removeCache,
         CancellationToken cancellationToken = default)
     {
-        ImmutableArray<InvalidateNodeContext> invalidateNodeContext = [];
+        ImmutableArray<InvalidateNodeContext> invalidateNodeContexts = [];
         try
         {
             await using var nodeRepo = await _nodeInfoRepositoryFactory.CreateRepositoryAsync(cancellationToken);
@@ -163,26 +163,34 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     NodeDeviceType.Computer),
                 cancellationToken);
 
-            invalidateNodeContext = nodeInfoList.Where(IsNotInNodeInfoDict).Select(x => new InvalidateNodeContext(x, removeCache)).ToImmutableArray();
+            invalidateNodeContexts = nodeInfoList.Where(IsNotInNodeInfoDict).Select(x => new InvalidateNodeContext(x, removeCache)).ToImmutableArray();
 
             if (Debugger.IsAttached)
             {
-                foreach (var context in invalidateNodeContext)
+                foreach (var context in invalidateNodeContexts)
                 {
                     await InvalidateNodeAsync(context, cancellationToken);
                 }
             }
             else
             {
-                await Parallel.ForEachAsync(invalidateNodeContext, new ParallelOptions()
+                await Parallel.ForEachAsync(invalidateNodeContexts, new ParallelOptions()
                 {
                     CancellationToken = cancellationToken,
                     MaxDegreeOfParallelism = 4
                 }, InvalidateNodeAsync);
             }
 
+            if (nodeStatus != NodeStatus.All)
+            {
+                foreach (var invalidateNodeContext in invalidateNodeContexts)
+                {
+                    invalidateNodeContext.NodeInfo.Status = nodeStatus;
+                }
+            }
+
             await _nodeInfoQueryService.UpdateNodeInfoListAsync(
-                invalidateNodeContext.Select(static x => x.NodeInfo).Where(IsNotInNodeInfoDict).ToArray(),
+                invalidateNodeContexts.Select(static x => x.NodeInfo).Where(IsNotInNodeInfoDict).ToArray(),
                 cancellationToken);
 
         }

@@ -181,11 +181,11 @@ public class HeartBeatResponseConsumerService : BackgroundService
                 }, InvalidateNodeAsync);
             }
 
-            if (nodeStatus != NodeStatus.All)
+            if (nodeStatus == NodeStatus.All)
             {
                 foreach (var invalidateNodeContext in invalidateNodeContexts)
                 {
-                    invalidateNodeContext.NodeInfo.Status = nodeStatus;
+                    invalidateNodeContext.NodeInfo.Status = NodeStatus.Offline;
                 }
             }
 

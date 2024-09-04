@@ -180,8 +180,20 @@ public class HeartBeatResponseConsumerService : BackgroundService
                     MaxDegreeOfParallelism = 4
                 }, InvalidateNodeAsync);
             }
+            foreach (var nodeInfo in invalidateNodeContext.Select(static x => x.NodeInfo).Where(IsNotInNodeInfoDict))
+            {
+                try
+                {
+                    await nodeRepo.UpdateAsync(nodeInfo, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _exceptionCounter.AddOrUpdate(ex, nodeInfo.Id);
+                    _logger.LogError(ex.ToString());
+                }
 
-            await nodeRepo.UpdateRangeAsync(invalidateNodeContext.Select(static x => x.NodeInfo), cancellationToken);
+            }
+
         }
         catch (Exception ex)
         {

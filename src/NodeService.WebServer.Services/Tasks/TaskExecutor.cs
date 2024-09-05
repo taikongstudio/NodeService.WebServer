@@ -195,7 +195,6 @@ namespace NodeService.WebServer.Services.Tasks
         {
             var nodeInfoList = await _nodeInfoQueryService.QueryNodeInfoListAsync(
                 taskDefinition.NodeList.Where(x => x.Value != null).Select(static x => x.Value!),
-                true,
                 cancellationToken);
 
             foreach (var nodeInfo in nodeInfoList)

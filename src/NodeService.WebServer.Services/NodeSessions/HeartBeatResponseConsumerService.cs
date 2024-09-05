@@ -246,7 +246,6 @@ public class HeartBeatResponseConsumerService : BackgroundService
             stopwatch.Restart();
             var nodeList = await _nodeInfoQueryService.QueryNodeInfoListAsync(
                 nodeIdList,
-                false,
                 cancellationToken);
             _webServerCounter.Snapshot.HeartBeatQueryNodeInfoListTimeSpan.Value += stopwatch.Elapsed;
 

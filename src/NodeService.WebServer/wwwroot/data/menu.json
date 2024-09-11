@@ -258,6 +258,11 @@
         "path": "/Diagnostics/ClientUpdateCounter",
         "name": "客户端更新诊断",
         "key": "Diagnostics.ClientUpdateCounter"
+      },
+      {
+        "path": "/Diagnostics/TimeSchedule",
+        "name": "时间调度",
+        "key": "Diagnostics.TimeSchedule"
       }
     ]
   }

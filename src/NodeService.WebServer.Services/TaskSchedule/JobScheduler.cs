@@ -73,7 +73,7 @@ public class JobScheduler
     private class AsyncDisposable : IAsyncDisposable
     {
         private readonly IScheduler _scheduler;
-        private JobKey _jobKey;
+        private Quartz.JobKey _jobKey;
 
         public AsyncDisposable(IScheduler scheduler)
         {
@@ -85,7 +85,7 @@ public class JobScheduler
             if (_jobKey != null) await _scheduler.DeleteJob(_jobKey);
         }
 
-        public void SetKey(JobKey jobKey)
+        public void SetKey(Quartz.JobKey jobKey)
         {
             _jobKey = jobKey;
         }

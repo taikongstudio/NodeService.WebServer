@@ -1,0 +1,68 @@
+﻿@namespace NodeService.WebServer.UI.Pages.Diagnostics.TimeSchedule
+@page "/Diagnostics/TimeSchedule"
+@using NodeService.WebServer.Services.Counters
+@inject ApiService ApiService
+@inject NotificationService _notice
+@inject ISchedulerFactory ScheduleFactory
+
+<Space Style="margin-bottom:16px">
+    <SpaceItem>
+        <Button Type="@ButtonType.Primary" OnClick="@Refresh">刷新</Button>
+    </SpaceItem>
+
+</Space>
+
+<Search Placeholder="搜索" @bind-Value="@_searchText" OnSearch="() => _table?.ReloadData()" />
+
+<Table @ref="@_table" Size="TableSize.Small"
+       Resizable
+       DataSource="@_dataSource">
+    <ColumnDefinitions Context="ctx">
+        <PropertyColumn Property="c => c.Key" Width="auto" Title="key">
+        </PropertyColumn>
+
+        <PropertyColumn Property="c => c" Width="auto" Title="value">
+            @JsonSerializer.Serialize(ctx)
+        </PropertyColumn>
+
+    </ColumnDefinitions>
+</Table>
+
+
+@code {
+    ITable _table;
+    string _searchText;
+    bool _visible;
+    string _exception;
+
+    IEnumerable<JobDetail> _dataSource = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh();
+        await base.OnInitializedAsync();
+    }
+
+    async Task Refresh()
+    {
+        try
+        {
+            var rsp = await ApiService.QueryJobDetailList();
+            if (rsp.ErrorCode == 0)
+            {
+                _dataSource = rsp.Result;
+            }
+            _table?.ReloadData();
+        }
+        catch (Exception ex)
+        {
+            await _notice.Open(new NotificationConfig
+                {
+                    Message = "错误提示",
+                    Description = ex.ToString()
+                });
+        }
+
+    }
+
+}

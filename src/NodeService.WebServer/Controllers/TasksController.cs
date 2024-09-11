@@ -1,11 +1,13 @@
 ﻿using CommandLine;
 using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.Logging;
 using NodeService.Infrastructure.NodeSessions;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Data.Repositories.Specifications;
 using NodeService.WebServer.Services.DataServices;
 using NodeService.WebServer.Services.Tasks;
+using Quartz.Impl.Matchers;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -241,5 +243,40 @@ public class TasksController : Controller
         }
 
         return Json(apiResponse);
+    }
+
+    [HttpGet("/api/Tasks/JobDetails")]
+    public async Task<PaginationResponse<JobDetail>> QueryJobDetailAsync(
+    CancellationToken cancellationToken = default)
+    {
+        var apiResponse = new PaginationResponse<JobDetail>();
+        try
+        {
+            var schedulerFactory = _serviceProvider.GetService<ISchedulerFactory>();
+            var scheduler = await schedulerFactory.GetScheduler(cancellationToken);
+            var keys = await scheduler.GetJobKeys(GroupMatcher<Quartz.JobKey>.AnyGroup(), cancellationToken);
+            var list = new List<JobDetail>();
+            foreach (var jobKey in keys)
+            {
+                var jobDetailObject = await scheduler.GetJobDetail(jobKey, cancellationToken);
+                var jobDetail = jobDetailObject.ToJobDetail();
+                var triggers = await scheduler.GetTriggersOfJob(jobKey, cancellationToken);
+                foreach (var trigger in triggers)
+                {
+                    var triggerInfo = await trigger.ToTriggerInfoAsync(scheduler, cancellationToken);
+                    jobDetail.Triggers.Add(triggerInfo);
+                }
+                list.Add(jobDetail);
+            }
+            apiResponse.SetResult(new ListQueryResult<JobDetail>(list.Count, 1, list.Count, list));
+        }
+        catch (Exception ex)
+        {
+            _exceptionCounter.AddOrUpdate(ex);
+            _logger.LogError(ex.ToString());
+            apiResponse.ErrorCode = ex.HResult;
+            apiResponse.Message = ex.Message;
+        }
+        return apiResponse;
     }
 }

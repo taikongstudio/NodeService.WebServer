@@ -310,6 +310,7 @@
     {
         try
         {
+            _editModel.Value.FtpConfigId = _selectedFtpConfigs.FirstOrDefault()?.Id;
             var apiResponse = await ApiService.AddOrUpdateAsync(_editModel);
             if (apiResponse.ErrorCode == 0)
             {

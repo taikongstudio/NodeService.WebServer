@@ -17,9 +17,12 @@ public partial class ConfigurationController
 
     [HttpGet("/api/CommonConfig/Notification/List")]
     public Task<PaginationResponse<NotificationConfigModel>> QueryNotificationConfigurationListAsync(
-        [FromQuery] PaginationQueryParameters queryParameters)
+        [FromQuery] PaginationQueryParameters queryParameters,
+        CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationListAsync<NotificationConfigModel>(queryParameters);
+        return QueryConfigurationListAsync<NotificationConfigModel>(
+            queryParameters,
+            cancellationToken);
     }
 
     [HttpGet("/api/CommonConfig/Notification/VersionList")]

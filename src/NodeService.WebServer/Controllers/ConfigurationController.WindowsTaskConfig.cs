@@ -6,9 +6,10 @@ public partial class ConfigurationController
 {
     [HttpGet("/api/CommonConfig/WindowsTask/List")]
     public Task<PaginationResponse<WindowsTaskConfigModel>> QueryWindowsTasksListAsync(
-        [FromQuery] PaginationQueryParameters queryParameters)
+        [FromQuery] PaginationQueryParameters queryParameters,
+        CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationListAsync<WindowsTaskConfigModel>(queryParameters);
+        return QueryConfigurationListAsync<WindowsTaskConfigModel>(queryParameters, cancellationToken);
     }
 
     [HttpPost("/api/CommonConfig/WindowsTask/AddOrUpdate")]

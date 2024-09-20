@@ -10,9 +10,10 @@ public partial class ConfigurationController
 
     [HttpGet("/api/CommonConfig/RestApi/List")]
     public Task<PaginationResponse<RestApiConfigModel>> QueryRestApiConfigurationListAsync(
-        [FromQuery] PaginationQueryParameters queryParameters)
+        [FromQuery] PaginationQueryParameters queryParameters,
+        CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationListAsync<RestApiConfigModel>(queryParameters);
+        return QueryConfigurationListAsync<RestApiConfigModel>(queryParameters, cancellationToken);
     }
 
     [HttpGet("/api/CommonConfig/RestApi/{id}")]

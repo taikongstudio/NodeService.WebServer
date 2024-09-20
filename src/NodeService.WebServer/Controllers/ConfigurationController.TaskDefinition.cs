@@ -5,6 +5,8 @@ using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.Services.TaskSchedule;
 using System.Security.Cryptography;
 using NodeService.WebServer.Services.DataServices;
+using NodeService.Infrastructure.Data;
+using Quartz.Impl.Matchers;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -61,7 +63,30 @@ public partial class ConfigurationController
         [FromQuery] PaginationQueryParameters queryParameters,
         CancellationToken cancellationToken = default)
     {
-        return QueryConfigurationListAsync<TaskDefinitionModel>(queryParameters, cancellationToken);
+        return QueryConfigurationListAsync<TaskDefinitionModel>(
+            queryParameters,
+            PostProcessTaskDefinitionAsync,
+            cancellationToken);
+    }
+
+    async ValueTask PostProcessTaskDefinitionAsync(ListQueryResult<TaskDefinitionModel> listQueryResult, CancellationToken cancellationToken = default)
+    {
+        var schedulerFactory = _serviceProvider.GetService<ISchedulerFactory>();
+        var scheduler = await schedulerFactory.GetScheduler(cancellationToken);
+        var jobKeys = await scheduler.GetJobKeys(GroupMatcher<Quartz.JobKey>.AnyGroup(), cancellationToken);
+        foreach (var taskDefinition in listQueryResult.Items)
+        {
+            var found = false;
+            foreach (var item in jobKeys)
+            {
+                if (item.Name == taskDefinition.Id)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            taskDefinition.IsScheduled = found;
+        }
     }
 
     [HttpGet("/api/CommonConfig/TaskDefinition/{id}")]

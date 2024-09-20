@@ -1,4 +1,5 @@
-﻿using NodeService.WebServer.Services.DataServices;
+﻿using NodeService.Infrastructure.Data;
+using NodeService.WebServer.Services.DataServices;
 
 namespace NodeService.WebServer.Controllers;
 
@@ -34,10 +35,23 @@ public partial class ConfigurationController : Controller
          CancellationToken cancellationToken = default)
          where T : JsonRecordBase, new()
     {
+        return await QueryConfigurationListAsync<T>(queryParameters, null, cancellationToken);
+    }
+
+    public async Task<PaginationResponse<T>> QueryConfigurationListAsync<T>(
+         PaginationQueryParameters queryParameters,
+         Func<ListQueryResult<T>, CancellationToken, ValueTask>? func = null,
+         CancellationToken cancellationToken = default)
+         where T : JsonRecordBase, new()
+    {
         var rsp = new PaginationResponse<T>();
         try
         {
             var result = await _configurationQueryService.QueryConfigurationByQueryParametersAsync<T>(queryParameters, cancellationToken);
+            if (func != null)
+            {
+                await func(result, cancellationToken);
+            }
             rsp.SetResult(result);
         }
         catch (Exception ex)

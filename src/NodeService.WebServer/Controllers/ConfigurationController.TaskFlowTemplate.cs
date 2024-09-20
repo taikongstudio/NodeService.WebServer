@@ -1,9 +1,11 @@
 ﻿using NodeService.Infrastructure.Concurrent;
+using NodeService.Infrastructure.Data;
 using NodeService.Infrastructure.DataModels;
 using NodeService.WebServer.Data.Repositories;
 using NodeService.WebServer.Services.DataServices;
 using NodeService.WebServer.Services.Tasks;
 using NodeService.WebServer.Services.TaskSchedule;
+using Quartz.Impl.Matchers;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using JobScheduler = NodeService.WebServer.Services.TaskSchedule.JobScheduler;
@@ -79,7 +81,30 @@ namespace NodeService.WebServer.Controllers
             [FromQuery] PaginationQueryParameters queryParameters,
             CancellationToken cancellationToken = default)
         {
-            return QueryConfigurationListAsync<TaskFlowTemplateModel>(queryParameters, cancellationToken: cancellationToken);
+            return QueryConfigurationListAsync<TaskFlowTemplateModel>(
+                queryParameters,
+                PostProcessTaskFlowTemplateAsync,
+                cancellationToken: cancellationToken);
+        }
+
+        async ValueTask PostProcessTaskFlowTemplateAsync(ListQueryResult<TaskFlowTemplateModel> listQueryResult, CancellationToken cancellationToken = default)
+        {
+            var  schedulerFactory = _serviceProvider.GetService<ISchedulerFactory>();
+            var scheduler = await schedulerFactory.GetScheduler(cancellationToken);
+            var jobKeys = await scheduler.GetJobKeys(GroupMatcher<Quartz.JobKey>.AnyGroup(), cancellationToken);
+            foreach (var taskFlowTemplate in listQueryResult.Items)
+            {
+                var found = false;
+                foreach (var item in jobKeys)
+                {
+                    if (item.Name == taskFlowTemplate.Id)
+                    {
+                        found = true;
+                        break;
+                    }
+                }
+                taskFlowTemplate.IsScheduled = found;
+            }
         }
 
         [HttpGet("/api/CommonConfig/TaskFlowTemplate/{id}")]

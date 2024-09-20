@@ -63,11 +63,7 @@ namespace NodeService.WebServer.Services.TaskSchedule
             if (_taskSchedulerDictionary.TryGetValue(taskSchedulerKey, out var asyncDisposable))
             {
                 await asyncDisposable.DisposeAsync();
-                if (!taskFlowTemplate.Value.IsDesignMode)
-                {
-                    await DeleteAllTaskScheduleAsync(taskFlowScheduleParameters.TaskFlowTemplateId, nameof(FireTaskFlowJob));
-                    return;
-                }
+                await DeleteAllTaskScheduleAsync(taskFlowScheduleParameters.TaskFlowTemplateId, nameof(FireTaskFlowJob));
 
                 var newAsyncDisposable = await ScheduleTaskFlowAsync(
                                                                             taskSchedulerKey,

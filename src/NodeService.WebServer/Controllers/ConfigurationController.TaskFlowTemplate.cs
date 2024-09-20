@@ -96,7 +96,7 @@ namespace NodeService.WebServer.Controllers
             [FromBody] TaskFlowTemplateModel model,
             CancellationToken cancellationToken = default)
         {
-            return DeleteConfigurationAsync(model, OnTaskDefinitionVersionChanged, cancellationToken: cancellationToken);
+            return DeleteConfigurationAsync(model, OnTaskFlowTemplateVersionChanged, cancellationToken: cancellationToken);
         }
 
         [HttpGet("/api/CommonConfig/TaskFlowTemplate/VersionList")]

@@ -55,6 +55,7 @@ public class JobScheduler
 
             var job = JobBuilder.Create(jobType)
                 .SetJobData(new JobDataMap(props))
+                .WithIdentity(taskSchedulerKey.Key)
                 .Build();
             asyncDisposable.SetKey(job.Key);
             Dictionary<IJobDetail, IReadOnlyCollection<ITrigger>> jobsAndTriggers = [];
